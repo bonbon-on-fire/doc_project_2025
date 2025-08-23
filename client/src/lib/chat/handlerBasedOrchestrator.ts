@@ -25,7 +25,6 @@ import { createToolsAggregateMessageHandler } from './handlers/toolsAggregateMes
 import { createSlimChatSyncManager } from './slimChatSyncManager';
 import { createSSEParser } from './sseParser';
 import { apiClient } from '$lib/api/client';
-import { taskManager } from '$lib/stores/taskManager';
 import type { TaskItem } from '$shared/types/tasks';
 
 /**
@@ -255,21 +254,8 @@ export class HandlerBasedSSEOrchestrator {
 					break;
 				}
 				case 'messageupdate': {
-					if (raw.kind === 'tools_call_update') {
-						console.log('[Orchestrator] Tool call update event:', JSON.stringify(raw, null, 2));
-						console.log('[Orchestrator] Payload structure:', {
-							hasPayload: !!raw.payload,
-							hasToolCallUpdate: !!raw.payload?.toolCallUpdate,
-							toolCallUpdate: raw.payload?.toolCallUpdate
-						});
-					}
 					// Handle tool_result events
 					if (raw.kind === 'tool_result') {
-						console.log('[Orchestrator] Tool result event:', {
-							messageId: raw.messageId,
-							toolCallId: raw.payload?.toolCallId,
-							isError: raw.payload?.isError
-						});
 						const env: StreamChunkEventEnvelope = {
 							...base,
 							kind: 'tool_result',
@@ -282,11 +268,6 @@ export class HandlerBasedSSEOrchestrator {
 					}
 					// Handle tools_call_aggregate as a complete message
 					if (raw.kind === 'tools_call_aggregate') {
-						console.log('[Orchestrator] Tools call aggregate event:', {
-							messageId: raw.messageId,
-							toolCallsCount: raw.payload?.toolCalls?.length,
-							toolResultsCount: raw.payload?.toolResults?.length
-						});
 						const env: MessageCompleteEventEnvelope = {
 							...base,
 							kind: 'tools_aggregate',
@@ -399,8 +380,10 @@ export class HandlerBasedSSEOrchestrator {
 			// Attempt to reload tasks from API when connection is restored
 			// This is a graceful recovery mechanism
 			setTimeout(() => {
-				taskManager.loadTasks(currentChat.id).catch((error) => {
-					console.error('Failed to reload tasks after connection loss:', error);
+				import('../stores/taskManager').then(({ taskManager }) => {
+					taskManager.loadTasks(currentChat.id).catch((error) => {
+						console.error('Failed to reload tasks after connection loss:', error);
+					});
 				});
 			}, 2000); // Wait 2 seconds before attempting to reload
 		}
@@ -436,7 +419,9 @@ export class HandlerBasedSSEOrchestrator {
 			switch (payload.operationType) {
 				case 'start':
 					// Set loading state when operation starts
-					taskManager.setLoading(chatId, true);
+					import('../stores/taskManager').then(({ taskManager }) => {
+						taskManager.setLoading(chatId, true);
+					});
 					break;
 
 				case 'complete':
@@ -452,13 +437,17 @@ export class HandlerBasedSSEOrchestrator {
 							} else {
 								throw new Error('Invalid task state format');
 							}
-							taskManager.updateFromServerEvent(chatId, tasks, payload.version);
+							import('../stores/taskManager').then(({ taskManager }) => {
+								taskManager.updateFromServerEvent(chatId, tasks, payload.version);
+							});
 						} catch (parseError) {
 							console.error('Error parsing task state:', parseError, payload.taskState);
 						}
 					}
 					// Clear loading state
-					taskManager.setLoading(chatId, false);
+					import('../stores/taskManager').then(({ taskManager }) => {
+						taskManager.setLoading(chatId, false);
+					});
 					break;
 
 				case 'sync':
@@ -468,7 +457,9 @@ export class HandlerBasedSSEOrchestrator {
 							? payload.taskState
 							: payload.taskState.tasks || [];
 
-						taskManager.updateFromServerEvent(chatId, tasks, payload.version);
+						import('../stores/taskManager').then(({ taskManager }) => {
+							taskManager.updateFromServerEvent(chatId, tasks, payload.version);
+						});
 					}
 					break;
 
@@ -477,7 +468,9 @@ export class HandlerBasedSSEOrchestrator {
 			}
 		} catch (error) {
 			console.error('Error handling task operation event:', error);
-			taskManager.setLoading(chatId, false);
+			import('../stores/taskManager').then(({ taskManager }) => {
+				taskManager.setLoading(chatId, false);
+			});
 		}
 	}
 

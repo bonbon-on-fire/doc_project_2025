@@ -61,7 +61,9 @@
       "Bash(dotnet nuget list:*)",
       "Bash(dotnet nuget add source:*)",
       "Bash(npm test:*)",
-      "Bash(npx vitest run:*)"
+      "Bash(npx vitest run:*)",
+      "Bash(sed:*)",
+      "Bash(npx prettier:*)"
     ],
     "deny": [],
     "ask": [],

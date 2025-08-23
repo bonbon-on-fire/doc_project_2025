@@ -9,23 +9,50 @@
 	export let message: TextMessageDto & RichMessageDto;
 	export let isLastAssistantMessage: boolean = false;
 
+	// Acknowledge the prop to avoid unused warning
+	$: if (isLastAssistantMessage !== undefined) {
+		// This prop is used by MessageRouter for potential UX enhancements
+	}
+
 	// Create event dispatcher for custom events
 	const dispatch = createEventDispatcher<{
 		stateChange: { expanded: boolean };
 	}>();
 
-	// Markdown + sanitization (Phase 2 enhancement)
-	import { parseMarkdown } from '$lib/markdown/parse';
+	// Import the elegant markdown renderer
+	import MarkdownRenderer from './MarkdownRenderer.svelte';
 
-	/**
-	 * Convert markdown content to sanitized HTML. Empty content yields ''.
-	 */
-	function renderContent(content: string | null | undefined): string {
-		if (!content) return '';
-		return parseMarkdown(content, { devLogging: true });
+	$: messageText = (message as TextMessageDto).text || '';
+
+	// Heuristic to detect if text contains markdown syntax
+	function containsMarkdownSyntax(text: string): boolean {
+		if (!text || typeof text !== 'string') return false;
+
+		// Check for common markdown patterns
+		const markdownPatterns = [
+			/#{1,6}\s+/, // Headers: # ## ### etc.
+			/\*\*.*?\*\*/, // Bold: **text**
+			/\*(?!\d).*?(?<!\d)\*/, // Italic: *text* (but not *123* which could be math)
+			/__.*?__/, // Bold: __text__
+			/_(?!\d).*?(?<!\d)_/, // Italic: _text_ (but not _123_ which could be math)
+			/`.*?`/, // Inline code: `code`
+			/```[\s\S]*?```/, // Code blocks: ```code```
+			/\[.*?\]\(.*?\)/, // Links: [text](url)
+			/^\s*[-+]\s+/m, // Unordered lists: - + (excluding * to avoid math conflicts)
+			/^\s*\d+\.\s+/m, // Ordered lists: 1. 2. 3.
+			/^\s*>\s+/m, // Blockquotes: >
+			/\$\$[\s\S]*?\$\$/, // Math blocks: $$equation$$
+			/\\\([\s\S]*?\\\)/, // Inline math: \(equation\)
+			/\\\[[\s\S]*?\\\]/, // Math blocks: \[equation\]
+			/\|.*?\|/, // Tables: | column |
+			/---+/, // Horizontal rules: ---
+			/~~.*?~~/ // Strikethrough: ~~text~~
+		];
+
+		return markdownPatterns.some((pattern) => pattern.test(text));
 	}
 
-	$: safeContent = renderContent((message as TextMessageDto).text);
+	$: shouldUseMarkdown = message.role !== 'user' || containsMarkdownSyntax(messageText);
 
 	// Component implements MessageRenderer interface
 	const rendererInterface: MessageRenderer<TextMessageDto> = {
@@ -84,18 +111,25 @@
 					</div>
 				{/if}
 
-				<!-- Message text with markdown rendering and streaming support -->
+				<!-- Message text with elegant markdown rendering and streaming support -->
 				<div
-					class="prose prose-sm dark:prose-invert max-w-none"
-					class:prose-invert={message.role === 'user'}
-					class:text-yellow-800={message.role === 'system'}
-					class:dark\:text-yellow-200={message.role === 'system'}
-					class:dark\:text-gray-300={message.role !== 'system'}
 					data-testid="message-content"
+					class={message.role === 'system' ? 'text-yellow-800 dark:text-yellow-200' : ''}
 				>
 					{#if Boolean($streamingSnapshots?.[message.id]?.isStreaming)}
 						{#if ($streamingSnapshots?.[message.id]?.textDelta || '').trim()}
-							{@html renderContent($streamingSnapshots?.[message.id]?.textDelta || '')}
+							{@const streamingText = $streamingSnapshots?.[message.id]?.textDelta || ''}
+							{@const streamingShouldUseMarkdown =
+								message.role !== 'user' || containsMarkdownSyntax(streamingText)}
+							{#if streamingShouldUseMarkdown}
+								<MarkdownRenderer
+									content={streamingText}
+									size="sm"
+									theme={message.role === 'user' ? 'user' : 'auto'}
+								/>
+							{:else}
+								<span class="break-words whitespace-pre-wrap">{streamingText}</span>
+							{/if}
 						{:else}
 							<!-- Thinking indicator while first tokens arrive -->
 							<div class="flex items-center space-x-1 text-gray-500 dark:text-gray-400">
@@ -119,8 +153,16 @@
 
 						<!-- Cursor indicator for streaming -->
 						<span class="ml-1 inline-block animate-pulse align-middle">▋</span>
-					{:else if safeContent}
-						{@html safeContent}
+					{:else if messageText.trim()}
+						{#if shouldUseMarkdown}
+							<MarkdownRenderer
+								content={messageText}
+								size="sm"
+								theme={message.role === 'user' ? 'user' : 'auto'}
+							/>
+						{:else}
+							<span class="break-words whitespace-pre-wrap">{messageText}</span>
+						{/if}
 					{:else}
 						<span
 							class="text-[0.8rem] text-gray-400 italic dark:text-gray-500"

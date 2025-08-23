@@ -77,12 +77,6 @@ export class TextMessageHandler extends BaseMessageHandler {
 	 * Process text streaming chunk
 	 */
 	processChunk(messageId: string, envelope: StreamChunkEventEnvelope): MessageSnapshot {
-		console.log('[TextMessageHandler] processChunk called:', {
-			messageId,
-			envelopeKind: envelope.kind,
-			payload: envelope.payload
-		});
-
 		let snapshot = this.getSnapshot(messageId);
 
 		// Create snapshot if it doesn't exist - this handles cases where:
@@ -90,7 +84,6 @@ export class TextMessageHandler extends BaseMessageHandler {
 		// 2. Server streams multiple messages sequentially (reasoning -> text)
 		// 3. Late completion events arrive after next message starts chunking
 		if (!snapshot) {
-			console.log('[TextMessageHandler] Creating new snapshot for message:', messageId);
 			snapshot = this.initializeMessage(
 				messageId,
 				envelope.chatId,
@@ -113,14 +106,9 @@ export class TextMessageHandler extends BaseMessageHandler {
 
 		// Accumulate text delta if present; tolerate missing/empty
 		const delta = typeof textPayload.delta === 'string' ? textPayload.delta : '';
-		console.log('[TextMessageHandler] Processing delta:', {
-			delta,
-			currentTextDelta: snapshot.textDelta
-		});
 
 		if (delta.length === 0) {
 			// Nothing to append; keep current snapshot and streaming state
-			console.log('[TextMessageHandler] Empty delta, keeping current state');
 			return this.updateSnapshot(messageId, {
 				textDelta: snapshot.textDelta || '',
 				isStreaming: textPayload.done === true ? false : true
@@ -128,7 +116,6 @@ export class TextMessageHandler extends BaseMessageHandler {
 		}
 
 		const newTextDelta = (snapshot.textDelta || '') + delta;
-		console.log('[TextMessageHandler] New textDelta:', newTextDelta);
 
 		return this.updateSnapshot(messageId, {
 			textDelta: newTextDelta,

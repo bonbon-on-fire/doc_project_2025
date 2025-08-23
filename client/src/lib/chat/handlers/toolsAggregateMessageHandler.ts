@@ -29,22 +29,26 @@ import type {
 	ToolCallPair
 } from '$lib/types/chat';
 import { BaseMessageHandler } from '../messageHandlers';
-import ToolsCallAggregateRenderer from '$lib/components/ToolsCallAggregateRenderer.svelte';
 import { JufStitcherManager } from '$lib/utils/jufStitcherManager';
 import { snapshot } from '$lib/utils/snapshotHelper';
-import { taskManager } from '$lib/stores/taskManager';
 import type { TaskItem, TaskOperation } from '$shared/types/tasks';
 
 /**
  * Renderer for tools aggregate messages
  */
 export class ToolsAggregateMessageRenderer implements MessageRenderer {
-	getStreamingComponent() {
-		return ToolsCallAggregateRenderer as any;
+	async getStreamingComponent() {
+		const { default: ToolsCallAggregateRenderer } = await import(
+			'$lib/components/ToolsCallAggregateRenderer.svelte'
+		);
+		return ToolsCallAggregateRenderer;
 	}
 
-	getCompleteComponent() {
-		return ToolsCallAggregateRenderer as any;
+	async getCompleteComponent() {
+		const { default: ToolsCallAggregateRenderer } = await import(
+			'$lib/components/ToolsCallAggregateRenderer.svelte'
+		);
+		return ToolsCallAggregateRenderer;
 	}
 
 	getStreamingProps(snapshot: MessageSnapshot): Record<string, any> {
@@ -366,7 +370,9 @@ export class ToolsAggregateMessageHandler extends BaseMessageHandler {
 				console.log('Task manager operation detected:', operation, 'Tasks:', tasks);
 
 				// Update the task manager store with the new task state
-				taskManager.updateFromToolCall(this.currentChatId, operation, tasks);
+				import('../../stores/taskManager').then(({ taskManager }) => {
+					taskManager.updateFromToolCall(this.currentChatId, operation, tasks);
+				});
 			}
 		} catch (error) {
 			console.error('Error processing task manager result:', error);

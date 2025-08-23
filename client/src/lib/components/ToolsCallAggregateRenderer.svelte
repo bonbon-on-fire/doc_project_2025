@@ -7,6 +7,11 @@
 	export let renderPhase: 'initial' | 'streaming' | 'complete' = 'initial';
 	export let expanded: boolean = true;
 
+	// Acknowledge unused props to avoid build warnings
+	$: if (isStreaming !== undefined && renderPhase !== undefined) {
+		// These props are provided by the renderer system for potential future use
+	}
+
 	// Handle toggle functionality
 	function toggleExpanded() {
 		expanded = !expanded;
@@ -83,12 +88,6 @@
 	{#if expanded}
 		<div class="tool-calls-list">
 			{#each message.toolCallPairs || [] as pair, index}
-				{console.log('[ToolsCallAggregateRenderer] Rendering tool call pair:', {
-					index,
-					toolName: pair.toolCall.function_name || pair.toolCall.name,
-					hasResult: !!pair.toolResult,
-					pairId: pair.toolCall.id || pair.toolCall.tool_call_id
-				})}
 				<ToolCallRouter toolCallPair={pair} {isStreaming} {renderPhase} {index} {expanded} />
 			{/each}
 

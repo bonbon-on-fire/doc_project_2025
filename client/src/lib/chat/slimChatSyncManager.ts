@@ -18,7 +18,6 @@ import type {
 } from './sseEventTypes';
 import { SSEEventGuards, StreamChunkPayloadGuards } from './sseEventTypes';
 import type { MessageHandlerRegistry, HandlerEvent, HandlerEventListener } from './messageHandlers';
-import { taskManager } from '$lib/stores/taskManager';
 
 /**
  * Slim chat sync manager - just routes events to handlers
@@ -125,23 +124,10 @@ export class SlimChatSyncManager implements HandlerEventListener {
 	 * Handle stream chunk event - route to appropriate message handler
 	 */
 	private handleStreamChunkEvent(envelope: StreamChunkEventEnvelope): void {
-		console.log(
-			`[SlimChatSyncManager] Handling stream chunk: kind=${envelope.kind}, messageId=${envelope.messageId}`
-		);
-
 		// Handle task updates separately - they're not messages
 		if (envelope.kind === 'task_update') {
 			this.handleTaskUpdateEvent(envelope);
 			return;
-		}
-
-		// Special logging for tool calls
-		if (envelope.kind === 'tools_call_update') {
-			console.log('[SlimChatSyncManager] Tool call chunk received:', {
-				messageId: envelope.messageId,
-				payload: envelope.payload,
-				payloadKeys: Object.keys(envelope.payload || {})
-			});
 		}
 
 		// Route tool_call_update and tool_result to the aggregate handler
@@ -168,15 +154,6 @@ export class SlimChatSyncManager implements HandlerEventListener {
 			} as StreamChunkEventEnvelope;
 			const snapshot = handler.processChunk(displayId, fixedEnvelope);
 
-			// Log tool call snapshots
-			if (envelope.kind === 'tools_call_update') {
-				console.log('[SlimChatSyncManager] Tool call snapshot after processing:', {
-					displayId,
-					toolCalls: snapshot.toolCalls,
-					messageType: snapshot.messageType
-				});
-			}
-
 			// Update streaming UI state based on the updated snapshot
 			this.updateStreamingState(displayId, snapshot.messageType, snapshot);
 		} catch (error) {
@@ -188,23 +165,13 @@ export class SlimChatSyncManager implements HandlerEventListener {
 	 * Handle task update event - update task store with new state
 	 */
 	private handleTaskUpdateEvent(envelope: StreamChunkEventEnvelope): void {
-		console.log('[SlimChatSyncManager] Handling task update event:', {
-			chatId: envelope.chatId,
-			messageId: envelope.messageId,
-			payload: envelope.payload
-		});
-
 		if (StreamChunkPayloadGuards.isTaskUpdateStreamChunk(envelope.payload)) {
 			const { taskState, operationType } = envelope.payload;
 
-			console.log('[SlimChatSyncManager] Updating task store with:', {
-				chatId: envelope.chatId,
-				operationType,
-				taskState
-			});
-
 			// Update the task store with the new state from server
-			taskManager.updateFromSSE(envelope.chatId, taskState);
+			import('../stores/taskManager').then(({ taskManager }) => {
+				taskManager.updateFromSSE(envelope.chatId, taskState);
+			});
 		}
 	}
 
@@ -685,18 +652,16 @@ export class SlimChatSyncManager implements HandlerEventListener {
 				updated.visibility = snapshot.visibility ?? existing.visibility ?? null;
 			} else if (messageType === 'tool_call') {
 				updated.toolCalls = snapshot.toolCalls || [];
-				console.log('[SlimChatSyncManager] Storing tool calls in streaming state:', {
-					messageId,
-					toolCalls: updated.toolCalls
-				});
 			} else if (messageType === 'tools_aggregate') {
 				updated.toolCallPairs = snapshot.toolCallPairs || [];
-				console.log('[SlimChatSyncManager] Storing tool call pairs in streaming state:', {
-					messageId,
-					toolCallPairs: updated.toolCallPairs
-				});
 			}
 			next.streamingSnapshots = { ...cleared, [messageId]: updated };
+
+			// Log streaming state change for message order debugging
+			if (messageType === 'text' || messageType === 'reasoning' || messageType === 'tool_call') {
+				setTimeout(() => this.logMessageOrder('StreamingStateUpdate', messageId), 0);
+			}
+
 			return next;
 		});
 	}

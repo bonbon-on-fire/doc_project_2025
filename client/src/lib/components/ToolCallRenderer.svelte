@@ -11,6 +11,11 @@
 	export let expanded: boolean = true;
 	export let renderPhase: 'initial' | 'streaming' | 'complete' = 'initial';
 
+	// Acknowledge unused props to avoid build warnings
+	$: if (isLastAssistantMessage !== undefined) {
+		// This prop is used by MessageRouter for potential UX enhancements
+	}
+
 	const dispatch = createEventDispatcher<{
 		stateChange: { expanded: boolean };
 		toggleExpansion: { expanded: boolean };

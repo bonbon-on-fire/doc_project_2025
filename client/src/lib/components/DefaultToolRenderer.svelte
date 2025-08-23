@@ -9,6 +9,11 @@
 	export let index: number = 0;
 	export let expanded: boolean = true;
 
+	// Acknowledge unused props to avoid build warnings
+	$: if (renderPhase !== undefined && expanded !== undefined) {
+		// These props are provided by the tool renderer system for potential future use
+	}
+
 	// Renderer interface implementation
 	const rendererInterface: ToolRenderer = {
 		toolNamePattern: '*',

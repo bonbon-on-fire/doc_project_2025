@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import CollapsibleMessageRenderer from '$lib/components/CollapsibleMessageRenderer.svelte';
+	import MarkdownRenderer from './MarkdownRenderer.svelte';
 	import type { ReasoningMessageDto, RichMessageDto } from '$lib/types';
 	import type { MessageRenderer } from '$lib/types/renderer';
 	import { streamingSnapshots } from '$lib/stores/chat';
@@ -16,19 +17,6 @@
 		stateChange: { expanded: boolean };
 		toggleExpansion: { expanded: boolean };
 	}>();
-
-	// Basic formatting function for reasoning content
-	function formatContent(content: string): string {
-		// Basic markdown-like formatting
-		return content
-			.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-			.replace(/\*(.*?)\*/g, '<em>$1</em>')
-			.replace(
-				/`(.*?)`/g,
-				'<code class="bg-gray-200 dark:bg-gray-700 px-1 rounded text-sm">$1</code>'
-			)
-			.replace(/\n/g, '<br>');
-	}
 
 	function getReasoningText(msg: any): string {
 		if (!msg) return '';
@@ -140,9 +128,9 @@
 				>
 			</div>
 
-			<!-- Reasoning content with smaller font styling -->
+			<!-- Reasoning content with elegant markdown styling -->
 			<div
-				class="max-w-none text-xs text-amber-700 dark:text-amber-300"
+				class="max-w-none"
 				class:text-yellow-800={message.role === 'system'}
 				class:dark\:text-yellow-200={message.role === 'system'}
 				data-testid="reasoning-content"
@@ -151,16 +139,20 @@
 					<!-- Show reasoning while its own message is streaming, or before text message id is known -->
 					{#if ($streamingSnapshots?.[message.id]?.reasoningDelta || '').trim()}
 						<div
-							class="mb-2 border-l-2 border-amber-300 pl-2 text-xs text-amber-600 dark:border-amber-600 dark:text-amber-400"
+							class="mb-2 border-l-2 border-amber-300 pl-2 dark:border-amber-600"
 							data-testid="streaming-reasoning-content"
 						>
-							{@html formatContent($streamingSnapshots?.[message.id]?.reasoningDelta || '')}
+							<MarkdownRenderer
+								content={$streamingSnapshots?.[message.id]?.reasoningDelta || ''}
+								size="sm"
+								theme="auto"
+							/>
 						</div>
 					{/if}
 					<span class="animate-pulse">▋</span>
 				{:else}
 					<!-- When not streaming, render final reasoning if present; otherwise fall back to this message's snapshot delta -->
-					{@html formatContent(reasoningText)}
+					<MarkdownRenderer content={reasoningText} size="sm" theme="auto" />
 				{/if}
 			</div>
 		</CollapsibleMessageRenderer>

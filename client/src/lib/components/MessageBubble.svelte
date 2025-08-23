@@ -2,23 +2,15 @@
 	import type { RichMessageDto } from '$lib/types/chat';
 	import { formatTime } from '$lib/utils/time';
 	import { streamingSnapshots } from '$lib/stores/chat';
+	import MarkdownRenderer from './MarkdownRenderer.svelte';
 
 	export let message: RichMessageDto;
 	export let isLastAssistantMessage = false;
 
 	// Additional props for compatibility with MessageRouter
 	// removed unused props to avoid build warnings
-
-	function formatContent(content: string): string {
-		// Basic markdown-like formatting
-		return content
-			.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-			.replace(/\*(.*?)\*/g, '<em>$1</em>')
-			.replace(
-				/`(.*?)`/g,
-				'<code class="bg-gray-200 dark:bg-gray-700 px-1 rounded text-sm">$1</code>'
-			)
-			.replace(/\n/g, '<br>');
+	$: if (isLastAssistantMessage !== undefined) {
+		// This prop is provided by MessageRouter for potential future enhancements
 	}
 
 	function getMessageText(msg: any): string {
@@ -32,6 +24,34 @@
 		if (typeof (msg as any).Reasoning === 'string' && (msg as any).Reasoning.trim())
 			return (msg as any).Reasoning;
 		return '';
+	}
+
+	// Heuristic to detect if text contains markdown syntax
+	function containsMarkdownSyntax(text: string): boolean {
+		if (!text || typeof text !== 'string') return false;
+
+		// Check for common markdown patterns
+		const markdownPatterns = [
+			/#{1,6}\s+/, // Headers: # ## ### etc.
+			/\*\*.*?\*\*/, // Bold: **text**
+			/\*(?!\d).*?(?<!\d)\*/, // Italic: *text* (but not *123* which could be math)
+			/__.*?__/, // Bold: __text__
+			/_(?!\d).*?(?<!\d)_/, // Italic: _text_ (but not _123_ which could be math)
+			/`.*?`/, // Inline code: `code`
+			/```[\s\S]*?```/, // Code blocks: ```code```
+			/\[.*?\]\(.*?\)/, // Links: [text](url)
+			/^\s*[-+]\s+/m, // Unordered lists: - + (excluding * to avoid math conflicts)
+			/^\s*\d+\.\s+/m, // Ordered lists: 1. 2. 3.
+			/^\s*>\s+/m, // Blockquotes: >
+			/\$\$[\s\S]*?\$\$/, // Math blocks: $$equation$$
+			/\\\([\s\S]*?\\\)/, // Inline math: \(equation\)
+			/\\\[[\s\S]*?\\\]/, // Math blocks: \[equation\]
+			/\|.*?\|/, // Tables: | column |
+			/---+/, // Horizontal rules: ---
+			/~~.*?~~/ // Strikethrough: ~~text~~
+		];
+
+		return markdownPatterns.some((pattern) => pattern.test(text));
 	}
 </script>
 
@@ -79,48 +99,60 @@
 					</div>
 				{/if}
 
-				<!-- Message text with basic formatting -->
-				<div
-					class="prose prose-sm dark:prose-invert max-w-none"
-					class:prose-invert={message.role === 'user'}
-					class:text-yellow-800={message.role === 'system'}
-					class:dark\:text-yellow-200={message.role === 'system'}
-					class:dark\:text-gray-300={message.role !== 'system'}
-				>
+				<!-- Message text with elegant markdown rendering -->
+				<div class={message.role === 'system' ? 'text-yellow-800 dark:text-yellow-200' : ''}>
 					{#if Boolean($streamingSnapshots?.[message.id]?.isStreaming)}
-						<!-- Debug logging for streaming condition -->
-						{#if typeof console !== 'undefined'}
-							{console.log('[MessageBubble] Streaming condition met:', {
-								isLastAssistantMessage,
-								isStreaming: Boolean($streamingSnapshots?.[message.id]?.isStreaming),
-								messageRole: message.role,
-								textDelta: $streamingSnapshots?.[message.id]?.textDelta,
-								reasoningDelta: $streamingSnapshots?.[message.id]?.reasoningDelta
-							})}
-						{/if}
-						{#if ($streamingSnapshots?.[message.id]?.reasoningDelta || '').trim()}
+						{@const reasoningDelta = $streamingSnapshots?.[message.id]?.reasoningDelta || ''}
+						{@const textDelta = $streamingSnapshots?.[message.id]?.textDelta || ''}
+						{@const reasoningShouldUseMarkdown =
+							message.role !== 'user' || containsMarkdownSyntax(reasoningDelta)}
+						{@const textShouldUseMarkdown =
+							message.role !== 'user' || containsMarkdownSyntax(textDelta)}
+
+						{#if reasoningDelta.trim()}
 							<div
-								class="mb-2 border-l-2 border-gray-300 pl-2 text-xs text-gray-500 dark:border-gray-600 dark:text-gray-400"
+								class="mb-2 border-l-2 border-gray-300 pl-2 text-xs dark:border-gray-600"
 								data-testid="reasoning-content"
 							>
-								{@html formatContent($streamingSnapshots?.[message.id]?.reasoningDelta || '')}
+								{#if reasoningShouldUseMarkdown}
+									<MarkdownRenderer
+										content={reasoningDelta}
+										size="sm"
+										theme={message.role === 'user' ? 'user' : 'auto'}
+									/>
+								{:else}
+									<span class="break-words whitespace-pre-wrap">{reasoningDelta}</span>
+								{/if}
 							</div>
 						{/if}
 						<div data-testid="message-content">
-							{@html formatContent($streamingSnapshots?.[message.id]?.textDelta || '')}
+							{#if textShouldUseMarkdown}
+								<MarkdownRenderer
+									content={textDelta}
+									size="sm"
+									theme={message.role === 'user' ? 'user' : 'auto'}
+								/>
+							{:else}
+								<span class="break-words whitespace-pre-wrap">{textDelta}</span>
+							{/if}
 						</div>
 						<span class="animate-pulse">▋</span>
 					{:else}
-						<!-- Debug logging for non-streaming condition -->
-						{#if typeof console !== 'undefined'}
-							{console.log('[MessageBubble] Non-streaming condition:', {
-								isLastAssistantMessage,
-								isStreaming: Boolean($streamingSnapshots?.[message.id]?.isStreaming),
-								messageRole: message.role,
-								messageText: getMessageText(message)
-							})}
-						{/if}
-						<div data-testid="message-content">{@html formatContent(getMessageText(message))}</div>
+						{@const messageText = getMessageText(message)}
+						{@const shouldUseMarkdown =
+							message.role !== 'user' || containsMarkdownSyntax(messageText)}
+
+						<div data-testid="message-content">
+							{#if shouldUseMarkdown}
+								<MarkdownRenderer
+									content={messageText}
+									size="sm"
+									theme={message.role === 'user' ? 'user' : 'auto'}
+								/>
+							{:else}
+								<span class="break-words whitespace-pre-wrap">{messageText}</span>
+							{/if}
+						</div>
 					{/if}
 				</div>
 			</div>

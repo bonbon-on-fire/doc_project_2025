@@ -8,6 +8,16 @@
 	export let renderPhase: 'initial' | 'streaming' | 'complete' = 'initial';
 	export let isLastAssistantMessage: boolean = false;
 
+	// Acknowledge unused props to avoid build warnings
+	$: if (
+		isLatest !== undefined &&
+		expanded !== undefined &&
+		renderPhase !== undefined &&
+		isLastAssistantMessage !== undefined
+	) {
+		// These props are provided by the renderer system but not used in usage rendering
+	}
+
 	// Usage messages are not displayed in the message list
 	// The usage information is shown elsewhere in the UI (e.g., in a stats panel)
 	// This renderer exists to prevent the fallback renderer from displaying raw usage data

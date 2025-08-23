@@ -16,17 +16,18 @@ import type {
 import { StreamChunkPayloadGuards, MessageCompletePayloadGuards } from '../sseEventTypes';
 import type { MessageDto, ReasoningMessageDto } from '$lib/types/chat';
 import { BaseMessageHandler } from '../messageHandlers';
-import ReasoningRenderer from '$lib/components/ReasoningRenderer.svelte';
 
 /**
  * Renderer for reasoning messages
  */
 export class ReasoningMessageRenderer implements MessageRenderer {
-	getStreamingComponent() {
+	async getStreamingComponent() {
+		const { default: ReasoningRenderer } = await import('$lib/components/ReasoningRenderer.svelte');
 		return ReasoningRenderer;
 	}
 
-	getCompleteComponent() {
+	async getCompleteComponent() {
+		const { default: ReasoningRenderer } = await import('$lib/components/ReasoningRenderer.svelte');
 		return ReasoningRenderer;
 	}
 

@@ -10,6 +10,11 @@
 	export let expanded: boolean = true;
 	export let collapsible: boolean = true;
 
+	// Acknowledge unused props to avoid build warnings
+	$: if (isLatest !== undefined) {
+		// This prop is provided for potential future use in expansion behavior
+	}
+
 	// Component assets
 	export let iconPath: string; // SVG path for the icon
 	export let iconColors: string = 'from-blue-500 to-purple-600'; // Gradient colors
