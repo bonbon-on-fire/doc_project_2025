@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using ModelContextProtocol.Client;
 using AIChat.Server.Models;
+using AIChat.Server.Exceptions;
 
 namespace AIChat.Server.Services;
 
@@ -20,7 +21,7 @@ public interface IMcpClientManager
     bool IsInitialized { get; }
 }
 
-public class McpClientManager : IMcpClientManager, IDisposable
+public class McpClientManager : IMcpClientManager, IAsyncDisposable
 {
     private readonly McpConfiguration _configuration;
     private readonly IConfiguration _appConfiguration;
@@ -68,9 +69,18 @@ public class McpClientManager : IMcpClientManager, IDisposable
                 {
                     await InitializeClientAsync(serverName, serverConfig, cancellationToken);
                 }
+                catch (McpException)
+                {
+                    // Already logged with specific context, just rethrow
+                    throw;
+                }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to initialize MCP client for server: {ServerName}", serverName);
+                    _logger.LogError(ex, "Unexpected error initializing MCP client for server: {ServerName}", serverName);
+                    throw new McpInitializationException(
+                        $"Failed to initialize MCP client for server '{serverName}'", 
+                        serverName, 
+                        ex);
                 }
             }
 
@@ -101,7 +111,9 @@ public class McpClientManager : IMcpClientManager, IDisposable
                 break;
             
             default:
-                throw new NotSupportedException($"Unsupported MCP transport type: {config.Type}");
+                var errorMsg = $"Transport type '{config.Type}' is not supported. Supported types: stdio, sse, http";
+                _logger.LogError(errorMsg + " for server: {ServerName}", serverName);
+                throw new McpTransportException(errorMsg, serverName, config.Type);
         }
 
         try
@@ -120,12 +132,22 @@ public class McpClientManager : IMcpClientManager, IDisposable
                 _logger.LogDebug("  - {ToolName}: {ToolDescription}", tool.Name, tool.Description);
             }
         }
+        catch (McpException)
+        {
+            // Already a specific MCP exception, just clean up and rethrow
+            if (transport is IDisposable disposableTransport)
+                disposableTransport.Dispose();
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to create MCP client for server: {ServerName}", serverName);
             if (transport is IDisposable disposableTransport)
                 disposableTransport.Dispose();
-            throw;
+            throw new McpConnectionException(
+                $"Failed to establish connection to MCP server '{serverName}'", 
+                serverName, 
+                ex);
         }
     }
 
@@ -133,7 +155,11 @@ public class McpClientManager : IMcpClientManager, IDisposable
     {
         if (string.IsNullOrEmpty(config.Command))
         {
-            throw new InvalidOperationException($"Command is required for stdio transport in server: {serverName}");
+            var errorMsg = "Command is required for stdio transport";
+            _logger.LogError("{Error} for server: {ServerName}", errorMsg, serverName);
+            throw new McpConfigurationException(
+                $"{errorMsg} in server configuration for '{serverName}'",
+                $"Mcp:McpServers:{serverName}:Command");
         }
 
         var options = new StdioClientTransportOptions
@@ -159,8 +185,12 @@ public class McpClientManager : IMcpClientManager, IDisposable
     {
         // SSE/HTTP transport is not yet available in the current ModelContextProtocol.Client version
         // This is a placeholder for future implementation when the SDK supports it
-        _logger.LogWarning("SSE/HTTP transport is not yet supported in the current ModelContextProtocol.Client version. Server {ServerName} will be skipped.", serverName);
-        throw new NotSupportedException($"SSE/HTTP transport is not yet supported. Please use stdio transport for server: {serverName}");
+        var errorMsg = "SSE/HTTP transport is not yet supported in the current ModelContextProtocol.Client version";
+        _logger.LogWarning("{Error}. Server {ServerName} will be skipped.", errorMsg, serverName);
+        throw new McpTransportException(
+            $"{errorMsg}. Please use stdio transport for server: {serverName}",
+            serverName,
+            config.Type);
     }
 
     private Dictionary<string, string?> ResolveEnvironmentVariables(Dictionary<string, string> env)
@@ -252,22 +282,22 @@ public class McpClientManager : IMcpClientManager, IDisposable
         await Task.CompletedTask;
     }
 
-    public void Dispose()
-    {
-        Dispose(true);
-        GC.SuppressFinalize(this);
-    }
-
-    protected virtual void Dispose(bool disposing)
+    public async ValueTask DisposeAsync()
     {
         if (!_disposed)
         {
-            if (disposing)
-            {
-                ShutdownClientsAsync().GetAwaiter().GetResult();
-                _initializationLock?.Dispose();
-            }
+            await DisposeAsyncCore().ConfigureAwait(false);
             _disposed = true;
         }
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual async ValueTask DisposeAsyncCore()
+    {
+        // Dispose async resources
+        await ShutdownClientsAsync().ConfigureAwait(false);
+        
+        // Dispose synchronous resources
+        _initializationLock?.Dispose();
     }
 }

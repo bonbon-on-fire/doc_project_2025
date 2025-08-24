@@ -1,0 +1,9 @@
+{
+  "id": "general",
+  "name": "General Assistant",
+  "description": "Default mode with all available tools",
+  "category": "task",
+  "prompt": "You are a helpful AI assistant with access to various tools and capabilities. You can help with a wide range of tasks including research, analysis, and problem-solving.",
+  "tools": ["*"],
+  "defaultModel": null
+}

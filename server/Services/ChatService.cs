@@ -8,11 +8,8 @@ using System.Collections.Concurrent;
 using System.Text.Json;
 using AIChat.Server.Models;
 using AchieveAi.LmDotnetTools.LmCore.Middleware;
-using AIChat.Server.Functions;
 using AchieveAi.LmDotnetTools.Misc.Utils;
 using static AchieveAi.LmDotnetTools.Misc.Utils.TaskManager;
-using AchieveAi.LmDotnetTools.McpMiddleware.Extensions;
-using AchieveAi.LmDotnetTools.McpMiddleware;
 
 namespace AIChat.Server.Services;
 
@@ -23,8 +20,8 @@ public class ChatService : IChatService, IToolResultCallback
     private readonly ILogger<ChatService> _logger;
     private readonly AiOptions _aiOptions;
     private readonly ITaskManagerService _taskManagerService;
-    private readonly IServiceProvider _serviceProvider;
-    private readonly IMcpClientManager _mcpClientManager;
+    private readonly IToolingService _toolingService;
+    private readonly IModeService _modeService;
 
     public ChatService(
         IChatStorage storage,
@@ -32,91 +29,27 @@ public class ChatService : IChatService, IToolResultCallback
         ILogger<ChatService> logger,
         IOptions<AiOptions> aiOptions,
         ITaskManagerService taskManagerService,
-        IServiceProvider serviceProvider,
-        IMcpClientManager mcpClientManager)
+        IToolingService toolingService,
+        IModeService modeService)
     {
         _storage = storage;
         _streamingAgent = streamingAgent;
         _logger = logger;
         _aiOptions = aiOptions.Value;
         _taskManagerService = taskManagerService;
-        _serviceProvider = serviceProvider;
-        _mcpClientManager = mcpClientManager;
+        _toolingService = toolingService;
+        _modeService = modeService;
     }
     
-    private async Task<FunctionCallMiddleware?> CreateChatSpecificFunctionCallMiddleware(string chatId)
+    private async Task<FunctionCallMiddleware?> CreateChatSpecificFunctionCallMiddleware(string chatId, string? modeId = null, string? userId = null)
     {
-        try
-        {
-            _logger.LogInformation("Creating chat-specific FunctionCallMiddleware for chat {ChatId}", chatId);
-            
-            // Create function registry
-            var registry = new FunctionRegistry();
-            
-            // Add weather function provider
-            var weatherLogger = _serviceProvider.GetRequiredService<ILogger<WeatherFunction>>();
-            var weatherProvider = new WeatherFunction(weatherLogger);
-            registry.AddProvider(weatherProvider);
-            _logger.LogInformation("Added WeatherFunction provider to registry");
-            
-            // Get or create TaskManager for this specific chat
-            var taskManager = await _taskManagerService.GetTaskManagerAsync(chatId);
-            registry.AddFunctionsFromObject(taskManager, "TaskManager");
-            _logger.LogInformation("Added TaskManager functions for chat {ChatId}", chatId);
-            
-            // Add MCP clients to the registry
-            try
-            {
-                var mcpClients = await _mcpClientManager.GetActiveClientsAsync();
-                if (mcpClients.Any())
-                {
-                    var mcpLogger = _serviceProvider.GetService<ILogger<McpClientFunctionProvider>>();
-                    await registry.AddMcpClientsAsync(mcpClients, "McpServers", mcpLogger);
-                    _logger.LogInformation("Added {Count} MCP clients to function registry", mcpClients.Count);
-                }
-                else
-                {
-                    _logger.LogInformation("No MCP clients configured or available");
-                }
-            }
-            catch (Exception mcpEx)
-            {
-                _logger.LogError(mcpEx, "Failed to add MCP clients to function registry");
-            }
-            
-            // Build function contracts and handlers with conflict resolution
-            registry.WithConflictResolution(ConflictResolution.PreferMcp);
-            var (contracts, handlers) = registry.Build();
-            
-            if (!contracts.Any())
-            {
-                _logger.LogWarning("No functions registered for FunctionCallMiddleware");
-                return null;
-            }
-            
-            _logger.LogInformation("Registered {Count} functions for tool calling in chat {ChatId}", contracts.Count(), chatId);
-            foreach (var contract in contracts)
-            {
-                _logger.LogInformation("Registered function: {Name} - {Description}", contract.Name, contract.Description);
-            }
-            
-            // Create middleware with callback
-            var middlewareLogger = _serviceProvider.GetRequiredService<ILogger<FunctionCallMiddleware>>();
-            var middleware = new FunctionCallMiddleware(
-                contracts,
-                handlers,
-                name: "FunctionCall",
-                logger: middlewareLogger,
-                resultCallback: this); // Use this ChatService as the IToolResultCallback
-            
-            _logger.LogInformation("FunctionCallMiddleware created successfully for chat {ChatId}", chatId);    
-            return middleware;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to initialize FunctionCallMiddleware for chat {ChatId}", chatId);
-            return null;
-        }
+        // Delegate to the tooling service
+        return await _toolingService.CreateChatSpecificFunctionCallMiddlewareAsync(
+            chatId, 
+            modeId, 
+            userId, 
+            this, // Use this ChatService as the IToolResultCallback
+            CancellationToken.None);
     }
 
     // Fields for tracking tool execution state
@@ -176,8 +109,21 @@ public class ChatService : IChatService, IToolResultCallback
             var insUser = await _storage.InsertMessageAsync(userRecord);
             if (!insUser.Success) return new ChatResult { Success = false, Error = insUser.Error };
 
-            // Optional system prompt
-            if (!string.IsNullOrWhiteSpace(request.SystemPrompt))
+            // Handle mode-based system prompt or explicit system prompt
+            string? systemPrompt = request.SystemPrompt;
+            if (!string.IsNullOrEmpty(request.ModeId))
+            {
+                var modePromptResult = await _modeService.GetModeSystemPromptAsync(request.ModeId, request.UserId);
+                if (modePromptResult.Success && !string.IsNullOrEmpty(modePromptResult.SystemPrompt))
+                {
+                    // Mode system prompt takes precedence over request system prompt
+                    systemPrompt = modePromptResult.SystemPrompt;
+                    _logger.LogInformation("Applied system prompt from mode {ModeId} for chat {ChatId}", request.ModeId, chat.Id);
+                }
+            }
+
+            // Insert system prompt if available
+            if (!string.IsNullOrWhiteSpace(systemPrompt))
             {
                 (allocSeqSuccess, allocSeqError, allocSeqNextSequence) = await _storage.AllocateSequenceAsync(chat.Id);
                 if (!allocSeqSuccess) return new ChatResult { Success = false, Error = allocSeqError };
@@ -188,7 +134,7 @@ public class ChatService : IChatService, IToolResultCallback
                     Role = "system",
                     Timestamp = DateTime.UtcNow.AddMilliseconds(-1),
                     SequenceNumber = allocSeqNextSequence,
-                    Text = request.SystemPrompt!
+                    Text = systemPrompt!
                 };
                 var sysRecord = new MessageRecord
                 {
@@ -204,8 +150,8 @@ public class ChatService : IChatService, IToolResultCallback
                 if (!insSys.Success) return new ChatResult { Success = false, Error = insSys.Error };
             }
 
-            // Generate AI response
-            var aiResponse = await GenerateAIResponseAsync(chat.Id);
+            // Generate AI response with mode configuration
+            var aiResponse = await GenerateAIResponseAsync(chat.Id, request.ModeId, request.UserId);
 
             await _storage.UpdateChatUpdatedAtAsync(chat.Id, DateTime.UtcNow);
 
@@ -384,7 +330,7 @@ public class ChatService : IChatService, IToolResultCallback
                 Message = userDto
             });
 
-            var aiResponse = await GenerateAIResponseAsync(request.ChatId);
+            var aiResponse = await GenerateAIResponseAsync(request.ChatId, request.ModeId, request.UserId);
 
             var asq = await _storage.AllocateSequenceAsync(request.ChatId);
             if (!asq.Success) return new MessageResult { Success = false, Error = asq.Error };
@@ -454,7 +400,20 @@ public class ChatService : IChatService, IToolResultCallback
         var (seqSuccess, seqError, userMsgSequence) = await _storage.AllocateSequenceAsync(chatId);
         if (!seqSuccess) throw new InvalidOperationException(seqError);
 
-        if (!string.IsNullOrEmpty(request.SystemPrompt))
+        // Handle mode-based system prompt or explicit system prompt
+        string? systemPrompt = request.SystemPrompt;
+        if (!string.IsNullOrEmpty(request.ModeId))
+        {
+            var modePromptResult = await _modeService.GetModeSystemPromptAsync(request.ModeId, request.UserId);
+            if (modePromptResult.Success && !string.IsNullOrEmpty(modePromptResult.SystemPrompt))
+            {
+                // Mode system prompt takes precedence over request system prompt
+                systemPrompt = modePromptResult.SystemPrompt;
+                _logger.LogInformation("Applied system prompt from mode {ModeId} for stream chat {ChatId}", request.ModeId, chatId);
+            }
+        }
+
+        if (!string.IsNullOrEmpty(systemPrompt))
         {
             var sysDto = new TextMessageDto
             {
@@ -463,7 +422,7 @@ public class ChatService : IChatService, IToolResultCallback
                 Role = "system",
                 Timestamp = DateTime.UtcNow.AddMilliseconds(-1),
                 SequenceNumber = userMsgSequence++,
-                Text = request.SystemPrompt!
+                Text = systemPrompt!
             };
 
             await _storage.InsertMessageAsync(new MessageRecord
@@ -522,7 +481,7 @@ public class ChatService : IChatService, IToolResultCallback
                        d is ReasoningMessageDto) // Include ALL reasoning messages for LLM context
             .ToList();
 
-        await StreamChatCompletionAsync(chatId, history, cancellationToken);
+        await StreamChatCompletionAsync(chatId, history, cancellationToken, request.ModeId, request.UserId);
     }
 
     public async Task StreamAssistantResponseAsync(
@@ -536,13 +495,16 @@ public class ChatService : IChatService, IToolResultCallback
                        d is ReasoningMessageDto) // Include ALL reasoning messages for LLM context
             .ToList();
 
+        // Note: This method doesn't have mode context, will use default behavior
         await StreamChatCompletionAsync(chatId, history, cancellationToken);
     }
 
     private async Task StreamChatCompletionAsync(
         string chatId,
         List<MessageDto> history,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? modeId = null,
+        string? userId = null)
     {
         // Set context for tool result callbacks
         _currentChatId = chatId;
@@ -569,8 +531,9 @@ public class ChatService : IChatService, IToolResultCallback
         }
         
         _logger.LogInformation("Making API call to LLM for chat {ChatId}", chatId);
+        var modelId = await GetModelIdAsync(modeId, userId);
         var options = new GenerateReplyOptions {
-            ModelId = GetModelId(),
+            ModelId = modelId,
             ExtraProperties = new Dictionary<string, object?>()
             {
                 ["reasoning"] = "low"
@@ -607,7 +570,7 @@ public class ChatService : IChatService, IToolResultCallback
             );
             
         // Create and add chat-specific FunctionCallMiddleware
-        var functionCallMiddleware = await CreateChatSpecificFunctionCallMiddleware(chatId);
+        var functionCallMiddleware = await CreateChatSpecificFunctionCallMiddleware(chatId, modeId, userId);
         if (functionCallMiddleware != null)
         {
             _logger.LogInformation("Adding chat-specific FunctionCallMiddleware to processing chain for chat {ChatId}", chatId);
@@ -1276,7 +1239,7 @@ public class ChatService : IChatService, IToolResultCallback
     }
 
     // Helper methods
-    private async Task<string> GenerateAIResponseAsync(string chatId)
+    private async Task<string> GenerateAIResponseAsync(string chatId, string? modeId = null, string? userId = null)
     {
         try
         {
@@ -1288,7 +1251,9 @@ public class ChatService : IChatService, IToolResultCallback
                 .ToList();
             var lmMessages = history.Select(ConvertToLmMessage).ToList();
 
-            var options = new GenerateReplyOptions { ModelId = GetModelId() };
+            // Get model ID from mode preference or fallback to default
+            var modelId = await GetModelIdAsync(modeId, userId);
+            var options = new GenerateReplyOptions { ModelId = modelId };
             var messages = await _streamingAgent.GenerateReplyAsync(lmMessages, options);
             return string.Join("", messages.OfType<TextMessage>().Select(m => m.Text));
         }
@@ -1297,6 +1262,25 @@ public class ChatService : IChatService, IToolResultCallback
             _logger.LogError(ex, "Error generating AI response");
             return $"Error: Failed to generate AI response. {ex.Message}";
         }
+    }
+
+    private async Task<string> GetModelIdAsync(string? modeId = null, string? userId = null)
+    {
+        // Try to get model preference from mode first
+        if (!string.IsNullOrEmpty(modeId) && !string.IsNullOrEmpty(userId))
+        {
+            var modeModelResult = await _modeService.GetModeDefaultModelAsync(modeId, userId);
+            if (modeModelResult.Success && !string.IsNullOrEmpty(modeModelResult.DefaultModel))
+            {
+                _logger.LogInformation("Using model {ModelId} from mode {ModeId}", modeModelResult.DefaultModel, modeId);
+                return modeModelResult.DefaultModel;
+            }
+        }
+
+        // Fallback to configuration or default
+        var defaultModel = _aiOptions.ModelId ?? "openrouter/horizon-beta";
+        _logger.LogDebug("Using default model {ModelId}", defaultModel);
+        return defaultModel;
     }
 
     private string GetModelId() => _aiOptions.ModelId ?? "openrouter/horizon-beta";

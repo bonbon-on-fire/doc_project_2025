@@ -86,11 +86,12 @@ export class HandlerBasedSSEOrchestrator {
 	/**
 	 * Start a new chat with streaming
 	 */
-	async streamNewChat(userMessage: string): Promise<void> {
+	async streamNewChat(userMessage: string, systemPrompt?: string, modeId?: string): Promise<void> {
 		const request: CreateChatRequest = {
 			userId: this.getUserId(),
 			message: userMessage,
-			systemPrompt: undefined
+			systemPrompt,
+			modeId
 		};
 
 		await this.startStream(request, userMessage);

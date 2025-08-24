@@ -44,6 +44,9 @@ public class CreateChatRequest
 
     [JsonPropertyName("systemPrompt")]
     public string? SystemPrompt { get; set; }
+
+    [JsonPropertyName("modeId")]
+    public string? ModeId { get; set; }
 }
 
 public class SendMessageRequest
@@ -56,6 +59,9 @@ public class SendMessageRequest
 
     [JsonPropertyName("message")]
     public required string Message { get; set; }
+
+    [JsonPropertyName("modeId")]
+    public string? ModeId { get; set; }
 }
 
 public record StreamChatRequest
@@ -71,6 +77,9 @@ public record StreamChatRequest
 
     [JsonPropertyName("systemPrompt")]
     public string? SystemPrompt { get; init; }
+
+    [JsonPropertyName("modeId")]
+    public string? ModeId { get; init; }
 }
 
 // Result types

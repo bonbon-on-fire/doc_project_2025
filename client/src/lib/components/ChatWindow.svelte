@@ -7,9 +7,12 @@
 		chatActions,
 		isStreaming
 	} from '$lib/stores/chat';
+	import { selectedMode, selectedModeId } from '$lib/stores/modes';
+	import type { Mode } from '$shared/types/mode';
 	import MessageList from './MessageList.svelte';
 	import MessageInput from './MessageInput.svelte';
 	import PinnedTaskTracker from './PinnedTaskTracker.svelte';
+	import ModeSelector from './ModeSelector.svelte';
 
 	let messagesContainer: HTMLElement;
 	let isSending = false;
@@ -155,11 +158,24 @@
 		// Immediately move to bottom so the latest input is in view
 		scrollToBottom(true);
 
+		const modeId = $selectedModeId;
+
 		if ($currentChatId) {
 			await chatActions.streamReply(event.detail.message);
 		} else {
-			await chatActions.streamNewChat(event.detail.message);
+			await chatActions.streamNewChat(event.detail.message, undefined, modeId);
 		}
+	}
+
+	function handleModeChanged(event: CustomEvent<{ modeId: string | null }>) {
+		console.log('Mode changed in ChatWindow:', event.detail);
+		// Mode state is automatically handled by the ModeSelector component
+		// and the selectedModeId store, so no additional action needed here
+	}
+
+	function handleModeError(event: CustomEvent<{ message: string }>) {
+		console.error('Mode selector error:', event.detail.message);
+		// Could show a toast notification or other user feedback here
 	}
 </script>
 
@@ -185,6 +201,20 @@
 				<p class="mb-4 text-gray-600 dark:text-gray-300">
 					Select a conversation from the sidebar or start a new chat to begin.
 				</p>
+
+				<!-- Mode Selector for New Chats -->
+				<div class="mb-6 w-full max-w-sm">
+					<label
+						for="welcome-mode-selector"
+						class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+					>
+						Choose a chat mode:
+					</label>
+					<div id="welcome-mode-selector">
+						<ModeSelector on:modeChanged={handleModeChanged} on:error={handleModeError} />
+					</div>
+				</div>
+
 				<div class="space-y-2 text-sm text-gray-500 dark:text-gray-400">
 					<p>Real-time AI conversations</p>
 					<p>Streaming responses</p>
@@ -196,18 +226,36 @@
 		<!-- Chat Header -->
 		<div class="border-b border-gray-200 bg-white px-6 py-4 dark:border-gray-700 dark:bg-gray-800">
 			<div class="flex items-center justify-between">
-				<div>
-					<h1 class="text-lg font-semibold text-gray-900 dark:text-white">
-						{$currentChat.title}
-					</h1>
-					<p class="text-sm text-gray-500 dark:text-gray-400" data-testid="message-count">
-						{$currentChatMessages.length} messages
-					</p>
-				</div>
-				<div class="flex items-center space-x-2">
-					<!-- Connection Status -->
-					<div class="flex items-center space-x-2">
-						<!-- Removed SignalR connection status -->
+				<div class="flex-1">
+					<div class="flex items-center justify-between">
+						<div>
+							<h1 class="text-lg font-semibold text-gray-900 dark:text-white">
+								{$currentChat.title}
+							</h1>
+							<div class="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
+								<span data-testid="message-count">
+									{$currentChatMessages.length} messages
+								</span>
+								{#if $currentChat.modeName || $selectedMode}
+									<span class="flex items-center space-x-1">
+										<span class="text-blue-600 dark:text-blue-400">•</span>
+										<span>Mode: {$currentChat.modeName || $selectedMode?.name || 'General'}</span>
+									</span>
+								{/if}
+							</div>
+						</div>
+
+						<!-- Mode Selector - only show for new chats or when no chat is active -->
+						{#if !$currentChatId}
+							<div class="w-80">
+								<ModeSelector
+									compact={true}
+									showTooltip={false}
+									on:modeChanged={handleModeChanged}
+									on:error={handleModeError}
+								/>
+							</div>
+						{/if}
 					</div>
 				</div>
 			</div>

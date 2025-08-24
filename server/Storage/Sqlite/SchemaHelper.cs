@@ -25,10 +25,12 @@ public static class SchemaHelper
                 {
                     drop.Transaction = (SqliteTransaction)tx;
                     drop.CommandText = @"
+DROP INDEX IF EXISTS idx_user_modes_user;
 DROP INDEX IF EXISTS idx_chat_tasks_chat_id;
 DROP INDEX IF EXISTS idx_chats_user_updated;
 DROP INDEX IF EXISTS ux_messages_chat_sequence;
 DROP INDEX IF EXISTS idx_messages_chat_ts;
+DROP TABLE IF EXISTS user_modes;
 DROP TABLE IF EXISTS chat_tasks;
 DROP TABLE IF EXISTS messages;
 DROP TABLE IF EXISTS chats;";
@@ -69,7 +71,22 @@ CREATE TABLE IF NOT EXISTS chat_tasks (
   UpdatedAtUtc TEXT NOT NULL,
   FOREIGN KEY (ChatId) REFERENCES chats (Id) ON DELETE CASCADE
 );
-CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_tasks_chat_id ON chat_tasks (ChatId);";
+CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_tasks_chat_id ON chat_tasks (ChatId);
+
+CREATE TABLE IF NOT EXISTS user_modes (
+  Id TEXT PRIMARY KEY,
+  UserId TEXT NOT NULL,
+  Name TEXT NOT NULL,
+  Description TEXT NOT NULL,
+  Prompt TEXT NOT NULL,
+  Tools TEXT NOT NULL,
+  DefaultModel TEXT NULL,
+  Category TEXT DEFAULT 'custom',
+  CreatedAtUtc TEXT NOT NULL,
+  UpdatedAtUtc TEXT NOT NULL,
+  FOREIGN KEY (UserId) REFERENCES users (Id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_user_modes_user ON user_modes (UserId);";
 
             using (var cmd = connection.CreateCommand())
             {
@@ -82,7 +99,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_tasks_chat_id ON chat_tasks (ChatId);
             using (var ver = connection.CreateCommand())
             {
                 ver.Transaction = (SqliteTransaction)tx;
-                ver.CommandText = "PRAGMA user_version = 2;";
+                ver.CommandText = "PRAGMA user_version = 3;";
                 await ver.ExecuteNonQueryAsync(ct);
             }
 
@@ -158,7 +175,8 @@ ON CONFLICT(Email) DO NOTHING;";
         var hasChats = await TableExistsAsync(connection, "chats", ct);
         var hasMessages = await TableExistsAsync(connection, "messages", ct);
         var hasChatTasks = await TableExistsAsync(connection, "chat_tasks", ct);
-        if (!hasChats && !hasMessages && !hasChatTasks)
+        var hasUserModes = await TableExistsAsync(connection, "user_modes", ct);
+        if (!hasChats && !hasMessages && !hasChatTasks && !hasUserModes)
         {
             return false;
         }
@@ -192,6 +210,20 @@ ON CONFLICT(Email) DO NOTHING;";
         {
             var cols = await GetColumnsAsync(connection, "chat_tasks", ct);
             var required = new[] { "ChatId", "TaskData", "Version", "CreatedAtUtc", "UpdatedAtUtc" };
+            foreach (var col in required)
+            {
+                if (!cols.Contains(col))
+                {
+                    return true;
+                }
+            }
+        }
+
+        // Validate required columns for user_modes
+        if (hasUserModes)
+        {
+            var cols = await GetColumnsAsync(connection, "user_modes", ct);
+            var required = new[] { "UserId", "Name", "Description", "Prompt", "Tools", "Category", "CreatedAtUtc", "UpdatedAtUtc" };
             foreach (var col in required)
             {
                 if (!cols.Contains(col))

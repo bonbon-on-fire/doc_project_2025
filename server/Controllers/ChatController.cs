@@ -4,6 +4,7 @@ using AIChat.Server.Services;
 using AIChat.Server.Storage;
 using Lib.AspNetCore.ServerSentEvents;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json.Serialization;
 using ChatDto = AIChat.Server.Services.ChatDto;
 
 namespace AIChat.Server.Controllers;
@@ -86,7 +87,8 @@ public class ChatController : ControllerBase
         {
             UserId = request.UserId,
             Message = request.Message,
-            SystemPrompt = request.SystemPrompt
+            SystemPrompt = request.SystemPrompt,
+            ModeId = request.ModeId
         };
 
         var result = await _chatService.CreateChatAsync(createRequest);
@@ -190,7 +192,8 @@ public class ChatController : ControllerBase
                 ChatId = request.ChatId, // null for new chats, populated for existing
                 UserId = request.UserId,
                 Message = request.Message,
-                SystemPrompt = request.SystemPrompt
+                SystemPrompt = request.SystemPrompt,
+                ModeId = request.ModeId
             };
 
             // Get initialization metadata from service
@@ -271,11 +274,15 @@ public class ChatController : ControllerBase
 }
 
 // Request DTOs for API endpoints
-public record CreateChatRequest(string? ChatId, string UserId, string Message, string? SystemPrompt);
+public record CreateChatRequest(string? ChatId, string UserId, string Message, string? SystemPrompt, string? ModeId);
 
 public class SendMessageRequest
 {
+    [JsonPropertyName("message")]
     public string Message { get; set; } = string.Empty;
+    
+    [JsonPropertyName("modeId")]
+    public string? ModeId { get; set; }
 }
 
 public class ChatHistoryResponse

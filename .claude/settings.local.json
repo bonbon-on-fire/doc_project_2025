@@ -64,7 +64,12 @@
       "Bash(npx vitest run:*)",
       "Bash(sed:*)",
       "Bash(npx prettier:*)",
-      "Read(/B:\\mnt\\b\\sources\\DOC_Project_2025/**)"
+      "Read(/B:\\mnt\\b\\sources\\DOC_Project_2025/**)",
+      "Read(/B:\\sources\\DOC_PROJECT_2025\\server/**)",
+      "Bash(npx tsc:*)",
+      "Bash(for file in *.json)",
+      "Bash(do echo \"Validating $file:\")",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": [],

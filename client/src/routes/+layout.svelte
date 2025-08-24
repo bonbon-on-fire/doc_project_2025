@@ -3,6 +3,7 @@
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import { registerBuiltInRenderers, registerBuiltInToolRenderers } from '$lib/renderers';
+	import Toast from '$lib/components/Toast.svelte';
 
 	let { children } = $props();
 
@@ -18,3 +19,6 @@
 </svelte:head>
 
 {@render children?.()}
+
+<!-- Toast notifications -->
+<Toast position="top-right" />

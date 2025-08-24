@@ -191,7 +191,7 @@ export const chatActions = {
 	},
 
 	// Create new chat
-	async createChat(message: string): Promise<string | null> {
+	async createChat(message: string, modeId?: string): Promise<string | null> {
 		try {
 			isLoading.set(true);
 			error.set(null);
@@ -200,7 +200,8 @@ export const chatActions = {
 			const newChat = await apiClient.createChat({
 				userId: user.id,
 				message,
-				systemPrompt: undefined
+				systemPrompt: undefined,
+				modeId
 			});
 
 			// Convert timestamp strings to Date objects
@@ -222,7 +223,7 @@ export const chatActions = {
 		}
 	},
 
-	async streamNewChat(message: string, systemPrompt?: string): Promise<void> {
+	async streamNewChat(message: string, systemPrompt?: string, modeId?: string): Promise<void> {
 		const user = get(currentUser);
 
 		try {
@@ -230,7 +231,7 @@ export const chatActions = {
 
 			// Use the event-driven SSE orchestrator
 			const orchestrator = getOrchestrator();
-			await orchestrator.streamNewChat(message);
+			await orchestrator.streamNewChat(message, systemPrompt, modeId);
 		} catch (err) {
 			error.set(err instanceof Error ? err.message : 'Failed to stream chat completion');
 			console.error('Failed to stream chat completion:', err);

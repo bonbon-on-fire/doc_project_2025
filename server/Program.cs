@@ -83,9 +83,10 @@ builder.Services.AddSingleton<SqliteConnectionFactory>(sp =>
 
 builder.Services.AddSingleton<ISqliteConnectionFactory>(sp => sp.GetRequiredService<SqliteConnectionFactory>());
 
-// Register IChatStorage and ITaskStorage
+// Register IChatStorage, ITaskStorage, and IModeStorage
 builder.Services.AddScoped<IChatStorage, SqliteChatStorage>();
 builder.Services.AddScoped<ITaskStorage, SqliteTaskStorage>();
+builder.Services.AddScoped<IModeStorage, SqliteModeStorage>();
 
 // Register TaskManagerService (using improved version)
 builder.Services.AddScoped<ITaskManagerService, ImprovedTaskManagerService>();
@@ -107,6 +108,7 @@ builder.Services.Configure<AiOptions>(builder.Configuration.GetSection("AI"));
 
 // Configure MCP servers
 builder.Services.Configure<McpConfiguration>(builder.Configuration.GetSection("Mcp"));
+builder.Services.AddSingleton<IMcpConfigurationValidator, McpConfigurationValidator>();
 builder.Services.AddSingleton<IMcpClientManager, McpClientManager>();
 
 // Register IStreamingAgent as scoped service
@@ -221,8 +223,15 @@ builder.Services.AddServerSentEvents();
 // Add task management services
 // Removed ChatTaskManager - using TaskManager from LmDotNet directly
 
-// Add chat service
+// Add tooling service
+builder.Services.AddScoped<IToolingService, ToolingService>();
+
+// Add chat service with facade
 builder.Services.AddScoped<IChatService, ChatService>();
+builder.Services.AddScoped<IChatServiceFacade, ChatServiceFacade>();
+
+// Add mode service
+builder.Services.AddSingleton<IModeService, ModeService>();
 
 var app = builder.Build();
 
@@ -250,6 +259,35 @@ using (var scope = app.Services.CreateScope())
         await SchemaHelper.SeedUsersAsync(conn);
     }
 }
+
+// Validate MCP configuration at startup
+var mcpValidator = app.Services.GetRequiredService<IMcpConfigurationValidator>();
+var mcpLogger = app.Services.GetRequiredService<ILogger<Program>>();
+if (!mcpValidator.Validate(out var validationErrors))
+{
+    mcpLogger.LogWarning("MCP configuration validation failed with {ErrorCount} errors:", validationErrors.Count);
+    foreach (var error in validationErrors)
+    {
+        mcpLogger.LogWarning("  - {Error}", error);
+    }
+    // Don't fail startup, but log warnings about invalid configuration
+}
+
+// Initialize MCP clients at startup (non-blocking)
+var mcpClientManager = app.Services.GetRequiredService<IMcpClientManager>();
+_ = Task.Run(async () =>
+{
+    try
+    {
+        mcpLogger.LogInformation("Starting MCP client initialization...");
+        await mcpClientManager.InitializeClientsAsync();
+        mcpLogger.LogInformation("MCP client initialization completed");
+    }
+    catch (Exception ex)
+    {
+        mcpLogger.LogError(ex, "Failed to initialize MCP clients at startup. They will be initialized on first use.");
+    }
+});
 
 app.UseCors("AllowSvelteApp");
 

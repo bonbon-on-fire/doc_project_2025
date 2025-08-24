@@ -1,6 +1,7 @@
 // API client for communicating with ASP.NET backend
 import { PUBLIC_API_BASE_URL } from '$env/static/public';
 import type { ChatDto, CreateChatRequest, ChatHistoryResponse } from '$lib/types/chat';
+import type { Mode } from '$shared/types/mode';
 
 export class ApiClient {
 	private baseUrl: string;
@@ -84,6 +85,54 @@ export class ApiClient {
 		}
 
 		return response;
+	}
+
+	// Mode endpoints
+	async getModes(userId: string): Promise<{ modes: Mode[]; count: number }> {
+		return this.request<{ modes: Mode[]; count: number }>(`/api/mode?userId=${userId}`);
+	}
+
+	async getMode(modeId: string, userId: string): Promise<Mode> {
+		return this.request<Mode>(`/api/mode/${modeId}?userId=${userId}`);
+	}
+
+	async createMode(request: {
+		userId: string;
+		name: string;
+		description: string;
+		prompt: string;
+		tools: string[];
+		defaultModel?: string;
+		category?: string;
+	}): Promise<Mode> {
+		return this.request<Mode>('/api/mode', {
+			method: 'POST',
+			body: JSON.stringify(request)
+		});
+	}
+
+	async updateMode(
+		modeId: string,
+		request: {
+			userId: string;
+			name: string;
+			description: string;
+			prompt: string;
+			tools: string[];
+			defaultModel?: string;
+			category?: string;
+		}
+	): Promise<Mode> {
+		return this.request<Mode>(`/api/mode/${modeId}`, {
+			method: 'PUT',
+			body: JSON.stringify(request)
+		});
+	}
+
+	async deleteMode(modeId: string, userId: string): Promise<void> {
+		await this.request(`/api/mode/${modeId}?userId=${userId}`, {
+			method: 'DELETE'
+		});
 	}
 
 	// Health check

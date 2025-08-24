@@ -26,6 +26,7 @@ export interface CreateChatRequest {
 	userId: string;
 	message: string;
 	systemPrompt?: string;
+	modeId?: string;
 }
 
 // Legacy/unused types removed: ContinueChatRequest, ChatResponse, StreamChatResponse
@@ -53,6 +54,8 @@ export interface ChatDto {
 	createdAt: Date | string;
 	updatedAt: Date | string;
 	tasks?: any; // JsonElement from server containing task state
+	modeId?: string;
+	modeName?: string;
 }
 
 export interface MessageDto {
