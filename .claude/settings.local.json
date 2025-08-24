@@ -63,7 +63,8 @@
       "Bash(npm test:*)",
       "Bash(npx vitest run:*)",
       "Bash(sed:*)",
-      "Bash(npx prettier:*)"
+      "Bash(npx prettier:*)",
+      "Read(/B:\\mnt\\b\\sources\\DOC_Project_2025/**)"
     ],
     "deny": [],
     "ask": [],

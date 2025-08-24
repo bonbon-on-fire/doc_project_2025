@@ -3,6 +3,7 @@
 	import CollapsibleMessageRenderer from '$lib/components/CollapsibleMessageRenderer.svelte';
 	import type { RichMessageDto } from '$lib/types';
 	import type { MessageRenderer } from '$lib/types/renderer';
+	import { logger } from '$lib/utils/logger';
 
 	// Component props
 	export let message: any & RichMessageDto;
@@ -28,28 +29,22 @@
 
 	// Extract and normalize tool calls from message
 	function getToolCalls(msg: any): Array<{ name: string; args: any; id?: string }> {
-		console.log('[ToolCallRenderer] Extracting tool calls from message:', msg);
-
 		let rawToolCalls: any[] = [];
 
 		if (msg.toolCalls) {
-			console.log('[ToolCallRenderer] Found toolCalls:', msg.toolCalls);
 			rawToolCalls = msg.toolCalls;
 		} else if (msg.tool_calls) {
-			console.log('[ToolCallRenderer] Found tool_calls:', msg.tool_calls);
 			rawToolCalls = msg.tool_calls;
 		} else if (msg.content && typeof msg.content === 'string') {
 			try {
 				const parsed = JSON.parse(msg.content);
 				if (parsed.tool_calls) {
-					console.log('[ToolCallRenderer] Found tool_calls in content:', parsed.tool_calls);
 					rawToolCalls = parsed.tool_calls;
 				}
 			} catch {}
 		}
 
 		if (rawToolCalls.length === 0) {
-			console.log('[ToolCallRenderer] No tool calls found');
 			return [];
 		}
 
@@ -61,7 +56,7 @@
 				try {
 					args = JSON.parse(args);
 				} catch (e) {
-					console.warn('[ToolCallRenderer] Failed to parse function_args:', args, e);
+					logger.warn({ component: 'ToolCallRenderer', error: e }, 'Failed to parse function_args');
 					args = { raw: args }; // Fallback to showing raw string
 				}
 			}

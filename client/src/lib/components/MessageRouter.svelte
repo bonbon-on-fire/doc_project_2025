@@ -10,6 +10,7 @@
 	import { streamingSnapshots } from '$lib/stores/chat';
 	import type { RichMessageDto } from '$lib/types';
 	import MessageBubble from './MessageBubble.svelte';
+	import { logger } from '$lib/utils/logger';
 
 	// Component props with proper TypeScript typing
 	export let message: RichMessageDto;
@@ -44,19 +45,27 @@
 			// Determine the effective message type
 			const effectiveMessageType = message.messageType || 'text';
 
-			// Log routing decision for debugging
+			// Log routing decision for debugging (only in development)
 			if (effectiveMessageType === 'tools_aggregate') {
-				console.log('[MessageRouter] Routing tools_aggregate message:', {
-					id: message.id,
-					messageType: effectiveMessageType,
-					toolCallPairs: (message as any).toolCallPairs
-				});
+				logger.trace(
+					{
+						component: 'MessageRouter',
+						messageId: message.id,
+						messageType: effectiveMessageType,
+						toolCallPairs: (message as any).toolCallPairs?.length || 0
+					},
+					'Routing tools_aggregate message'
+				);
 			} else if (effectiveMessageType === 'tool_call') {
-				console.log('[MessageRouter] Routing tool_call message:', {
-					id: message.id,
-					messageType: effectiveMessageType,
-					toolCalls: (message as any).toolCalls
-				});
+				logger.trace(
+					{
+						component: 'MessageRouter',
+						messageId: message.id,
+						messageType: effectiveMessageType,
+						toolCalls: (message as any).toolCalls?.length || 0
+					},
+					'Routing tool_call message'
+				);
 			}
 
 			// Get renderer from registry
@@ -69,14 +78,18 @@
 				RendererComponent = RendererComponentModule;
 				fallbackToMessageBubble = false;
 			} else {
-				console.warn(
-					`No specific renderer found for message type '${effectiveMessageType}', using MessageBubble fallback`
+				logger.warn(
+					{ component: 'MessageRouter', messageType: effectiveMessageType },
+					'No specific renderer found, using MessageBubble fallback'
 				);
 				fallbackToMessageBubble = true;
 				RendererComponent = MessageBubble;
 			}
 		} catch (error) {
-			console.error('Error resolving renderer for message:', message.id, error);
+			logger.error(
+				{ component: 'MessageRouter', messageId: message.id, error },
+				'Error resolving renderer for message'
+			);
 			renderError = error instanceof Error ? error : new Error('Unknown renderer error');
 			fallbackToMessageBubble = true;
 			RendererComponent = MessageBubble;
@@ -211,20 +224,6 @@
 
 	<!-- Dynamic component rendering -->
 	{#if RendererComponent}
-		{#if message.messageType === 'tool_call'}
-			{@const logMessage = (() => {
-				console.log('[MessageRouter] Passing to ToolCallRenderer:', {
-					messageId: message.id,
-					messageType: message.messageType,
-					toolCalls: (message as any).toolCalls,
-					tool_calls: (message as any).tool_calls,
-					content: (message as any).content,
-					role: message.role,
-					renderPhase: currentMessageState?.renderPhase ?? 'initial'
-				});
-				return null;
-			})()}
-		{/if}
 		<svelte:component
 			this={RendererComponent}
 			{message}

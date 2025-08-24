@@ -16,7 +16,7 @@
 	}
 
 	onMount(() => {
-		console.log('[CalculatorToolRenderer] Mounted with tool:', toolCallPair.toolCall);
+		// Component mounted
 	});
 
 	// Renderer interface implementation

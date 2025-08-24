@@ -5,6 +5,7 @@
 	import type { ReasoningMessageDto, RichMessageDto } from '$lib/types';
 	import type { MessageRenderer } from '$lib/types/renderer';
 	import { streamingSnapshots } from '$lib/stores/chat';
+	import { isContentHidden, TEXT_PREVIEW } from '$lib/constants/ui';
 
 	// Component props with proper TypeScript typing
 	export let message: ReasoningMessageDto & RichMessageDto;
@@ -23,7 +24,7 @@
 
 		// Check visibility - don't display encrypted reasoning at all
 		const visibility = (msg as any).visibility || (msg as any).Visibility;
-		if (visibility === 'encrypted' || visibility === 'Encrypted' || visibility === 2) {
+		if (isContentHidden(visibility)) {
 			return '';
 		}
 
@@ -39,7 +40,7 @@
 	// Check if the reasoning should be hidden completely
 	function isReasoningHidden(msg: any): boolean {
 		const visibility = (msg as any).visibility || (msg as any).Visibility;
-		return visibility === 'encrypted' || visibility === 'Encrypted' || visibility === 2;
+		return isContentHidden(visibility);
 	}
 
 	// Component implements MessageRenderer interface
@@ -67,14 +68,16 @@
 		const snap = $streamingSnapshots?.[message.id];
 
 		// Check visibility in snapshot for streaming messages
-		if (snap?.visibility === 'Encrypted') {
+		if (isContentHidden(snap?.visibility)) {
 			return '';
 		}
 
 		return snap?.reasoningDelta || '';
 	})();
 	$: collapsedPreview =
-		reasoningText.length > 60 ? reasoningText.substring(0, 60) + '...' : reasoningText;
+		reasoningText.length > TEXT_PREVIEW.COLLAPSED_LENGTH
+			? reasoningText.substring(0, TEXT_PREVIEW.COLLAPSED_LENGTH) + '...'
+			: reasoningText;
 
 	// Handle child events from CollapsibleMessageRenderer
 	function forwardStateChange(e: CustomEvent<{ expanded: boolean }>) {

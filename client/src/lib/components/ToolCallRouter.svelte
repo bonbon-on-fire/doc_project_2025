@@ -3,6 +3,7 @@
 	import { getToolRendererComponent } from '$lib/renderers/ToolRendererRegistry';
 	import type { ToolCallPair } from '$lib/types/chat';
 	import type { ToolRendererProps } from '$lib/types/toolRenderer';
+	import { logger } from '$lib/utils/logger';
 
 	// Component props
 	export let toolCallPair: ToolCallPair;
@@ -33,8 +34,9 @@
 
 			// Skip re-resolution if we already resolved this tool
 			if (lastResolvedToolName === toolName && RendererComponent) {
-				console.log(
-					`[ToolCallRouter] Skipping re-resolution for tool: '${toolName}' (already loaded)`
+				logger.trace(
+					{ component: 'ToolCallRouter', toolName },
+					'Skipping re-resolution for tool (already loaded)'
 				);
 				return;
 			}
@@ -43,28 +45,24 @@
 			isLoading = true;
 			lastResolvedToolName = toolName;
 
-			console.log(`[ToolCallRouter] Resolving renderer for tool: '${toolName}'`);
+			logger.trace({ component: 'ToolCallRouter', toolName }, 'Resolving renderer for tool');
 
 			// Get the component from the tool renderer registry
 			const component = await getToolRendererComponent(toolName);
 
 			if (component) {
-				console.log(
-					`[ToolCallRouter] Found renderer component for '${toolName}':`,
-					component.name || 'AnonymousComponent'
+				logger.trace(
+					{ component: 'ToolCallRouter', toolName, hasComponent: true },
+					'Found renderer component for tool'
 				);
-				// Special logging for calculator tool
-				if (toolName === 'calculate' || toolName.toLowerCase().includes('calc')) {
-					console.log(`[ToolCallRouter] Calculator tool detected! Component:`, component);
-				}
 				RendererComponent = component;
 			} else {
 				// No renderer found - this shouldn't happen if default is registered
-				console.warn(`No tool renderer found for '${toolName}'`);
+				logger.warn({ component: 'ToolCallRouter', toolName }, 'No tool renderer found');
 				renderError = new Error(`No renderer available for tool: ${toolName}`);
 			}
 		} catch (error) {
-			console.error('Error resolving tool renderer:', error);
+			logger.error({ component: 'ToolCallRouter', error }, 'Error resolving tool renderer');
 			renderError = error instanceof Error ? error : new Error('Unknown renderer error');
 		} finally {
 			isLoading = false;

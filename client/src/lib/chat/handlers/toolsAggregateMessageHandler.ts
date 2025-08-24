@@ -32,6 +32,8 @@ import { BaseMessageHandler } from '../messageHandlers';
 import { JufStitcherManager } from '$lib/utils/jufStitcherManager';
 import { snapshot } from '$lib/utils/snapshotHelper';
 import type { TaskItem, TaskOperation } from '$shared/types/tasks';
+import { isTaskManagerFunction } from '$lib/constants/ui';
+import { logger } from '$lib/utils/logger';
 
 /**
  * Renderer for tools aggregate messages
@@ -135,7 +137,10 @@ export class ToolsAggregateMessageHandler extends BaseMessageHandler {
 		// Handle tool call updates
 		if (envelope.kind === 'tools_call_update') {
 			if (!StreamChunkPayloadGuards.isToolCallUpdateStreamChunk(envelope.payload)) {
-				console.error('[ToolsAggregateMessageHandler] Invalid tool call update payload');
+				logger.error(
+					{ component: 'ToolsAggregateMessageHandler' },
+					'Invalid tool call update payload'
+				);
 				return snapshot;
 			}
 
@@ -148,7 +153,7 @@ export class ToolsAggregateMessageHandler extends BaseMessageHandler {
 		// Handle tool result updates
 		else if (envelope.kind === 'tool_result') {
 			if (!StreamChunkPayloadGuards.isToolResultStreamChunk(envelope.payload)) {
-				console.error('[ToolsAggregateMessageHandler] Invalid tool result payload');
+				logger.error({ component: 'ToolsAggregateMessageHandler' }, 'Invalid tool result payload');
 				return snapshot;
 			}
 
@@ -274,43 +279,7 @@ export class ToolsAggregateMessageHandler extends BaseMessageHandler {
 		const functionName = (pair.toolCall.function_name || pair.toolCall.name || '').toLowerCase();
 
 		// Check if this is a task manager function
-		const taskManagerFunctions = [
-			'add_task',
-			'addtask',
-			'add-task',
-			'update_task',
-			'updatetask',
-			'update-task',
-			'delete_task',
-			'deletetask',
-			'delete-task',
-			'remove_task',
-			'removetask',
-			'list_tasks',
-			'listtasks',
-			'list-tasks',
-			'get_tasks',
-			'gettasks',
-			'clear_tasks',
-			'cleartasks',
-			'clear-tasks',
-			'complete_task',
-			'completetask',
-			'complete-task',
-			'start_task',
-			'starttask',
-			'start-task',
-			'add_subtask',
-			'addsubtask',
-			'add-subtask',
-			'add_note',
-			'addnote',
-			'add-note',
-			'task_manager',
-			'taskmanager'
-		];
-
-		if (!taskManagerFunctions.some((fn) => functionName.includes(fn))) {
+		if (!isTaskManagerFunction(functionName)) {
 			return;
 		}
 
@@ -332,7 +301,10 @@ export class ToolsAggregateMessageHandler extends BaseMessageHandler {
 					}
 				} catch {
 					// Result might be plain text or markdown, skip task update
-					console.log('Task manager result is not JSON:', result);
+					logger.trace(
+						{ component: 'ToolsAggregateMessageHandler' },
+						'Task manager result is not JSON'
+					);
 					return;
 				}
 			} else if (typeof result === 'object' && result !== null) {
@@ -367,7 +339,10 @@ export class ToolsAggregateMessageHandler extends BaseMessageHandler {
 
 			// Update the task store if we have tasks or a clear operation
 			if ((tasks.length > 0 || operation.type === 'clear') && this.currentChatId) {
-				console.log('Task manager operation detected:', operation, 'Tasks:', tasks);
+				logger.trace(
+					{ component: 'ToolsAggregateMessageHandler', operation, taskCount: tasks.length },
+					'Task manager operation detected'
+				);
 
 				// Update the task manager store with the new task state
 				import('../../stores/taskManager').then(({ taskManager }) => {
@@ -375,7 +350,10 @@ export class ToolsAggregateMessageHandler extends BaseMessageHandler {
 				});
 			}
 		} catch (error) {
-			console.error('Error processing task manager result:', error);
+			logger.error(
+				{ component: 'ToolsAggregateMessageHandler', error },
+				'Error processing task manager result'
+			);
 		}
 	}
 
