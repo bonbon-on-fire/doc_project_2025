@@ -81,8 +81,8 @@ public sealed class InstructionChainParser : IInstructionChainParser
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "Failed to parse instruction chain JSON");
-            throw new InvalidOperationException("Malformed instruction chain", ex);
+            _logger.LogWarning(ex, "Failed to parse instruction chain JSON, returning null");
+            return null;
         }
     }
 

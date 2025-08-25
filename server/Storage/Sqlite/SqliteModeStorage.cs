@@ -2,10 +2,18 @@ using Microsoft.Data.Sqlite;
 
 namespace AIChat.Server.Storage.Sqlite;
 
+/// <summary>
+/// SQLite implementation of mode storage for persisting user-created custom modes.
+/// Handles all database operations for mode CRUD operations.
+/// </summary>
 public sealed class SqliteModeStorage : IModeStorage
 {
     private readonly ISqliteConnectionFactory _factory;
 
+    /// <summary>
+    /// Initializes a new instance of the SqliteModeStorage class.
+    /// </summary>
+    /// <param name="factory">Factory for creating SQLite connections</param>
     public SqliteModeStorage(ISqliteConnectionFactory factory)
     {
         _factory = factory;

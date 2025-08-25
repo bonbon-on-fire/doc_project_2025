@@ -74,9 +74,28 @@ public sealed class ConversationAnalyzer : IConversationAnalyzer
             if (!el.TryGetProperty("role", out var role) || role.ValueKind != JsonValueKind.String) continue;
             if (!string.Equals(role.GetString(), "user", StringComparison.OrdinalIgnoreCase)) continue;
 
-            if (el.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.String)
+            if (el.TryGetProperty("content", out var content))
             {
-                latest = content.GetString();
+                if (content.ValueKind == JsonValueKind.String)
+                {
+                    latest = content.GetString();
+                }
+                else if (content.ValueKind == JsonValueKind.Array)
+                {
+                    // Handle content array format (e.g., [{type: "text", text: "..."}])
+                    foreach (var item in content.EnumerateArray())
+                    {
+                        if (item.ValueKind == JsonValueKind.Object && 
+                            item.TryGetProperty("type", out var type) && 
+                            type.GetString() == "text" &&
+                            item.TryGetProperty("text", out var text) && 
+                            text.ValueKind == JsonValueKind.String)
+                        {
+                            latest = text.GetString();
+                            break; // Use first text item
+                        }
+                    }
+                }
             }
         }
 

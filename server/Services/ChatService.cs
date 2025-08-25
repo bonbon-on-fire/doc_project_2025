@@ -157,10 +157,11 @@ public class ChatService : IChatService, IToolResultCallback
 
             // Build DTO with ordered messages
             var (Success, Error, Messages) = await _storage.ListChatMessagesOrderedAsync(chat.Id);
-            var messages = Success
+            
+            var messages = Success && Messages != null
                 ? Messages.Select(m => JsonSerializer.Deserialize<MessageDto>(m.MessageJson, MessageSerializationOptions.Default)!).ToList()
-                : [ userDto ];
-
+                : new List<MessageDto> { userDto };
+            
             return new ChatResult
             {
                 Success = true,
@@ -170,7 +171,8 @@ public class ChatService : IChatService, IToolResultCallback
                     UserId = chat.UserId,
                     Title = chat.Title,
                     CreatedAt = chat.CreatedAtUtc,
-                    UpdatedAt = DateTime.UtcNow
+                    UpdatedAt = DateTime.UtcNow,
+                    Messages = messages
                 }
             };
         }
@@ -725,6 +727,28 @@ public class ChatService : IChatService, IToolResultCallback
         } while (loop);
     }
 
+    /// <summary>
+    /// IMPORTANT ARCHITECTURE NOTE:
+    /// 
+    /// This streaming pipeline has two distinct message flows:
+    /// 
+    /// 1. STREAMING CHUNKS (for real-time client display only):
+    ///    - TextUpdateMessage, ReasoningUpdateMessage, ToolsCallUpdateMessage
+    ///    - Sent to client via StreamChunkReceived events
+    ///    - NOT PERSISTED to database
+    ///    - Only used for progressive UI rendering
+    /// 
+    /// 2. COMPLETE MESSAGES (for persistence):
+    ///    - TextMessage, ReasoningMessage, ToolsCallMessage (final accumulated results)
+    ///    - Come from MessageUpdateJoinerMiddleware after accumulating all chunks
+    ///    - PERSISTED to database via PersistFullMessage()
+    ///    - Each gets ONE sequence number per logical message
+    /// 
+    /// SEQUENCE NUMBER CONFLICTS:
+    /// If you see sequence conflicts, the issue is likely in CLIENT-SIDE streaming
+    /// chunk management (SlimChatSyncManager), not server-side persistence.
+    /// The server only persists final complete messages with proper sequences.
+    /// </summary>
     private Func<IAsyncEnumerable<IMessage>, CancellationToken, IAsyncEnumerable<IMessage>> ProcessStream(
         string chatId,
         int userMsgSequence)

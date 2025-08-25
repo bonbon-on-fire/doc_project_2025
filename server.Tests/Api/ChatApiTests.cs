@@ -22,7 +22,7 @@ public class ChatApiTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task Create_And_Get_Chat_Works()
     {
         var client = _factory.CreateClient();
-        var create = new CreateChatRequest(null, "user-123", "hello world", null);
+        var create = new CreateChatRequest(null, "user-123", "hello world", null, null);
         var res = await client.PostAsJsonAsync("/api/chat", create);
         res.EnsureSuccessStatusCode();
         var chat = await res.Content.ReadFromJsonAsync<AIChat.Server.Services.ChatDto>();
@@ -41,7 +41,7 @@ public class ChatApiTests : IClassFixture<WebApplicationFactory<Program>>
     {
         var client = _factory.CreateClient();
         // Create one chat
-        var create = new CreateChatRequest(null, "user-123", "hello again", null);
+        var create = new CreateChatRequest(null, "user-123", "hello again", null, null);
         (await client.PostAsJsonAsync("/api/chat", create)).EnsureSuccessStatusCode();
 
         var hist = await client.GetAsync("/api/chat/history?userId=user-123&page=1&pageSize=10");
@@ -60,7 +60,7 @@ public class ChatApiTests : IClassFixture<WebApplicationFactory<Program>>
     {
         var client = _factory.CreateClient();
         using var req = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");
-        req.Content = JsonContent.Create(new CreateChatRequest(null, "user-123", "Hello reasoning test", null));
+        req.Content = JsonContent.Create(new CreateChatRequest(null, "user-123", "Hello reasoning test", null, null));
         using var res = await client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
         res.EnsureSuccessStatusCode();
         var text = await res.Content.ReadAsStringAsync();

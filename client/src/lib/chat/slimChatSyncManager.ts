@@ -3,6 +3,17 @@
  *
  * A lightweight orchestrator that routes SSE events to appropriate message type handlers.
  * No longer handles message specifics - just coordinates and manages chat-level state.
+ *
+ * IMPORTANT SEQUENCE NUMBER MANAGEMENT:
+ *
+ * This manager handles TWO types of sequence numbers:
+ * 1. PROVISIONAL sequences: Assigned to streaming chunks for UI ordering
+ * 2. FINAL sequences: Server-authoritative sequences from message completion events
+ *
+ * SEQUENCE NUMBER CONFLICTS DEBUGGING:
+ * If you see multiple messages with the same sequence number, the issue is likely
+ * in getOrAssignProvisionalSequence() or sequence caching logic below, NOT in
+ * server-side message persistence. The server only persists final complete messages.
  */
 
 import { writable, get, type Writable } from 'svelte/store';
@@ -30,6 +41,8 @@ export class SlimChatSyncManager implements HandlerEventListener {
 	private chatsStore: Writable<ChatDto[]>;
 	private streamingStateStore: Writable<StreamingUIState>;
 	private currentChatIdStore?: Writable<string | null>;
+	// Track which messages are currently streaming
+	private streamingMessageIds: Set<string> = new Set();
 	// Provisional sequence numbers assigned per streaming message
 	private provisionalSeqByMessageId: Map<string, number> = new Map();
 	// Final sequence numbers provided by server on completion
@@ -38,6 +51,27 @@ export class SlimChatSyncManager implements HandlerEventListener {
 	// Current state tracking
 	private currentChatId: string | null = null;
 	private currentUserMessage: string = '';
+
+	/**
+	 * Normalize message ID to ensure all chunks of the same logical message
+	 * share the same ID. Extracts the base generation ID.
+	 *
+	 * Examples:
+	 * - "gen-1756105522-3-8DDE3A5C2159349-001" -> "gen-1756105522"
+	 * - "gen-1756105522-3-8DDE3A5C262479E-001" -> "gen-1756105522"
+	 * - "gen-1756105522" -> "gen-1756105522" (already normalized)
+	 */
+	private normalizeMessageId(messageId: string): string {
+		// Extract base generation ID by taking only the first two parts
+		// Pattern: gen-{timestamp}[-{part3}[-{part4}[-{part5}]]]
+		const parts = messageId.split('-');
+		if (parts.length >= 2 && parts[0] === 'gen') {
+			// Return "gen-{timestamp}" portion only
+			return `${parts[0]}-${parts[1]}`;
+		}
+		// If not a generation ID pattern, return as-is
+		return messageId;
+	}
 
 	/** Map server event id + kind to a stable, UI-unique message id */
 	private toDisplayId(kind: string, messageId: string): string {
@@ -143,14 +177,17 @@ export class SlimChatSyncManager implements HandlerEventListener {
 		}
 
 		try {
-			// Ensure a stable, message-level sequence number exists on the envelope so
-			// handlers use the same sequence across chunks and completion.
-			const displayId = this.toDisplayId(envelope.kind, envelope.messageId);
-			const seq = this.getOrAssignProvisionalSequence(envelope.chatId, displayId);
+			// Normalize messageId to ensure all chunks of the same logical message
+			// share the same ID for snapshot tracking. Extract base generation ID.
+			// Example: "gen-1756105522-3-8DDE3A5C2159349-001" -> "gen-1756105522"
+			const normalizedMessageId = this.normalizeMessageId(envelope.messageId);
+			const displayId = this.toDisplayId(envelope.kind, normalizedMessageId);
+
 			const fixedEnvelope: StreamChunkEventEnvelope = {
 				...envelope,
 				messageId: displayId,
-				sequenceId: seq
+				// Keep the original sequenceId from server - DO NOT generate provisional sequence
+				sequenceId: envelope.sequenceId
 			} as StreamChunkEventEnvelope;
 			const snapshot = handler.processChunk(displayId, fixedEnvelope);
 
@@ -196,8 +233,12 @@ export class SlimChatSyncManager implements HandlerEventListener {
 		}
 
 		try {
+			// Normalize messageId to match the streaming chunks
+			// This ensures completion updates the existing message instead of creating a new one
+			const normalizedMessageId = this.normalizeMessageId(envelope.messageId);
+			const displayId = this.toDisplayId(envelope.kind, normalizedMessageId);
+
 			// Cache authoritative sequence number from server for this message
-			const displayId = this.toDisplayId(envelope.kind, envelope.messageId);
 			this.finalSeqByMessageId.set(displayId, envelope.sequenceId);
 			// Pass through completion envelope so handlers receive the final server sequenceId
 			const fixedEnv: MessageCompleteEventEnvelope = {
@@ -221,9 +262,10 @@ export class SlimChatSyncManager implements HandlerEventListener {
 
 		// Finalize any remaining messages that haven't been explicitly completed
 		this.finalizeAllPendingMessages();
-		// Clear sequence caches for next turn
+		// Clear sequence caches and streaming IDs for next turn
 		this.provisionalSeqByMessageId.clear();
 		this.finalSeqByMessageId.clear();
+		this.streamingMessageIds.clear();
 
 		// Clear streaming state
 		this.streamingStateStore.update((state) => ({
@@ -355,6 +397,9 @@ export class SlimChatSyncManager implements HandlerEventListener {
 		console.log(
 			`[SlimChatSyncManager] Completing message ${messageId} with sequence ${dto.sequenceNumber}, messageType: ${dto.messageType}`
 		);
+
+		// Remove from streaming message set
+		this.streamingMessageIds.delete(messageId);
 
 		// Log tool call specific data
 		if (dto.messageType === 'tool_call') {
@@ -517,6 +562,10 @@ export class SlimChatSyncManager implements HandlerEventListener {
 	 */
 	handleError(error: ErrorEvent): void {
 		console.error('SlimChatSyncManager error:', error);
+
+		// Clear streaming state on error
+		this.streamingMessageIds.clear();
+
 		this.streamingStateStore.update((state) => ({
 			...state,
 			isStreaming: false,
@@ -565,6 +614,9 @@ export class SlimChatSyncManager implements HandlerEventListener {
 				totalMessages: updatedChat.messages.length,
 				messageTypes: updatedChat.messages.map((m) => m.messageType)
 			});
+
+			// Log message order after adding
+			setTimeout(() => this.logMessageOrder('AfterAddMessage', messageDto.id), 0);
 
 			return updatedChat;
 		});
@@ -633,6 +685,9 @@ export class SlimChatSyncManager implements HandlerEventListener {
 			snapshotIsStreaming: snapshot.isStreaming
 		});
 
+		// Track this message as streaming
+		this.streamingMessageIds.add(messageId);
+
 		this.streamingStateStore.update((state) => {
 			// Always reflect the actively streaming message id so UI ties
 			// streaming state to the correct renderer (reasoning -> text, etc.)
@@ -664,6 +719,78 @@ export class SlimChatSyncManager implements HandlerEventListener {
 
 			return next;
 		});
+	}
+
+	/**
+	 * Logs the current message order for debugging purposes.
+	 * Helps identify message jumbling issues during streaming.
+	 */
+	private logMessageOrder(context: string, messageId?: string): void {
+		const chat = get(this.currentChatStore);
+		if (!chat) {
+			console.log(`[MessageOrder] ${context}: No chat available`);
+			return;
+		}
+
+		const messageInfo = chat.messages.map((msg, index) => ({
+			index,
+			id: msg.id.substring(0, 8),
+			type: msg.messageType,
+			role: msg.role,
+			seq: msg.sequenceNumber,
+			timestamp: msg.timestamp,
+			isStreaming: this.streamingMessageIds.has(msg.id),
+			provisionalSeq: this.provisionalSeqByMessageId.get(msg.id),
+			finalSeq: this.finalSeqByMessageId.get(msg.id)
+		}));
+
+		console.group(`[MessageOrder] ${context} ${messageId ? `(${messageId.substring(0, 8)})` : ''}`);
+		console.table(messageInfo);
+
+		// Log any sequence number conflicts
+		const seqNumbers = new Set<number>();
+		const conflicts: any[] = [];
+		chat.messages.forEach((msg) => {
+			if (seqNumbers.has(msg.sequenceNumber)) {
+				conflicts.push({
+					seq: msg.sequenceNumber,
+					id: msg.id.substring(0, 8),
+					type: msg.messageType
+				});
+			}
+			seqNumbers.add(msg.sequenceNumber);
+		});
+
+		if (conflicts.length > 0) {
+			console.warn('Sequence number conflicts detected:', conflicts);
+		}
+
+		// Log streaming state
+		if (this.streamingMessageIds.size > 0) {
+			console.log(
+				'Currently streaming:',
+				Array.from(this.streamingMessageIds).map((id) => id.substring(0, 8))
+			);
+		}
+
+		// Log provisional vs final sequences
+		const seqMismatches: any[] = [];
+		this.provisionalSeqByMessageId.forEach((provisional, msgId) => {
+			const final = this.finalSeqByMessageId.get(msgId);
+			if (final !== undefined && provisional !== final) {
+				seqMismatches.push({
+					messageId: msgId.substring(0, 8),
+					provisional,
+					final
+				});
+			}
+		});
+
+		if (seqMismatches.length > 0) {
+			console.warn('Sequence mismatches (provisional vs final):', seqMismatches);
+		}
+
+		console.groupEnd();
 	}
 
 	private finalizeAllPendingMessages(): void {

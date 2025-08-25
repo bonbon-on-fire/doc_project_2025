@@ -3,6 +3,10 @@
  * Provides convenient imports for the Rich Message Rendering system.
  */
 
+// Import what we need internally
+import { registerRenderer } from './RendererRegistry.js';
+import { registerComponentLoader, componentRegistry } from './ComponentRegistry.js';
+
 // Export the main RendererRegistry class and utilities
 export {
 	RendererRegistry,
@@ -41,7 +45,6 @@ export type { MessageRenderer, CustomRenderer } from '../types/index.js';
 // Import and register built-in renderers
 import type { MessageDto } from '../types/index.js';
 import type { MessageRenderer } from '../types/renderer.js';
-import { registerRenderer } from './RendererRegistry.js';
 
 /**
  * Registers all built-in message renderers with the global registry.
@@ -155,7 +158,7 @@ function registerBuiltInComponentLoaders(): void {
  * @returns Promise that resolves to the Svelte component
  */
 export async function getRendererComponent(messageType: string): Promise<any> {
-	const component = await getComponentFromRegistry(messageType);
+	const component = await componentRegistry.getComponent(messageType);
 	if (!component) {
 		console.warn(`No component found for message type '${messageType}', using fallback`);
 	}

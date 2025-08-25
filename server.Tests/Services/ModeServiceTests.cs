@@ -9,7 +9,7 @@ using Xunit;
 
 namespace AIChat.Server.Tests.Services;
 
-public class ModeServiceTests
+public class ModeServiceTests : IDisposable
 {
     private readonly Mock<IModeStorage> _modeStorageMock;
     private readonly Mock<ILogger<ModeService>> _loggerMock;
@@ -379,6 +379,393 @@ public class ModeServiceTests
         result.Success.Should().BeTrue();
         result.DefaultModel.Should().Be("gpt-4");
     }
+
+    #region Caching Behavior Tests
+
+    [Fact]
+    public async Task GetAllModesAsync_CachesSystemModes()
+    {
+        // Arrange
+        var userId = "test-user-cache-1";
+        
+        // Setup mock to return empty user modes list
+        _modeStorageMock.Setup(x => x.GetModesByUserAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((true, null, new List<ModeRecord>()));
+        
+        // First call
+        await _service.GetAllModesAsync(userId);
+        
+        // Modify the system mode file
+        var systemModeFile = Path.Combine(_tempDir, "modes", "test-system.json");
+        var originalContent = File.ReadAllText(systemModeFile);
+        var modifiedMode = new
+        {
+            id = "test-system",
+            name = "Modified System Mode", // Changed name
+            description = "A modified test system mode",
+            category = "test",
+            prompt = "You are a modified test assistant",
+            tools = new[] { "tool1", "tool2" },
+            defaultModel = (string?)null
+        };
+        
+        var json = JsonSerializer.Serialize(modifiedMode, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            WriteIndented = true
+        });
+        File.WriteAllText(systemModeFile, json);
+
+        // Act - Second call (should use cached version)
+        var result = await _service.GetAllModesAsync(userId);
+
+        // Assert - Name should still be the original, not modified
+        if (!result.Success)
+        {
+            Console.WriteLine($"Error: {result.Error}");
+        }
+        result.Success.Should().BeTrue();
+        var systemMode = result.Modes.First(m => m.Id == "test-system");
+        systemMode.Name.Should().Be("Test System Mode"); // Original name, not "Modified System Mode"
+        
+        // Cleanup - restore original file
+        File.WriteAllText(systemModeFile, originalContent);
+    }
+
+    [Fact]
+    public async Task GetAllModesAsync_HandlesEmptyModesDirectory()
+    {
+        // Arrange
+        var userId = "test-user-empty-dir";
+        
+        // Create a service with an empty modes directory
+        var emptyDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(emptyDir);
+        Directory.CreateDirectory(Path.Combine(emptyDir, "modes")); // Empty modes directory
+        
+        var hostEnvMock = new Mock<IHostEnvironment>();
+        hostEnvMock.Setup(x => x.ContentRootPath).Returns(emptyDir);
+        
+        var service = new ModeService(_modeStorageMock.Object, _loggerMock.Object, hostEnvMock.Object);
+
+        _modeStorageMock.Setup(x => x.GetModesByUserAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((true, null, new List<ModeRecord>()));
+
+        // Act
+        var result = await service.GetAllModesAsync(userId);
+
+        // Assert
+        result.Success.Should().BeTrue();
+        result.Modes.Should().BeEmpty(); // No system modes, no custom modes
+        
+        // Cleanup
+        Directory.Delete(emptyDir, true);
+    }
+
+    #endregion
+
+    #region File System Error Tests
+
+    [Fact]
+    public async Task GetAllModesAsync_HandlesMalformedSystemModeJson()
+    {
+        // Arrange
+        var userId = "test-user-malformed";
+        
+        // Create a service with a malformed JSON file
+        var malformedDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(malformedDir);
+        Directory.CreateDirectory(Path.Combine(malformedDir, "modes"));
+        
+        // Write malformed JSON
+        File.WriteAllText(Path.Combine(malformedDir, "modes", "malformed.json"), "{ invalid json }");
+        
+        var hostEnvMock = new Mock<IHostEnvironment>();
+        hostEnvMock.Setup(x => x.ContentRootPath).Returns(malformedDir);
+        
+        var service = new ModeService(_modeStorageMock.Object, _loggerMock.Object, hostEnvMock.Object);
+        
+        _modeStorageMock.Setup(x => x.GetModesByUserAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((true, null, new List<ModeRecord>()));
+
+        // Act
+        var result = await service.GetAllModesAsync(userId);
+
+        // Assert
+        result.Success.Should().BeTrue(); // Should handle error gracefully
+        result.Modes.Should().BeEmpty(); // Malformed mode should be skipped
+        
+        // Verify error was logged
+        _loggerMock.Verify(
+            x => x.Log(
+                LogLevel.Error,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Failed to parse system mode JSON file")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.AtLeastOnce);
+        
+        // Cleanup
+        Directory.Delete(malformedDir, true);
+    }
+
+    [Fact]
+    public async Task GetAllModesAsync_HandlesIncompleteModeJson()
+    {
+        // Arrange
+        var userId = "test-user-incomplete";
+        
+        // Create a service with an incomplete mode (missing required fields)
+        var incompleteDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(incompleteDir);
+        Directory.CreateDirectory(Path.Combine(incompleteDir, "modes"));
+        
+        // Write JSON missing required fields
+        var incompleteMode = new
+        {
+            id = "incomplete-mode",
+            name = "Incomplete Mode"
+            // Missing description, prompt, tools, category
+        };
+        
+        var json = JsonSerializer.Serialize(incompleteMode, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            WriteIndented = true
+        });
+        File.WriteAllText(Path.Combine(incompleteDir, "modes", "incomplete.json"), json);
+        
+        var hostEnvMock = new Mock<IHostEnvironment>();
+        hostEnvMock.Setup(x => x.ContentRootPath).Returns(incompleteDir);
+        
+        var service = new ModeService(_modeStorageMock.Object, _loggerMock.Object, hostEnvMock.Object);
+        
+        _modeStorageMock.Setup(x => x.GetModesByUserAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((true, null, new List<ModeRecord>()));
+
+        // Act
+        var result = await service.GetAllModesAsync(userId);
+
+        // Assert
+        result.Success.Should().BeTrue();
+        // The mode may still load with null values for missing fields, depending on implementation
+        // What matters is that it doesn't crash
+        
+        // Cleanup
+        Directory.Delete(incompleteDir, true);
+    }
+
+    #endregion
+
+    #region Concurrent Access Tests
+
+    [Fact]
+    public async Task GetAllModesAsync_HandlesConcurrentAccess()
+    {
+        // Arrange
+        var userIds = Enumerable.Range(1, 10).Select(i => $"concurrent-user-{i}").ToList();
+        var customModes = new List<ModeRecord>
+        {
+            new()
+            {
+                Id = "custom-concurrent",
+                UserId = "concurrent-user-1",
+                Name = "Concurrent Mode",
+                Description = "Test concurrent access",
+                Prompt = "Concurrent prompt",
+                Tools = "[\"tool1\"]",
+                DefaultModel = null,
+                Category = "custom",
+                CreatedAtUtc = DateTime.UtcNow,
+                UpdatedAtUtc = DateTime.UtcNow
+            }
+        };
+
+        foreach (var userId in userIds)
+        {
+            _modeStorageMock.Setup(x => x.GetModesByUserAsync(userId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((true, null, userId == "concurrent-user-1" ? customModes : new List<ModeRecord>()));
+        }
+
+        // Act - Concurrent calls
+        var tasks = userIds.Select(userId => _service.GetAllModesAsync(userId)).ToList();
+        var results = await Task.WhenAll(tasks);
+
+        // Assert
+        results.Should().HaveCount(10);
+        results.Should().OnlyContain(r => r.Success);
+        
+        // User 1 should have 2 modes (1 system + 1 custom)
+        var user1Result = results[0];
+        user1Result.Modes.Should().HaveCount(2);
+        
+        // Other users should have 1 mode (system only)
+        for (int i = 1; i < results.Length; i++)
+        {
+            results[i].Modes.Should().HaveCount(1);
+        }
+    }
+
+    [Fact]
+    public async Task CreateAndUpdateMode_HandlesConcurrentOperations()
+    {
+        // Arrange
+        var userId = "test-user-concurrent-2";
+        var modeId = "mode-concurrent";
+        
+        var createRequest = new CreateModeRequest
+        {
+            Name = "Concurrent Mode",
+            Description = "Test concurrent operations",
+            Prompt = "Concurrent prompt",
+            Tools = new[] { "tool1" },
+            DefaultModel = null,
+            Category = "custom"
+        };
+
+        var updateRequest = new UpdateModeRequest
+        {
+            Name = "Updated Concurrent Mode",
+            Description = "Updated description",
+            Prompt = "Updated prompt",
+            Tools = new[] { "tool2" },
+            DefaultModel = "gpt-4",
+            Category = "custom"
+        };
+
+        var createdMode = new ModeRecord
+        {
+            Id = modeId,
+            UserId = userId,
+            Name = createRequest.Name,
+            Description = createRequest.Description,
+            Prompt = createRequest.Prompt,
+            Tools = "[\"tool1\"]",
+            DefaultModel = null,
+            Category = createRequest.Category,
+            CreatedAtUtc = DateTime.UtcNow,
+            UpdatedAtUtc = DateTime.UtcNow
+        };
+
+        var updatedMode = new ModeRecord
+        {
+            Id = modeId,
+            UserId = userId,
+            Name = updateRequest.Name,
+            Description = updateRequest.Description,
+            Prompt = updateRequest.Prompt,
+            Tools = "[\"tool2\"]",
+            DefaultModel = updateRequest.DefaultModel,
+            Category = updateRequest.Category,
+            CreatedAtUtc = createdMode.CreatedAtUtc,
+            UpdatedAtUtc = DateTime.UtcNow
+        };
+
+        _modeStorageMock.Setup(x => x.CreateModeAsync(It.IsAny<ModeRecord>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((true, null, createdMode));
+
+        _modeStorageMock.Setup(x => x.UpdateModeAsync(modeId, userId, It.IsAny<ModeRecord>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((true, null, updatedMode));
+
+        // Act - Concurrent create and update
+        var createTask = _service.CreateCustomModeAsync(createRequest, userId);
+        var updateTask = Task.Delay(10).ContinueWith(_ => 
+            _service.UpdateCustomModeAsync(modeId, updateRequest, userId)).Unwrap();
+
+        var results = await Task.WhenAll(createTask, updateTask);
+
+        // Assert
+        results[0].Success.Should().BeTrue();
+        results[1].Success.Should().BeTrue();
+    }
+
+    #endregion
+
+    #region Edge Case Tests
+
+    [Fact]
+    public async Task UpdateCustomModeAsync_CannotUpdateSystemMode()
+    {
+        // Arrange
+        var userId = "test-user-edge-1";
+        var systemModeId = "test-system";
+        var updateRequest = new UpdateModeRequest
+        {
+            Name = "Hacked System Mode",
+            Description = "Should not work",
+            Prompt = "Should not update",
+            Tools = new[] { "malicious-tool" },
+            DefaultModel = null,
+            Category = "hacked"
+        };
+
+        // Act
+        var result = await _service.UpdateCustomModeAsync(systemModeId, updateRequest, userId);
+
+        // Assert
+        result.Success.Should().BeFalse();
+        result.Error.Should().Be("Cannot update system mode");
+        
+        // Verify storage was not called
+        _modeStorageMock.Verify(x => x.UpdateModeAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<ModeRecord>(), It.IsAny<CancellationToken>()), 
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task FilterToolsByModeAsync_WithNonExistentMode_ReturnsAllTools()
+    {
+        // Arrange
+        var userId = "test-user-edge-2";
+        var nonExistentModeId = "non-existent-mode";
+        var availableTools = new[] { "tool1", "tool2", "tool3" };
+
+        _modeStorageMock.Setup(x => x.GetModeByIdAsync(nonExistentModeId, userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((false, "NotFound", null));
+
+        // Act
+        var result = await _service.FilterToolsByModeAsync(nonExistentModeId, userId, availableTools);
+
+        // Assert
+        result.Success.Should().BeTrue();
+        result.FilteredTools.Should().BeEquivalentTo(availableTools); // Returns all tools when mode not found
+    }
+
+    [Fact]
+    public async Task FilterToolsByModeAsync_WithEmptyToolsList_ReturnsNoTools()
+    {
+        // Arrange
+        var userId = "test-user-edge-3";
+        var modeId = "test-system";
+        var emptyTools = Array.Empty<string>();
+
+        // Act
+        var result = await _service.FilterToolsByModeAsync(modeId, userId, emptyTools);
+
+        // Assert
+        result.Success.Should().BeTrue();
+        result.FilteredTools.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetModeSystemPromptAsync_WithNonExistentMode_ReturnsNull()
+    {
+        // Arrange
+        var userId = "test-user-edge-4";
+        var nonExistentModeId = "non-existent-mode";
+
+        _modeStorageMock.Setup(x => x.GetModeByIdAsync(nonExistentModeId, userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((false, "NotFound", null));
+
+        // Act
+        var result = await _service.GetModeSystemPromptAsync(nonExistentModeId, userId);
+
+        // Assert
+        result.Success.Should().BeTrue();
+        result.SystemPrompt.Should().BeNull();
+    }
+
+    #endregion
 
     public void Dispose()
     {

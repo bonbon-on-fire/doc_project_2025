@@ -236,6 +236,105 @@ export const modeActions = {
 	},
 
 	/**
+	 * Update an existing custom mode
+	 * Implements optimistic updates for better UX
+	 */
+	async updateMode(
+		modeId: string,
+		modeData: {
+			name: string;
+			description: string;
+			prompt: string;
+			tools: string[];
+			defaultModel?: string;
+			category?: ModeCategory;
+		}
+	): Promise<Mode | null> {
+		const user = get(currentUser);
+		if (!user?.id) {
+			modesError.set('User not authenticated');
+			return null;
+		}
+
+		modesLoading.set(true);
+		modesError.set(null);
+
+		try {
+			logger.info('Updating mode', { modeId, name: modeData.name, userId: user.id });
+
+			const updatedMode = await apiClient.updateMode(modeId, {
+				userId: user.id,
+				...modeData
+			});
+
+			// Update local state optimistically
+			const currentModes = get(availableModes);
+			const updatedModes = currentModes
+				.map((m) => (m.id === modeId ? updatedMode : m))
+				.sort((a, b) => {
+					if (a.isSystem && !b.isSystem) return -1;
+					if (!a.isSystem && b.isSystem) return 1;
+					return a.name.localeCompare(b.name);
+				});
+
+			availableModes.set(updatedModes);
+			logger.info('Successfully updated mode', { modeId: updatedMode.id, name: updatedMode.name });
+
+			return updatedMode;
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : 'Failed to update mode';
+			logger.error('Error updating mode', { error: errorMessage, modeId });
+			modesError.set(errorMessage);
+			return null;
+		} finally {
+			modesLoading.set(false);
+		}
+	},
+
+	/**
+	 * Delete a custom mode
+	 * Implements optimistic updates for better UX
+	 */
+	async deleteMode(modeId: string): Promise<boolean> {
+		const user = get(currentUser);
+		if (!user?.id) {
+			modesError.set('User not authenticated');
+			return false;
+		}
+
+		modesLoading.set(true);
+		modesError.set(null);
+
+		try {
+			logger.info('Deleting mode', { modeId, userId: user.id });
+
+			await apiClient.deleteMode(modeId, user.id);
+
+			// Update local state optimistically
+			const currentModes = get(availableModes);
+			const updatedModes = currentModes.filter((m) => m.id !== modeId);
+
+			availableModes.set(updatedModes);
+
+			// If the deleted mode was selected, reset to default
+			const currentSelected = get(selectedModeId);
+			if (currentSelected === modeId) {
+				this.resetToDefault();
+			}
+
+			logger.info('Successfully deleted mode', { modeId });
+			return true;
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : 'Failed to delete mode';
+			logger.error('Error deleting mode', { error: errorMessage, modeId });
+			modesError.set(errorMessage);
+			return false;
+		} finally {
+			modesLoading.set(false);
+		}
+	},
+
+	/**
 	 * Fetch available tools from the server
 	 * Used to check tool availability for modes
 	 */

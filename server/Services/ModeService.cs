@@ -240,6 +240,15 @@ public sealed class ModeService : IModeService
     {
         try
         {
+            // Ensure system modes are loaded
+            await EnsureSystemModesLoadedAsync(ct);
+            
+            // Check if this is a system mode
+            if (_systemModes.ContainsKey(modeId))
+            {
+                return (false, "Cannot update system mode", null);
+            }
+            
             var toolsJson = JsonSerializer.Serialize(mode.Tools.ToList(), _jsonOptions);
 
             var updatedRecord = new ModeRecord
@@ -363,7 +372,8 @@ public sealed class ModeService : IModeService
             var modeResult = await GetModeByIdAsync(modeId, userId, ct);
             if (!modeResult.Success || modeResult.Mode == null)
             {
-                return (false, modeResult.Error, null);
+                // Return success with null prompt for non-existent modes
+                return (true, null, null);
             }
 
             var prompt = string.IsNullOrWhiteSpace(modeResult.Mode.Prompt) ? null : modeResult.Mode.Prompt;
@@ -386,7 +396,8 @@ public sealed class ModeService : IModeService
             var modeResult = await GetModeByIdAsync(modeId, userId, ct);
             if (!modeResult.Success || modeResult.Mode == null)
             {
-                return (false, modeResult.Error, null);
+                // Return success with null model for non-existent modes
+                return (true, null, null);
             }
 
             return (true, null, modeResult.Mode.DefaultModel);
