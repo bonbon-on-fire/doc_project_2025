@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Text.Json;
 using AIChat.Server.Storage;
 using Microsoft.Extensions.Options;
@@ -7,7 +8,7 @@ namespace AIChat.Server.Services;
 
 /// <summary>
 /// Service for managing chat modes including system modes and user-created custom modes.
-/// Loads system modes from JSON files on startup and provides caching for performance.
+/// Loads system modes from Agent Card files (.agent.md) on startup and provides caching for performance.
 /// </summary>
 public sealed class ModeService : IModeService
 {
@@ -433,49 +434,60 @@ public sealed class ModeService : IModeService
     }
 
     /// <summary>
-    /// Loads system modes from JSON files in the modes directory.
+    /// Loads system modes from Agent Card files in the agents directory.
     /// </summary>
     private async Task LoadSystemModesAsync(CancellationToken ct = default)
     {
         try
         {
-            var modesPath = Path.Combine(_hostEnvironment.ContentRootPath, "modes");
+            // Load from agents directory (Agent Card files)
+            var agentsPath = Path.Combine(_hostEnvironment.ContentRootPath, "agents");
             
-            if (!Directory.Exists(modesPath))
+            if (!Directory.Exists(agentsPath))
             {
-                _logger.LogWarning("Modes directory not found at {ModesPath}, no system modes will be available", modesPath);
+                _logger.LogWarning("Agents directory not found at {AgentsPath}, no system modes will be available", agentsPath);
                 return;
             }
 
-            var jsonFiles = Directory.GetFiles(modesPath, "*.json", SearchOption.TopDirectoryOnly);
-            _logger.LogInformation("Loading {Count} system mode files from {ModesPath}", jsonFiles.Length, modesPath);
+            var agentFiles = Directory.GetFiles(agentsPath, "*.agent.md", SearchOption.AllDirectories)
+                .Where(f => !f.Contains("TEMPLATE", StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+            
+            _logger.LogInformation("Loading {Count} agent card files from {AgentsPath}", agentFiles.Length, agentsPath);
 
-            foreach (var filePath in jsonFiles)
-            {
-                try
+            foreach (var filePath in agentFiles)
                 {
-                    var jsonContent = await File.ReadAllTextAsync(filePath, ct);
-                    var systemMode = JsonSerializer.Deserialize<SystemModeConfig>(jsonContent, _jsonOptions);
-                    
-                    if (systemMode?.Id != null)
+                    try
                     {
+                        var agentCardResult = AgentCardParser.LoadFromFile(filePath);
+                        if (agentCardResult.IsFailure)
+                        {
+                            _logger.LogWarning("Failed to load agent card from {FilePath}: {Error}", 
+                                filePath, agentCardResult.Error);
+                            continue;
+                        }
+                        
+                        var mode = agentCardResult.Value.ToMode();
+                        
+                        var systemMode = new SystemModeConfig
+                        {
+                            Id = mode.Id,
+                            Name = mode.Name,
+                            Description = mode.Description,
+                            Category = mode.Category ?? "general",
+                            Prompt = mode.Prompt,
+                            Tools = mode.Tools?.ToList(),
+                            DefaultModel = mode.DefaultModel
+                        };
+                        
                         _systemModes.TryAdd(systemMode.Id, systemMode);
-                        _logger.LogDebug("Loaded system mode: {ModeId} from {FilePath}", systemMode.Id, filePath);
+                        _logger.LogDebug("Loaded agent card: {ModeId} from {FilePath}", systemMode.Id, filePath);
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        _logger.LogWarning("Invalid system mode configuration in file {FilePath}: missing or null Id", filePath);
+                        _logger.LogError(ex, "Failed to load agent card from file {FilePath}", filePath);
                     }
                 }
-                catch (JsonException ex)
-                {
-                    _logger.LogError(ex, "Failed to parse system mode JSON file {FilePath}", filePath);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to load system mode from file {FilePath}", filePath);
-                }
-            }
 
             _logger.LogInformation("Successfully loaded {Count} system modes", _systemModes.Count);
         }

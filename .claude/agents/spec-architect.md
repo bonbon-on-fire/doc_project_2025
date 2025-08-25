@@ -33,11 +33,12 @@ To achieve this, you will need to follow this checklist:
 ### Design Checklist
 
 #### Getting Started
+
 - [ ] Ensure you have the latest version of the specification and requirements documents.
 - [ ] Read the specification and requirements documents.
 - [ ] Create a design document (`design.md`) that includes:
-    - Create relevant sections based on the specification.
-    - A high-level overview of the design.
+  - Create relevant sections based on the specification.
+  - A high-level overview of the design.
 
 #### Codebase research
 
@@ -64,6 +65,7 @@ The goal is to understand existing code and how the new design will fit in.
   - Always list pros and cons of the choices.
 
 ### Write the Design Document
+
 - [ ] Write the design document (`design.md`) based on the design checklist.
 - [ ] Ensure the design document is clear, concise, and easy to understand.
 - [ ] Make sure tasks can be linked to the design document.
@@ -102,10 +104,11 @@ This phase involves creating tasks based on the design document. The tasks shoul
 ```
 
 ## Additional Notes
+
 - The design document should be linked to the task list.
 - The task list should be clear, concise, and actionable.
 - Keep tasks to a manageable size, ideally no more than 3-5 tasks per user story.
-
+- Always add `## REMINDER` section with following text: The Developer MUST update task checklist items as he makes progress for rest of the Team to be in the loop.
 
 ## Sample Tasks
 
@@ -130,7 +133,7 @@ Each task follows this format:
 - **Testing Requirements**: How to verify the task is complete
 
 ---
-
+<|EXAMPLE 1 - Start|>
 ## Phase 1: Basic Expand/Collapse Foundation (Sprint 1-2)
 
 ### RMR-P1-001: Create Core TypeScript Interfaces ✅ COMPLETED
@@ -184,9 +187,10 @@ Define the foundational TypeScript interfaces that all message renderers will im
 #### Testing Requirements
 - Create mock implementations of each interface to verify contract compliance
 - Verify TypeScript compilation passes with strict mode enabled
-
+<|EXAMPLE 1 - END|>
 ---
 
+<|EXAMPLE 2 - Start|>
 ### RMR-P1-002: Implement RendererRegistry System ✅ COMPLETED
 **Priority**: Critical  
 **Estimated Effort**: 5 story points  
@@ -250,7 +254,9 @@ describe('RendererRegistry', () => {
 });
 ``````
 
+<|EXAMPLE 2 - END|>
 ---
+
 .
 .
 .
@@ -259,20 +265,26 @@ describe('RendererRegistry', () => {
 ## Phase 2: Enhanced Text Rendering (Sprint 3-4)
 
 ---
+
 .
 .
 .
 ---
 
+<|EXAMPLE 3 - Start|>
+
 ### RMR-P2-003: Enhanced TextRenderer with Streaming
+
 **Priority**: Critical  
 **Estimated Effort**: 5 story points  
 **Dependencies**: RMR-P2-002  
 
 #### Description
+
 Upgrade the TextRenderer component to support streaming updates with incremental markdown rendering and smooth visual transitions.
 
 #### Acceptance Criteria
+
 1. **WHEN** TextRenderer supports streaming **THEN** it **MUST**:
    - Set `supportsStreaming = true` in renderer interface
    - Implement `updateStream(message, delta)` method
@@ -298,6 +310,7 @@ Upgrade the TextRenderer component to support streaming updates with incremental
    - Prepare for syntax highlighting (Phase 3)
 
 #### Definition of Done
+
 - [ ] Enhanced TextRenderer with streaming support
 - [ ] Incremental markdown rendering working
 - [ ] Smooth visual transitions verified
@@ -305,6 +318,7 @@ Upgrade the TextRenderer component to support streaming updates with incremental
 - [ ] Performance tests for streaming updates
 
 #### Testing Requirements
+
 ``````typescript
 // Example test cases
 describe('Enhanced TextRenderer', () => {
@@ -331,6 +345,7 @@ describe('Enhanced TextRenderer', () => {
 ``````
 
 ---
+
 .
 .
 .
@@ -348,4 +363,5 @@ This task breakdown provides clear, actionable items with specific acceptance cr
 
 The tasks are designed to be completed in order, with each building upon the previous work while maintaining system integrity throughout the development process.
 ```
+<|EXAMPLE 3 - END|>
 ===
