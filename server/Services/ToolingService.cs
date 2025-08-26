@@ -1,13 +1,18 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using AchieveAi.LmDotnetTools.LmCore.Middleware;
+using LmCoreFunctionFilterConfig = AchieveAi.LmDotnetTools.LmCore.Configuration.FunctionFilterConfig;
+using LmCoreProviderFilterConfig = AchieveAi.LmDotnetTools.LmCore.Configuration.ProviderFilterConfig;
 using AchieveAi.LmDotnetTools.McpMiddleware;
 using AchieveAi.LmDotnetTools.McpMiddleware.Extensions;
 using AIChat.Server.Functions;
+using AIChat.Server.Models;
 using static AchieveAi.LmDotnetTools.Misc.Utils.TaskManager;
 
 namespace AIChat.Server.Services;
@@ -21,6 +26,7 @@ public class ToolingService : IToolingService
     private readonly IMcpClientManager _mcpClientManager;
     private readonly ITaskManagerService _taskManagerService;
     private readonly IModeService _modeService;
+    private readonly IOptions<McpConfiguration> _mcpConfiguration;
     private readonly ILogger<ToolingService> _logger;
 
     public ToolingService(
@@ -28,12 +34,14 @@ public class ToolingService : IToolingService
         IMcpClientManager mcpClientManager,
         ITaskManagerService taskManagerService,
         IModeService modeService,
+        IOptions<McpConfiguration> mcpConfiguration,
         ILogger<ToolingService> logger)
     {
         _serviceProvider = serviceProvider;
         _mcpClientManager = mcpClientManager;
         _taskManagerService = taskManagerService;
         _modeService = modeService;
+        _mcpConfiguration = mcpConfiguration;
         _logger = logger;
     }
 
@@ -51,6 +59,82 @@ public class ToolingService : IToolingService
             
             // Create function registry
             var registry = new FunctionRegistry();
+            
+            // Configure function filtering if available
+            var mcpConfig = _mcpConfiguration.Value;
+            LmCoreFunctionFilterConfig? functionFilterConfig = null;
+            
+            // Use new FunctionFiltering if available, otherwise fall back to legacy ToolFiltering
+            if (mcpConfig?.FunctionFiltering != null)
+            {
+                // Map server configuration to LmCore configuration
+                functionFilterConfig = new LmCoreFunctionFilterConfig
+                {
+                    EnableFiltering = mcpConfig.FunctionFiltering.EnableFiltering,
+                    GlobalAllowedFunctions = mcpConfig.FunctionFiltering.GlobalAllowedFunctions,
+                    GlobalBlockedFunctions = mcpConfig.FunctionFiltering.GlobalBlockedFunctions,
+                    UsePrefixOnlyForCollisions = mcpConfig.FunctionFiltering.UsePrefixOnlyForCollisions,
+                    ProviderConfigs = new Dictionary<string, LmCoreProviderFilterConfig>()
+                };
+                
+                // Map provider configs
+                if (mcpConfig.FunctionFiltering.ProviderConfigs != null)
+                {
+                    foreach (var (providerId, providerConfig) in mcpConfig.FunctionFiltering.ProviderConfigs)
+                    {
+                        functionFilterConfig.ProviderConfigs[providerId] = new LmCoreProviderFilterConfig
+                        {
+                            AllowedFunctions = providerConfig.AllowedFunctions,
+                            BlockedFunctions = providerConfig.BlockedFunctions,
+                            Enabled = providerConfig.Enabled,
+                            CustomPrefix = providerConfig.CustomPrefix
+                        };
+                    }
+                }
+            }
+            else if (mcpConfig?.ToolFiltering != null)
+            {
+                // Map legacy configuration to new format
+                #pragma warning disable CS0618 // Type or member is obsolete
+                functionFilterConfig = new LmCoreFunctionFilterConfig
+                {
+                    EnableFiltering = mcpConfig.ToolFiltering.EnableFiltering,
+                    GlobalAllowedFunctions = mcpConfig.ToolFiltering.GlobalAllowedTools,
+                    GlobalBlockedFunctions = mcpConfig.ToolFiltering.GlobalBlockedTools,
+                    UsePrefixOnlyForCollisions = mcpConfig.ToolFiltering.UsePrefixOnlyForCollisions,
+                #pragma warning restore CS0618 // Type or member is obsolete
+                    ProviderConfigs = new Dictionary<string, LmCoreProviderFilterConfig>()
+                };
+                
+                // Map MCP server configs to provider configs
+                if (mcpConfig.McpServers != null)
+                {
+                    foreach (var (serverId, serverConfig) in mcpConfig.McpServers)
+                    {
+                        functionFilterConfig.ProviderConfigs[serverId] = new LmCoreProviderFilterConfig
+                        {
+                            AllowedFunctions = serverConfig.AllowedTools,
+                            BlockedFunctions = serverConfig.BlockedTools,
+                            Enabled = serverConfig.Enabled
+                        };
+                    }
+                }
+            }
+            
+            // Apply filtering configuration to registry  
+            if (functionFilterConfig != null)
+            {
+                registry.WithFilterConfig(functionFilterConfig)
+                       .WithLogger(_logger);
+                
+                if (functionFilterConfig.EnableFiltering)
+                {
+                    _logger.LogInformation("Function filtering enabled: UsePrefixOnlyForCollisions={UsePrefixOnlyForCollisions}, GlobalAllowed={GlobalAllowedCount}, GlobalBlocked={GlobalBlockedCount}",
+                        functionFilterConfig.UsePrefixOnlyForCollisions,
+                        functionFilterConfig.GlobalAllowedFunctions?.Count ?? 0,
+                        functionFilterConfig.GlobalBlockedFunctions?.Count ?? 0);
+                }
+            }
             
             // Add weather function provider
             var weatherLogger = _serviceProvider.GetRequiredService<ILogger<WeatherFunction>>();
@@ -70,7 +154,16 @@ public class ToolingService : IToolingService
                 if (mcpClients.Any())
                 {
                     var mcpLogger = _serviceProvider.GetService<ILogger<McpClientFunctionProvider>>();
-                    await registry.AddMcpClientsAsync(mcpClients, "McpServers", mcpLogger);
+                    
+                    // Note: Filtering is now handled at the FunctionRegistry level for ALL providers
+                    // We pass null for the filter configs here since they're already configured in the registry
+                    await registry.AddMcpClientsAsync(
+                        mcpClients,
+                        null, // Filtering handled by registry
+                        null, // Server configs handled by registry
+                        "McpServers",
+                        mcpLogger);
+                    
                     _logger.LogInformation("Added {Count} MCP clients to function registry", mcpClients.Count);
                 }
                 else
@@ -83,35 +176,47 @@ public class ToolingService : IToolingService
                 _logger.LogError(mcpEx, "Failed to add MCP clients to function registry");
             }
             
-            // Build function contracts and handlers with conflict resolution
-            registry.WithConflictResolution(ConflictResolution.PreferMcp);
-            var (contracts, handlers) = registry.Build();
-            
-            // Apply mode-based tool filtering if modeId and userId are provided
+            // Apply mode-based filtering if modeId and userId are provided
             if (!string.IsNullOrEmpty(modeId) && !string.IsNullOrEmpty(userId))
             {
-                var availableToolNames = contracts.Select(c => c.Name).ToList();
+                // Get the list of all available function names before building
+                var allDescriptors = new List<FunctionDescriptor>();
+                foreach (var provider in registry.GetProviders())
+                {
+                    allDescriptors.AddRange(provider.GetFunctions());
+                }
+                
+                var availableToolNames = allDescriptors.Select(d => d.Contract.Name).ToList();
                 var filterResult = await _modeService.FilterToolsByModeAsync(modeId, userId, availableToolNames);
                 
                 if (filterResult.Success)
                 {
-                    var allowedTools = filterResult.FilteredTools.ToHashSet();
-                    contracts = contracts.Where(c => allowedTools.Contains(c.Name)).ToArray();
+                    // Update or create function filter config to include mode filtering
+                    if (functionFilterConfig == null)
+                    {
+                        functionFilterConfig = new LmCoreFunctionFilterConfig { EnableFiltering = true };
+                    }
+                    else if (!functionFilterConfig.EnableFiltering)
+                    {
+                        functionFilterConfig.EnableFiltering = true;
+                    }
                     
-                    // Filter handlers to match filtered contracts
-                    var allowedContractNames = contracts.Select(c => c.Name).ToHashSet();
-                    var filteredHandlers = handlers.Where(kvp => allowedContractNames.Contains(kvp.Key))
-                                                 .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-                    handlers = filteredHandlers;
+                    // Set the global allowed functions based on mode
+                    functionFilterConfig.GlobalAllowedFunctions = filterResult.FilteredTools.ToList();
+                    registry.WithFilterConfig(functionFilterConfig);
                     
-                    _logger.LogInformation("Applied mode {ModeId} tool filtering: {FilteredCount} of {TotalCount} tools allowed", 
-                        modeId, contracts.Count(), availableToolNames.Count);
+                    _logger.LogInformation("Applied mode {ModeId} filtering: {FilteredCount} of {TotalCount} functions allowed", 
+                        modeId, filterResult.FilteredTools.Count(), availableToolNames.Count);
                 }
                 else
                 {
-                    _logger.LogWarning("Failed to apply tool filtering for mode {ModeId}: {Error}", modeId, filterResult.Error);
+                    _logger.LogWarning("Failed to apply filtering for mode {ModeId}: {Error}", modeId, filterResult.Error);
                 }
             }
+            
+            // Build function contracts and handlers with conflict resolution
+            registry.WithConflictResolution(ConflictResolution.PreferMcp);
+            var (contracts, handlers) = registry.Build();
             
             if (!contracts.Any())
             {

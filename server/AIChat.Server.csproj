@@ -8,23 +8,36 @@
     <UserSecretsId>16d0d730-3c71-4ed2-9e03-b9c8a40204bc</UserSecretsId>
   </PropertyGroup>
 
+  <!-- Standard package references -->
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.6" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.2.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.7" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.3" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="AchieveAi.LmDotnetTools.LmCore" Version="1.0.20" />
-    <PackageReference Include="AchieveAi.LmDotnetTools.Misc" Version="1.0.20" />
-    <PackageReference Include="AchieveAi.LmDotnetTools.McpMiddleware" Version="1.0.20" />
-    <PackageReference Include="AchieveAi.LmDotnetTools.OpenAiProvider" Version="1.0.20" />
-    <PackageReference Include="AchieveAi.LmDotnetTools.LmConfig" Version="1.0.20" />
     <PackageReference Include="Lib.AspNetCore.ServerSentEvents" Version="9.0.0" />
     <PackageReference Include="Serilog.Extensions.Hosting" Version="8.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageReference Include="Serilog.Formatting.Compact" Version="3.0.0" />
     <PackageReference Include="YamlDotNet" Version="16.3.0" />
+  </ItemGroup>
+
+  <!-- Conditional references for LmDotnetTools: use local projects if available, otherwise NuGet packages -->
+  <ItemGroup Condition="Exists('../submodules/LmDotnetTools/src/LmCore/AchieveAi.LmDotnetTools.LmCore.csproj')">
+    <ProjectReference Include="../submodules/LmDotnetTools/src/LmCore/AchieveAi.LmDotnetTools.LmCore.csproj" />
+    <ProjectReference Include="../submodules/LmDotnetTools/src/Misc/AchieveAi.LmDotnetTools.Misc.csproj" />
+    <ProjectReference Include="../submodules/LmDotnetTools/src/McpMiddleware/AchieveAi.LmDotnetTools.McpMiddleware.csproj" />
+    <ProjectReference Include="../submodules/LmDotnetTools/src/OpenAiProvider/AchieveAi.LmDotnetTools.OpenAiProvider.csproj" />
+    <ProjectReference Include="../submodules/LmDotnetTools/src/LmConfig/AchieveAi.LmDotnetTools.LmConfig.csproj" />
+  </ItemGroup>
+  
+  <ItemGroup Condition="!Exists('../submodules/LmDotnetTools/src/LmCore/AchieveAi.LmDotnetTools.LmCore.csproj')">
+    <PackageReference Include="AchieveAi.LmDotnetTools.LmCore" Version="1.0.20" />
+    <PackageReference Include="AchieveAi.LmDotnetTools.Misc" Version="1.0.20" />
+    <PackageReference Include="AchieveAi.LmDotnetTools.McpMiddleware" Version="1.0.20" />
+    <PackageReference Include="AchieveAi.LmDotnetTools.OpenAiProvider" Version="1.0.20" />
+    <PackageReference Include="AchieveAi.LmDotnetTools.LmConfig" Version="1.0.20" />
   </ItemGroup>
 
   <ItemGroup>

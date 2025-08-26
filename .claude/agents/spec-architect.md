@@ -108,7 +108,7 @@ This phase involves creating tasks based on the design document. The tasks shoul
 - The design document should be linked to the task list.
 - The task list should be clear, concise, and actionable.
 - Keep tasks to a manageable size, ideally no more than 3-5 tasks per user story.
-- Always add `## REMINDER` section with following text: The Developer MUST update task checklist items as he makes progress for rest of the Team to be in the loop.
+- You MUST ALWAYS add `## REMINDER` section with following text: The Developer MUST update task checklist items as he makes progress for rest of the Team to be in the loop.
 
 ## Sample Tasks
 
@@ -119,6 +119,10 @@ This phase involves creating tasks based on the design document. The tasks shoul
 ## Overview
 
 This document breaks down the Rich Message Rendering feature into specific, actionable tasks with clear acceptance criteria. Each task includes detailed requirements, testing criteria, and deliverables that developers can implement incrementally.
+
+## REMINDER
+
+The Developer MUST update task checklist items as he makes progress for rest of the Team to be in the loop.
 
 ## Task Structure
 
