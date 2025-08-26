@@ -9,52 +9,69 @@ public interface IChatStorage
         DateTime createdAtUtc,
         DateTime updatedAtUtc,
         string? chatJson,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 
     Task<(bool Success, string? Error, ChatRecord? Chat)> GetChatByIdAsync(
         string chatId,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 
-    Task<(bool Success, string? Error, IReadOnlyList<ChatRecord> Chats, int TotalCount)> GetChatHistoryByUserAsync(
+    Task<(
+        bool Success,
+        string? Error,
+        IReadOnlyList<ChatRecord> Chats,
+        int TotalCount
+    )> GetChatHistoryByUserAsync(
         string userId,
         int page,
         int pageSize,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 
     Task<(bool Success, string? Error)> DeleteChatAsync(
         string chatId,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 
     Task<(bool Success, string? Error)> UpdateChatUpdatedAtAsync(
         string chatId,
         DateTime updatedAtUtc,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 
     // Messages
     Task<(bool Success, string? Error, int NextSequence)> AllocateSequenceAsync(
         string chatId,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 
     Task<(bool Success, string? Error, MessageRecord? Message)> InsertMessageAsync(
         MessageRecord message,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 
-    Task<(bool Success, string? Error, IReadOnlyList<MessageRecord> Messages)> ListChatMessagesOrderedAsync(
-        string chatId,
-        CancellationToken ct = default);
+    Task<(
+        bool Success,
+        string? Error,
+        IReadOnlyList<MessageRecord> Messages
+    )> ListChatMessagesOrderedAsync(string chatId, CancellationToken ct = default);
 
     Task<(bool Success, string? Error, MessageRecord? Message)> GetMessageByIdAsync(
         string messageId,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 
     Task<(bool Success, string? Error, string? Content)> GetMessageContentAsync(
         string messageId,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 
     Task<(bool Success, string? Error)> UpdateMessageJsonAsync(
         string messageId,
         string newMessageJson,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 }
 
 public sealed class ChatRecord
@@ -71,11 +88,9 @@ public sealed class MessageRecord
 {
     public required string Id { get; init; }
     public required string ChatId { get; init; }
-    public required string Role { get; init; }      // user|assistant|tool|system
-    public required string Kind { get; init; }      // text|reasoning|toolcall|toolresult (extensible)
+    public required string Role { get; init; } // user|assistant|tool|system
+    public required string Kind { get; init; } // text|reasoning|toolcall|toolresult (extensible)
     public required DateTime TimestampUtc { get; init; }
     public required int SequenceNumber { get; init; }
     public required string MessageJson { get; init; }
 }
-
-

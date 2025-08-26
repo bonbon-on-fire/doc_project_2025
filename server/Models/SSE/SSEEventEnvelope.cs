@@ -1,5 +1,5 @@
-using AchieveAi.LmDotnetTools.LmCore.Messages;
 using System.Text.Json.Serialization;
+using AchieveAi.LmDotnetTools.LmCore.Messages;
 using static AchieveAi.LmDotnetTools.Misc.Utils.TaskManager;
 
 namespace AIChat.Server.Models.SSE;
@@ -103,7 +103,7 @@ public class ToolsCallAggregatePayload : StreamChunkPayload
 {
     [JsonPropertyName("toolCalls")]
     public ToolCall[]? ToolCalls { get; set; }
-    
+
     [JsonPropertyName("toolResults")]
     public ToolCallResult[]? ToolResults { get; set; }
 }
@@ -115,10 +115,10 @@ public class ToolResultStreamChunkPayload : StreamChunkPayload
 {
     [JsonPropertyName("toolCallId")]
     public required string ToolCallId { get; set; }
-    
+
     [JsonPropertyName("result")]
     public required string Result { get; set; }
-    
+
     [JsonPropertyName("isError")]
     public bool IsError { get; set; }
 }
@@ -130,7 +130,7 @@ public class TaskUpdateStreamChunkPayload : StreamChunkPayload
 {
     [JsonPropertyName("taskState")]
     public required IList<TaskItem> TaskState { get; set; }
-    
+
     [JsonPropertyName("operationType")]
     public required string OperationType { get; set; }
 }
@@ -153,9 +153,7 @@ public class MessageCompleteEventEnvelope : SSEEventEnvelope
 /// <summary>
 /// Base class for all message completion payloads
 /// </summary>
-public abstract class MessageCompletePayload
-{
-}
+public abstract class MessageCompletePayload { }
 
 /// <summary>
 /// Payload for completed text messages
@@ -194,7 +192,7 @@ public class ToolsCallAggregateCompletePayload : MessageCompletePayload
 {
     [JsonPropertyName("toolCalls")]
     public required ToolCall[] ToolCalls { get; set; }
-    
+
     [JsonPropertyName("toolResults")]
     public ToolCallResult[]? ToolResults { get; set; }
 }

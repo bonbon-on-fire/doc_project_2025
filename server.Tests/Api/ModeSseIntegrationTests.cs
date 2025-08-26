@@ -1,5 +1,4 @@
 using System.Net.Http.Json;
-using System.Text;
 using System.Text.Json;
 using AIChat.Server.Services;
 using FluentAssertions;
@@ -24,13 +23,13 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
-            builder.UseSetting("ASPNETCORE_ENVIRONMENT", "Test");
+            _ = builder.UseSetting("ASPNETCORE_ENVIRONMENT", "Test");
         });
-        
+
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         };
     }
 
@@ -40,7 +39,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         // Arrange
         var client = _factory.CreateClient();
         var userId = $"test-user-{Guid.NewGuid()}";
-        
+
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");
         var createRequest = new CreateChatRequest(
             ChatId: null,
@@ -50,43 +49,46 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             ModeId: "coding" // Specify coding mode
         );
         request.Content = JsonContent.Create(createRequest, options: _jsonOptions);
-        
+
         // Act
-        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-        response.EnsureSuccessStatusCode();
-        
+        using var response = await client.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead
+        );
+        _ = response.EnsureSuccessStatusCode();
+
         var sseContent = await response.Content.ReadAsStringAsync();
-        
+
         // Assert
-        sseContent.Should().NotBeNullOrEmpty();
-        
+        _ = sseContent.Should().NotBeNullOrEmpty();
+
         // Parse SSE events
         var events = ParseSseEvents(sseContent);
-        
+
         // Verify init event exists
         var initEvent = events.FirstOrDefault(e => e.EventType == "init");
-        initEvent.Should().NotBeNull("Init event should be present");
-        
+        _ = initEvent.Should().NotBeNull("Init event should be present");
+
         // Verify init event contains mode information
         if (initEvent != null && !string.IsNullOrEmpty(initEvent.Data))
         {
             var initData = JsonSerializer.Deserialize<JsonElement>(initEvent.Data, _jsonOptions);
-            
+
             // Check if mode information is included (this depends on your implementation)
             // The init event might include the chat ID and initial metadata
             if (initData.TryGetProperty("chatId", out var chatId))
             {
-                chatId.GetString().Should().NotBeNullOrEmpty();
+                _ = chatId.GetString().Should().NotBeNullOrEmpty();
             }
         }
-        
+
         // Verify message updates
         var messageEvents = events.Where(e => e.EventType == "messageupdate").ToList();
-        messageEvents.Should().NotBeEmpty("Should have message update events");
-        
+        _ = messageEvents.Should().NotBeEmpty("Should have message update events");
+
         // Verify completion
         var completeEvent = events.FirstOrDefault(e => e.EventType == "complete");
-        completeEvent.Should().NotBeNull("Complete event should be present");
+        _ = completeEvent.Should().NotBeNull("Complete event should be present");
     }
 
     [Fact]
@@ -95,7 +97,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         // Arrange
         var client = _factory.CreateClient();
         var userId = $"test-user-{Guid.NewGuid()}";
-        
+
         // First create a custom mode with limited tools
         var customMode = new CreateModeRequest
         {
@@ -104,13 +106,17 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             Prompt = "You are a helpful assistant with limited tools",
             Tools = new[] { "search" }, // Only search tool
             DefaultModel = null,
-            Category = "custom"
+            Category = "custom",
         };
-        
-        var createModeResponse = await client.PostAsJsonAsync($"/api/modes?userId={userId}", customMode, _jsonOptions);
-        createModeResponse.EnsureSuccessStatusCode();
+
+        var createModeResponse = await client.PostAsJsonAsync(
+            $"/api/modes?userId={userId}",
+            customMode,
+            _jsonOptions
+        );
+        _ = createModeResponse.EnsureSuccessStatusCode();
         var createdMode = await createModeResponse.Content.ReadFromJsonAsync<ModeDto>(_jsonOptions);
-        
+
         // Stream SSE with the custom mode
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");
         var createRequest = new CreateChatRequest(
@@ -121,31 +127,37 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             ModeId: createdMode!.Id
         );
         request.Content = JsonContent.Create(createRequest, options: _jsonOptions);
-        
+
         // Act
-        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-        response.EnsureSuccessStatusCode();
-        
+        using var response = await client.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead
+        );
+        _ = response.EnsureSuccessStatusCode();
+
         var sseContent = await response.Content.ReadAsStringAsync();
-        
+
         // Clean up
-        await client.DeleteAsync($"/api/modes/{createdMode.Id}?userId={userId}");
-        
+        _ = await client.DeleteAsync($"/api/modes/{createdMode.Id}?userId={userId}");
+
         // Assert
         var events = ParseSseEvents(sseContent);
-        events.Should().NotBeEmpty();
-        
+        _ = events.Should().NotBeEmpty();
+
         // Verify that tool calls (if any) are limited to the mode's tools
         var toolEvents = events.Where(e => e.EventType == "toolcall").ToList();
         foreach (var toolEvent in toolEvents)
         {
             if (!string.IsNullOrEmpty(toolEvent.Data))
             {
-                var toolData = JsonSerializer.Deserialize<JsonElement>(toolEvent.Data, _jsonOptions);
+                var toolData = JsonSerializer.Deserialize<JsonElement>(
+                    toolEvent.Data,
+                    _jsonOptions
+                );
                 if (toolData.TryGetProperty("toolName", out var toolName))
                 {
                     // Should only use tools allowed by the mode
-                    toolName.GetString().Should().BeOneOf("search");
+                    _ = toolName.GetString().Should().BeOneOf("search");
                 }
             }
         }
@@ -157,7 +169,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         // Arrange
         var client = _factory.CreateClient();
         var userId = $"test-user-{Guid.NewGuid()}";
-        
+
         // Create initial chat with general mode
         using var request1 = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");
         var createRequest1 = new CreateChatRequest(
@@ -168,11 +180,14 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             ModeId: "general"
         );
         request1.Content = JsonContent.Create(createRequest1, options: _jsonOptions);
-        
-        using var response1 = await client.SendAsync(request1, HttpCompletionOption.ResponseHeadersRead);
-        response1.EnsureSuccessStatusCode();
+
+        using var response1 = await client.SendAsync(
+            request1,
+            HttpCompletionOption.ResponseHeadersRead
+        );
+        _ = response1.EnsureSuccessStatusCode();
         var sseContent1 = await response1.Content.ReadAsStringAsync();
-        
+
         // Extract chat ID from the response
         var events1 = ParseSseEvents(sseContent1);
         var initEvent1 = events1.FirstOrDefault(e => e.EventType == "init");
@@ -185,49 +200,61 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
                 chatId = chatIdElement.GetString();
             }
         }
-        
+
         if (string.IsNullOrEmpty(chatId))
         {
             // If chat ID not in init event, try to get it from a regular API call
-            var createResponse = await client.PostAsJsonAsync("/api/chat", createRequest1, _jsonOptions);
-            createResponse.EnsureSuccessStatusCode();
+            var createResponse = await client.PostAsJsonAsync(
+                "/api/chat",
+                createRequest1,
+                _jsonOptions
+            );
+            _ = createResponse.EnsureSuccessStatusCode();
             var chat = await createResponse.Content.ReadFromJsonAsync<ChatDto>(_jsonOptions);
             chatId = chat?.Id;
         }
-        
-        chatId.Should().NotBeNullOrEmpty("Should have a chat ID");
-        
+
+        _ = chatId.Should().NotBeNullOrEmpty("Should have a chat ID");
+
         // Continue with different mode
         var continueRequest = new SendMessageRequest
         {
             Message = "Continue with writing mode",
-            ModeId = "writing"
+            ModeId = "writing",
         };
-        
-        using var request2 = new HttpRequestMessage(HttpMethod.Post, $"/api/chat/{chatId}/messages-sse?userId={userId}");
+
+        using var request2 = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"/api/chat/{chatId}/messages-sse?userId={userId}"
+        );
         request2.Content = JsonContent.Create(continueRequest, options: _jsonOptions);
-        
+
         // Act
-        using var response2 = await client.SendAsync(request2, HttpCompletionOption.ResponseHeadersRead);
-        
+        using var response2 = await client.SendAsync(
+            request2,
+            HttpCompletionOption.ResponseHeadersRead
+        );
+
         // Assert
         if (response2.IsSuccessStatusCode)
         {
             var sseContent2 = await response2.Content.ReadAsStringAsync();
             var events2 = ParseSseEvents(sseContent2);
-            events2.Should().NotBeEmpty("Should have events for continued chat");
-            
+            _ = events2.Should().NotBeEmpty("Should have events for continued chat");
+
             // Verify mode switch was applied
             var completeEvent = events2.FirstOrDefault(e => e.EventType == "complete");
-            completeEvent.Should().NotBeNull("Should complete successfully with new mode");
+            _ = completeEvent.Should().NotBeNull("Should complete successfully with new mode");
         }
         else
         {
             // If continue-sse endpoint doesn't exist, that's okay for this test
-            response2.StatusCode.Should().BeOneOf(
-                System.Net.HttpStatusCode.NotFound,
-                System.Net.HttpStatusCode.MethodNotAllowed
-            );
+            _ = response2
+                .StatusCode.Should()
+                .BeOneOf(
+                    System.Net.HttpStatusCode.NotFound,
+                    System.Net.HttpStatusCode.MethodNotAllowed
+                );
         }
     }
 
@@ -237,7 +264,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         // Arrange
         var client = _factory.CreateClient();
         var userId = $"test-user-{Guid.NewGuid()}";
-        
+
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");
         var createRequest = new CreateChatRequest(
             ChatId: null,
@@ -247,20 +274,23 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             ModeId: "non-existent-mode-12345"
         );
         request.Content = JsonContent.Create(createRequest, options: _jsonOptions);
-        
+
         // Act
-        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-        
+        using var response = await client.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead
+        );
+
         // Assert
-        response.EnsureSuccessStatusCode(); // Should still succeed with fallback
-        
+        _ = response.EnsureSuccessStatusCode(); // Should still succeed with fallback
+
         var sseContent = await response.Content.ReadAsStringAsync();
         var events = ParseSseEvents(sseContent);
-        
+
         // Should still have normal SSE events despite invalid mode
-        events.Should().NotBeEmpty();
-        events.Should().Contain(e => e.EventType == "init");
-        events.Should().Contain(e => e.EventType == "complete");
+        _ = events.Should().NotBeEmpty();
+        _ = events.Should().Contain(e => e.EventType == "init");
+        _ = events.Should().Contain(e => e.EventType == "complete");
     }
 
     [Fact]
@@ -270,7 +300,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         var client = _factory.CreateClient();
         var userId = $"test-user-{Guid.NewGuid()}";
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        
+
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");
         var createRequest = new CreateChatRequest(
             ChatId: null,
@@ -280,30 +310,35 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             ModeId: "general"
         );
         request.Content = JsonContent.Create(createRequest, options: _jsonOptions);
-        
+
         // Act
-        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-        
+        using var response = await client.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead
+        );
+
         // Read just the headers to measure initial response time
         stopwatch.Stop();
         var initialResponseTime = stopwatch.ElapsedMilliseconds;
-        
-        response.EnsureSuccessStatusCode();
-        
+
+        _ = response.EnsureSuccessStatusCode();
+
         // Continue reading the stream
         stopwatch.Restart();
         var sseContent = await response.Content.ReadAsStringAsync();
         stopwatch.Stop();
         var totalStreamTime = stopwatch.ElapsedMilliseconds;
-        
+
         // Assert
-        initialResponseTime.Should().BeLessThan(500, "Initial SSE response should be fast");
-        
+        _ = initialResponseTime.Should().BeLessThan(500, "Initial SSE response should be fast");
+
         var events = ParseSseEvents(sseContent);
-        events.Should().NotBeEmpty();
-        
+        _ = events.Should().NotBeEmpty();
+
         // Verify streaming completed in reasonable time
-        totalStreamTime.Should().BeLessThan(10000, "Complete SSE stream should finish within 10 seconds");
+        _ = totalStreamTime
+            .Should()
+            .BeLessThan(10000, "Complete SSE stream should finish within 10 seconds");
     }
 
     [Fact]
@@ -312,68 +347,82 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         // Arrange
         var client = _factory.CreateClient();
         var modes = new[] { "general", "coding", "writing" };
-        
+
         // Create concurrent SSE requests with different modes
-        var tasks = modes.Select(async mode =>
-        {
-            var userId = $"concurrent-user-{Guid.NewGuid()}";
-            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");
-            var createRequest = new CreateChatRequest(
-                ChatId: null,
-                UserId: userId,
-                Message: $"Test concurrent SSE with {mode} mode",
-                SystemPrompt: null,
-                ModeId: mode
-            );
-            request.Content = JsonContent.Create(createRequest, options: _jsonOptions);
-            
-            using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-            response.EnsureSuccessStatusCode();
-            
-            var content = await response.Content.ReadAsStringAsync();
-            return (mode: mode, content: content);
-        }).ToList();
-        
+        var tasks = modes
+            .Select(async mode =>
+            {
+                var userId = $"concurrent-user-{Guid.NewGuid()}";
+                using var request = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");
+                var createRequest = new CreateChatRequest(
+                    ChatId: null,
+                    UserId: userId,
+                    Message: $"Test concurrent SSE with {mode} mode",
+                    SystemPrompt: null,
+                    ModeId: mode
+                );
+                request.Content = JsonContent.Create(createRequest, options: _jsonOptions);
+
+                using var response = await client.SendAsync(
+                    request,
+                    HttpCompletionOption.ResponseHeadersRead
+                );
+                _ = response.EnsureSuccessStatusCode();
+
+                var content = await response.Content.ReadAsStringAsync();
+                return (mode: mode, content: content);
+            })
+            .ToList();
+
         // Act
         var results = await Task.WhenAll(tasks);
-        
+
         // Assert
-        results.Should().HaveCount(3);
-        
-        foreach (var result in results)
+        _ = results.Should().HaveCount(3);
+
+        foreach (var (mode, content) in results)
         {
-            var events = ParseSseEvents(result.content);
-            events.Should().NotBeEmpty($"Mode {result.mode} should have SSE events");
-            events.Should().Contain(e => e.EventType == "init", $"Mode {result.mode} should have init event");
-            events.Should().Contain(e => e.EventType == "complete", $"Mode {result.mode} should have complete event");
+            var events = ParseSseEvents(content);
+            _ = events.Should().NotBeEmpty($"Mode {mode} should have SSE events");
+            _ = events
+                .Should()
+                .Contain(e => e.EventType == "init", $"Mode {mode} should have init event");
+            _ = events
+                .Should()
+                .Contain(
+                    e => e.EventType == "complete",
+                    $"Mode {mode} should have complete event"
+                );
         }
     }
 
     /// <summary>
     /// Helper method to parse SSE events from raw SSE content
     /// </summary>
-    private List<SseEvent> ParseSseEvents(string sseContent)
+    private static List<SseEvent> ParseSseEvents(string sseContent)
     {
         var events = new List<SseEvent>();
         var lines = sseContent.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        
+
         string? currentEventType = null;
         var dataLines = new List<string>();
-        
+
         foreach (var line in lines)
         {
             if (line.StartsWith("event: "))
             {
                 // Save previous event if exists
-                if (currentEventType != null && dataLines.Any())
+                if (currentEventType != null && dataLines.Count != 0)
                 {
-                    events.Add(new SseEvent
-                    {
-                        EventType = currentEventType,
-                        Data = string.Join("\n", dataLines)
-                    });
+                    events.Add(
+                        new SseEvent
+                        {
+                            EventType = currentEventType,
+                            Data = string.Join("\n", dataLines),
+                        }
+                    );
                 }
-                
+
                 currentEventType = line.Substring(7).Trim();
                 dataLines.Clear();
             }
@@ -382,17 +431,15 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
                 dataLines.Add(line.Substring(6));
             }
         }
-        
+
         // Save last event
-        if (currentEventType != null && dataLines.Any())
+        if (currentEventType != null && dataLines.Count != 0)
         {
-            events.Add(new SseEvent
-            {
-                EventType = currentEventType,
-                Data = string.Join("\n", dataLines)
-            });
+            events.Add(
+                new SseEvent { EventType = currentEventType, Data = string.Join("\n", dataLines) }
+            );
         }
-        
+
         return events;
     }
 

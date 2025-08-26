@@ -1,31 +1,27 @@
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Configuration;
-using ModelContextProtocol.Client;
-using AIChat.Server.Models;
 using AIChat.Server.Exceptions;
+using AIChat.Server.Models;
+using Microsoft.Extensions.Options;
+using ModelContextProtocol.Client;
 
 namespace AIChat.Server.Services;
 
 public interface IMcpClientManager
 {
-    Task<Dictionary<string, IMcpClient>> GetActiveClientsAsync(CancellationToken cancellationToken = default);
+    Task<Dictionary<string, IMcpClient>> GetActiveClientsAsync(
+        CancellationToken cancellationToken = default
+    );
     Task InitializeClientsAsync(CancellationToken cancellationToken = default);
     Task ShutdownClientsAsync();
     bool IsInitialized { get; }
 }
 
-public class McpClientManager : IMcpClientManager, IAsyncDisposable
+public class McpClientManager(
+    IOptions<McpConfiguration> configuration,
+    IConfiguration appConfiguration,
+    ILogger<McpClientManager> logger
+    ) : IMcpClientManager, IAsyncDisposable
 {
-    private readonly McpConfiguration _configuration;
-    private readonly IConfiguration _appConfiguration;
-    private readonly ILogger<McpClientManager> _logger;
+    private readonly McpConfiguration _configuration = configuration.Value;
     private readonly Dictionary<string, IMcpClient> _clients = new();
     private readonly Dictionary<string, IClientTransport> _transports = new();
     private readonly SemaphoreSlim _initializationLock = new(1, 1);
@@ -34,15 +30,7 @@ public class McpClientManager : IMcpClientManager, IAsyncDisposable
 
     public bool IsInitialized => _isInitialized;
 
-    public McpClientManager(
-        IOptions<McpConfiguration> configuration,
-        IConfiguration appConfiguration,
-        ILogger<McpClientManager> logger)
-    {
-        _configuration = configuration.Value;
-        _appConfiguration = appConfiguration;
-        _logger = logger;
-    }
+    private static readonly string[] separator = new[] { ":-" };
 
     public async Task InitializeClientsAsync(CancellationToken cancellationToken = default)
     {
@@ -51,17 +39,20 @@ public class McpClientManager : IMcpClientManager, IAsyncDisposable
         {
             if (_isInitialized)
             {
-                _logger.LogInformation("MCP clients already initialized");
+                logger.LogInformation("MCP clients already initialized");
                 return;
             }
 
-            _logger.LogInformation("Initializing MCP clients from configuration");
+            logger.LogInformation("Initializing MCP clients from configuration");
 
             foreach (var (serverName, serverConfig) in _configuration.McpServers)
             {
                 if (!serverConfig.Enabled)
                 {
-                    _logger.LogInformation("Skipping disabled MCP server: {ServerName}", serverName);
+                    logger.LogInformation(
+                        "Skipping disabled MCP server: {ServerName}",
+                        serverName
+                    );
                     continue;
                 }
 
@@ -76,26 +67,42 @@ public class McpClientManager : IMcpClientManager, IAsyncDisposable
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Unexpected error initializing MCP client for server: {ServerName}", serverName);
+                    logger.LogError(
+                        ex,
+                        "Unexpected error initializing MCP client for server: {ServerName}",
+                        serverName
+                    );
                     throw new McpInitializationException(
-                        $"Failed to initialize MCP client for server '{serverName}'", 
-                        serverName, 
-                        ex);
+                        $"Failed to initialize MCP client for server '{serverName}'",
+                        serverName,
+                        ex
+                    );
                 }
             }
 
             _isInitialized = true;
-            _logger.LogInformation("MCP client initialization completed. Active clients: {ClientCount}", _clients.Count);
+            logger.LogInformation(
+                "MCP client initialization completed. Active clients: {ClientCount}",
+                _clients.Count
+            );
         }
         finally
         {
-            _initializationLock.Release();
+            _ = _initializationLock.Release();
         }
     }
 
-    private async Task InitializeClientAsync(string serverName, McpServerConfig config, CancellationToken cancellationToken)
+    private async Task InitializeClientAsync(
+        string serverName,
+        McpServerConfig config,
+        CancellationToken cancellationToken
+    )
     {
-        _logger.LogInformation("Initializing MCP client for server: {ServerName} (Type: {Type})", serverName, config.Type);
+        logger.LogInformation(
+            "Initializing MCP client for server: {ServerName} (Type: {Type})",
+            serverName,
+            config.Type
+        );
 
         IClientTransport transport;
 
@@ -104,50 +111,65 @@ public class McpClientManager : IMcpClientManager, IAsyncDisposable
             case "stdio":
                 transport = CreateStdioTransport(serverName, config);
                 break;
-            
+
             case "sse":
             case "http":
                 transport = CreateSseTransport(serverName, config);
                 break;
-            
+
             default:
-                var errorMsg = $"Transport type '{config.Type}' is not supported. Supported types: stdio, sse, http";
-                _logger.LogError(errorMsg + " for server: {ServerName}", serverName);
+                var errorMsg =
+                    $"Transport type '{config.Type}' is not supported. Supported types: stdio, sse, http";
+                logger.LogError(errorMsg + " for server: {ServerName}", serverName);
                 throw new McpTransportException(errorMsg, serverName, config.Type);
         }
 
         try
         {
-            var client = await McpClientFactory.CreateAsync(transport);
-            
+            var client = await McpClientFactory.CreateAsync(transport, cancellationToken: cancellationToken);
+
             _clients[serverName] = client;
             _transports[serverName] = transport;
 
-            var tools = await client.ListToolsAsync();
-            _logger.LogInformation("Successfully connected to MCP server: {ServerName}. Available tools: {ToolCount}", 
-                serverName, tools.Count);
-            
+            var tools = await client.ListToolsAsync(cancellationToken: cancellationToken);
+            logger.LogInformation(
+                "Successfully connected to MCP server: {ServerName}. Available tools: {ToolCount}",
+                serverName,
+                tools.Count
+            );
+
             foreach (var tool in tools)
             {
-                _logger.LogDebug("  - {ToolName}: {ToolDescription}", tool.Name, tool.Description);
+                logger.LogDebug("  - {ToolName}: {ToolDescription}", tool.Name, tool.Description);
             }
         }
         catch (McpException)
         {
             // Already a specific MCP exception, just clean up and rethrow
             if (transport is IDisposable disposableTransport)
+            {
                 disposableTransport.Dispose();
+            }
+
             throw;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to create MCP client for server: {ServerName}", serverName);
+            logger.LogError(
+                ex,
+                "Failed to create MCP client for server: {ServerName}",
+                serverName
+            );
             if (transport is IDisposable disposableTransport)
+            {
                 disposableTransport.Dispose();
+            }
+
             throw new McpConnectionException(
-                $"Failed to establish connection to MCP server '{serverName}'", 
-                serverName, 
-                ex);
+                $"Failed to establish connection to MCP server '{serverName}'",
+                serverName,
+                ex
+            );
         }
     }
 
@@ -156,10 +178,11 @@ public class McpClientManager : IMcpClientManager, IAsyncDisposable
         if (string.IsNullOrEmpty(config.Command))
         {
             var errorMsg = "Command is required for stdio transport";
-            _logger.LogError("{Error} for server: {ServerName}", errorMsg, serverName);
+            logger.LogError("{Error} for server: {ServerName}", errorMsg, serverName);
             throw new McpConfigurationException(
                 $"{errorMsg} in server configuration for '{serverName}'",
-                $"Mcp:McpServers:{serverName}:Command");
+                $"Mcp:McpServers:{serverName}:Command"
+            );
         }
 
         var options = new StdioClientTransportOptions
@@ -167,7 +190,7 @@ public class McpClientManager : IMcpClientManager, IAsyncDisposable
             Name = serverName,
             Command = config.Command,
             Arguments = config.Args?.ToArray() ?? Array.Empty<string>(),
-            WorkingDirectory = config.WorkingDirectory
+            WorkingDirectory = config.WorkingDirectory,
         };
 
         if (config.Env != null)
@@ -175,8 +198,11 @@ public class McpClientManager : IMcpClientManager, IAsyncDisposable
             options.EnvironmentVariables = ResolveEnvironmentVariables(config.Env);
         }
 
-        _logger.LogDebug("Creating stdio transport: Command={Command}, Args={Args}", 
-            options.Command, string.Join(" ", options.Arguments));
+        logger.LogDebug(
+            "Creating stdio transport: Command={Command}, Args={Args}",
+            options.Command,
+            string.Join(" ", options.Arguments)
+        );
 
         return new StdioClientTransport(options);
     }
@@ -185,18 +211,20 @@ public class McpClientManager : IMcpClientManager, IAsyncDisposable
     {
         // SSE/HTTP transport is not yet available in the current ModelContextProtocol.Client version
         // This is a placeholder for future implementation when the SDK supports it
-        var errorMsg = "SSE/HTTP transport is not yet supported in the current ModelContextProtocol.Client version";
-        _logger.LogWarning("{Error}. Server {ServerName} will be skipped.", errorMsg, serverName);
+        var errorMsg =
+            "SSE/HTTP transport is not yet supported in the current ModelContextProtocol.Client version";
+        logger.LogWarning("{Error}. Server {ServerName} will be skipped.", errorMsg, serverName);
         throw new McpTransportException(
             $"{errorMsg}. Please use stdio transport for server: {serverName}",
             serverName,
-            config.Type);
+            config.Type
+        );
     }
 
     private Dictionary<string, string?> ResolveEnvironmentVariables(Dictionary<string, string> env)
     {
         var resolved = new Dictionary<string, string?>();
-        
+
         foreach (var (key, value) in env)
         {
             var expandedValue = value;
@@ -206,17 +234,22 @@ public class McpClientManager : IMcpClientManager, IAsyncDisposable
                 // Handle input references
                 var inputId = value.Substring(8, value.Length - 9);
                 var inputConfig = _configuration.Inputs?.FirstOrDefault(i => i.Id == inputId);
-                
+
                 if (inputConfig != null)
                 {
-                    var envVarName = inputConfig.DefaultValue ?? inputId.ToUpper().Replace("-", "_");
-                    
+                    var envVarName =
+                        inputConfig.DefaultValue ?? inputId.ToUpper().Replace("-", "_");
+
                     // Try User Secrets/IConfiguration first, then environment variable
-                    expandedValue = _appConfiguration[envVarName] 
-                        ?? Environment.GetEnvironmentVariable(envVarName) 
+                    expandedValue =
+                        appConfiguration[envVarName]
+                        ?? Environment.GetEnvironmentVariable(envVarName)
                         ?? string.Empty;
-                    
-                    if (string.IsNullOrEmpty(expandedValue) && !string.IsNullOrEmpty(inputConfig.DefaultValue))
+
+                    if (
+                        string.IsNullOrEmpty(expandedValue)
+                        && !string.IsNullOrEmpty(inputConfig.DefaultValue)
+                    )
                     {
                         expandedValue = inputConfig.DefaultValue;
                     }
@@ -226,12 +259,13 @@ public class McpClientManager : IMcpClientManager, IAsyncDisposable
             {
                 // Handle variable references with optional defaults
                 var variableExpression = value.Substring(2, value.Length - 3);
-                var parts = variableExpression.Split(new[] { ":-" }, 2, StringSplitOptions.None);
+                var parts = variableExpression.Split(separator, 2, StringSplitOptions.None);
                 var variableName = parts[0];
                 var defaultValue = parts.Length > 1 ? parts[1] : string.Empty;
-                
+
                 // Try User Secrets/IConfiguration first, then environment variable, then default
-                expandedValue = _appConfiguration[variableName] 
+                expandedValue =
+                    appConfiguration[variableName]
                     ?? Environment.GetEnvironmentVariable(variableName)
                     ?? defaultValue;
             }
@@ -247,7 +281,9 @@ public class McpClientManager : IMcpClientManager, IAsyncDisposable
         return resolved;
     }
 
-    public async Task<Dictionary<string, IMcpClient>> GetActiveClientsAsync(CancellationToken cancellationToken = default)
+    public async Task<Dictionary<string, IMcpClient>> GetActiveClientsAsync(
+        CancellationToken cancellationToken = default
+    )
     {
         if (!_isInitialized)
         {
@@ -259,19 +295,26 @@ public class McpClientManager : IMcpClientManager, IAsyncDisposable
 
     public async Task ShutdownClientsAsync()
     {
-        _logger.LogInformation("Shutting down MCP clients");
+        logger.LogInformation("Shutting down MCP clients");
 
         foreach (var (serverName, transport) in _transports)
         {
             try
             {
                 if (transport is IDisposable disposable)
+                {
                     disposable.Dispose();
-                _logger.LogDebug("Disposed transport for server: {ServerName}", serverName);
+                }
+
+                logger.LogDebug("Disposed transport for server: {ServerName}", serverName);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error disposing transport for server: {ServerName}", serverName);
+                logger.LogError(
+                    ex,
+                    "Error disposing transport for server: {ServerName}",
+                    serverName
+                );
             }
         }
 
@@ -296,7 +339,7 @@ public class McpClientManager : IMcpClientManager, IAsyncDisposable
     {
         // Dispose async resources
         await ShutdownClientsAsync().ConfigureAwait(false);
-        
+
         // Dispose synchronous resources
         _initializationLock?.Dispose();
     }

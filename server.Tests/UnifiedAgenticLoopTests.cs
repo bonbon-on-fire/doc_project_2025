@@ -1,13 +1,13 @@
-using AchieveAi.LmDotnetTools.LmCore.Messages;
-using AchieveAi.LmDotnetTools.OpenAIProvider.Agents;
-using AIChat.Server.Services.TestMode;
-using FluentAssertions;
-using Microsoft.Extensions.Logging;
 using System.Collections.Immutable;
 using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using AchieveAi.LmDotnetTools.LmCore.Messages;
+using AchieveAi.LmDotnetTools.OpenAIProvider.Agents;
+using AIChat.Server.Services.TestMode;
+using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -18,32 +18,28 @@ namespace AIChat.Server.Tests;
 /// Combines unit tests for instruction chain logic with integration tests through full LmCore stack.
 /// Special focus on CompositeMessage handling in both generation and submission scenarios.
 /// </summary>
-public class UnifiedAgenticLoopTests
+public class UnifiedAgenticLoopTests(ITestOutputHelper output)
 {
-    private readonly ITestOutputHelper _output;
-    private readonly ILogger<TestSseMessageHandler> _logger;
-    
+    private readonly ILogger<TestSseMessageHandler> _logger = new XunitLogger<TestSseMessageHandler>(output);
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
-
-    public UnifiedAgenticLoopTests(ITestOutputHelper output)
-    {
-        _output = output;
-        _logger = new XunitLogger<TestSseMessageHandler>(output);
-    }
 
     #region Test Helpers
 
     /// <summary>
     /// Builds an HTTP request message with instruction chain for testing.
     /// </summary>
-    private static HttpRequestMessage BuildChainRequest(string chainJson, params string[] previousAssistantResponses)
+    private static HttpRequestMessage BuildChainRequest(
+        string chainJson,
+        params string[] previousAssistantResponses
+    )
     {
         var messages = new List<object>
         {
-            new { role = "user", content = $"<|instruction_start|>{chainJson}<|instruction_end|>" }
+            new { role = "user", content = $"<|instruction_start|>{chainJson}<|instruction_end|>" },
         };
 
         // Add previous assistant responses to simulate multi-turn conversation
@@ -56,32 +52,46 @@ public class UnifiedAgenticLoopTests
         {
             model = "test-model",
             stream = true,
-            messages = messages.ToArray()
+            messages = messages.ToArray(),
         };
 
         var json = JsonSerializer.Serialize(payload, JsonOptions);
         return new HttpRequestMessage(HttpMethod.Post, "http://localhost/v1/chat/completions")
         {
-            Content = new StringContent(json, Encoding.UTF8, "application/json")
+            Content = new StringContent(json, Encoding.UTF8, "application/json"),
         };
     }
 
     /// <summary>
     /// Builds a request with mixed message types to test response counting.
     /// </summary>
-    private static HttpRequestMessage BuildMixedRequest(string chainJson, bool includeToolMessages = false)
+    private static HttpRequestMessage BuildMixedRequest(
+        string chainJson,
+        bool includeToolMessages = false
+    )
     {
         var messages = new List<object>
         {
-            new { role = "user", content = $"Start\n<|instruction_start|>{chainJson}<|instruction_end|>" },
+            new
+            {
+                role = "user",
+                content = $"Start\n<|instruction_start|>{chainJson}<|instruction_end|>",
+            },
             new { role = "assistant", content = "First response" },
             new { role = "user", content = "User interruption" },
-            new { role = "assistant", content = "Second response" }
+            new { role = "assistant", content = "Second response" },
         };
 
         if (includeToolMessages)
         {
-            messages.Add(new { role = "tool", content = "Tool output", tool_call_id = "123" });
+            messages.Add(
+                new
+                {
+                    role = "tool",
+                    content = "Tool output",
+                    tool_call_id = "123",
+                }
+            );
             messages.Add(new { role = "assistant", content = "Third response" });
         }
 
@@ -89,16 +99,16 @@ public class UnifiedAgenticLoopTests
         {
             model = "test-model",
             stream = true,
-            messages = messages.ToArray()
+            messages = messages.ToArray(),
         };
 
         var json = JsonSerializer.Serialize(payload, JsonOptions);
         return new HttpRequestMessage(HttpMethod.Post, "http://localhost/v1/chat/completions")
         {
-            Content = new StringContent(json, Encoding.UTF8, "application/json")
+            Content = new StringContent(json, Encoding.UTF8, "application/json"),
         };
     }
-    
+
     /// <summary>
     /// Helper method to extract all JSON lines from SSE response.
     /// </summary>
@@ -106,7 +116,10 @@ public class UnifiedAgenticLoopTests
     {
         foreach (var line in response.Split('\n'))
         {
-            if (line.StartsWith("data: ", StringComparison.Ordinal) && !line.Contains("[DONE]", StringComparison.Ordinal))
+            if (
+                line.StartsWith("data: ", StringComparison.Ordinal)
+                && !line.Contains("[DONE]", StringComparison.Ordinal)
+            )
             {
                 yield return line.Substring(6).Trim();
             }
@@ -120,10 +133,15 @@ public class UnifiedAgenticLoopTests
     {
         var httpClient = new HttpClient(handler)
         {
-            BaseAddress = new Uri("http://test-api.com/v1/")
+            BaseAddress = new Uri("http://test-api.com/v1/"),
         };
-        
-        var openClient = new OpenClient(httpClient, "http://test-api.com/v1/", null, new XunitLogger<OpenClient>(_output));
+
+        var openClient = new OpenClient(
+            httpClient,
+            "http://test-api.com/v1/",
+            null,
+            new XunitLogger<OpenClient>(output)
+        );
         return new OpenClientAgent("TestAgent", openClient);
     }
 
@@ -131,45 +149,52 @@ public class UnifiedAgenticLoopTests
     /// Helper method to aggregate UPDATE messages into FINAL messages, then wrap in CompositeMessage if needed.
     /// This simulates what middleware would do in a real agent loop.
     /// </summary>
-    private IMessage? AggregateMessages(List<IMessage> replyMessages, string fromAgent = "TestAgent")
+    private static IMessage? AggregateMessages(
+        List<IMessage> replyMessages,
+        string fromAgent = "TestAgent"
+    )
     {
         // Filter out UsageMessages
         var nonUsageMessages = replyMessages.Where(m => m is not UsageMessage).ToList();
-        
+
         // First, aggregate update messages into final messages (simulating middleware)
         var finalMessages = new List<IMessage>();
-        
+
         // Group update messages by type and aggregate
         var textUpdates = nonUsageMessages.OfType<TextUpdateMessage>().ToList();
-        if (textUpdates.Any())
+        if (textUpdates.Count != 0)
         {
             // Aggregate multiple TextUpdateMessages into single TextMessage
             var aggregatedText = string.Join("", textUpdates.Select(u => u.Text));
-            finalMessages.Add(new TextMessage 
-            { 
-                Text = aggregatedText,
-                Role = Role.Assistant,
-                FromAgent = fromAgent,
-                GenerationId = textUpdates.FirstOrDefault()?.GenerationId
-            });
+            finalMessages.Add(
+                new TextMessage
+                {
+                    Text = aggregatedText,
+                    Role = Role.Assistant,
+                    FromAgent = fromAgent,
+                    GenerationId = textUpdates.FirstOrDefault()?.GenerationId,
+                }
+            );
         }
-        
+
         var reasoningUpdates = nonUsageMessages.OfType<ReasoningUpdateMessage>().ToList();
-        if (reasoningUpdates.Any())
+        if (reasoningUpdates.Count != 0)
         {
             // Aggregate multiple ReasoningUpdateMessages into single ReasoningMessage
             var aggregatedReasoning = string.Join("", reasoningUpdates.Select(u => u.Reasoning));
-            finalMessages.Add(new ReasoningMessage 
-            { 
-                Reasoning = aggregatedReasoning,
-                Role = Role.Assistant,
-                FromAgent = fromAgent,
-                GenerationId = reasoningUpdates.FirstOrDefault()?.GenerationId
-            });
+            finalMessages.Add(
+                new ReasoningMessage
+                {
+                    Reasoning = aggregatedReasoning,
+                    Role = Role.Assistant,
+                    FromAgent = fromAgent,
+                    GenerationId = reasoningUpdates.FirstOrDefault()?.GenerationId,
+                }
+            );
         }
-        
+
         var toolUpdates = nonUsageMessages.OfType<ToolsCallUpdateMessage>().ToList();
-        if (toolUpdates.Any())
+        if (toolUpdates.Count != 0)
         {
             // Aggregate ToolsCallUpdateMessages into ToolsCallMessage
             // In real middleware this would be more complex, but for testing we'll create a simple version
@@ -180,28 +205,32 @@ public class UnifiedAgenticLoopTests
                 {
                     if (!string.IsNullOrEmpty(toolUpdate.FunctionName))
                     {
-                        allToolCalls.Add(new ToolCall
-                        {
-                            FunctionName = toolUpdate.FunctionName,
-                            FunctionArgs = toolUpdate.FunctionArgs ?? "",
-                            ToolCallId = toolUpdate.ToolCallId
-                        });
+                        allToolCalls.Add(
+                            new ToolCall
+                            {
+                                FunctionName = toolUpdate.FunctionName,
+                                FunctionArgs = toolUpdate.FunctionArgs ?? "",
+                                ToolCallId = toolUpdate.ToolCallId,
+                            }
+                        );
                     }
                 }
             }
-            
-            if (allToolCalls.Any())
+
+            if (allToolCalls.Count != 0)
             {
-                finalMessages.Add(new ToolsCallMessage
-                {
-                    ToolCalls = allToolCalls.ToImmutableList(),
-                    Role = Role.Assistant,
-                    FromAgent = fromAgent,
-                    GenerationId = toolUpdates.FirstOrDefault()?.GenerationId
-                });
+                finalMessages.Add(
+                    new ToolsCallMessage
+                    {
+                        ToolCalls = allToolCalls.ToImmutableList(),
+                        Role = Role.Assistant,
+                        FromAgent = fromAgent,
+                        GenerationId = toolUpdates.FirstOrDefault()?.GenerationId,
+                    }
+                );
             }
         }
-        
+
         // Now apply the CompositeMessage logic to FINAL messages
         if (finalMessages.Count > 1)
         {
@@ -211,7 +240,7 @@ public class UnifiedAgenticLoopTests
                 FromAgent = fromAgent,
                 GenerationId = finalMessages.FirstOrDefault()?.GenerationId,
                 Role = Role.Assistant,
-                Messages = finalMessages.ToImmutableList()
+                Messages = finalMessages.ToImmutableList(),
             };
         }
         else if (finalMessages.Count == 1)
@@ -242,37 +271,37 @@ public class UnifiedAgenticLoopTests
         using var invoker = new HttpMessageInvoker(handler);
 
         var chainJson = """
-        {
-          "instruction_chain": [
             {
-              "id": "step1",
-              "id_message": "STEP-1",
-              "messages": [
-                { "text_message": { "length": 3 } }
-              ]
-            },
-            {
-              "id": "step2",
-              "id_message": "STEP-2",
-              "messages": [
-                { "text_message": { "length": 4 } }
+              "instruction_chain": [
+                {
+                  "id": "step1",
+                  "id_message": "STEP-1",
+                  "messages": [
+                    { "text_message": { "length": 3 } }
+                  ]
+                },
+                {
+                  "id": "step2",
+                  "id_message": "STEP-2",
+                  "messages": [
+                    { "text_message": { "length": 4 } }
+                  ]
+                }
               ]
             }
-          ]
-        }
-        """;
+            """;
 
         var req = BuildChainRequest(chainJson);
 
         // Act
         var res = await invoker.SendAsync(req, default);
-        
+
         // Assert
-        res.StatusCode.Should().Be(HttpStatusCode.OK);
+        _ = res.StatusCode.Should().Be(HttpStatusCode.OK);
         var text = await res.Content.ReadAsStringAsync();
-        text.Should().Contain("STEP-1"); // First instruction should execute
-        text.Should().NotContain("STEP-2"); // Second instruction should not execute yet
-        text.Should().Contain("[DONE]");
+        _ = text.Should().Contain("STEP-1"); // First instruction should execute
+        _ = text.Should().NotContain("STEP-2"); // Second instruction should not execute yet
+        _ = text.Should().Contain("[DONE]");
     }
 
     /// <summary>
@@ -287,32 +316,32 @@ public class UnifiedAgenticLoopTests
         using var invoker = new HttpMessageInvoker(handler);
 
         var chainJson = """
-        {
-          "instruction_chain": [
             {
-              "id_message": "FIRST",
-              "messages": [{ "text_message": { "length": 2 } }]
-            },
-            {
-              "id_message": "SECOND",
-              "messages": [{ "text_message": { "length": 3 } }]
+              "instruction_chain": [
+                {
+                  "id_message": "FIRST",
+                  "messages": [{ "text_message": { "length": 2 } }]
+                },
+                {
+                  "id_message": "SECOND",
+                  "messages": [{ "text_message": { "length": 3 } }]
+                }
+              ]
             }
-          ]
-        }
-        """;
+            """;
 
         // Request with one previous assistant response
         var req = BuildChainRequest(chainJson, "Previous assistant response");
 
         // Act
         var res = await invoker.SendAsync(req, default);
-        
+
         // Assert
-        res.StatusCode.Should().Be(HttpStatusCode.OK);
+        _ = res.StatusCode.Should().Be(HttpStatusCode.OK);
         var text = await res.Content.ReadAsStringAsync();
-        text.Should().NotContain("FIRST"); // First instruction already executed
-        text.Should().Contain("SECOND"); // Second instruction should execute now
-        text.Should().Contain("[DONE]");
+        _ = text.Should().NotContain("FIRST"); // First instruction already executed
+        _ = text.Should().Contain("SECOND"); // Second instruction should execute now
+        _ = text.Should().Contain("[DONE]");
     }
 
     /// <summary>
@@ -327,28 +356,28 @@ public class UnifiedAgenticLoopTests
         using var invoker = new HttpMessageInvoker(handler);
 
         var chainJson = """
-        {
-          "instruction_chain": [
             {
-              "id_message": "ONLY-ONE",
-              "messages": [{ "text_message": { "length": 2 } }]
+              "instruction_chain": [
+                {
+                  "id_message": "ONLY-ONE",
+                  "messages": [{ "text_message": { "length": 2 } }]
+                }
+              ]
             }
-          ]
-        }
-        """;
+            """;
 
         // Request with one previous response (chain exhausted)
         var req = BuildChainRequest(chainJson, "Already executed");
 
         // Act
         var res = await invoker.SendAsync(req, default);
-        
+
         // Assert
-        res.StatusCode.Should().Be(HttpStatusCode.OK);
+        _ = res.StatusCode.Should().Be(HttpStatusCode.OK);
         var text = await res.Content.ReadAsStringAsync();
-        text.Should().NotContain("ONLY-ONE"); // Should not execute again
-        text.Should().Contain("completion"); // Should use completion fallback
-        text.Should().Contain("[DONE]");
+        _ = text.Should().NotContain("ONLY-ONE"); // Should not execute again
+        _ = text.Should().Contain("completion"); // Should use completion fallback
+        _ = text.Should().Contain("[DONE]");
     }
 
     /// <summary>
@@ -363,31 +392,31 @@ public class UnifiedAgenticLoopTests
         using var invoker = new HttpMessageInvoker(handler);
 
         var chainJson = """
-        {
-          "instruction_chain": [
-            { "id_message": "ONE", "messages": [{ "text_message": { "length": 1 } }] },
-            { "id_message": "TWO", "messages": [{ "text_message": { "length": 1 } }] },
-            { "id_message": "THREE", "messages": [{ "text_message": { "length": 1 } }] },
-            { "id_message": "FOUR", "messages": [{ "text_message": { "length": 1 } }] }
-          ]
-        }
-        """;
+            {
+              "instruction_chain": [
+                { "id_message": "ONE", "messages": [{ "text_message": { "length": 1 } }] },
+                { "id_message": "TWO", "messages": [{ "text_message": { "length": 1 } }] },
+                { "id_message": "THREE", "messages": [{ "text_message": { "length": 1 } }] },
+                { "id_message": "FOUR", "messages": [{ "text_message": { "length": 1 } }] }
+              ]
+            }
+            """;
 
         // Mixed messages: 2 assistant, 1 user, 1 tool (plus initial user with chain)
         var req = BuildMixedRequest(chainJson, includeToolMessages: true);
 
         // Act
         var res = await invoker.SendAsync(req, default);
-        
+
         // Assert
-        res.StatusCode.Should().Be(HttpStatusCode.OK);
+        _ = res.StatusCode.Should().Be(HttpStatusCode.OK);
         var text = await res.Content.ReadAsStringAsync();
-        
+
         // Should execute FOUR (index 3) because there are 3 assistant responses
-        text.Should().Contain("\"FOUR\"");  // Check for quoted "FOUR" in JSON
-        text.Should().NotContain("\"ONE\"");
-        text.Should().NotContain("\"TWO\"");
-        text.Should().NotContain("\"THREE\"");
+        _ = text.Should().Contain("\"FOUR\""); // Check for quoted "FOUR" in JSON
+        _ = text.Should().NotContain("\"ONE\"");
+        _ = text.Should().NotContain("\"TWO\"");
+        _ = text.Should().NotContain("\"THREE\"");
     }
 
     /// <summary>
@@ -403,24 +432,24 @@ public class UnifiedAgenticLoopTests
 
         // Old single instruction format (no instruction_chain array)
         var singleInstruction = """
-        {
-          "id_message": "SINGLE",
-          "messages": [
-            { "text_message": { "length": 3 } }
-          ]
-        }
-        """;
+            {
+              "id_message": "SINGLE",
+              "messages": [
+                { "text_message": { "length": 3 } }
+              ]
+            }
+            """;
 
         var req = BuildChainRequest(singleInstruction);
 
         // Act
         var res = await invoker.SendAsync(req, default);
-        
+
         // Assert
-        res.StatusCode.Should().Be(HttpStatusCode.OK);
+        _ = res.StatusCode.Should().Be(HttpStatusCode.OK);
         var text = await res.Content.ReadAsStringAsync();
-        text.Should().Contain("SINGLE"); // Should execute single instruction
-        text.Should().Contain("[DONE]");
+        _ = text.Should().Contain("SINGLE"); // Should execute single instruction
+        _ = text.Should().Contain("[DONE]");
     }
 
     #endregion
@@ -437,17 +466,18 @@ public class UnifiedAgenticLoopTests
         // Arrange
         var handler = new TestSseMessageHandler(_logger) { WordsPerChunk = 5, ChunkDelayMs = 0 };
         var agent = CreateTestAgent(handler);
-        
+
         // Create test message with tool call instruction
-        var userMessage = @"
+        var userMessage =
+            @"
 <|instruction_start|>
 {
   ""id_message"": ""test-weather"",
   ""messages"": [
-    { 
+    {
       ""tool_call"": [
         {
-          ""name"": ""get_weather"", 
+          ""name"": ""get_weather"",
           ""args"": {
             ""location"": ""San Francisco"",
             ""units"": ""celsius""
@@ -462,34 +492,34 @@ Get the weather for San Francisco";
 
         var messages = new List<IMessage>
         {
-            new TextMessage { Role = Role.User, Text = userMessage }
+            new TextMessage { Role = Role.User, Text = userMessage },
         };
 
         // Act
         var streamingResponse = await agent.GenerateReplyStreamingAsync(messages);
         var collectedMessages = new List<IMessage>();
-        
+
         await foreach (var message in streamingResponse)
         {
             collectedMessages.Add(message);
-            _output.WriteLine($"Received message type: {message.GetType().Name}");
+            output.WriteLine($"Received message type: {message.GetType().Name}");
         }
 
         // Assert
-        collectedMessages.Should().NotBeEmpty();
-        
+        _ = collectedMessages.Should().NotBeEmpty();
+
         var toolCallUpdateMessages = collectedMessages.OfType<ToolsCallUpdateMessage>().ToList();
-        toolCallUpdateMessages.Should().NotBeEmpty("Should have tool call update messages");
-        
+        _ = toolCallUpdateMessages.Should().NotBeEmpty("Should have tool call update messages");
+
         var allUpdates = toolCallUpdateMessages.SelectMany(m => m.ToolCallUpdates).ToList();
         var firstUpdate = allUpdates.FirstOrDefault(u => !string.IsNullOrEmpty(u.FunctionName));
-        firstUpdate.Should().NotBeNull();
-        firstUpdate!.FunctionName.Should().Be("get_weather");
-        
+        _ = firstUpdate.Should().NotBeNull();
+        _ = firstUpdate!.FunctionName.Should().Be("get_weather");
+
         var allArgChunks = string.Join("", allUpdates.Select(u => u.FunctionArgs ?? ""));
-        allArgChunks.Should().Contain("location");
-        allArgChunks.Should().Contain("San Francisco");
-        allArgChunks.Should().Contain("celsius");
+        _ = allArgChunks.Should().Contain("location");
+        _ = allArgChunks.Should().Contain("San Francisco");
+        _ = allArgChunks.Should().Contain("celsius");
     }
 
     /// <summary>
@@ -502,9 +532,10 @@ Get the weather for San Francisco";
         // Arrange
         var handler = new TestSseMessageHandler(_logger) { WordsPerChunk = 3, ChunkDelayMs = 0 };
         var agent = CreateTestAgent(handler);
-        
+
         // Create instruction chain with 3 steps (text, tool, text)
-        var chainMessage = @"Test instruction chain
+        var chainMessage =
+            @"Test instruction chain
 <|instruction_start|>
 {
   ""instruction_chain"": [
@@ -519,7 +550,7 @@ Get the weather for San Francisco";
       ""id"": ""step2"",
       ""id_message"": ""second-step"",
       ""messages"": [
-        { 
+        {
           ""tool_call"": [
             {
               ""name"": ""calculator"",
@@ -542,58 +573,70 @@ Get the weather for San Francisco";
 
         var messages = new List<IMessage>
         {
-            new TextMessage { Role = Role.User, Text = chainMessage }
+            new TextMessage { Role = Role.User, Text = chainMessage },
         };
 
         // Act - Execute first instruction
-        _output.WriteLine("=== Executing Step 1 ===");
+        output.WriteLine("=== Executing Step 1 ===");
         var response1 = await agent.GenerateReplyStreamingAsync(messages);
         var step1Messages = new List<IMessage>();
-        
+
         await foreach (var msg in response1)
         {
             step1Messages.Add(msg);
-            _output.WriteLine($"Step 1 - Received: {msg.GetType().Name}");
+            output.WriteLine($"Step 1 - Received: {msg.GetType().Name}");
         }
-        
+
         // Add assistant response to conversation
-        var step1Text = string.Join("", step1Messages.OfType<TextUpdateMessage>().Select(m => m.Text));
+        var step1Text = string.Join(
+            "",
+            step1Messages.OfType<TextUpdateMessage>().Select(m => m.Text)
+        );
         messages.Add(new TextMessage { Role = Role.Assistant, Text = step1Text });
-        
+
         // Execute second instruction
-        _output.WriteLine("=== Executing Step 2 ===");
+        output.WriteLine("=== Executing Step 2 ===");
         var response2 = await agent.GenerateReplyStreamingAsync(messages);
         var step2Messages = new List<IMessage>();
-        
+
         await foreach (var msg in response2)
         {
             step2Messages.Add(msg);
-            _output.WriteLine($"Step 2 - Received: {msg.GetType().Name}");
+            output.WriteLine($"Step 2 - Received: {msg.GetType().Name}");
         }
-        
+
         // Add tool call to conversation
         messages.Add(new TextMessage { Role = Role.Assistant, Text = "[Tool call executed]" });
-        
+
         // Execute third instruction
-        _output.WriteLine("=== Executing Step 3 ===");
+        output.WriteLine("=== Executing Step 3 ===");
         var response3 = await agent.GenerateReplyStreamingAsync(messages);
         var step3Messages = new List<IMessage>();
-        
+
         await foreach (var msg in response3)
         {
             step3Messages.Add(msg);
-            _output.WriteLine($"Step 3 - Received: {msg.GetType().Name}");
+            output.WriteLine($"Step 3 - Received: {msg.GetType().Name}");
         }
 
         // Assert
-        step1Messages.OfType<TextUpdateMessage>().Should().NotBeEmpty("Step 1 should generate text");
-        
+        _ = step1Messages
+            .OfType<TextUpdateMessage>()
+            .Should()
+            .NotBeEmpty("Step 1 should generate text");
+
         var toolCalls = step2Messages.OfType<ToolsCallUpdateMessage>().ToList();
-        toolCalls.Should().NotBeEmpty("Step 2 should generate tool calls");
+        _ = toolCalls.Should().NotBeEmpty("Step 2 should generate tool calls");
         var allToolUpdates = toolCalls.SelectMany(m => m.ToolCallUpdates).ToList();
-        allToolUpdates.Any(u => u.FunctionName == "calculator").Should().BeTrue("Should call calculator function");
-        
-        step3Messages.OfType<TextUpdateMessage>().Should().NotBeEmpty("Step 3 should generate text");
+        _ = allToolUpdates
+            .Any(u => u.FunctionName == "calculator")
+            .Should()
+            .BeTrue("Should call calculator function");
+
+        _ = step3Messages
+            .OfType<TextUpdateMessage>()
+            .Should()
+            .NotBeEmpty("Step 3 should generate text");
     }
 
     /// <summary>
@@ -606,9 +649,10 @@ Get the weather for San Francisco";
         // Arrange
         var handler = new TestSseMessageHandler(_logger) { WordsPerChunk = 3, ChunkDelayMs = 0 };
         var agent = CreateTestAgent(handler);
-        
+
         // Create a 2-step chain
-        var chainMessage = @"Test chain exhaustion
+        var chainMessage =
+            @"Test chain exhaustion
 <|instruction_start|>
 {
   ""instruction_chain"": [
@@ -632,48 +676,57 @@ Get the weather for San Francisco";
 
         var messages = new List<IMessage>
         {
-            new TextMessage { Role = Role.User, Text = chainMessage }
+            new TextMessage { Role = Role.User, Text = chainMessage },
         };
 
         // Act - Execute both steps and then try a third
         // Step 1
-        _output.WriteLine("=== Step 1 ===");
+        output.WriteLine("=== Step 1 ===");
         var response1 = await agent.GenerateReplyStreamingAsync(messages);
         var step1Text = "";
         await foreach (var msg in response1)
         {
-            if (msg is TextUpdateMessage txt) step1Text += txt.Text;
+            if (msg is TextUpdateMessage txt)
+            {
+                step1Text += txt.Text;
+            }
         }
         messages.Add(new TextMessage { Role = Role.Assistant, Text = step1Text });
-        
+
         // Step 2
-        _output.WriteLine("=== Step 2 ===");
+        output.WriteLine("=== Step 2 ===");
         var response2 = await agent.GenerateReplyStreamingAsync(messages);
         var step2Text = "";
         await foreach (var msg in response2)
         {
-            if (msg is TextUpdateMessage txt) step2Text += txt.Text;
+            if (msg is TextUpdateMessage txt)
+            {
+                step2Text += txt.Text;
+            }
         }
         messages.Add(new TextMessage { Role = Role.Assistant, Text = step2Text });
-        
+
         // Step 3 - Should get completion fallback
-        _output.WriteLine("=== Step 3 (Chain Exhausted) ===");
+        output.WriteLine("=== Step 3 (Chain Exhausted) ===");
         var response3 = await agent.GenerateReplyStreamingAsync(messages);
         var step3Messages = new List<IMessage>();
-        
+
         await foreach (var msg in response3)
         {
             step3Messages.Add(msg);
-            _output.WriteLine($"Exhaustion response: {msg.GetType().Name}");
+            output.WriteLine($"Exhaustion response: {msg.GetType().Name}");
         }
 
         // Assert
-        step3Messages.Should().NotBeEmpty("Should generate completion fallback");
-        
-        var completionText = string.Join("", step3Messages.OfType<TextUpdateMessage>().Select(m => m.Text));
-        completionText.Should().NotBeNullOrWhiteSpace("Should have completion text");
-        
-        _output.WriteLine($"Completion message: {completionText}");
+        _ = step3Messages.Should().NotBeEmpty("Should generate completion fallback");
+
+        var completionText = string.Join(
+            "",
+            step3Messages.OfType<TextUpdateMessage>().Select(m => m.Text)
+        );
+        _ = completionText.Should().NotBeNullOrWhiteSpace("Should have completion text");
+
+        output.WriteLine($"Completion message: {completionText}");
     }
 
     /// <summary>
@@ -686,15 +739,16 @@ Get the weather for San Francisco";
         // Arrange
         var handler = new TestSseMessageHandler(_logger) { WordsPerChunk = 5, ChunkDelayMs = 0 };
         var agent = CreateTestAgent(handler);
-        
+
         // Old format single instruction (without instruction_chain array)
-        var userMessage = @"Test backward compatibility
+        var userMessage =
+            @"Test backward compatibility
 <|instruction_start|>
 {
   ""id_message"": ""legacy-format"",
   ""reasoning"": { ""length"": 3 },
   ""messages"": [
-    { 
+    {
       ""text_message"": {
         ""length"": 8
       }
@@ -705,35 +759,35 @@ Get the weather for San Francisco";
 
         var messages = new List<IMessage>
         {
-            new TextMessage { Role = Role.User, Text = userMessage }
+            new TextMessage { Role = Role.User, Text = userMessage },
         };
 
         // Act
         var streamingResponse = await agent.GenerateReplyStreamingAsync(messages);
         var collectedMessages = new List<IMessage>();
-        
+
         await foreach (var message in streamingResponse)
         {
             collectedMessages.Add(message);
-            _output.WriteLine($"Received: {message.GetType().Name}");
+            output.WriteLine($"Received: {message.GetType().Name}");
         }
 
         // Assert
-        collectedMessages.Should().NotBeEmpty();
-        
+        _ = collectedMessages.Should().NotBeEmpty();
+
         // Should have reasoning updates (3 words)
         var reasoningUpdates = collectedMessages.OfType<ReasoningUpdateMessage>().ToList();
-        reasoningUpdates.Should().NotBeEmpty("Should have reasoning messages");
-        
+        _ = reasoningUpdates.Should().NotBeEmpty("Should have reasoning messages");
+
         // Should have text updates (8 words)
         var textUpdates = collectedMessages.OfType<TextUpdateMessage>().ToList();
-        textUpdates.Should().NotBeEmpty("Should have text messages");
-        
+        _ = textUpdates.Should().NotBeEmpty("Should have text messages");
+
         var fullText = string.Join("", textUpdates.Select(u => u.Text));
         var wordCount = fullText.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
-        wordCount.Should().BeInRange(6, 10, "Should generate approximately 8 words");
-        
-        _output.WriteLine($"Legacy format processed successfully with {wordCount} words");
+        _ = wordCount.Should().BeInRange(6, 10, "Should generate approximately 8 words");
+
+        output.WriteLine($"Legacy format processed successfully with {wordCount} words");
     }
 
     #endregion
@@ -751,16 +805,17 @@ Get the weather for San Francisco";
         // Arrange
         var handler = new TestSseMessageHandler(_logger) { WordsPerChunk = 3, ChunkDelayMs = 0 };
         var agent = CreateTestAgent(handler);
-        
+
         // Create an instruction that generates reasoning, text, and tool call
         // This should result in multiple message types streamed in sequence
-        var complexInstruction = @"Test composite message generation
+        var complexInstruction =
+            @"Test composite message generation
 <|instruction_start|>
 {
   ""id_message"": ""composite-test"",
   ""reasoning"": { ""length"": 5 },
   ""messages"": [
-    { 
+    {
       ""text_message"": {
         ""length"": 8
       }
@@ -779,28 +834,28 @@ Get the weather for San Francisco";
 
         var messages = new List<IMessage>
         {
-            new TextMessage { Role = Role.User, Text = complexInstruction }
+            new TextMessage { Role = Role.User, Text = complexInstruction },
         };
 
         // Act - Follow the exact pattern from ExamplePythonMCPClient
         var streamingResponse = await agent.GenerateReplyStreamingAsync(messages);
         var replyMessages = new List<IMessage>();
         bool hasToolCall = false;
-        
+
         await foreach (var reply in streamingResponse)
         {
-            _output.WriteLine($"Received: {reply.GetType().Name}");
-            
+            output.WriteLine($"Received: {reply.GetType().Name}");
+
             // Check for tool calls (similar to contLoop check)
             hasToolCall = hasToolCall || reply is ToolsCallAggregateMessage;
-            
+
             // Collect non-UsageMessage replies
             if (reply is not UsageMessage)
             {
                 replyMessages.Add(reply);
             }
         }
-        
+
         // Aggregate messages into CompositeMessage if needed
         IMessage? aggregatedMessage = null;
         if (replyMessages.Count > 1)
@@ -810,47 +865,57 @@ Get the weather for San Francisco";
                 FromAgent = "TestAgent",
                 GenerationId = replyMessages[0].GenerationId,
                 Role = Role.Assistant,
-                Messages = replyMessages.ToImmutableList()
+                Messages = replyMessages.ToImmutableList(),
             };
             messages.Add(aggregatedMessage);
-            _output.WriteLine($"Created CompositeMessage with {replyMessages.Count} inner messages");
+            output.WriteLine(
+                $"Created CompositeMessage with {replyMessages.Count} inner messages"
+            );
         }
         else if (replyMessages.Count == 1)
         {
             aggregatedMessage = replyMessages[0];
             messages.Add(aggregatedMessage);
-            _output.WriteLine($"Single message, no CompositeMessage needed");
+            output.WriteLine($"Single message, no CompositeMessage needed");
         }
-        else
-        {
-        }
+        else { }
 
         // Assert - Verify CompositeMessage was created and contains expected messages
-        replyMessages.Should().NotBeEmpty("Should have collected reply messages");
-        replyMessages.Count.Should().BeGreaterThan(1, "Should have multiple messages to create CompositeMessage");
-        
-        aggregatedMessage.Should().NotBeNull("Should have created an aggregated message");
-        aggregatedMessage.Should().BeOfType<CompositeMessage>("Should be a CompositeMessage when multiple replies exist");
-        
+        _ = replyMessages.Should().NotBeEmpty("Should have collected reply messages");
+        _ = replyMessages
+            .Count.Should()
+            .BeGreaterThan(1, "Should have multiple messages to create CompositeMessage");
+
+        _ = aggregatedMessage.Should().NotBeNull("Should have created an aggregated message");
+        _ = aggregatedMessage
+            .Should()
+            .BeOfType<CompositeMessage>("Should be a CompositeMessage when multiple replies exist");
+
         var composite = aggregatedMessage as CompositeMessage;
-        composite.Should().NotBeNull();
-        composite!.FromAgent.Should().Be("TestAgent");
-        composite.Role.Should().Be(Role.Assistant);
-        composite.Messages.Should().NotBeEmpty();
-        composite.Messages.Count.Should().Be(replyMessages.Count);
-        
+        _ = composite.Should().NotBeNull();
+        _ = composite!.FromAgent.Should().Be("TestAgent");
+        _ = composite.Role.Should().Be(Role.Assistant);
+        _ = composite.Messages.Should().NotBeEmpty();
+        _ = composite.Messages.Count.Should().Be(replyMessages.Count);
+
         // Verify the composite contains different message types
         var messageTypes = composite.Messages.Select(m => m.GetType().Name).Distinct().ToList();
-        _output.WriteLine($"CompositeMessage contains: {string.Join(", ", messageTypes)}");
-        
+        output.WriteLine($"CompositeMessage contains: {string.Join(", ", messageTypes)}");
+
         // Should have different types of messages in the composite
-        messageTypes.Count.Should().BeGreaterThan(1, "CompositeMessage should contain multiple message types");
-        
+        _ = messageTypes
+            .Count.Should()
+            .BeGreaterThan(1, "CompositeMessage should contain multiple message types");
+
         // Verify conversation history now contains the CompositeMessage
-        messages.Count.Should().Be(2, "Should have user message and composite assistant message");
-        messages[1].Should().BeOfType<CompositeMessage>("Second message should be CompositeMessage");
-        
-        _output.WriteLine($"Successfully created CompositeMessage with {composite.Messages.Count} inner messages");
+        _ = messages.Count.Should().Be(2, "Should have user message and composite assistant message");
+        _ = messages[1]
+            .Should()
+            .BeOfType<CompositeMessage>("Second message should be CompositeMessage");
+
+        output.WriteLine(
+            $"Successfully created CompositeMessage with {composite.Messages.Count} inner messages"
+        );
     }
 
     /// <summary>
@@ -864,9 +929,10 @@ Get the weather for San Francisco";
         // Arrange
         var handler = new TestSseMessageHandler(_logger) { WordsPerChunk = 3, ChunkDelayMs = 0 };
         var agent = CreateTestAgent(handler);
-        
+
         // Create a chain where step 2 produces multiple message types (composite)
-        var chainWithComposite = @"Test chain with composite messages
+        var chainWithComposite =
+            @"Test chain with composite messages
 <|instruction_start|>
 {
   ""instruction_chain"": [
@@ -883,7 +949,7 @@ Get the weather for San Francisco";
       ""reasoning"": { ""length"": 3 },
       ""messages"": [
         { ""text_message"": { ""length"": 6 } },
-        { 
+        {
           ""tool_call"": [
             {
               ""name"": ""save_memory"",
@@ -906,113 +972,169 @@ Get the weather for San Francisco";
 
         var messages = new List<IMessage>
         {
-            new TextMessage { Role = Role.User, Text = chainWithComposite }
+            new TextMessage { Role = Role.User, Text = chainWithComposite },
         };
 
         // Act - Execute first step (text only)
-        _output.WriteLine("=== Step 1: Text Only ===");
+        output.WriteLine("=== Step 1: Text Only ===");
         var response1 = await agent.GenerateReplyStreamingAsync(messages);
         var step1ReplyMessages = new List<IMessage>();
-        
+
         await foreach (var reply in response1)
         {
             if (reply is not UsageMessage)
             {
                 step1ReplyMessages.Add(reply);
             }
-            _output.WriteLine($"Step 1 - {reply.GetType().Name}");
+            output.WriteLine($"Step 1 - {reply.GetType().Name}");
         }
-        
+
         // Aggregate step 1 messages (should be single message, no composite needed)
         var step1Aggregated = AggregateMessages(step1ReplyMessages, "Step1Agent");
-        step1Aggregated.Should().NotBeNull();
+        _ = step1Aggregated.Should().NotBeNull();
         messages.Add(step1Aggregated);
-        _output.WriteLine($"Step 1 added: {step1Aggregated.GetType().Name}");
-        
+        output.WriteLine($"Step 1 added: {step1Aggregated.GetType().Name}");
+
         // Execute second step (composite: reasoning + text + tool)
         // Note: We need to use the original conversation format for API calls
-        _output.WriteLine("=== Step 2: Composite (Reasoning + Text + Tool) ===");
-        
+        output.WriteLine("=== Step 2: Composite (Reasoning + Text + Tool) ===");
+
         // For step 2, we'll simulate what would happen by directly creating the expected messages
         // In a real agent loop, the conversation would be maintained in a format the API understands
         var step2ReplyMessages = new List<IMessage>
         {
             // Simulate streaming updates that would come from the instruction
-            new ReasoningUpdateMessage { Reasoning = "Analyzing ", Role = Role.Assistant, GenerationId = "gen-2" },
-            new ReasoningUpdateMessage { Reasoning = "the task", Role = Role.Assistant, GenerationId = "gen-2" },
-            new TextUpdateMessage { Text = "Processing step ", Role = Role.Assistant, GenerationId = "gen-2" },
-            new TextUpdateMessage { Text = "2 with composite ", Role = Role.Assistant, GenerationId = "gen-2" },
-            new TextUpdateMessage { Text = "message generation", Role = Role.Assistant, GenerationId = "gen-2" },
-            new ToolsCallUpdateMessage 
-            { 
+            new ReasoningUpdateMessage
+            {
+                Reasoning = "Analyzing ",
+                Role = Role.Assistant,
+                GenerationId = "gen-2",
+            },
+            new ReasoningUpdateMessage
+            {
+                Reasoning = "the task",
+                Role = Role.Assistant,
+                GenerationId = "gen-2",
+            },
+            new TextUpdateMessage
+            {
+                Text = "Processing step ",
+                Role = Role.Assistant,
+                GenerationId = "gen-2",
+            },
+            new TextUpdateMessage
+            {
+                Text = "2 with composite ",
+                Role = Role.Assistant,
+                GenerationId = "gen-2",
+            },
+            new TextUpdateMessage
+            {
+                Text = "message generation",
+                Role = Role.Assistant,
+                GenerationId = "gen-2",
+            },
+            new ToolsCallUpdateMessage
+            {
                 ToolCallUpdates = new List<ToolCallUpdate>
                 {
-                    new ToolCallUpdate { FunctionName = "save_memory", FunctionArgs = "{\"key\":\"test\",\"value\":\"data\"}" }
+                    new ToolCallUpdate
+                    {
+                        FunctionName = "save_memory",
+                        FunctionArgs = "{\"key\":\"test\",\"value\":\"data\"}",
+                    },
                 }.ToImmutableList(),
                 Role = Role.Assistant,
-                GenerationId = "gen-2"
-            }
+                GenerationId = "gen-2",
+            },
         };
-        
+
         bool hasToolCall = step2ReplyMessages.Any(m => m is ToolsCallUpdateMessage);
-        
+
         foreach (var msg in step2ReplyMessages)
         {
-            _output.WriteLine($"Step 2 - {msg.GetType().Name}");
+            output.WriteLine($"Step 2 - {msg.GetType().Name}");
         }
-        
+
         // Aggregate step 2 messages into CompositeMessage (multiple message types)
         var step2Aggregated = AggregateMessages(step2ReplyMessages, "Step2Agent");
-        step2Aggregated.Should().NotBeNull();
+        _ = step2Aggregated.Should().NotBeNull();
         messages.Add(step2Aggregated);
-        _output.WriteLine($"Step 2 added: {step2Aggregated.GetType().Name}");
-        
+        output.WriteLine($"Step 2 added: {step2Aggregated.GetType().Name}");
+
         // Note: We don't execute step 3 through the API because CompositeMessage cannot be sent to OpenAI API.
         // In a real agent loop, the CompositeMessage would be tracked locally, and individual messages
         // would be sent to the API when needed.
-        _output.WriteLine("=== Step 3: Would execute in real agent loop ===");
-        
+        output.WriteLine("=== Step 3: Would execute in real agent loop ===");
+
         // For testing purposes, verify that we have the correct structure for chain progression
         // In a real implementation, the agent loop would handle expanding CompositeMessage when needed
 
         // Assert
         // Verify Step 1 produced a single message type after aggregation (not composite)
-        step1Aggregated.Should().NotBeOfType<CompositeMessage>("Step 1 should produce single message type after aggregation");
-        step1Aggregated.Should().BeOfType<TextMessage>("Step 1 should produce TextMessage after aggregating updates");
-        step1ReplyMessages.Should().NotBeEmpty("Step 1 should have streaming updates");
-        step1ReplyMessages.Should().AllBeOfType<TextUpdateMessage>("Step 1 should only have text updates");
-        
+        _ = step1Aggregated
+            .Should()
+            .NotBeOfType<CompositeMessage>(
+                "Step 1 should produce single message type after aggregation"
+            );
+        _ = step1Aggregated
+            .Should()
+            .BeOfType<TextMessage>("Step 1 should produce TextMessage after aggregating updates");
+        _ = step1ReplyMessages.Should().NotBeEmpty("Step 1 should have streaming updates");
+        _ = step1ReplyMessages
+            .Should()
+            .AllBeOfType<TextUpdateMessage>("Step 1 should only have text updates");
+
         // Verify Step 2 produced a CompositeMessage
-        step2Aggregated.Should().BeOfType<CompositeMessage>("Step 2 should produce CompositeMessage");
+        _ = step2Aggregated
+            .Should()
+            .BeOfType<CompositeMessage>("Step 2 should produce CompositeMessage");
         var step2Composite = step2Aggregated as CompositeMessage;
-        step2Composite.Should().NotBeNull();
-        step2Composite!.Messages.Should().HaveCountGreaterThan(1, "CompositeMessage should contain multiple messages");
-        step2Composite.FromAgent.Should().Be("Step2Agent");
-        step2Composite.Role.Should().Be(Role.Assistant);
-        
+        _ = step2Composite.Should().NotBeNull();
+        _ = step2Composite!
+            .Messages.Should()
+            .HaveCountGreaterThan(1, "CompositeMessage should contain multiple messages");
+        _ = step2Composite.FromAgent.Should().Be("Step2Agent");
+        _ = step2Composite.Role.Should().Be(Role.Assistant);
+
         // Verify Step 2 CompositeMessage contains expected message types
-        var step2MessageTypes = step2Composite.Messages.Select(m => m.GetType().Name).Distinct().ToList();
-        _output.WriteLine($"Step 2 CompositeMessage contains: {string.Join(", ", step2MessageTypes)}");
-        step2MessageTypes.Should().Contain(m => m.Contains("Reasoning") || m.Contains("Text") || m.Contains("Tool"),
-            "CompositeMessage should contain reasoning, text, or tool messages");
-        
+        var step2MessageTypes = step2Composite
+            .Messages.Select(m => m.GetType().Name)
+            .Distinct()
+            .ToList();
+        output.WriteLine(
+            $"Step 2 CompositeMessage contains: {string.Join(", ", step2MessageTypes)}"
+        );
+        _ = step2MessageTypes
+            .Should()
+            .Contain(
+                m => m.Contains("Reasoning") || m.Contains("Text") || m.Contains("Tool"),
+                "CompositeMessage should contain reasoning, text, or tool messages"
+            );
+
         // Verify conversation history structure
-        messages.Count.Should().Be(3, "Should have: user, step1, step2 (composite)");
-        messages[0].Should().BeOfType<TextMessage>("First should be user message");
-        messages[1].Should().NotBeOfType<CompositeMessage>("Second should be simple assistant message from step 1");
-        messages[2].Should().BeOfType<CompositeMessage>("Third should be CompositeMessage from step 2");
-        
+        _ = messages.Count.Should().Be(3, "Should have: user, step1, step2 (composite)");
+        _ = messages[0].Should().BeOfType<TextMessage>("First should be user message");
+        _ = messages[1]
+            .Should()
+            .NotBeOfType<CompositeMessage>("Second should be simple assistant message from step 1");
+        _ = messages[2]
+            .Should()
+            .BeOfType<CompositeMessage>("Third should be CompositeMessage from step 2");
+
         // In a real agent loop, step 3 would execute because CompositeMessage counts as single response
         // The loop would track: 2 assistant responses (step1 + composite from step2) -> execute step3
-        
+
         // Verify tool call was included in step 2
         if (hasToolCall)
         {
-            _output.WriteLine("Step 2 included tool calls as expected");
+            output.WriteLine("Step 2 included tool calls as expected");
         }
-        
-        _output.WriteLine($"Chain progression with CompositeMessage successful!");
-        _output.WriteLine($"Conversation has {messages.Count} messages, with CompositeMessage counted as single response");
+
+        output.WriteLine($"Chain progression with CompositeMessage successful!");
+        output.WriteLine(
+            $"Conversation has {messages.Count} messages, with CompositeMessage counted as single response"
+        );
     }
 
     /// <summary>
@@ -1026,9 +1148,10 @@ Get the weather for San Francisco";
         // Arrange
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
         var agent = CreateTestAgent(handler);
-        
+
         // Create instruction chain for testing
-        var chainMessage = @"Test with pre-existing composite
+        var chainMessage =
+            @"Test with pre-existing composite
 <|instruction_start|>
 {
   ""instruction_chain"": [
@@ -1038,21 +1161,23 @@ Get the weather for San Francisco";
   ]
 }
 <|instruction_end|>";
-        
+
         // Build conversation history with CompositeMessage
         var messages = new List<IMessage>
         {
-            new TextMessage { Role = Role.User, Text = chainMessage }
+            new TextMessage { Role = Role.User, Text = chainMessage },
         };
-        
+
         // Add first assistant response (simple text from step 1)
-        messages.Add(new TextMessage 
-        { 
-            Role = Role.Assistant, 
-            Text = "First response from step 1",
-            GenerationId = "gen-1"
-        });
-        
+        messages.Add(
+            new TextMessage
+            {
+                Role = Role.Assistant,
+                Text = "First response from step 1",
+                GenerationId = "gen-1",
+            }
+        );
+
         // Add second assistant response as CompositeMessage (simulating step 2 with multiple message types)
         var compositeMessage = new CompositeMessage
         {
@@ -1061,64 +1186,72 @@ Get the weather for San Francisco";
             Role = Role.Assistant,
             Messages = new List<IMessage>
             {
-                new ReasoningMessage 
-                { 
+                new ReasoningMessage
+                {
                     Role = Role.Assistant,
                     Reasoning = "Thinking about the task...",
-                    GenerationId = "gen-2"
+                    GenerationId = "gen-2",
                 },
-                new TextMessage 
-                { 
+                new TextMessage
+                {
                     Role = Role.Assistant,
                     Text = "Here's my response with reasoning",
-                    GenerationId = "gen-2"
+                    GenerationId = "gen-2",
                 },
                 new ToolsCallMessage
                 {
                     Role = Role.Assistant,
                     ToolCalls = new List<ToolCall>
                     {
-                        new ToolCall 
-                        { 
+                        new ToolCall
+                        {
                             FunctionName = "analyze_data",
                             FunctionArgs = "{\"param\": \"value\"}",
-                            ToolCallId = "tool-1"
-                        }
+                            ToolCallId = "tool-1",
+                        },
                     }.ToImmutableList(),
-                    GenerationId = "gen-2"
-                }
-            }.ToImmutableList()
+                    GenerationId = "gen-2",
+                },
+            }.ToImmutableList(),
         };
         messages.Add(compositeMessage);
-        
-        _output.WriteLine($"Conversation has {messages.Count} messages before generation");
-        _output.WriteLine($"Message types: {string.Join(", ", messages.Select(m => m.GetType().Name))}");
-        
+
+        output.WriteLine($"Conversation has {messages.Count} messages before generation");
+        output.WriteLine(
+            $"Message types: {string.Join(", ", messages.Select(m => m.GetType().Name))}"
+        );
+
         // Act - Validate the CompositeMessage structure
         // In a real agent loop, CompositeMessage would be used for local tracking
         // When continuing the conversation, the loop would need to handle message expansion
-        
-        _output.WriteLine("Validating CompositeMessage structure...");
-        
+
+        output.WriteLine("Validating CompositeMessage structure...");
+
         // Assert - Focus on CompositeMessage structure validation
-        
+
         // Verify the CompositeMessage in history is structured correctly
         var historyComposite = messages[2] as CompositeMessage;
-        historyComposite.Should().NotBeNull("Second assistant message should be CompositeMessage");
-        historyComposite!.Messages.Should().HaveCount(3, "CompositeMessage should contain 3 inner messages");
-        historyComposite.Messages[0].Should().BeOfType<ReasoningMessage>();
-        historyComposite.Messages[1].Should().BeOfType<TextMessage>();
-        historyComposite.Messages[2].Should().BeOfType<ToolsCallMessage>();
-        
+        _ = historyComposite.Should().NotBeNull("Second assistant message should be CompositeMessage");
+        _ = historyComposite!
+            .Messages.Should()
+            .HaveCount(3, "CompositeMessage should contain 3 inner messages");
+        _ = historyComposite.Messages[0].Should().BeOfType<ReasoningMessage>();
+        _ = historyComposite.Messages[1].Should().BeOfType<TextMessage>();
+        _ = historyComposite.Messages[2].Should().BeOfType<ToolsCallMessage>();
+
         // Verify tool call in composite
         var toolMessage = historyComposite.Messages[2] as ToolsCallMessage;
-        toolMessage.Should().NotBeNull();
-        toolMessage!.ToolCalls.Should().HaveCount(1);
-        toolMessage.ToolCalls[0].FunctionName.Should().Be("analyze_data");
-        
-        _output.WriteLine($"CompositeMessage structure validation successful!");
-        _output.WriteLine($"CompositeMessage correctly wraps {historyComposite.Messages.Count} inner messages");
-        _output.WriteLine($"In a real agent loop, this would count as ONE assistant response for chain progression");
+        _ = toolMessage.Should().NotBeNull();
+        _ = toolMessage!.ToolCalls.Should().HaveCount(1);
+        _ = toolMessage.ToolCalls[0].FunctionName.Should().Be("analyze_data");
+
+        output.WriteLine($"CompositeMessage structure validation successful!");
+        output.WriteLine(
+            $"CompositeMessage correctly wraps {historyComposite.Messages.Count} inner messages"
+        );
+        output.WriteLine(
+            $"In a real agent loop, this would count as ONE assistant response for chain progression"
+        );
     }
 
     /// <summary>
@@ -1132,9 +1265,10 @@ Get the weather for San Francisco";
         // Arrange
         var handler = new TestSseMessageHandler(_logger) { WordsPerChunk = 3, ChunkDelayMs = 0 };
         var agent = CreateTestAgent(handler);
-        
+
         // Create instruction that generates multiple message types and tool calls
-        var loopInstruction = @"Agent loop demonstration
+        var loopInstruction =
+            @"Agent loop demonstration
 <|instruction_start|>
 {
   ""id_message"": ""agent-loop-test"",
@@ -1152,32 +1286,32 @@ Get the weather for San Francisco";
 
         var conversation = new List<IMessage>
         {
-            new TextMessage { Role = Role.User, Text = loopInstruction }
+            new TextMessage { Role = Role.User, Text = loopInstruction },
         };
 
         // Act - Demonstrate the complete agent loop pattern from ExamplePythonMCPClient
-        _output.WriteLine("=== Agent Loop Iteration ===");
-        
+        output.WriteLine("=== Agent Loop Iteration ===");
+
         bool continueLoop = false;
         var replyMessages = new List<IMessage>();
-        
+
         // Step 1: Stream replies and collect messages
         var streamingResponse = await agent.GenerateReplyStreamingAsync(conversation);
-        
+
         await foreach (var reply in streamingResponse)
         {
-            _output.WriteLine($"Received: {reply.GetType().Name}");
-            
+            output.WriteLine($"Received: {reply.GetType().Name}");
+
             // Check for tool calls to determine loop continuation
             continueLoop = continueLoop || reply is ToolsCallAggregateMessage;
-            
+
             // Collect non-UsageMessage replies (exactly as in reference)
             if (reply is not UsageMessage)
             {
                 replyMessages.Add(reply);
             }
         }
-        
+
         // Step 2: Aggregate messages into CompositeMessage if multiple exist
         IMessage? messageToAdd = null;
         if (replyMessages.Count > 1)
@@ -1187,16 +1321,18 @@ Get the weather for San Francisco";
                 FromAgent = "AgentLoopDemo",
                 GenerationId = replyMessages[0].GenerationId,
                 Role = Role.Assistant,
-                Messages = replyMessages.ToImmutableList()
+                Messages = replyMessages.ToImmutableList(),
             };
-            _output.WriteLine($"Created CompositeMessage with {replyMessages.Count} inner messages");
+            output.WriteLine(
+                $"Created CompositeMessage with {replyMessages.Count} inner messages"
+            );
         }
         else if (replyMessages.Count == 1)
         {
             messageToAdd = replyMessages[0];
-            _output.WriteLine($"Single message, using directly: {messageToAdd.GetType().Name}");
+            output.WriteLine($"Single message, using directly: {messageToAdd.GetType().Name}");
         }
-        
+
         // Step 3: Add to conversation for tracking
         if (messageToAdd != null)
         {
@@ -1204,34 +1340,40 @@ Get the weather for San Francisco";
         }
 
         // Assert - Verify the agent loop pattern is correctly implemented
-        replyMessages.Should().NotBeEmpty("Should have collected reply messages");
-        replyMessages.Count.Should().BeGreaterThan(1, "Should have multiple messages for CompositeMessage");
-        
-        messageToAdd.Should().NotBeNull("Should have created a message to add");
-        messageToAdd.Should().BeOfType<CompositeMessage>("Should be CompositeMessage when multiple replies");
-        
+        _ = replyMessages.Should().NotBeEmpty("Should have collected reply messages");
+        _ = replyMessages
+            .Count.Should()
+            .BeGreaterThan(1, "Should have multiple messages for CompositeMessage");
+
+        _ = messageToAdd.Should().NotBeNull("Should have created a message to add");
+        _ = messageToAdd
+            .Should()
+            .BeOfType<CompositeMessage>("Should be CompositeMessage when multiple replies");
+
         var composite = messageToAdd as CompositeMessage;
-        composite.Should().NotBeNull();
-        composite!.FromAgent.Should().Be("AgentLoopDemo");
-        composite.Role.Should().Be(Role.Assistant);
-        composite.Messages.Should().HaveCount(replyMessages.Count);
-        
+        _ = composite.Should().NotBeNull();
+        _ = composite!.FromAgent.Should().Be("AgentLoopDemo");
+        _ = composite.Role.Should().Be(Role.Assistant);
+        _ = composite.Messages.Should().HaveCount(replyMessages.Count);
+
         // Verify tool call detection for loop continuation
         // Note: continueLoop would be true if ToolsCallAggregateMessage was in the stream
         // In test mode, we get ToolsCallUpdateMessage instead, but the pattern is the same
-        _output.WriteLine($"Continue loop: {continueLoop}");
-        
+        output.WriteLine($"Continue loop: {continueLoop}");
+
         // Verify conversation structure
-        conversation.Should().HaveCount(2, "Should have user message and composite assistant message");
-        conversation[1].Should().BeOfType<CompositeMessage>();
-        
+        _ = conversation
+            .Should()
+            .HaveCount(2, "Should have user message and composite assistant message");
+        _ = conversation[1].Should().BeOfType<CompositeMessage>();
+
         // Log the complete pattern
-        _output.WriteLine("\n=== Agent Loop Pattern Summary ===");
-        _output.WriteLine("1. Streamed replies and collected non-UsageMessage items");
-        _output.WriteLine("2. Created CompositeMessage for multiple replies");
-        _output.WriteLine("3. Added to conversation for tracking");
-        _output.WriteLine("4. Would check continueLoop flag for next iteration");
-        _output.WriteLine("This exactly matches the ExamplePythonMCPClient pattern!");
+        output.WriteLine("\n=== Agent Loop Pattern Summary ===");
+        output.WriteLine("1. Streamed replies and collected non-UsageMessage items");
+        output.WriteLine("2. Created CompositeMessage for multiple replies");
+        output.WriteLine("3. Added to conversation for tracking");
+        output.WriteLine("4. Would check continueLoop flag for next iteration");
+        output.WriteLine("This exactly matches the ExamplePythonMCPClient pattern!");
     }
 
     /// <summary>
@@ -1244,9 +1386,10 @@ Get the weather for San Francisco";
         // Arrange
         var handler = new TestSseMessageHandler(_logger) { WordsPerChunk = 2, ChunkDelayMs = 0 };
         var agent = CreateTestAgent(handler);
-        
+
         // Complex instruction with all message types
-        var complexInstruction = @"Test streaming for client aggregation
+        var complexInstruction =
+            @"Test streaming for client aggregation
 <|instruction_start|>
 {
   ""id_message"": ""multi-type"",
@@ -1266,7 +1409,7 @@ Get the weather for San Francisco";
 
         var messages = new List<IMessage>
         {
-            new TextMessage { Role = Role.User, Text = complexInstruction }
+            new TextMessage { Role = Role.User, Text = complexInstruction },
         };
 
         // Act
@@ -1274,11 +1417,11 @@ Get the weather for San Francisco";
         var messageSequence = new List<(string Type, int Count)>();
         var currentType = "";
         var currentCount = 0;
-        
+
         await foreach (var message in streamingResponse)
         {
             var msgType = message.GetType().Name;
-            
+
             if (msgType != currentType)
             {
                 if (currentCount > 0)
@@ -1292,31 +1435,33 @@ Get the weather for San Francisco";
             {
                 currentCount++;
             }
-            
-            _output.WriteLine($"Stream: {msgType}");
+
+            output.WriteLine($"Stream: {msgType}");
         }
-        
+
         if (currentCount > 0)
         {
             messageSequence.Add((currentType, currentCount));
         }
 
         // Assert - Verify the streaming sequence
-        _output.WriteLine("\n=== Message Streaming Sequence ===");
+        output.WriteLine("\n=== Message Streaming Sequence ===");
         foreach (var (type, count) in messageSequence)
         {
-            _output.WriteLine($"{type}: {count} messages");
+            output.WriteLine($"{type}: {count} messages");
         }
-        
+
         // Should have multiple distinct message type groups
-        messageSequence.Should().HaveCountGreaterThan(2, "Should have multiple message type groups");
-        
+        _ = messageSequence
+            .Should()
+            .HaveCountGreaterThan(2, "Should have multiple message type groups");
+
         // Should include reasoning, text, and tool updates
-        messageSequence.Any(s => s.Type == "ReasoningUpdateMessage").Should().BeTrue();
-        messageSequence.Any(s => s.Type == "TextUpdateMessage").Should().BeTrue();
-        messageSequence.Any(s => s.Type == "ToolsCallUpdateMessage").Should().BeTrue();
-        
-        _output.WriteLine("\nClient can aggregate these into a CompositeMessage");
+        _ = messageSequence.Any(s => s.Type == "ReasoningUpdateMessage").Should().BeTrue();
+        _ = messageSequence.Any(s => s.Type == "TextUpdateMessage").Should().BeTrue();
+        _ = messageSequence.Any(s => s.Type == "ToolsCallUpdateMessage").Should().BeTrue();
+
+        output.WriteLine("\nClient can aggregate these into a CompositeMessage");
     }
 
     #endregion
@@ -1335,18 +1480,19 @@ Get the weather for San Francisco";
         using var invoker = new HttpMessageInvoker(handler);
 
         var malformedJson = """
-        {
-          "instruction_chain": [
-            { this is not valid json }
-          ]
-        }
-        """;
+            {
+              "instruction_chain": [
+                { this is not valid json }
+              ]
+            }
+            """;
 
         var req = BuildChainRequest(malformedJson);
 
         // Act & Assert
         var act = async () => await invoker.SendAsync(req, default);
-        await act.Should().ThrowAsync<InvalidOperationException>()
+        _ = await act.Should()
+            .ThrowAsync<InvalidOperationException>()
             .WithMessage("*Malformed instruction chain*");
     }
 
@@ -1362,23 +1508,23 @@ Get the weather for San Francisco";
         using var invoker = new HttpMessageInvoker(handler);
 
         var emptyChain = """
-        {
-          "instruction_chain": []
-        }
-        """;
+            {
+              "instruction_chain": []
+            }
+            """;
 
         var req = BuildChainRequest(emptyChain);
 
         // Act
         var res = await invoker.SendAsync(req, default);
-        
+
         // Assert
-        res.StatusCode.Should().Be(HttpStatusCode.OK);
+        _ = res.StatusCode.Should().Be(HttpStatusCode.OK);
         var text = await res.Content.ReadAsStringAsync();
         // Should fall back to standard behavior when chain is empty
-        text.Should().Contain("user_post");
-        text.Should().Contain("text_message");
-        text.Should().Contain("[DONE]");
+        _ = text.Should().Contain("user_post");
+        _ = text.Should().Contain("text_message");
+        _ = text.Should().Contain("[DONE]");
     }
 
     /// <summary>
@@ -1393,22 +1539,22 @@ Get the weather for San Francisco";
         using var invoker = new HttpMessageInvoker(handler);
 
         var chain1 = """
-        {
-          "instruction_chain": [
-            { "id_message": "CHAIN1-STEP1", "messages": [{ "text_message": { "length": 1 } }] },
-            { "id_message": "CHAIN1-STEP2", "messages": [{ "text_message": { "length": 1 } }] }
-          ]
-        }
-        """;
+            {
+              "instruction_chain": [
+                { "id_message": "CHAIN1-STEP1", "messages": [{ "text_message": { "length": 1 } }] },
+                { "id_message": "CHAIN1-STEP2", "messages": [{ "text_message": { "length": 1 } }] }
+              ]
+            }
+            """;
 
         var chain2 = """
-        {
-          "instruction_chain": [
-            { "id_message": "CHAIN2-STEP1", "messages": [{ "text_message": { "length": 1 } }] },
-            { "id_message": "CHAIN2-STEP2", "messages": [{ "text_message": { "length": 1 } }] }
-          ]
-        }
-        """;
+            {
+              "instruction_chain": [
+                { "id_message": "CHAIN2-STEP1", "messages": [{ "text_message": { "length": 1 } }] },
+                { "id_message": "CHAIN2-STEP2", "messages": [{ "text_message": { "length": 1 } }] }
+              ]
+            }
+            """;
 
         // Conversation with chain switch
         var messages = new[]
@@ -1417,7 +1563,11 @@ Get the weather for San Francisco";
             new { role = "assistant", content = "Response 1" },
             new { role = "assistant", content = "Response 2" },
             // Chain 1 exhausted, now introduce chain 2
-            new { role = "user", content = $"New task: <|instruction_start|>{chain2}<|instruction_end|>" }
+            new
+            {
+                role = "user",
+                content = $"New task: <|instruction_start|>{chain2}<|instruction_end|>",
+            },
             // No assistant responses after chain 2, so count should be 0
         };
 
@@ -1425,24 +1575,24 @@ Get the weather for San Francisco";
         {
             model = "test-model",
             stream = true,
-            messages
+            messages,
         };
 
         var json = JsonSerializer.Serialize(payload, JsonOptions);
         var req = new HttpRequestMessage(HttpMethod.Post, "http://localhost/v1/chat/completions")
         {
-            Content = new StringContent(json, Encoding.UTF8, "application/json")
+            Content = new StringContent(json, Encoding.UTF8, "application/json"),
         };
 
         // Act
         var res = await invoker.SendAsync(req, default);
-        
+
         // Assert
-        res.StatusCode.Should().Be(HttpStatusCode.OK);
+        _ = res.StatusCode.Should().Be(HttpStatusCode.OK);
         var text = await res.Content.ReadAsStringAsync();
-        text.Should().Contain("CHAIN2-STEP1"); // Should start fresh with new chain
-        text.Should().NotContain("CHAIN2-STEP2");
-        text.Should().NotContain("CHAIN1");
+        _ = text.Should().Contain("CHAIN2-STEP1"); // Should start fresh with new chain
+        _ = text.Should().NotContain("CHAIN2-STEP2");
+        _ = text.Should().NotContain("CHAIN1");
     }
 
     /// <summary>
@@ -1457,90 +1607,102 @@ Get the weather for San Francisco";
         using var invoker = new HttpMessageInvoker(handler);
 
         var chainJson = """
-        {
-          "instruction_chain": [
             {
-              "id": "analyze",
-              "id_message": "ANALYZING",
-              "messages": [{ "text_message": { "length": 2 } }]
-            },
-            {
-              "id": "process",
-              "id_message": "PROCESSING",
-              "messages": [{ "text_message": { "length": 3 } }]
-            },
-            {
-              "id": "complete",
-              "id_message": "COMPLETING",
-              "messages": [{ "text_message": { "length": 2 } }]
+              "instruction_chain": [
+                {
+                  "id": "analyze",
+                  "id_message": "ANALYZING",
+                  "messages": [{ "text_message": { "length": 2 } }]
+                },
+                {
+                  "id": "process",
+                  "id_message": "PROCESSING",
+                  "messages": [{ "text_message": { "length": 3 } }]
+                },
+                {
+                  "id": "complete",
+                  "id_message": "COMPLETING",
+                  "messages": [{ "text_message": { "length": 2 } }]
+                }
+              ]
             }
-          ]
-        }
-        """;
+            """;
 
         // Step 1: First request - should execute "analyze"
         var req1 = BuildChainRequest(chainJson);
         var res1 = await invoker.SendAsync(req1, default);
         var text1 = await res1.Content.ReadAsStringAsync();
-        text1.Should().Contain("ANALYZING");
-        text1.Should().NotContain("PROCESSING");
-        text1.Should().NotContain("COMPLETING");
+        _ = text1.Should().Contain("ANALYZING");
+        _ = text1.Should().NotContain("PROCESSING");
+        _ = text1.Should().NotContain("COMPLETING");
 
         // Step 2: Second request with one response - should execute "process"
         var req2 = BuildChainRequest(chainJson, "Analysis complete");
         var res2 = await invoker.SendAsync(req2, default);
         var text2 = await res2.Content.ReadAsStringAsync();
-        text2.Should().NotContain("ANALYZING");
-        text2.Should().Contain("PROCESSING");
-        text2.Should().NotContain("COMPLETING");
+        _ = text2.Should().NotContain("ANALYZING");
+        _ = text2.Should().Contain("PROCESSING");
+        _ = text2.Should().NotContain("COMPLETING");
 
         // Step 3: Third request with two responses - should execute "complete"
         var req3 = BuildChainRequest(chainJson, "Analysis complete", "Processing done");
         var res3 = await invoker.SendAsync(req3, default);
         var text3 = await res3.Content.ReadAsStringAsync();
-        text3.Should().NotContain("ANALYZING");
-        text3.Should().NotContain("PROCESSING");
-        text3.Should().Contain("COMPLETING");
+        _ = text3.Should().NotContain("ANALYZING");
+        _ = text3.Should().NotContain("PROCESSING");
+        _ = text3.Should().Contain("COMPLETING");
 
         // Step 4: Fourth request with three responses - chain exhausted
-        var req4 = BuildChainRequest(chainJson, "Analysis complete", "Processing done", "Completion finished");
+        var req4 = BuildChainRequest(
+            chainJson,
+            "Analysis complete",
+            "Processing done",
+            "Completion finished"
+        );
         var res4 = await invoker.SendAsync(req4, default);
         var text4 = await res4.Content.ReadAsStringAsync();
-        text4.Should().NotContain("ANALYZING");
-        text4.Should().NotContain("PROCESSING");
-        text4.Should().NotContain("COMPLETING");
-        text4.Should().Contain("completion"); // Should use fallback
+        _ = text4.Should().NotContain("ANALYZING");
+        _ = text4.Should().NotContain("PROCESSING");
+        _ = text4.Should().NotContain("COMPLETING");
+        _ = text4.Should().Contain("completion"); // Should use fallback
     }
 
     #endregion
 }
 
 // Helper class for xUnit logging
-public class XunitLogger<T> : ILogger<T>
+public class XunitLogger<T>(ITestOutputHelper output) : ILogger<T>
 {
-    private readonly ITestOutputHelper _output;
-
-    public XunitLogger(ITestOutputHelper output)
+    public IDisposable BeginScope<TState>(TState state)
+        where TState : notnull
     {
-        _output = output;
+        return NullScope.Instance;
     }
 
-    public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
-
-    public bool IsEnabled(LogLevel logLevel) => true;
-
-    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+    public bool IsEnabled(LogLevel logLevel)
     {
-        _output.WriteLine($"[{logLevel}] {formatter(state, exception)}");
+        return true;
+    }
+
+    public void Log<TState>(
+        LogLevel logLevel,
+        EventId eventId,
+        TState state,
+        Exception? exception,
+        Func<TState, Exception?, string> formatter
+    )
+    {
+        output.WriteLine($"[{logLevel}] {formatter(state, exception)}");
         if (exception != null)
         {
-            _output.WriteLine($"Exception: {exception}");
+            output.WriteLine($"Exception: {exception}");
         }
     }
 
     private class NullScope : IDisposable
     {
         public static NullScope Instance { get; } = new NullScope();
+
         public void Dispose() { }
     }
 }

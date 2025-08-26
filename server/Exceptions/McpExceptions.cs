@@ -1,5 +1,3 @@
-using System;
-
 namespace AIChat.Server.Exceptions;
 
 /// <summary>
@@ -8,22 +6,20 @@ namespace AIChat.Server.Exceptions;
 public class McpException : Exception
 {
     public string? ServerName { get; }
-    
-    public McpException(string message) : base(message)
-    {
-    }
-    
-    public McpException(string message, Exception innerException) 
-        : base(message, innerException)
-    {
-    }
-    
-    public McpException(string message, string serverName) : base(message)
+
+    public McpException(string message)
+        : base(message) { }
+
+    public McpException(string message, Exception innerException)
+        : base(message, innerException) { }
+
+    public McpException(string message, string serverName)
+        : base(message)
     {
         ServerName = serverName;
     }
-    
-    public McpException(string message, string serverName, Exception innerException) 
+
+    public McpException(string message, string serverName, Exception innerException)
         : base(message, innerException)
     {
         ServerName = serverName;
@@ -36,17 +32,17 @@ public class McpException : Exception
 public class McpConfigurationException : McpException
 {
     public string? ConfigSection { get; }
-    
-    public McpConfigurationException(string message) : base(message)
-    {
-    }
-    
-    public McpConfigurationException(string message, string configSection) : base(message)
+
+    public McpConfigurationException(string message)
+        : base(message) { }
+
+    public McpConfigurationException(string message, string configSection)
+        : base(message)
     {
         ConfigSection = configSection;
     }
-    
-    public McpConfigurationException(string message, string configSection, Exception innerException) 
+
+    public McpConfigurationException(string message, string configSection, Exception innerException)
         : base(message, innerException)
     {
         ConfigSection = configSection;
@@ -58,15 +54,11 @@ public class McpConfigurationException : McpException
 /// </summary>
 public class McpInitializationException : McpException
 {
-    public McpInitializationException(string message, string serverName) 
-        : base(message, serverName)
-    {
-    }
-    
-    public McpInitializationException(string message, string serverName, Exception innerException) 
-        : base(message, serverName, innerException)
-    {
-    }
+    public McpInitializationException(string message, string serverName)
+        : base(message, serverName) { }
+
+    public McpInitializationException(string message, string serverName, Exception innerException)
+        : base(message, serverName, innerException) { }
 }
 
 /// <summary>
@@ -75,14 +67,19 @@ public class McpInitializationException : McpException
 public class McpTransportException : McpException
 {
     public string TransportType { get; }
-    
-    public McpTransportException(string message, string serverName, string transportType) 
+
+    public McpTransportException(string message, string serverName, string transportType)
         : base(message, serverName)
     {
         TransportType = transportType;
     }
-    
-    public McpTransportException(string message, string serverName, string transportType, Exception innerException) 
+
+    public McpTransportException(
+        string message,
+        string serverName,
+        string transportType,
+        Exception innerException
+    )
         : base(message, serverName, innerException)
     {
         TransportType = transportType;
@@ -94,13 +91,9 @@ public class McpTransportException : McpException
 /// </summary>
 public class McpConnectionException : McpException
 {
-    public McpConnectionException(string message, string serverName) 
-        : base(message, serverName)
-    {
-    }
-    
-    public McpConnectionException(string message, string serverName, Exception innerException) 
-        : base(message, serverName, innerException)
-    {
-    }
+    public McpConnectionException(string message, string serverName)
+        : base(message, serverName) { }
+
+    public McpConnectionException(string message, string serverName, Exception innerException)
+        : base(message, serverName, innerException) { }
 }

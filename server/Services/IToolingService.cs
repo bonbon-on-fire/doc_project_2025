@@ -1,5 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
 using AchieveAi.LmDotnetTools.LmCore.Middleware;
 
 namespace AIChat.Server.Services;
@@ -23,5 +21,6 @@ public interface IToolingService
         string? modeId = null,
         string? userId = null,
         IToolResultCallback? resultCallback = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 }

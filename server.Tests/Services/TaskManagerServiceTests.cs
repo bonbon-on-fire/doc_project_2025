@@ -1,11 +1,10 @@
-using Xunit;
-using Microsoft.Extensions.Logging;
-using Moq;
 using AchieveAi.LmDotnetTools.Misc.Utils;
 using AIChat.Server.Services;
 using AIChat.Server.Storage;
-using System.Text.Json;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
+using Moq;
+using Xunit;
 
 namespace AIChat.Server.Tests.Services;
 
@@ -27,7 +26,8 @@ public class TaskManagerServiceTests
     {
         // Arrange
         var chatId = "test-chat-1";
-        _mockTaskStorage.Setup(x => x.GetTasksAsync(chatId, It.IsAny<CancellationToken>()))
+        _ = _mockTaskStorage
+            .Setup(x => x.GetTasksAsync(chatId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ChatTaskState?)null);
 
         // Act
@@ -35,9 +35,9 @@ public class TaskManagerServiceTests
         var taskManager2 = await _service.GetTaskManagerAsync(chatId);
 
         // Assert
-        taskManager1.Should().NotBeNull();
-        taskManager2.Should().NotBeNull();
-        taskManager1.Should().BeSameAs(taskManager2, "should return cached instance");
+        _ = taskManager1.Should().NotBeNull();
+        _ = taskManager2.Should().NotBeNull();
+        _ = taskManager1.Should().BeSameAs(taskManager2, "should return cached instance");
     }
 
     [Fact]
@@ -47,25 +47,29 @@ public class TaskManagerServiceTests
         var chatId = "test-chat-2";
         // Create a TaskManager with a test task
         var savedTaskManager = new TaskManager();
-        savedTaskManager.AddTask("Test Task");
+        _ = savedTaskManager.AddTask("Test Task");
 
         var taskState = new ChatTaskState
         {
             ChatId = chatId,
             TaskManager = savedTaskManager,
             Version = 1,
-            LastUpdatedUtc = DateTime.UtcNow
+            LastUpdatedUtc = DateTime.UtcNow,
         };
 
-        _mockTaskStorage.Setup(x => x.GetTasksAsync(chatId, It.IsAny<CancellationToken>()))
+        _ = _mockTaskStorage
+            .Setup(x => x.GetTasksAsync(chatId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(taskState);
 
         // Act
         var taskManager = await _service.GetTaskManagerAsync(chatId);
 
         // Assert
-        taskManager.Should().NotBeNull();
-        _mockTaskStorage.Verify(x => x.GetTasksAsync(chatId, It.IsAny<CancellationToken>()), Times.Once);
+        _ = taskManager.Should().NotBeNull();
+        _mockTaskStorage.Verify(
+            x => x.GetTasksAsync(chatId, It.IsAny<CancellationToken>()),
+            Times.Once
+        );
     }
 
     [Fact]
@@ -74,31 +78,40 @@ public class TaskManagerServiceTests
         // Arrange
         var chatId = "test-chat-3";
         var taskManager = await _service.GetTaskManagerAsync(chatId);
-        
+
         var newState = new ChatTaskState
         {
             ChatId = chatId,
             TaskManager = taskManager,
             Version = 1,
-            LastUpdatedUtc = DateTime.UtcNow
+            LastUpdatedUtc = DateTime.UtcNow,
         };
 
-        _mockTaskStorage.Setup(x => x.SaveTasksAsync(
-                chatId,
-                It.IsAny<TaskManager>(),
-                It.IsAny<int>(),
-                It.IsAny<CancellationToken>()))
+        _ = _mockTaskStorage
+            .Setup(x =>
+                x.SaveTasksAsync(
+                    chatId,
+                    It.IsAny<TaskManager>(),
+                    It.IsAny<int>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
             .ReturnsAsync(newState);
 
         // Act
         await _service.SaveTaskManagerStateAsync(chatId);
 
         // Assert
-        _mockTaskStorage.Verify(x => x.SaveTasksAsync(
-            chatId,
-            It.IsAny<TaskManager>(),
-            It.IsAny<int>(),
-            It.IsAny<CancellationToken>()), Times.Once);
+        _mockTaskStorage.Verify(
+            x =>
+                x.SaveTasksAsync(
+                    chatId,
+                    It.IsAny<TaskManager>(),
+                    It.IsAny<int>(),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Once
+        );
     }
 
     [Fact]
@@ -112,11 +125,14 @@ public class TaskManagerServiceTests
         await _service.ClearTaskManagerAsync(chatId);
 
         // Assert
-        _mockTaskStorage.Verify(x => x.DeleteTasksAsync(chatId, It.IsAny<CancellationToken>()), Times.Once);
-        
+        _mockTaskStorage.Verify(
+            x => x.DeleteTasksAsync(chatId, It.IsAny<CancellationToken>()),
+            Times.Once
+        );
+
         // Getting TaskManager again should create a new instance
         var newTaskManager = await _service.GetTaskManagerAsync(chatId);
-        newTaskManager.Should().NotBeSameAs(taskManager);
+        _ = newTaskManager.Should().NotBeSameAs(taskManager);
     }
 
     [Fact]
@@ -124,16 +140,16 @@ public class TaskManagerServiceTests
     {
         // Arrange
         var chatId = "test-chat-5";
-        await _service.GetTaskManagerAsync(chatId);
+        _ = await _service.GetTaskManagerAsync(chatId);
 
         // Act
         var taskState = await _service.GetTaskStateAsync(chatId);
 
         // Assert
-        taskState.Should().NotBeNull();
+        _ = taskState.Should().NotBeNull();
         var (markdown, tasks) = taskState.Value;
-        markdown.Should().NotBeNullOrEmpty();
-        tasks.Should().NotBeNull();
+        _ = markdown.Should().NotBeNullOrEmpty();
+        _ = tasks.Should().NotBeNull();
     }
 
     [Fact]
@@ -148,8 +164,13 @@ public class TaskManagerServiceTests
         var taskManager2 = await _service.GetTaskManagerAsync(chatId2);
 
         // Assert
-        taskManager1.Should().NotBeNull();
-        taskManager2.Should().NotBeNull();
-        taskManager1.Should().NotBeSameAs(taskManager2, "different chats should have different TaskManager instances");
+        _ = taskManager1.Should().NotBeNull();
+        _ = taskManager2.Should().NotBeNull();
+        _ = taskManager1
+            .Should()
+            .NotBeSameAs(
+                taskManager2,
+                "different chats should have different TaskManager instances"
+            );
     }
 }

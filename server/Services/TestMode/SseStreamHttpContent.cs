@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using System.IO.Pipelines;
 using System.Net;
 using System.Net.Http.Headers;
@@ -11,18 +10,15 @@ using AchieveAi.LmDotnetTools.OpenAIProvider.Models;
 
 namespace AIChat.Server.Services.TestMode;
 
-public sealed class InstructionPlan
+public sealed class InstructionPlan(
+    string idMessage,
+    int? reasoningLength,
+    List<InstructionMessage> messages
+    )
 {
-    public string IdMessage { get; }
-    public int? ReasoningLength { get; }
-    public List<InstructionMessage> Messages { get; }
-
-    public InstructionPlan(string idMessage, int? reasoningLength, List<InstructionMessage> messages)
-    {
-        IdMessage = idMessage;
-        ReasoningLength = reasoningLength;
-        Messages = messages;
-    }
+    public string IdMessage { get; } = idMessage;
+    public int? ReasoningLength { get; } = reasoningLength;
+    public List<InstructionMessage> Messages { get; } = messages;
 }
 
 public sealed class InstructionMessage
@@ -36,20 +32,21 @@ public sealed class InstructionMessage
         ToolCalls = toolCalls;
     }
 
-    public static InstructionMessage ForText(int length) => new InstructionMessage(length, null);
-    public static InstructionMessage ForToolCalls(List<InstructionToolCall> calls) => new InstructionMessage(null, calls);
+    public static InstructionMessage ForText(int length)
+    {
+        return new InstructionMessage(length, null);
+    }
+
+    public static InstructionMessage ForToolCalls(List<InstructionToolCall> calls)
+    {
+        return new InstructionMessage(null, calls);
+    }
 }
 
-public sealed class InstructionToolCall
+public sealed class InstructionToolCall(string name, string argsJson)
 {
-    public string Name { get; }
-    public string ArgsJson { get; }
-
-    public InstructionToolCall(string name, string argsJson)
-    {
-        Name = name;
-        ArgsJson = argsJson;
-    }
+    public string Name { get; } = name;
+    public string ArgsJson { get; } = argsJson;
 }
 
 public sealed class SseStreamHttpContent : HttpContent
@@ -59,8 +56,9 @@ public sealed class SseStreamHttpContent : HttpContent
     private const int DefaultChunkDelayMs = 100;
     private const int MinWordsPerChunk = 1;
     private const int MinChunkDelayMs = 0;
-    
-    private static readonly JsonSerializerOptions _jsonSerializerOptionsWithReasoning = OpenClient.S_jsonSerializerOptions;
+
+    private static readonly JsonSerializerOptions _jsonSerializerOptionsWithReasoning =
+        OpenClient.S_jsonSerializerOptions;
 
     private readonly string _userMessage;
     private readonly string? _model;
@@ -74,7 +72,8 @@ public sealed class SseStreamHttpContent : HttpContent
         string? model = null,
         bool reasoningFirst = false,
         int wordsPerChunk = 3,
-        int chunkDelayMs = 100)
+        int chunkDelayMs = 100
+    )
     {
         _userMessage = userMessage;
         _model = model;
@@ -90,7 +89,8 @@ public sealed class SseStreamHttpContent : HttpContent
         InstructionPlan instructionPlan,
         string? model = null,
         int wordsPerChunk = 5,
-        int chunkDelayMs = 100)
+        int chunkDelayMs = 100
+    )
     {
         _userMessage = string.Empty;
         _model = model;
@@ -110,61 +110,75 @@ public sealed class SseStreamHttpContent : HttpContent
 
     // Back-compat override signature
     protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context)
-        => SerializeCoreAsync(stream, CancellationToken.None);
+    {
+        return SerializeCoreAsync(stream, CancellationToken.None);
+    }
 
     protected override Stream CreateContentReadStream(CancellationToken cancellationToken)
     {
         var pipe = new Pipe();
-        var logger = LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<SseStreamHttpContent>();
+        var logger = LoggerFactory
+            .Create(builder => builder.AddConsole())
+            .CreateLogger<SseStreamHttpContent>();
 
-        _ = Task.Run(async () =>
-        {
-            Exception? error = null;
-            try
+        _ = Task.Run(
+            async () =>
             {
-                using var writerStream = pipe.Writer.AsStream(leaveOpen: false);
-                await SerializeCoreAsync(writerStream, cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected when cancellation is requested
-                logger.LogDebug("Stream creation cancelled");
-            }
-            catch (Exception ex)
-            {
-                // Log the exception but don't rethrow to avoid crashing background task
-                logger.LogError(ex, "Error during SSE stream creation");
-                error = ex;
-            }
-            finally
-            {
-                // Complete the pipe writer, optionally with error information
-                await pipe.Writer.CompleteAsync(error).ConfigureAwait(false);
-            }
-        }, CancellationToken.None);
+                Exception? error = null;
+                try
+                {
+                    using var writerStream = pipe.Writer.AsStream(leaveOpen: false);
+                    await SerializeCoreAsync(writerStream, cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Expected when cancellation is requested
+                    logger.LogDebug("Stream creation cancelled");
+                }
+                catch (Exception ex)
+                {
+                    // Log the exception but don't rethrow to avoid crashing background task
+                    logger.LogError(ex, "Error during SSE stream creation");
+                    error = ex;
+                }
+                finally
+                {
+                    // Complete the pipe writer, optionally with error information
+                    await pipe.Writer.CompleteAsync(error).ConfigureAwait(false);
+                }
+            },
+            CancellationToken.None
+        );
 
         return pipe.Reader.AsStream(leaveOpen: false);
     }
 
     protected override Task<Stream> CreateContentReadStreamAsync()
-        => Task.FromResult(CreateContentReadStream(CancellationToken.None));
+    {
+        return Task.FromResult(CreateContentReadStream(CancellationToken.None));
+    }
 
-    protected override Task<Stream> CreateContentReadStreamAsync(CancellationToken cancellationToken)
-        => Task.FromResult(CreateContentReadStream(cancellationToken));
+    protected override Task<Stream> CreateContentReadStreamAsync(
+        CancellationToken cancellationToken
+    )
+    {
+        return Task.FromResult(CreateContentReadStream(cancellationToken));
+    }
 
     private async Task SerializeCoreAsync(Stream stream, CancellationToken cancellationToken)
     {
         // Important: leave the provided stream open so HttpContent can buffer/read it after serialization
-        using var writer = new StreamWriter(stream, new UTF8Encoding(false), 1024, leaveOpen: true) { AutoFlush = false };
+        using var writer = new StreamWriter(stream, new UTF8Encoding(false), 1024, leaveOpen: true)
+        {
+            AutoFlush = false,
+        };
 
         var created = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var generationId = $"gen-{created}-{Guid.NewGuid().ToString("N")[..16]}";
 
         async Task WriteSseAsync(object payload)
         {
-            string json = JsonSerializer.Serialize(
-                payload,
-                _jsonSerializerOptionsWithReasoning);
+            string json = JsonSerializer.Serialize(payload, _jsonSerializerOptionsWithReasoning);
 
             await writer.WriteAsync("data: ");
             await writer.WriteAsync(json);
@@ -224,42 +238,37 @@ public sealed class SseStreamHttpContent : HttpContent
                 VarObject = "chat.completion.chunk",
                 Created = (int)created,
                 Model = _model ?? "test-model",
-                Choices = [ choice ]
+                Choices = [choice],
             };
 
             await WriteSseAsync(responseMessage);
             await Task.Delay(_chunkDelayMs, cancellationToken);
         }
 
-
         await writer.WriteAsync("data: [DONE]\n\n");
         await writer.FlushAsync(cancellationToken);
     }
 
-    private Choice BuildFinishChunk(int lastIdx)
+    private static Choice BuildFinishChunk(int lastIdx)
     {
         return new Choice
         {
             Index = lastIdx,
-            Delta = new ChatMessage
-            {
-                Role = RoleEnum.Assistant,
-                Content = string.Empty
-            },
-            FinishReason = Choice.FinishReasonEnum.Stop
+            Delta = new ChatMessage { Role = RoleEnum.Assistant, Content = string.Empty },
+            FinishReason = Choice.FinishReasonEnum.Stop,
         };
     }
 
     private IEnumerable<Choice> SerializeInstructionPlanAsync(InstructionPlan plan)
     {
         var choices = Enumerable.Empty<Choice>();
-        
+
         // First, emit the id_message if present
         if (!string.IsNullOrEmpty(plan.IdMessage))
         {
             choices = choices.Concat(ChunkTextMessage(0, plan.IdMessage, _wordsPerChunk));
         }
-        
+
         for (int msgIndex = 0; msgIndex < plan.Messages.Count; msgIndex++)
         {
             var message = plan.Messages[msgIndex];
@@ -269,7 +278,9 @@ public sealed class SseStreamHttpContent : HttpContent
                 if (plan.ReasoningLength is int rlen && rlen > 0)
                 {
                     var reasoning = string.Join(" ", GenerateLoremChunks(rlen, _wordsPerChunk));
-                    choices = choices.Concat(ChunkReasoningText(msgIndex, reasoning, _wordsPerChunk));
+                    choices = choices.Concat(
+                        ChunkReasoningText(msgIndex, reasoning, _wordsPerChunk)
+                    );
                 }
 
                 if (textLen > 0)
@@ -288,7 +299,9 @@ public sealed class SseStreamHttpContent : HttpContent
                     ChunkToolCalls(
                         msgIndex,
                         message.ToolCalls.Select(tc => (tc.Name, tc.ArgsJson)),
-                        _wordsPerChunk));
+                        _wordsPerChunk
+                    )
+                );
             }
         }
 
@@ -309,12 +322,13 @@ public sealed class SseStreamHttpContent : HttpContent
             yield break;
         }
 
-        var lorem = ("lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor " +
-                     "incididunt ut labore et dolore magna aliqua ut enim ad minim veniam quis nostrud " +
-                     "exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat duis aute irure " +
-                     "dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur " +
-                     "excepteur sint occaecat cupidatat non proident sunt in culpa qui officia deserunt mollit anim id est laborum")
-            .Split(' ');
+        var lorem = (
+            "lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor "
+            + "incididunt ut labore et dolore magna aliqua ut enim ad minim veniam quis nostrud "
+            + "exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat duis aute irure "
+            + "dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur "
+            + "excepteur sint occaecat cupidatat non proident sunt in culpa qui officia deserunt mollit anim id est laborum"
+        ).Split(' ');
 
         var words = new List<string>(totalWords);
         for (int i = 0; i < totalWords; i++)
@@ -333,17 +347,70 @@ public sealed class SseStreamHttpContent : HttpContent
     {
         var basis = new[]
         {
-            "The", " user", " says", ":", " \"", "Setup", " message", " ", "1", " for", " existing",
-            " conversation", " test", "\"", " then", " \"", "Setup", " message", " ", "2", " for",
-            " existing", " conversation", "\"", ".", " They", " likely", " want", " me", " to", " the",
-            " existing", " conversation", " after", " refresh", " \".", " They", " likely", " want",
-            " me", " to", " respond", " to", " a", " previous", " conversation", ".", " But", " we",
-            " don't", " have", " the", " previous", " conversation", " context", "."
+            "The",
+            " user",
+            " says",
+            ":",
+            " \"",
+            "Setup",
+            " message",
+            " ",
+            "1",
+            " for",
+            " existing",
+            " conversation",
+            " test",
+            "\"",
+            " then",
+            " \"",
+            "Setup",
+            " message",
+            " ",
+            "2",
+            " for",
+            " existing",
+            " conversation",
+            "\"",
+            ".",
+            " They",
+            " likely",
+            " want",
+            " me",
+            " to",
+            " the",
+            " existing",
+            " conversation",
+            " after",
+            " refresh",
+            " \".",
+            " They",
+            " likely",
+            " want",
+            " me",
+            " to",
+            " respond",
+            " to",
+            " a",
+            " previous",
+            " conversation",
+            ".",
+            " But",
+            " we",
+            " don't",
+            " have",
+            " the",
+            " previous",
+            " conversation",
+            " context",
+            ".",
         };
 
         for (int i = 0; i < basis.Length; i += wordsPerChunk)
         {
-            var chunkTokens = basis.Skip(i).Take(Math.Min(wordsPerChunk, basis.Length - i)).ToList();
+            var chunkTokens = basis
+                .Skip(i)
+                .Take(Math.Min(wordsPerChunk, basis.Length - i))
+                .ToList();
             yield return string.Join(string.Empty, chunkTokens);
         }
     }
@@ -351,16 +418,19 @@ public sealed class SseStreamHttpContent : HttpContent
     private static IEnumerable<Choice> ChunkReasoningText(
         int index,
         string reasoning,
-        int wordsPerChunk)
+        int wordsPerChunk
+    )
     {
         var tokens = reasoning.Split(' ');
-        var useReasoning = true;  // reasoning.GetHashCode() % 2 == 0;
+        var useReasoning = true; // reasoning.GetHashCode() % 2 == 0;
         for (int i = 0; i < tokens.Length; i += wordsPerChunk)
         {
-            var chunkTokens = string.Join(' ', tokens.Skip(i).Take(Math.Min(wordsPerChunk, tokens.Length - i)));
-            if (useReasoning)
-            {
-                yield return new Choice
+            var chunkTokens = string.Join(
+                ' ',
+                tokens.Skip(i).Take(Math.Min(wordsPerChunk, tokens.Length - i))
+            );
+            yield return useReasoning
+                ? new Choice
                 {
                     Index = index,
                     Delta = new ChatMessage
@@ -368,29 +438,25 @@ public sealed class SseStreamHttpContent : HttpContent
                         Role = RoleEnum.Assistant,
                         Reasoning = chunkTokens,
                         Content = string.Empty,
-                    }
-                };
-            }
-            else
-            {
-
-                yield return new Choice
+                    },
+                }
+                : new Choice
                 {
                     Index = index,
                     Delta = new ChatMessage
                     {
                         Role = RoleEnum.Assistant,
-                        ReasoningDetails = [
+                        ReasoningDetails =
+                        [
                             new ChatMessage.ReasoningDetail
                             {
                                 Type = "reasoning.summary",
                                 Summary = chunkTokens,
-                            }
+                            },
                         ],
                         Content = string.Empty,
-                    }
+                    },
                 };
-            }
         }
 
         yield return new Choice
@@ -399,35 +465,40 @@ public sealed class SseStreamHttpContent : HttpContent
             Delta = new ChatMessage
             {
                 Role = RoleEnum.Assistant,
-                ReasoningDetails = [
+                ReasoningDetails =
+                [
                     new ChatMessage.ReasoningDetail
                     {
                         Type = "reasoning.encrypted",
                         Data = Convert.ToBase64String(Encoding.UTF8.GetBytes(reasoning)),
-                    }
+                    },
                 ],
-                Content = string.Empty
-            }
+                Content = string.Empty,
+            },
         };
     }
 
     private static IEnumerable<Choice> ChunkTextMessage(
         int index,
         string textContent,
-        int wordsPerChunk)
+        int wordsPerChunk
+    )
     {
         var tokens = textContent.Split(' ');
         for (int i = 0; i < tokens.Length; i += wordsPerChunk)
         {
-            var chunkTokens = string.Join(' ', tokens.Skip(i).Take(Math.Min(wordsPerChunk, tokens.Length - i)));
+            var chunkTokens = string.Join(
+                ' ',
+                tokens.Skip(i).Take(Math.Min(wordsPerChunk, tokens.Length - i))
+            );
             yield return new Choice
             {
                 Index = index,
                 Delta = new ChatMessage
                 {
                     Role = RoleEnum.Assistant,
-                    Content = new Union<string, Union<TextContent, ImageContent>[]>(chunkTokens)
-                }
+                    Content = new Union<string, Union<TextContent, ImageContent>[]>(chunkTokens),
+                },
             };
         }
     }
@@ -435,24 +506,25 @@ public sealed class SseStreamHttpContent : HttpContent
     private static IEnumerable<Choice> ChunkToolCalls(
         int index,
         IEnumerable<(string functionName, string argsJson)> toolCalls,
-        int wordsPerChunk)
+        int wordsPerChunk
+    )
     {
         var allToolCalls = new List<FunctionContent>();
         int idx = -1;
-        
+
         foreach (var (functionName, argsJson) in toolCalls)
         {
             idx++;
             var tool_call_id = Guid.NewGuid().ToString();
-            
+
             // Store complete tool call for final message
-            allToolCalls.Add(new FunctionContent(
-                tool_call_id,
-                new FunctionCall(functionName, argsJson))
-            {
-                Index = idx,
-            });
-            
+            allToolCalls.Add(
+                new FunctionContent(tool_call_id, new FunctionCall(functionName, argsJson))
+                {
+                    Index = idx,
+                }
+            );
+
             // First chunk: function name with empty arguments
             // This matches OpenAI's actual behavior
             yield return new Choice
@@ -461,15 +533,17 @@ public sealed class SseStreamHttpContent : HttpContent
                 Delta = new ChatMessage
                 {
                     Role = RoleEnum.Assistant,
-                    ToolCalls = [
+                    ToolCalls =
+                    [
                         new FunctionContent(
                             tool_call_id,
-                            new FunctionCall(functionName, string.Empty))
+                            new FunctionCall(functionName, string.Empty)
+                        )
                         {
                             Index = idx,
-                        }
+                        },
                     ],
-                }
+                },
             };
 
             // Subsequent chunks: NO function name, only argument fragments
@@ -483,15 +557,17 @@ public sealed class SseStreamHttpContent : HttpContent
                     Delta = new ChatMessage
                     {
                         Role = RoleEnum.Assistant,
-                        ToolCalls = [
+                        ToolCalls =
+                        [
                             new FunctionContent(
                                 tool_call_id,
-                                new FunctionCall(null, argsJson.Substring(i, len)))
+                                new FunctionCall(null, argsJson.Substring(i, len))
+                            )
                             {
                                 Index = idx,
-                            }
+                            },
                         ],
-                    }
+                    },
                 };
             }
         }

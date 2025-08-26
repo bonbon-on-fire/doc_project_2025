@@ -1,11 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using AIChat.Server.Services.AgentCards;
-using Microsoft.Extensions.Logging;
 using YamlDotNet.Core;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
@@ -15,34 +10,22 @@ namespace AIChat.Server.Services
     /// <summary>
     /// Parser for Agent Card files (.agent.md) that contain YAML front matter and markdown sections.
     /// </summary>
-    public class AgentCardParser
+    /// <remarks>
+    /// Initializes a new instance of the AgentCardParser class.
+    /// </remarks>
+    /// <param name="logger">Optional logger for diagnostic output</param>
+    public partial class AgentCardParser(ILogger<AgentCardParser>? logger = null)
     {
         // Compiled regex patterns for better performance
-        private static readonly Regex FrontMatterRegex = new(
-            @"^---\s*\n(.*?)\n---\s*\n", 
-            RegexOptions.Singleline | RegexOptions.Compiled);
-        
-        private static readonly Regex SectionRegex = new(
-            @"^#\s+([A-Z\s]+)\s*\n(.*?)(?=^#\s+|\z)", 
-            RegexOptions.Multiline | RegexOptions.Singleline | RegexOptions.Compiled);
+        private static readonly Regex FrontMatterRegex = MyRegex();
 
-        private readonly IDeserializer _yamlDeserializer;
-        private readonly SectionHandlerRegistry _sectionRegistry;
-        private readonly ILogger<AgentCardParser>? _logger;
+        private static readonly Regex SectionRegex = MyRegex1();
 
-        /// <summary>
-        /// Initializes a new instance of the AgentCardParser class.
-        /// </summary>
-        /// <param name="logger">Optional logger for diagnostic output</param>
-        public AgentCardParser(ILogger<AgentCardParser>? logger = null)
-        {
-            _logger = logger;
-            _yamlDeserializer = new DeserializerBuilder()
+        private readonly IDeserializer _yamlDeserializer = new DeserializerBuilder()
                 .WithNamingConvention(UnderscoredNamingConvention.Instance)
                 .IgnoreUnmatchedProperties()
                 .Build();
-            _sectionRegistry = new SectionHandlerRegistry();
-        }
+        private readonly SectionHandlerRegistry _sectionRegistry = new SectionHandlerRegistry();
 
         /// <summary>
         /// Parses an agent card from the provided content string.
@@ -54,25 +37,31 @@ namespace AIChat.Server.Services
             // Validate input
             var validationResult = ValidateContent(content);
             if (validationResult.IsFailure)
+            {
                 return Result<AgentCard>.Failure(validationResult.Error!);
+            }
 
             // Extract and parse YAML front matter
             var frontMatterResult = ExtractFrontMatter(content);
             if (frontMatterResult.IsFailure)
+            {
                 return Result<AgentCard>.Failure(frontMatterResult.Error!);
+            }
 
             var (yamlContent, markdownContent) = frontMatterResult.Value;
-            
+
             // Parse YAML metadata
             var metadataResult = ParseYamlMetadata(yamlContent);
             if (metadataResult.IsFailure)
+            {
                 return Result<AgentCard>.Failure(metadataResult.Error!);
+            }
 
             // Create agent card with metadata
             var card = new AgentCard
             {
                 Metadata = ConvertToAgentMetadata(metadataResult.Value),
-                Sections = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                Sections = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
             };
 
             // Parse markdown sections
@@ -80,7 +69,7 @@ namespace AIChat.Server.Services
             if (sectionsResult.IsFailure)
             {
                 // Log warning but continue with partial data (graceful degradation)
-                _logger?.LogWarning("Failed to parse some sections: {Error}", sectionsResult.Error);
+                logger?.LogWarning("Failed to parse some sections: {Error}", sectionsResult.Error);
             }
 
             return Result<AgentCard>.Success(card);
@@ -89,29 +78,32 @@ namespace AIChat.Server.Services
         /// <summary>
         /// Validates the input content.
         /// </summary>
-        private Result ValidateContent(string content)
+        private static Result ValidateContent(string content)
         {
             if (string.IsNullOrWhiteSpace(content))
+            {
                 return Result.Failure("Agent card content cannot be empty");
-            
-            if (!FrontMatterRegex.IsMatch(content))
-                return Result.Failure("Agent card must have YAML front matter");
-            
-            return Result.Success();
+            }
+
+            return !FrontMatterRegex.IsMatch(content) ? Result.Failure("Agent card must have YAML front matter") : Result.Success();
         }
 
         /// <summary>
         /// Extracts the YAML front matter and markdown content from the agent card.
         /// </summary>
-        private Result<(string yamlContent, string markdownContent)> ExtractFrontMatter(string content)
+        private static Result<(string yamlContent, string markdownContent)> ExtractFrontMatter(
+            string content
+        )
         {
             var match = FrontMatterRegex.Match(content);
             if (!match.Success)
+            {
                 return Result<(string, string)>.Failure("Could not extract YAML front matter");
+            }
 
             var yamlContent = match.Groups[1].Value;
             var markdownContent = content.Substring(match.Length);
-            
+
             return Result<(string, string)>.Success((yamlContent, markdownContent));
         }
 
@@ -123,29 +115,33 @@ namespace AIChat.Server.Services
             try
             {
                 var metadata = _yamlDeserializer.Deserialize<AgentYamlMetadata>(yaml);
-                
+
                 if (metadata == null)
+                {
                     return Result<AgentYamlMetadata>.Failure("Failed to deserialize YAML metadata");
-                
+                }
+
                 // Validate required fields
                 if (string.IsNullOrWhiteSpace(metadata.Agent))
+                {
                     return Result<AgentYamlMetadata>.Failure("Agent ID is required in metadata");
-                
+                }
+
                 // Apply defaults
                 metadata.Name ??= metadata.Agent;
                 metadata.Version ??= "1.0.0";
                 metadata.Category ??= "general";
-                
+
                 return Result<AgentYamlMetadata>.Success(metadata);
             }
             catch (YamlException ex)
             {
-                _logger?.LogError(ex, "Failed to parse YAML metadata");
+                logger?.LogError(ex, "Failed to parse YAML metadata");
                 return Result<AgentYamlMetadata>.Failure($"Invalid YAML format: {ex.Message}");
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Unexpected error parsing YAML metadata");
+                logger?.LogError(ex, "Unexpected error parsing YAML metadata");
                 return Result<AgentYamlMetadata>.Failure($"Failed to parse metadata: {ex.Message}");
             }
         }
@@ -153,7 +149,7 @@ namespace AIChat.Server.Services
         /// <summary>
         /// Converts strongly-typed YAML metadata to AgentMetadata.
         /// </summary>
-        private AgentMetadata ConvertToAgentMetadata(AgentYamlMetadata yamlMetadata)
+        private static AgentMetadata ConvertToAgentMetadata(AgentYamlMetadata yamlMetadata)
         {
             return new AgentMetadata
             {
@@ -162,17 +158,18 @@ namespace AIChat.Server.Services
                 Version = yamlMetadata.Version ?? "1.0.0",
                 Category = yamlMetadata.Category ?? "general",
                 ModelHints = yamlMetadata.ModelHints,
-                Capabilities = yamlMetadata.Capabilities != null
-                    ? new AgentCapabilities
-                    {
-                        Tools = yamlMetadata.Capabilities.Tools ?? new List<string>(),
-                        Memory = yamlMetadata.Capabilities.Memory,
-                        MaxTokens = yamlMetadata.Capabilities.MaxTokens
-                    }
-                    : null,
+                Capabilities =
+                    yamlMetadata.Capabilities != null
+                        ? new AgentCapabilities
+                        {
+                            Tools = yamlMetadata.Capabilities.Tools ?? new List<string>(),
+                            Memory = yamlMetadata.Capabilities.Memory,
+                            MaxTokens = yamlMetadata.Capabilities.MaxTokens,
+                        }
+                        : null,
                 OutputContract = yamlMetadata.OutputContract,
                 RiskLevel = yamlMetadata.RiskLevel,
-                Tags = yamlMetadata.Tags
+                Tags = yamlMetadata.Tags,
             };
         }
 
@@ -182,7 +179,9 @@ namespace AIChat.Server.Services
         private Result ParseSections(string markdown, AgentCard card)
         {
             if (string.IsNullOrWhiteSpace(markdown))
+            {
                 return Result.Success();
+            }
 
             var matches = SectionRegex.Matches(markdown);
             var errors = new List<string>();
@@ -191,19 +190,22 @@ namespace AIChat.Server.Services
             {
                 var sectionName = match.Groups[1].Value.Trim();
                 var sectionContent = match.Groups[2].Value.Trim();
-                
+
                 // Get or create handler for this section
                 var handler = _sectionRegistry.GetOrCreateHandler(sectionName);
-                
+
                 // Process the section
                 var result = handler.ProcessSection(sectionContent, card);
                 if (result.IsFailure)
                 {
                     errors.Add($"{sectionName}: {result.Error}");
-                    _logger?.LogWarning("Failed to process section {Section}: {Error}", 
-                        sectionName, result.Error);
+                    logger?.LogWarning(
+                        "Failed to process section {Section}: {Error}",
+                        sectionName,
+                        result.Error
+                    );
                 }
-                
+
                 // Always store the raw content for reference
                 if (!card.Sections.ContainsKey(sectionName))
                 {
@@ -212,12 +214,14 @@ namespace AIChat.Server.Services
             }
 
             // Return success even if some sections failed (graceful degradation)
-            if (errors.Any())
+            if (errors.Count != 0)
             {
-                _logger?.LogWarning("Some sections had processing errors: {Errors}", 
-                    string.Join("; ", errors));
+                logger?.LogWarning(
+                    "Some sections had processing errors: {Errors}",
+                    string.Join("; ", errors)
+                );
             }
-            
+
             return Result.Success();
         }
 
@@ -229,10 +233,14 @@ namespace AIChat.Server.Services
         public static Result<AgentCard> LoadFromFile(string filePath)
         {
             if (string.IsNullOrWhiteSpace(filePath))
+            {
                 return Result<AgentCard>.Failure("File path cannot be empty");
-            
+            }
+
             if (!File.Exists(filePath))
+            {
                 return Result<AgentCard>.Failure($"Agent card file not found: {filePath}");
+            }
 
             try
             {
@@ -249,6 +257,11 @@ namespace AIChat.Server.Services
                 return Result<AgentCard>.Failure($"Access denied to file: {ex.Message}");
             }
         }
+
+        [GeneratedRegex(@"^---\s*\n(.*?)\n---\s*\n", RegexOptions.Compiled | RegexOptions.Singleline)]
+        private static partial Regex MyRegex();
+        [GeneratedRegex(@"^#\s+([A-Z\s]+)\s*\n(.*?)(?=^#\s+|\z)", RegexOptions.Multiline | RegexOptions.Compiled | RegexOptions.Singleline)]
+        private static partial Regex MyRegex1();
     }
 
     /// <summary>
@@ -260,31 +273,33 @@ namespace AIChat.Server.Services
         /// Gets or sets the agent metadata from YAML front matter.
         /// </summary>
         public AgentMetadata Metadata { get; set; } = new();
-        
+
         /// <summary>
         /// Gets or sets the raw content of all sections.
         /// </summary>
         public Dictionary<string, string> Sections { get; set; } = new();
-        
+
         /// <summary>
         /// Gets or sets the parsed ROLE section content.
         /// </summary>
         public string? Role { get; set; }
-        
+
         /// <summary>
         /// Gets or sets the parsed OBJECTIVE section content.
         /// </summary>
         public string? Objective { get; set; }
-        
+
         /// <summary>
         /// Gets or sets the parsed WORKFLOW steps.
         /// </summary>
         public List<string>? Workflow { get; set; }
-        
+
         /// <summary>
         /// Gets or sets the parsed OUTPUT SCHEMA as a JSON document.
         /// </summary>
         public JsonDocument? OutputSchema { get; set; }
+
+        private static readonly string[] sourceArray = new[] { "ROLE", "OBJECTIVE", "OUTPUT SCHEMA" };
 
         /// <summary>
         /// Converts the agent card to a ModeDto object for compatibility with the mode system.
@@ -292,7 +307,7 @@ namespace AIChat.Server.Services
         public ModeDto ToMode()
         {
             var prompt = BuildPromptFromSections();
-            
+
             return new ModeDto
             {
                 Id = Metadata.Agent,
@@ -305,7 +320,7 @@ namespace AIChat.Server.Services
                 IsSystem = false,
                 UserId = null,
                 CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow,
             };
         }
 
@@ -317,17 +332,25 @@ namespace AIChat.Server.Services
             var promptParts = new List<string>();
 
             if (!string.IsNullOrWhiteSpace(Role))
+            {
                 promptParts.Add(Role);
+            }
 
             if (!string.IsNullOrWhiteSpace(Objective))
+            {
                 promptParts.Add($"Objective: {Objective}");
+            }
 
             // Add other relevant sections
             foreach (var section in Sections)
             {
                 // Skip sections already added or schema sections
-                if (!new[] { "ROLE", "OBJECTIVE", "OUTPUT SCHEMA" }.Contains(
-                    section.Key, StringComparer.OrdinalIgnoreCase))
+                if (
+                    !sourceArray.Contains(
+                        section.Key,
+                        StringComparer.OrdinalIgnoreCase
+                    )
+                )
                 {
                     promptParts.Add($"{section.Key}:\n{section.Value}");
                 }

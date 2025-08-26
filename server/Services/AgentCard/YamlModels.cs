@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using YamlDotNet.Serialization;
 
 namespace AIChat.Server.Services.AgentCards

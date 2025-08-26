@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using System.Text.Json;
 using AIChat.Server.Controllers;
 using AIChat.Server.Services;
 using FluentAssertions;
@@ -19,6 +18,8 @@ public class ModeControllerTests
     private readonly Mock<IModeService> _modeServiceMock;
     private readonly Mock<ILogger<ModeController>> _loggerMock;
     private readonly ModeController _controller;
+    private static readonly string[] item = new[] { "tool1", "tool2" };
+    private static readonly string[] itemArray = new[] { "tool3" };
 
     public ModeControllerTests()
     {
@@ -42,13 +43,13 @@ public class ModeControllerTests
                 Name = "Mode 1",
                 Description = "Test mode 1",
                 Prompt = "Prompt 1",
-                Tools = new[] { "tool1", "tool2" },
+                Tools = item,
                 DefaultModel = null,
                 Category = "task",
                 IsSystem = true,
                 UserId = null,
                 CreatedAt = DateTime.UtcNow.AddDays(-1),
-                UpdatedAt = DateTime.UtcNow.AddDays(-1)
+                UpdatedAt = DateTime.UtcNow.AddDays(-1),
             },
             new()
             {
@@ -56,29 +57,30 @@ public class ModeControllerTests
                 Name = "Mode 2",
                 Description = "Test mode 2",
                 Prompt = "Prompt 2",
-                Tools = new[] { "tool3" },
+                Tools = itemArray,
                 DefaultModel = "gpt-4",
                 Category = "custom",
                 IsSystem = false,
                 UserId = userId,
                 CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            }
+                UpdatedAt = DateTime.UtcNow,
+            },
         };
 
-        _modeServiceMock.Setup(s => s.GetAllModesAsync(userId, It.IsAny<CancellationToken>()))
+        _ = _modeServiceMock
+            .Setup(s => s.GetAllModesAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((true, null, modes));
 
         // Act
         var result = await _controller.GetModes(userId);
 
-        // Assert  
+        // Assert
         var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
         var response = okResult.Value.Should().BeOfType<ModesResponse>().Subject;
-        response.Modes.Should().HaveCount(2);
-        response.Count.Should().Be(2);
-        response.Modes[0].Name.Should().Be("Mode 1");
-        response.Modes[1].Name.Should().Be("Mode 2");
+        _ = response.Modes.Should().HaveCount(2);
+        _ = response.Count.Should().Be(2);
+        _ = response.Modes[0].Name.Should().Be("Mode 1");
+        _ = response.Modes[1].Name.Should().Be("Mode 2");
     }
 
     [Fact]
@@ -93,7 +95,7 @@ public class ModeControllerTests
         // Assert
         var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
         var error = badRequestResult.Value!.ToString();
-        error.Should().Contain("UserId is required");
+        _ = error.Should().Contain("UserId is required");
     }
 
     [Fact]
@@ -108,7 +110,7 @@ public class ModeControllerTests
         // Assert
         var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
         var error = badRequestResult.Value!.ToString();
-        error.Should().Contain("UserId is required");
+        _ = error.Should().Contain("UserId is required");
     }
 
     [Fact]
@@ -116,7 +118,8 @@ public class ModeControllerTests
     {
         // Arrange
         var userId = "test-user-2";
-        _modeServiceMock.Setup(s => s.GetAllModesAsync(userId, It.IsAny<CancellationToken>()))
+        _ = _modeServiceMock
+            .Setup(s => s.GetAllModesAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((false, "Database connection failed", new List<ModeDto>()));
 
         // Act
@@ -124,8 +127,8 @@ public class ModeControllerTests
 
         // Assert
         var statusResult = result.Result.Should().BeOfType<ObjectResult>().Subject;
-        statusResult.StatusCode.Should().Be(500);
-        statusResult.Value!.ToString().Should().Contain("Database connection failed");
+        _ = statusResult.StatusCode.Should().Be(500);
+        _ = statusResult.Value!.ToString().Should().Contain("Database connection failed");
     }
 
     #endregion
@@ -150,10 +153,11 @@ public class ModeControllerTests
             IsSystem = false,
             UserId = userId,
             CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = DateTime.UtcNow,
         };
 
-        _modeServiceMock.Setup(s => s.GetModeByIdAsync(modeId, userId, It.IsAny<CancellationToken>()))
+        _ = _modeServiceMock
+            .Setup(s => s.GetModeByIdAsync(modeId, userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((true, null, mode));
 
         // Act
@@ -162,8 +166,8 @@ public class ModeControllerTests
         // Assert
         var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
         var returnedMode = okResult.Value.Should().BeOfType<ModeDto>().Subject;
-        returnedMode.Id.Should().Be(modeId);
-        returnedMode.Name.Should().Be("Test Mode");
+        _ = returnedMode.Id.Should().Be(modeId);
+        _ = returnedMode.Name.Should().Be("Test Mode");
     }
 
     [Fact]
@@ -173,7 +177,8 @@ public class ModeControllerTests
         var modeId = "non-existent";
         var userId = "test-user-4";
 
-        _modeServiceMock.Setup(s => s.GetModeByIdAsync(modeId, userId, It.IsAny<CancellationToken>()))
+        _ = _modeServiceMock
+            .Setup(s => s.GetModeByIdAsync(modeId, userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((false, "NotFound", (ModeDto?)null));
 
         // Act
@@ -181,7 +186,7 @@ public class ModeControllerTests
 
         // Assert
         var notFoundResult = result.Result.Should().BeOfType<NotFoundObjectResult>().Subject;
-        notFoundResult.Value!.ToString().Should().Contain("Mode not found");
+        _ = notFoundResult.Value!.ToString().Should().Contain("Mode not found");
     }
 
     [Fact]
@@ -196,7 +201,7 @@ public class ModeControllerTests
 
         // Assert
         var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        badRequestResult.Value!.ToString().Should().Contain("UserId is required");
+        _ = badRequestResult.Value!.ToString().Should().Contain("UserId is required");
     }
 
     #endregion
@@ -215,7 +220,7 @@ public class ModeControllerTests
             Prompt = "You are a helpful assistant",
             Tools = new[] { "tool1", "tool2" },
             DefaultModel = "gpt-4",
-            Category = "custom"
+            Category = "custom",
         };
 
         var createdMode = new ModeDto
@@ -230,13 +235,17 @@ public class ModeControllerTests
             IsSystem = false,
             UserId = request.UserId,
             CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = DateTime.UtcNow,
         };
 
-        _modeServiceMock.Setup(s => s.CreateCustomModeAsync(
-                It.IsAny<CreateModeRequest>(),
-                request.UserId,
-                It.IsAny<CancellationToken>()))
+        _ = _modeServiceMock
+            .Setup(s =>
+                s.CreateCustomModeAsync(
+                    It.IsAny<CreateModeRequest>(),
+                    request.UserId,
+                    It.IsAny<CancellationToken>()
+                )
+            )
             .ReturnsAsync((true, null, createdMode));
 
         // Act
@@ -244,12 +253,12 @@ public class ModeControllerTests
 
         // Assert
         var createdResult = result.Result.Should().BeOfType<CreatedAtActionResult>().Subject;
-        createdResult.ActionName.Should().Be(nameof(ModeController.GetMode));
-        createdResult.RouteValues!["id"].Should().Be("created-mode-id");
-        createdResult.RouteValues["userId"].Should().Be("test-user-5");
-        
+        _ = createdResult.ActionName.Should().Be(nameof(ModeController.GetMode));
+        _ = createdResult.RouteValues!["id"].Should().Be("created-mode-id");
+        _ = createdResult.RouteValues["userId"].Should().Be("test-user-5");
+
         var returnedMode = createdResult.Value.Should().BeOfType<ModeDto>().Subject;
-        returnedMode.Name.Should().Be("New Mode");
+        _ = returnedMode.Name.Should().Be("New Mode");
     }
 
     [Fact]
@@ -264,7 +273,7 @@ public class ModeControllerTests
             Prompt = "Prompt",
             Tools = new[] { "tool1" },
             DefaultModel = null,
-            Category = "custom"
+            Category = "custom",
         };
 
         // Act
@@ -272,7 +281,7 @@ public class ModeControllerTests
 
         // Assert
         var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        badRequestResult.Value!.ToString().Should().Contain("UserId is required");
+        _ = badRequestResult.Value!.ToString().Should().Contain("UserId is required");
     }
 
     [Fact]
@@ -287,7 +296,7 @@ public class ModeControllerTests
             Prompt = "Prompt",
             Tools = new[] { "tool1" },
             DefaultModel = null,
-            Category = "custom"
+            Category = "custom",
         };
 
         // Act
@@ -295,7 +304,10 @@ public class ModeControllerTests
 
         // Assert
         var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        badRequestResult.Value!.ToString().Should().Contain("Mode name cannot contain HTML special characters");
+        _ = badRequestResult
+            .Value!.ToString()
+            .Should()
+            .Contain("Mode name cannot contain HTML special characters");
     }
 
     [Fact]
@@ -310,7 +322,7 @@ public class ModeControllerTests
             Prompt = "Normal prompt",
             Tools = new[] { "tool1" },
             DefaultModel = null,
-            Category = "custom"
+            Category = "custom",
         };
 
         // Act
@@ -318,7 +330,10 @@ public class ModeControllerTests
 
         // Assert
         var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        badRequestResult.Value!.ToString().Should().Contain("Mode content cannot contain script tags");
+        _ = badRequestResult
+            .Value!.ToString()
+            .Should()
+            .Contain("Mode content cannot contain script tags");
     }
 
     [Fact]
@@ -333,7 +348,7 @@ public class ModeControllerTests
             Prompt = "Valid prompt",
             Tools = new[] { "tool1", "", "tool3" }, // Empty tool name
             DefaultModel = null,
-            Category = "custom"
+            Category = "custom",
         };
 
         // Act
@@ -341,7 +356,10 @@ public class ModeControllerTests
 
         // Assert
         var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        badRequestResult.Value!.ToString().Should().Contain("Tool names cannot be empty or whitespace");
+        _ = badRequestResult
+            .Value!.ToString()
+            .Should()
+            .Contain("Tool names cannot be empty or whitespace");
     }
 
     [Fact]
@@ -356,7 +374,7 @@ public class ModeControllerTests
             Prompt = "Valid prompt",
             Tools = new[] { new string('a', 101) }, // 101 characters
             DefaultModel = null,
-            Category = "custom"
+            Category = "custom",
         };
 
         // Act
@@ -364,7 +382,10 @@ public class ModeControllerTests
 
         // Assert
         var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        badRequestResult.Value!.ToString().Should().Contain("Tool names must be 100 characters or less");
+        _ = badRequestResult
+            .Value!.ToString()
+            .Should()
+            .Contain("Tool names must be 100 characters or less");
     }
 
     [Fact]
@@ -379,13 +400,17 @@ public class ModeControllerTests
             Prompt = "Prompt",
             Tools = new[] { "tool1" },
             DefaultModel = null,
-            Category = "custom"
+            Category = "custom",
         };
 
-        _modeServiceMock.Setup(s => s.CreateCustomModeAsync(
-                It.IsAny<CreateModeRequest>(),
-                request.UserId,
-                It.IsAny<CancellationToken>()))
+        _ = _modeServiceMock
+            .Setup(s =>
+                s.CreateCustomModeAsync(
+                    It.IsAny<CreateModeRequest>(),
+                    request.UserId,
+                    It.IsAny<CancellationToken>()
+                )
+            )
             .ReturnsAsync((false, "Mode with this name already exists", (ModeDto?)null));
 
         // Act
@@ -393,7 +418,7 @@ public class ModeControllerTests
 
         // Assert
         var conflictResult = result.Result.Should().BeOfType<ConflictObjectResult>().Subject;
-        conflictResult.Value!.ToString().Should().Contain("already exists");
+        _ = conflictResult.Value!.ToString().Should().Contain("already exists");
     }
 
     [Theory]
@@ -410,17 +435,22 @@ public class ModeControllerTests
             Prompt = "Prompt",
             Tools = new[] { "tool1" },
             DefaultModel = null,
-            Category = "custom"
+            Category = "custom",
         };
 
         // Manually trigger validation
         var validationContext = new ValidationContext(request);
         var validationResults = new List<ValidationResult>();
-        var isValid = Validator.TryValidateObject(request, validationContext, validationResults, true);
+        var isValid = Validator.TryValidateObject(
+            request,
+            validationContext,
+            validationResults,
+            true
+        );
 
         // Assert
-        isValid.Should().BeFalse();
-        validationResults.Should().Contain(r => r.MemberNames.Contains("Name"));
+        _ = isValid.Should().BeFalse();
+        _ = validationResults.Should().Contain(r => r.MemberNames.Contains("Name"));
     }
 
     #endregion
@@ -440,7 +470,7 @@ public class ModeControllerTests
             Prompt = "Updated prompt",
             Tools = new[] { "tool3", "tool4" },
             DefaultModel = "gpt-4",
-            Category = "role"
+            Category = "role",
         };
 
         var updatedMode = new ModeDto
@@ -455,14 +485,18 @@ public class ModeControllerTests
             IsSystem = false,
             UserId = request.UserId,
             CreatedAt = DateTime.UtcNow.AddDays(-1),
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = DateTime.UtcNow,
         };
 
-        _modeServiceMock.Setup(s => s.UpdateCustomModeAsync(
-                modeId,
-                It.IsAny<UpdateModeRequest>(),
-                request.UserId,
-                It.IsAny<CancellationToken>()))
+        _ = _modeServiceMock
+            .Setup(s =>
+                s.UpdateCustomModeAsync(
+                    modeId,
+                    It.IsAny<UpdateModeRequest>(),
+                    request.UserId,
+                    It.IsAny<CancellationToken>()
+                )
+            )
             .ReturnsAsync((true, null, updatedMode));
 
         // Act
@@ -471,8 +505,8 @@ public class ModeControllerTests
         // Assert
         var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
         var returnedMode = okResult.Value.Should().BeOfType<ModeDto>().Subject;
-        returnedMode.Name.Should().Be("Updated Mode");
-        returnedMode.DefaultModel.Should().Be("gpt-4");
+        _ = returnedMode.Name.Should().Be("Updated Mode");
+        _ = returnedMode.DefaultModel.Should().Be("gpt-4");
     }
 
     [Fact]
@@ -488,14 +522,18 @@ public class ModeControllerTests
             Prompt = "Prompt",
             Tools = new[] { "tool1" },
             DefaultModel = null,
-            Category = "custom"
+            Category = "custom",
         };
 
-        _modeServiceMock.Setup(s => s.UpdateCustomModeAsync(
-                modeId,
-                It.IsAny<UpdateModeRequest>(),
-                request.UserId,
-                It.IsAny<CancellationToken>()))
+        _ = _modeServiceMock
+            .Setup(s =>
+                s.UpdateCustomModeAsync(
+                    modeId,
+                    It.IsAny<UpdateModeRequest>(),
+                    request.UserId,
+                    It.IsAny<CancellationToken>()
+                )
+            )
             .ReturnsAsync((false, "NotFound", (ModeDto?)null));
 
         // Act
@@ -503,7 +541,7 @@ public class ModeControllerTests
 
         // Assert
         var notFoundResult = result.Result.Should().BeOfType<NotFoundObjectResult>().Subject;
-        notFoundResult.Value!.ToString().Should().Contain("Mode not found or access denied");
+        _ = notFoundResult.Value!.ToString().Should().Contain("Mode not found or access denied");
     }
 
     [Fact]
@@ -519,7 +557,7 @@ public class ModeControllerTests
             Prompt = "Prompt",
             Tools = new[] { "tool1" },
             DefaultModel = null,
-            Category = "custom"
+            Category = "custom",
         };
 
         // Act
@@ -527,7 +565,10 @@ public class ModeControllerTests
 
         // Assert
         var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        badRequestResult.Value!.ToString().Should().Contain("Mode name cannot contain HTML special characters");
+        _ = badRequestResult
+            .Value!.ToString()
+            .Should()
+            .Contain("Mode name cannot contain HTML special characters");
     }
 
     #endregion
@@ -541,14 +582,15 @@ public class ModeControllerTests
         var modeId = "mode-to-delete";
         var userId = "test-user-14";
 
-        _modeServiceMock.Setup(s => s.DeleteCustomModeAsync(modeId, userId, It.IsAny<CancellationToken>()))
+        _ = _modeServiceMock
+            .Setup(s => s.DeleteCustomModeAsync(modeId, userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((true, null));
 
         // Act
         var result = await _controller.DeleteMode(modeId, userId);
 
         // Assert
-        result.Should().BeOfType<NoContentResult>();
+        _ = result.Should().BeOfType<NoContentResult>();
     }
 
     [Fact]
@@ -558,7 +600,8 @@ public class ModeControllerTests
         var modeId = "non-existent";
         var userId = "test-user-15";
 
-        _modeServiceMock.Setup(s => s.DeleteCustomModeAsync(modeId, userId, It.IsAny<CancellationToken>()))
+        _ = _modeServiceMock
+            .Setup(s => s.DeleteCustomModeAsync(modeId, userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((false, "NotFound"));
 
         // Act
@@ -566,7 +609,7 @@ public class ModeControllerTests
 
         // Assert
         var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
-        notFoundResult.Value!.ToString().Should().Contain("Mode not found or access denied");
+        _ = notFoundResult.Value!.ToString().Should().Contain("Mode not found or access denied");
     }
 
     [Fact]
@@ -576,7 +619,8 @@ public class ModeControllerTests
         var modeId = "system-mode";
         var userId = "test-user-16";
 
-        _modeServiceMock.Setup(s => s.DeleteCustomModeAsync(modeId, userId, It.IsAny<CancellationToken>()))
+        _ = _modeServiceMock
+            .Setup(s => s.DeleteCustomModeAsync(modeId, userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((false, "Cannot delete system mode"));
 
         // Act
@@ -584,7 +628,7 @@ public class ModeControllerTests
 
         // Assert
         var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        badRequestResult.Value!.ToString().Should().Contain("Cannot delete system modes");
+        _ = badRequestResult.Value!.ToString().Should().Contain("Cannot delete system modes");
     }
 
     [Fact]
@@ -599,7 +643,7 @@ public class ModeControllerTests
 
         // Assert
         var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        badRequestResult.Value!.ToString().Should().Contain("UserId is required");
+        _ = badRequestResult.Value!.ToString().Should().Contain("UserId is required");
     }
 
     [Fact]
@@ -609,7 +653,8 @@ public class ModeControllerTests
         var modeId = "mode-to-delete";
         var userId = "test-user-17";
 
-        _modeServiceMock.Setup(s => s.DeleteCustomModeAsync(modeId, userId, It.IsAny<CancellationToken>()))
+        _ = _modeServiceMock
+            .Setup(s => s.DeleteCustomModeAsync(modeId, userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((false, "Database error occurred"));
 
         // Act
@@ -617,8 +662,8 @@ public class ModeControllerTests
 
         // Assert
         var statusResult = result.Should().BeOfType<ObjectResult>().Subject;
-        statusResult.StatusCode.Should().Be(500);
-        statusResult.Value!.ToString().Should().Contain("Database error occurred");
+        _ = statusResult.StatusCode.Should().Be(500);
+        _ = statusResult.Value!.ToString().Should().Contain("Database error occurred");
     }
 
     #endregion
@@ -631,22 +676,26 @@ public class ModeControllerTests
         // Arrange
         var userId = "test-user-18";
         var errorMessage = "Service failure";
-        
-        _modeServiceMock.Setup(s => s.GetAllModesAsync(userId, It.IsAny<CancellationToken>()))
+
+        _ = _modeServiceMock
+            .Setup(s => s.GetAllModesAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((false, errorMessage, new List<ModeDto>()));
 
         // Act
-        await _controller.GetModes(userId);
+        _ = await _controller.GetModes(userId);
 
         // Assert
         _loggerMock.Verify(
-            x => x.Log(
-                LogLevel.Error,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Error retrieving modes")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+            x =>
+                x.Log(
+                    LogLevel.Error,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Error retrieving modes")),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()
+                ),
+            Times.Once
+        );
     }
 
     [Fact]
@@ -661,27 +710,34 @@ public class ModeControllerTests
             Prompt = "Prompt",
             Tools = new[] { "tool1" },
             DefaultModel = null,
-            Category = "custom"
+            Category = "custom",
         };
 
-        _modeServiceMock.Setup(s => s.CreateCustomModeAsync(
-                It.IsAny<CreateModeRequest>(),
-                request.UserId,
-                It.IsAny<CancellationToken>()))
+        _ = _modeServiceMock
+            .Setup(s =>
+                s.CreateCustomModeAsync(
+                    It.IsAny<CreateModeRequest>(),
+                    request.UserId,
+                    It.IsAny<CancellationToken>()
+                )
+            )
             .ReturnsAsync((false, "Creation failed", (ModeDto?)null));
 
         // Act
-        await _controller.CreateMode(request);
+        _ = await _controller.CreateMode(request);
 
         // Assert
         _loggerMock.Verify(
-            x => x.Log(
-                LogLevel.Error,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Error creating mode")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+            x =>
+                x.Log(
+                    LogLevel.Error,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Error creating mode")),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()
+                ),
+            Times.Once
+        );
     }
 
     #endregion

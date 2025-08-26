@@ -12,12 +12,12 @@ public interface ITaskManagerService
     /// Gets or creates a TaskManager for the specified chat
     /// </summary>
     Task<TaskManager> GetTaskManagerAsync(string chatId, CancellationToken ct = default);
-    
+
     /// <summary>
     /// Saves the current state of a chat's TaskManager
     /// </summary>
     Task SaveTaskManagerStateAsync(string chatId, CancellationToken ct = default);
-    
+
     /// <summary>
     /// Clears the TaskManager for a chat (when chat is deleted)
     /// </summary>
@@ -26,5 +26,8 @@ public interface ITaskManagerService
     /// <summary>
     /// Gets the current task state as JSON for a chat
     /// </summary>
-    Task<(string, IList<TaskItem>)?> GetTaskStateAsync(string chatId, CancellationToken ct = default);
+    Task<(string, IList<TaskItem>)?> GetTaskStateAsync(
+        string chatId,
+        CancellationToken ct = default
+    );
 }

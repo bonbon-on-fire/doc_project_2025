@@ -84,7 +84,9 @@
       "Bash(dotnet tool install:*)",
       "Bash(csharpier:*)",
       "WebFetch(domain:csharpier.com)",
-      "Bash(jb cleanupcode:*)"
+      "Bash(jb cleanupcode:*)",
+      "Bash(roslynator:*)",
+      "WebFetch(domain:josefpihrt.github.io)"
     ],
     "deny": [],
     "ask": [],

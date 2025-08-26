@@ -1,10 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Logging;
 using AIChat.Server.Models;
-using AIChat.Server.Exceptions;
+using Microsoft.Extensions.Options;
 
 namespace AIChat.Server.Services;
 
@@ -20,23 +15,17 @@ public interface IMcpConfigurationValidator
     bool Validate(out List<string> errors);
 }
 
-public class McpConfigurationValidator : IMcpConfigurationValidator
+public class McpConfigurationValidator(
+    IOptions<McpConfiguration> configuration,
+    ILogger<McpConfigurationValidator> logger
+    ) : IMcpConfigurationValidator
 {
-    private readonly McpConfiguration _configuration;
-    private readonly ILogger<McpConfigurationValidator> _logger;
-
-    public McpConfigurationValidator(
-        IOptions<McpConfiguration> configuration,
-        ILogger<McpConfigurationValidator> logger)
-    {
-        _configuration = configuration.Value;
-        _logger = logger;
-    }
+    private readonly McpConfiguration _configuration = configuration.Value;
 
     public bool Validate(out List<string> errors)
     {
         errors = new List<string>();
-        
+
         if (_configuration == null)
         {
             errors.Add("MCP configuration section is missing");
@@ -44,7 +33,7 @@ public class McpConfigurationValidator : IMcpConfigurationValidator
         }
 
         // Validate MCP servers if any are configured
-        if (_configuration.McpServers != null && _configuration.McpServers.Any())
+        if (_configuration.McpServers != null && _configuration.McpServers.Count != 0)
         {
             foreach (var (serverName, serverConfig) in _configuration.McpServers)
             {
@@ -53,30 +42,37 @@ public class McpConfigurationValidator : IMcpConfigurationValidator
         }
         else
         {
-            _logger.LogInformation("No MCP servers configured");
+            logger.LogInformation("No MCP servers configured");
         }
 
         // Validate inputs if referenced by any server
-        if (_configuration.McpServers != null && _configuration.McpServers.Any(s => s.Value.Env != null))
+        if (
+            _configuration.McpServers != null
+            && _configuration.McpServers.Any(s => s.Value.Env != null)
+        )
         {
             ValidateInputs(errors);
         }
 
         // Log all validation errors
-        if (errors.Any())
+        if (errors.Count != 0)
         {
             foreach (var error in errors)
             {
-                _logger.LogError("MCP Configuration validation error: {Error}", error);
+                logger.LogError("MCP Configuration validation error: {Error}", error);
             }
             return false;
         }
 
-        _logger.LogInformation("MCP configuration validation passed");
+        logger.LogInformation("MCP configuration validation passed");
         return true;
     }
 
-    private void ValidateServerConfig(string serverName, McpServerConfig config, List<string> errors)
+    private void ValidateServerConfig(
+        string serverName,
+        McpServerConfig config,
+        List<string> errors
+    )
     {
         if (config == null)
         {
@@ -87,7 +83,7 @@ public class McpConfigurationValidator : IMcpConfigurationValidator
         // Skip validation for disabled servers
         if (!config.Enabled)
         {
-            _logger.LogDebug("Server '{ServerName}' is disabled, skipping validation", serverName);
+            logger.LogDebug("Server '{ServerName}' is disabled, skipping validation", serverName);
             return;
         }
 
@@ -101,7 +97,9 @@ public class McpConfigurationValidator : IMcpConfigurationValidator
             var validTypes = new[] { "stdio", "sse", "http" };
             if (!validTypes.Contains(config.Type.ToLowerInvariant()))
             {
-                errors.Add($"Server '{serverName}' has invalid transport type '{config.Type}'. Valid types: {string.Join(", ", validTypes)}");
+                errors.Add(
+                    $"Server '{serverName}' has invalid transport type '{config.Type}'. Valid types: {string.Join(", ", validTypes)}"
+                );
             }
         }
 
@@ -118,8 +116,11 @@ public class McpConfigurationValidator : IMcpConfigurationValidator
         if (config.Type?.ToLowerInvariant() == "sse" || config.Type?.ToLowerInvariant() == "http")
         {
             // Currently not supported, will be validated when implemented
-            _logger.LogWarning("Server '{ServerName}' uses {Type} transport which is not yet implemented", 
-                serverName, config.Type);
+            logger.LogWarning(
+                "Server '{ServerName}' uses {Type} transport which is not yet implemented",
+                serverName,
+                config.Type
+            );
         }
 
         // Validate environment variables if present
@@ -136,7 +137,10 @@ public class McpConfigurationValidator : IMcpConfigurationValidator
                 if (value?.StartsWith("${input:") == true && value.EndsWith("}"))
                 {
                     var inputId = value.Substring(8, value.Length - 9);
-                    if (_configuration.Inputs == null || !_configuration.Inputs.Any(i => i.Id == inputId))
+                    if (
+                        _configuration.Inputs == null
+                        || !_configuration.Inputs.Any(i => i.Id == inputId)
+                    )
                     {
                         errors.Add($"Server '{serverName}' references undefined input '{inputId}'");
                     }
@@ -168,7 +172,7 @@ public class McpConfigurationValidator : IMcpConfigurationValidator
 
             if (string.IsNullOrWhiteSpace(input.Description))
             {
-                _logger.LogWarning("Input '{InputId}' has no description", input.Id);
+                logger.LogWarning("Input '{InputId}' has no description", input.Id);
             }
         }
     }

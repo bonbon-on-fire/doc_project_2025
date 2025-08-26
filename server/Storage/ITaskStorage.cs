@@ -29,7 +29,12 @@ public interface ITaskStorage
     /// <param name="ct">Cancellation token</param>
     /// <returns>The updated task state with new version</returns>
     /// <exception cref="InvalidOperationException">Thrown when version conflict occurs</exception>
-    Task<ChatTaskState> SaveTasksAsync(string chatId, TaskManager taskManager, int expectedVersion, CancellationToken ct = default);
+    Task<ChatTaskState> SaveTasksAsync(
+        string chatId,
+        TaskManager taskManager,
+        int expectedVersion,
+        CancellationToken ct = default
+    );
 
     /// <summary>
     /// Deletes all tasks for a specific chat.

@@ -2,33 +2,34 @@ using AchieveAi.LmDotnetTools.Misc.Utils;
 
 namespace AIChat.Server.Storage.Sqlite;
 
-public sealed class SqliteTaskStorage : ITaskStorage
+public sealed class SqliteTaskStorage(ISqliteConnectionFactory factory) : ITaskStorage
 {
-    private readonly ISqliteConnectionFactory _factory;
-
-    public SqliteTaskStorage(ISqliteConnectionFactory factory)
+    public async Task<(TaskManager, int, DateTime)?> GetTasksManagerAsync(
+        string chatId,
+        CancellationToken ct = default
+    )
     {
-        _factory = factory;
-    }
-
-    public async Task<(TaskManager, int, DateTime)?> GetTasksManagerAsync(string chatId, CancellationToken ct = default)
-    {
-        await using var conn = await _factory.CreateOpenConnectionAsync(ct);
-        const string sql = @"
-            SELECT ChatId, TaskData, Version, UpdatedAtUtc 
-            FROM chat_tasks 
-            WHERE ChatId = $chatId 
+        await using var conn = await factory.CreateOpenConnectionAsync(ct);
+        const string sql =
+            @"
+            SELECT ChatId, TaskData, Version, UpdatedAtUtc
+            FROM chat_tasks
+            WHERE ChatId = $chatId
             LIMIT 1";
 
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = sql;
-        cmd.Parameters.AddWithValue("$chatId", chatId);
+        _ = cmd.Parameters.AddWithValue("$chatId", chatId);
 
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         if (await reader.ReadAsync(ct))
         {
             var taskDataJson = reader.GetString(1);
-            return (TaskManager.DeserializeTasks(taskDataJson), reader.GetInt32(2), reader.GetDateTime(3));
+            return (
+                TaskManager.DeserializeTasks(taskDataJson),
+                reader.GetInt32(2),
+                reader.GetDateTime(3)
+            );
         }
 
         return null;
@@ -45,34 +46,40 @@ public sealed class SqliteTaskStorage : ITaskStorage
                 ChatId = chatId,
                 TaskManager = taskManager,
                 Version = version,
-                LastUpdatedUtc = lastUpdated
+                LastUpdatedUtc = lastUpdated,
             };
         }
 
         return null;
     }
 
-    public async Task<ChatTaskState> SaveTasksAsync(string chatId, TaskManager taskManager, int expectedVersion, CancellationToken ct = default)
+    public async Task<ChatTaskState> SaveTasksAsync(
+        string chatId,
+        TaskManager taskManager,
+        int expectedVersion,
+        CancellationToken ct = default
+    )
     {
-        await using var conn = await _factory.CreateOpenConnectionAsync(ct);
+        await using var conn = await factory.CreateOpenConnectionAsync(ct);
         var nowUtc = DateTime.UtcNow;
         var taskDataJson = taskManager.JsonSerializeTasks();
 
         // First, try to update existing record with version check
-        const string updateSql = @"
-            UPDATE chat_tasks 
-            SET TaskData = $taskData, 
-                Version = Version + 1, 
+        const string updateSql =
+            @"
+            UPDATE chat_tasks
+            SET TaskData = $taskData,
+                Version = Version + 1,
                 UpdatedAtUtc = $updatedAt
             WHERE ChatId = $chatId AND Version = $expectedVersion";
 
         await using (var cmd = conn.CreateCommand())
         {
             cmd.CommandText = updateSql;
-            cmd.Parameters.AddWithValue("$taskData", taskDataJson);
-            cmd.Parameters.AddWithValue("$updatedAt", nowUtc.ToString("o"));
-            cmd.Parameters.AddWithValue("$chatId", chatId);
-            cmd.Parameters.AddWithValue("$expectedVersion", expectedVersion);
+            _ = cmd.Parameters.AddWithValue("$taskData", taskDataJson);
+            _ = cmd.Parameters.AddWithValue("$updatedAt", nowUtc.ToString("o"));
+            _ = cmd.Parameters.AddWithValue("$chatId", chatId);
+            _ = cmd.Parameters.AddWithValue("$expectedVersion", expectedVersion);
 
             var rowsAffected = await cmd.ExecuteNonQueryAsync(ct);
 
@@ -84,22 +91,23 @@ public sealed class SqliteTaskStorage : ITaskStorage
                     ChatId = chatId,
                     TaskManager = taskManager,
                     Version = expectedVersion + 1,
-                    LastUpdatedUtc = nowUtc
+                    LastUpdatedUtc = nowUtc,
                 };
             }
         }
 
         // Update failed, check if it's because record doesn't exist or version conflict
-        const string checkSql = @"
-            SELECT Version 
-            FROM chat_tasks 
-            WHERE ChatId = $chatId 
+        const string checkSql =
+            @"
+            SELECT Version
+            FROM chat_tasks
+            WHERE ChatId = $chatId
             LIMIT 1";
 
         await using (var cmd = conn.CreateCommand())
         {
             cmd.CommandText = checkSql;
-            cmd.Parameters.AddWithValue("$chatId", chatId);
+            _ = cmd.Parameters.AddWithValue("$chatId", chatId);
 
             var result = await cmd.ExecuteScalarAsync(ct);
 
@@ -107,29 +115,34 @@ public sealed class SqliteTaskStorage : ITaskStorage
             {
                 // Record exists but version doesn't match
                 var currentVersion = Convert.ToInt32(result);
-                throw new InvalidOperationException($"Version conflict: expected {expectedVersion}, but current version is {currentVersion}");
+                throw new InvalidOperationException(
+                    $"Version conflict: expected {expectedVersion}, but current version is {currentVersion}"
+                );
             }
         }
 
         // Record doesn't exist, insert new one (only if expectedVersion is 0)
         if (expectedVersion != 0)
         {
-            throw new InvalidOperationException($"Version conflict: expected version {expectedVersion}, but no tasks exist for this chat");
+            throw new InvalidOperationException(
+                $"Version conflict: expected version {expectedVersion}, but no tasks exist for this chat"
+            );
         }
 
-        const string insertSql = @"
+        const string insertSql =
+            @"
             INSERT INTO chat_tasks (ChatId, TaskData, Version, CreatedAtUtc, UpdatedAtUtc)
             VALUES ($chatId, $taskData, 1, $createdAt, $updatedAt)";
 
         await using (var cmd = conn.CreateCommand())
         {
             cmd.CommandText = insertSql;
-            cmd.Parameters.AddWithValue("$chatId", chatId);
-            cmd.Parameters.AddWithValue("$taskData", taskDataJson);
-            cmd.Parameters.AddWithValue("$createdAt", nowUtc.ToString("o"));
-            cmd.Parameters.AddWithValue("$updatedAt", nowUtc.ToString("o"));
+            _ = cmd.Parameters.AddWithValue("$chatId", chatId);
+            _ = cmd.Parameters.AddWithValue("$taskData", taskDataJson);
+            _ = cmd.Parameters.AddWithValue("$createdAt", nowUtc.ToString("o"));
+            _ = cmd.Parameters.AddWithValue("$updatedAt", nowUtc.ToString("o"));
 
-            await cmd.ExecuteNonQueryAsync(ct);
+            _ = await cmd.ExecuteNonQueryAsync(ct);
         }
 
         return new ChatTaskState
@@ -137,19 +150,19 @@ public sealed class SqliteTaskStorage : ITaskStorage
             ChatId = chatId,
             TaskManager = taskManager,
             Version = 1,
-            LastUpdatedUtc = nowUtc
+            LastUpdatedUtc = nowUtc,
         };
     }
 
     public async Task DeleteTasksAsync(string chatId, CancellationToken ct = default)
     {
-        await using var conn = await _factory.CreateOpenConnectionAsync(ct);
+        await using var conn = await factory.CreateOpenConnectionAsync(ct);
         const string sql = "DELETE FROM chat_tasks WHERE ChatId = $chatId";
 
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = sql;
-        cmd.Parameters.AddWithValue("$chatId", chatId);
-        
-        await cmd.ExecuteNonQueryAsync(ct);
+        _ = cmd.Parameters.AddWithValue("$chatId", chatId);
+
+        _ = await cmd.ExecuteNonQueryAsync(ct);
     }
 }

@@ -16,22 +16,29 @@ public class ModeServiceTests : IDisposable
     private readonly Mock<IHostEnvironment> _hostEnvironmentMock;
     private readonly ModeService _service;
     private readonly string _tempDir;
+    private static readonly string[] expected = new[] { "tool1", "tool2" };
+    private static readonly string[] expectedArray = new[] { "tool3", "tool4" };
+    private static readonly string[] unexpected = new[] { "tool3", "tool4" };
 
     public ModeServiceTests()
     {
         _modeStorageMock = new Mock<IModeStorage>();
         _loggerMock = new Mock<ILogger<ModeService>>();
         _hostEnvironmentMock = new Mock<IHostEnvironment>();
-        
+
         // Create a temporary directory for test system modes
         _tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        Directory.CreateDirectory(_tempDir);
-        Directory.CreateDirectory(Path.Combine(_tempDir, "modes"));
-        
-        _hostEnvironmentMock.Setup(x => x.ContentRootPath).Returns(_tempDir);
-        
-        _service = new ModeService(_modeStorageMock.Object, _loggerMock.Object, _hostEnvironmentMock.Object);
-        
+        _ = Directory.CreateDirectory(_tempDir);
+        _ = Directory.CreateDirectory(Path.Combine(_tempDir, "modes"));
+
+        _ = _hostEnvironmentMock.Setup(x => x.ContentRootPath).Returns(_tempDir);
+
+        _service = new ModeService(
+            _modeStorageMock.Object,
+            _loggerMock.Object,
+            _hostEnvironmentMock.Object
+        );
+
         // Create a test system mode file
         CreateTestSystemMode();
     }
@@ -46,15 +53,18 @@ public class ModeServiceTests : IDisposable
             category = "test",
             prompt = "You are a test assistant",
             tools = new[] { "tool1", "tool2" },
-            defaultModel = (string?)null
+            defaultModel = (string?)null,
         };
-        
-        var json = JsonSerializer.Serialize(systemMode, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = true
-        });
-        
+
+        var json = JsonSerializer.Serialize(
+            systemMode,
+            new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                WriteIndented = true,
+            }
+        );
+
         File.WriteAllText(Path.Combine(_tempDir, "modes", "test-system.json"), json);
     }
 
@@ -76,29 +86,30 @@ public class ModeServiceTests : IDisposable
                 DefaultModel = "gpt-4",
                 Category = "custom",
                 CreatedAtUtc = DateTime.UtcNow.AddDays(-1),
-                UpdatedAtUtc = DateTime.UtcNow
-            }
+                UpdatedAtUtc = DateTime.UtcNow,
+            },
         };
 
-        _modeStorageMock.Setup(x => x.GetModesByUserAsync(userId, It.IsAny<CancellationToken>()))
+        _ = _modeStorageMock
+            .Setup(x => x.GetModesByUserAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((true, null, customModes));
 
         // Act
-        var result = await _service.GetAllModesAsync(userId);
+        var (Success, Error, Modes) = await _service.GetAllModesAsync(userId);
 
         // Assert
-        result.Success.Should().BeTrue();
-        result.Modes.Should().HaveCount(2); // 1 system + 1 custom
-        
-        var systemMode = result.Modes.Should().ContainSingle(m => m.IsSystem).Subject;
-        systemMode.Id.Should().Be("test-system");
-        systemMode.Name.Should().Be("Test System Mode");
-        systemMode.Tools.Should().Contain(new[] { "tool1", "tool2" });
+        _ = Success.Should().BeTrue();
+        _ = Modes.Should().HaveCount(2); // 1 system + 1 custom
 
-        var customMode = result.Modes.Should().ContainSingle(m => !m.IsSystem).Subject;
-        customMode.Id.Should().Be("custom-1");
-        customMode.Name.Should().Be("Custom Mode");
-        customMode.UserId.Should().Be(userId);
+        var systemMode = Modes.Should().ContainSingle(m => m.IsSystem).Subject;
+        _ = systemMode.Id.Should().Be("test-system");
+        _ = systemMode.Name.Should().Be("Test System Mode");
+        _ = systemMode.Tools.Should().Contain(expected);
+
+        var customMode = Modes.Should().ContainSingle(m => !m.IsSystem).Subject;
+        _ = customMode.Id.Should().Be("custom-1");
+        _ = customMode.Name.Should().Be("Custom Mode");
+        _ = customMode.UserId.Should().Be(userId);
     }
 
     [Fact]
@@ -109,14 +120,14 @@ public class ModeServiceTests : IDisposable
         var modeId = "test-system";
 
         // Act
-        var result = await _service.GetModeByIdAsync(modeId, userId);
+        var (Success, Error, Mode) = await _service.GetModeByIdAsync(modeId, userId);
 
         // Assert
-        result.Success.Should().BeTrue();
-        result.Mode.Should().NotBeNull();
-        result.Mode!.Id.Should().Be("test-system");
-        result.Mode.IsSystem.Should().BeTrue();
-        result.Mode.Name.Should().Be("Test System Mode");
+        _ = Success.Should().BeTrue();
+        _ = Mode.Should().NotBeNull();
+        _ = Mode!.Id.Should().Be("test-system");
+        _ = Mode.IsSystem.Should().BeTrue();
+        _ = Mode.Name.Should().Be("Test System Mode");
     }
 
     [Fact]
@@ -136,21 +147,22 @@ public class ModeServiceTests : IDisposable
             DefaultModel = null,
             Category = "custom",
             CreatedAtUtc = DateTime.UtcNow.AddDays(-1),
-            UpdatedAtUtc = DateTime.UtcNow
+            UpdatedAtUtc = DateTime.UtcNow,
         };
 
-        _modeStorageMock.Setup(x => x.GetModeByIdAsync(modeId, userId, It.IsAny<CancellationToken>()))
+        _ = _modeStorageMock
+            .Setup(x => x.GetModeByIdAsync(modeId, userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((true, null, customMode));
 
         // Act
-        var result = await _service.GetModeByIdAsync(modeId, userId);
+        var (Success, Error, Mode) = await _service.GetModeByIdAsync(modeId, userId);
 
         // Assert
-        result.Success.Should().BeTrue();
-        result.Mode.Should().NotBeNull();
-        result.Mode!.Id.Should().Be(modeId);
-        result.Mode.IsSystem.Should().BeFalse();
-        result.Mode.UserId.Should().Be(userId);
+        _ = Success.Should().BeTrue();
+        _ = Mode.Should().NotBeNull();
+        _ = Mode!.Id.Should().Be(modeId);
+        _ = Mode.IsSystem.Should().BeFalse();
+        _ = Mode.UserId.Should().Be(userId);
     }
 
     [Fact]
@@ -165,7 +177,7 @@ public class ModeServiceTests : IDisposable
             Prompt = "Custom prompt",
             Tools = new[] { "tool1", "tool2" },
             DefaultModel = "gpt-4",
-            Category = "custom"
+            Category = "custom",
         };
 
         var createdMode = new ModeRecord
@@ -179,25 +191,31 @@ public class ModeServiceTests : IDisposable
             DefaultModel = createRequest.DefaultModel,
             Category = createRequest.Category,
             CreatedAtUtc = DateTime.UtcNow,
-            UpdatedAtUtc = DateTime.UtcNow
+            UpdatedAtUtc = DateTime.UtcNow,
         };
 
-        _modeStorageMock.Setup(x => x.CreateModeAsync(It.IsAny<ModeRecord>(), It.IsAny<CancellationToken>()))
+        _ = _modeStorageMock
+            .Setup(x => x.CreateModeAsync(It.IsAny<ModeRecord>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((true, null, createdMode));
 
         // Act
-        var result = await _service.CreateCustomModeAsync(createRequest, userId);
+        var (Success, Error, Mode) = await _service.CreateCustomModeAsync(createRequest, userId);
 
         // Assert
-        result.Success.Should().BeTrue();
-        result.Mode.Should().NotBeNull();
-        result.Mode!.Name.Should().Be(createRequest.Name);
-        result.Mode.IsSystem.Should().BeFalse();
-        result.Mode.UserId.Should().Be(userId);
+        _ = Success.Should().BeTrue();
+        _ = Mode.Should().NotBeNull();
+        _ = Mode!.Name.Should().Be(createRequest.Name);
+        _ = Mode.IsSystem.Should().BeFalse();
+        _ = Mode.UserId.Should().Be(userId);
 
-        _modeStorageMock.Verify(x => x.CreateModeAsync(
-            It.Is<ModeRecord>(m => m.UserId == userId && m.Name == createRequest.Name), 
-            It.IsAny<CancellationToken>()), Times.Once);
+        _modeStorageMock.Verify(
+            x =>
+                x.CreateModeAsync(
+                    It.Is<ModeRecord>(m => m.UserId == userId && m.Name == createRequest.Name),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Once
+        );
     }
 
     [Fact]
@@ -213,7 +231,7 @@ public class ModeServiceTests : IDisposable
             Prompt = "Updated prompt",
             Tools = new[] { "tool3", "tool4" },
             DefaultModel = "gpt-4",
-            Category = "custom"
+            Category = "custom",
         };
 
         var updatedMode = new ModeRecord
@@ -227,23 +245,39 @@ public class ModeServiceTests : IDisposable
             DefaultModel = updateRequest.DefaultModel,
             Category = updateRequest.Category,
             CreatedAtUtc = DateTime.UtcNow.AddDays(-1),
-            UpdatedAtUtc = DateTime.UtcNow
+            UpdatedAtUtc = DateTime.UtcNow,
         };
 
-        _modeStorageMock.Setup(x => x.UpdateModeAsync(modeId, userId, It.IsAny<ModeRecord>(), It.IsAny<CancellationToken>()))
+        _ = _modeStorageMock
+            .Setup(x =>
+                x.UpdateModeAsync(
+                    modeId,
+                    userId,
+                    It.IsAny<ModeRecord>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
             .ReturnsAsync((true, null, updatedMode));
 
         // Act
-        var result = await _service.UpdateCustomModeAsync(modeId, updateRequest, userId);
+        var (Success, Error, Mode) = await _service.UpdateCustomModeAsync(modeId, updateRequest, userId);
 
         // Assert
-        result.Success.Should().BeTrue();
-        result.Mode.Should().NotBeNull();
-        result.Mode!.Name.Should().Be(updateRequest.Name);
-        result.Mode.Tools.Should().Contain(new[] { "tool3", "tool4" });
+        _ = Success.Should().BeTrue();
+        _ = Mode.Should().NotBeNull();
+        _ = Mode!.Name.Should().Be(updateRequest.Name);
+        _ = Mode.Tools.Should().Contain(expectedArray);
 
-        _modeStorageMock.Verify(x => x.UpdateModeAsync(
-            modeId, userId, It.IsAny<ModeRecord>(), It.IsAny<CancellationToken>()), Times.Once);
+        _modeStorageMock.Verify(
+            x =>
+                x.UpdateModeAsync(
+                    modeId,
+                    userId,
+                    It.IsAny<ModeRecord>(),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Once
+        );
     }
 
     [Fact]
@@ -253,16 +287,20 @@ public class ModeServiceTests : IDisposable
         var userId = "test-user-1";
         var modeId = "custom-mode-1";
 
-        _modeStorageMock.Setup(x => x.DeleteModeAsync(modeId, userId, It.IsAny<CancellationToken>()))
+        _ = _modeStorageMock
+            .Setup(x => x.DeleteModeAsync(modeId, userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((true, null));
 
         // Act
-        var result = await _service.DeleteCustomModeAsync(modeId, userId);
+        var (Success, Error) = await _service.DeleteCustomModeAsync(modeId, userId);
 
         // Assert
-        result.Success.Should().BeTrue();
+        _ = Success.Should().BeTrue();
 
-        _modeStorageMock.Verify(x => x.DeleteModeAsync(modeId, userId, It.IsAny<CancellationToken>()), Times.Once);
+        _modeStorageMock.Verify(
+            x => x.DeleteModeAsync(modeId, userId, It.IsAny<CancellationToken>()),
+            Times.Once
+        );
     }
 
     [Fact]
@@ -273,13 +311,21 @@ public class ModeServiceTests : IDisposable
         var modeId = "test-system"; // This is a system mode
 
         // Act
-        var result = await _service.DeleteCustomModeAsync(modeId, userId);
+        var (Success, Error) = await _service.DeleteCustomModeAsync(modeId, userId);
 
         // Assert
-        result.Success.Should().BeFalse();
-        result.Error.Should().Be("Cannot delete system mode");
+        _ = Success.Should().BeFalse();
+        _ = Error.Should().Be("Cannot delete system mode");
 
-        _modeStorageMock.Verify(x => x.DeleteModeAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _modeStorageMock.Verify(
+            x =>
+                x.DeleteModeAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Never
+        );
     }
 
     [Fact]
@@ -291,12 +337,12 @@ public class ModeServiceTests : IDisposable
         var availableTools = new[] { "tool1", "tool2", "tool3", "tool4" };
 
         // Act (system mode has tool1, tool2)
-        var result = await _service.FilterToolsByModeAsync(modeId, userId, availableTools);
+        var (Success, Error, FilteredTools) = await _service.FilterToolsByModeAsync(modeId, userId, availableTools);
 
         // Assert
-        result.Success.Should().BeTrue();
-        result.FilteredTools.Should().Contain(new[] { "tool1", "tool2" });
-        result.FilteredTools.Should().NotContain(new[] { "tool3", "tool4" });
+        _ = Success.Should().BeTrue();
+        _ = FilteredTools.Should().Contain(expected);
+        _ = FilteredTools.Should().NotContain(unexpected);
     }
 
     [Fact]
@@ -305,7 +351,7 @@ public class ModeServiceTests : IDisposable
         // Arrange
         var userId = "test-user-1";
         var availableTools = new[] { "tool1", "tool2", "tool3", "tool4" };
-        
+
         // Create system mode with wildcard
         var wildcardMode = new
         {
@@ -315,23 +361,26 @@ public class ModeServiceTests : IDisposable
             category = "test",
             prompt = "You have all tools",
             tools = new[] { "*" },
-            defaultModel = (string?)null
+            defaultModel = (string?)null,
         };
-        
-        var json = JsonSerializer.Serialize(wildcardMode, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = true
-        });
-        
+
+        var json = JsonSerializer.Serialize(
+            wildcardMode,
+            new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                WriteIndented = true,
+            }
+        );
+
         File.WriteAllText(Path.Combine(_tempDir, "modes", "wildcard-mode.json"), json);
 
         // Act
-        var result = await _service.FilterToolsByModeAsync("wildcard-mode", userId, availableTools);
+        var (Success, Error, FilteredTools) = await _service.FilterToolsByModeAsync("wildcard-mode", userId, availableTools);
 
         // Assert
-        result.Success.Should().BeTrue();
-        result.FilteredTools.Should().Contain(availableTools);
+        _ = Success.Should().BeTrue();
+        _ = FilteredTools.Should().Contain(availableTools);
     }
 
     [Fact]
@@ -342,11 +391,11 @@ public class ModeServiceTests : IDisposable
         var modeId = "test-system";
 
         // Act
-        var result = await _service.GetModeSystemPromptAsync(modeId, userId);
+        var (Success, Error, SystemPrompt) = await _service.GetModeSystemPromptAsync(modeId, userId);
 
         // Assert
-        result.Success.Should().BeTrue();
-        result.SystemPrompt.Should().Be("You are a test assistant");
+        _ = Success.Should().BeTrue();
+        _ = SystemPrompt.Should().Be("You are a test assistant");
     }
 
     [Fact]
@@ -366,18 +415,19 @@ public class ModeServiceTests : IDisposable
             DefaultModel = "gpt-4",
             Category = "custom",
             CreatedAtUtc = DateTime.UtcNow,
-            UpdatedAtUtc = DateTime.UtcNow
+            UpdatedAtUtc = DateTime.UtcNow,
         };
 
-        _modeStorageMock.Setup(x => x.GetModeByIdAsync(modeId, userId, It.IsAny<CancellationToken>()))
+        _ = _modeStorageMock
+            .Setup(x => x.GetModeByIdAsync(modeId, userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((true, null, customMode));
 
         // Act
-        var result = await _service.GetModeDefaultModelAsync(modeId, userId);
+        var (Success, Error, DefaultModel) = await _service.GetModeDefaultModelAsync(modeId, userId);
 
         // Assert
-        result.Success.Should().BeTrue();
-        result.DefaultModel.Should().Be("gpt-4");
+        _ = Success.Should().BeTrue();
+        _ = DefaultModel.Should().Be("gpt-4");
     }
 
     #region Caching Behavior Tests
@@ -387,14 +437,15 @@ public class ModeServiceTests : IDisposable
     {
         // Arrange
         var userId = "test-user-cache-1";
-        
+
         // Setup mock to return empty user modes list
-        _modeStorageMock.Setup(x => x.GetModesByUserAsync(userId, It.IsAny<CancellationToken>()))
+        _ = _modeStorageMock
+            .Setup(x => x.GetModesByUserAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((true, null, new List<ModeRecord>()));
-        
+
         // First call
-        await _service.GetAllModesAsync(userId);
-        
+        _ = await _service.GetAllModesAsync(userId);
+
         // Modify the system mode file
         var systemModeFile = Path.Combine(_tempDir, "modes", "test-system.json");
         var originalContent = File.ReadAllText(systemModeFile);
@@ -406,28 +457,31 @@ public class ModeServiceTests : IDisposable
             category = "test",
             prompt = "You are a modified test assistant",
             tools = new[] { "tool1", "tool2" },
-            defaultModel = (string?)null
+            defaultModel = (string?)null,
         };
-        
-        var json = JsonSerializer.Serialize(modifiedMode, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = true
-        });
+
+        var json = JsonSerializer.Serialize(
+            modifiedMode,
+            new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                WriteIndented = true,
+            }
+        );
         File.WriteAllText(systemModeFile, json);
 
         // Act - Second call (should use cached version)
-        var result = await _service.GetAllModesAsync(userId);
+        var (Success, Error, Modes) = await _service.GetAllModesAsync(userId);
 
         // Assert - Name should still be the original, not modified
-        if (!result.Success)
+        if (!Success)
         {
-            Console.WriteLine($"Error: {result.Error}");
+            Console.WriteLine($"Error: {Error}");
         }
-        result.Success.Should().BeTrue();
-        var systemMode = result.Modes.First(m => m.Id == "test-system");
-        systemMode.Name.Should().Be("Test System Mode"); // Original name, not "Modified System Mode"
-        
+        _ = Success.Should().BeTrue();
+        var systemMode = Modes.First(m => m.Id == "test-system");
+        _ = systemMode.Name.Should().Be("Test System Mode"); // Original name, not "Modified System Mode"
+
         // Cleanup - restore original file
         File.WriteAllText(systemModeFile, originalContent);
     }
@@ -437,27 +491,32 @@ public class ModeServiceTests : IDisposable
     {
         // Arrange
         var userId = "test-user-empty-dir";
-        
+
         // Create a service with an empty modes directory
         var emptyDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        Directory.CreateDirectory(emptyDir);
-        Directory.CreateDirectory(Path.Combine(emptyDir, "modes")); // Empty modes directory
-        
-        var hostEnvMock = new Mock<IHostEnvironment>();
-        hostEnvMock.Setup(x => x.ContentRootPath).Returns(emptyDir);
-        
-        var service = new ModeService(_modeStorageMock.Object, _loggerMock.Object, hostEnvMock.Object);
+        _ = Directory.CreateDirectory(emptyDir);
+        _ = Directory.CreateDirectory(Path.Combine(emptyDir, "modes")); // Empty modes directory
 
-        _modeStorageMock.Setup(x => x.GetModesByUserAsync(userId, It.IsAny<CancellationToken>()))
+        var hostEnvMock = new Mock<IHostEnvironment>();
+        _ = hostEnvMock.Setup(x => x.ContentRootPath).Returns(emptyDir);
+
+        var service = new ModeService(
+            _modeStorageMock.Object,
+            _loggerMock.Object,
+            hostEnvMock.Object
+        );
+
+        _ = _modeStorageMock
+            .Setup(x => x.GetModesByUserAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((true, null, new List<ModeRecord>()));
 
         // Act
-        var result = await service.GetAllModesAsync(userId);
+        var (Success, Error, Modes) = await service.GetAllModesAsync(userId);
 
         // Assert
-        result.Success.Should().BeTrue();
-        result.Modes.Should().BeEmpty(); // No system modes, no custom modes
-        
+        _ = Success.Should().BeTrue();
+        _ = Modes.Should().BeEmpty(); // No system modes, no custom modes
+
         // Cleanup
         Directory.Delete(emptyDir, true);
     }
@@ -471,40 +530,53 @@ public class ModeServiceTests : IDisposable
     {
         // Arrange
         var userId = "test-user-malformed";
-        
+
         // Create a service with a malformed JSON file
         var malformedDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        Directory.CreateDirectory(malformedDir);
-        Directory.CreateDirectory(Path.Combine(malformedDir, "modes"));
-        
+        _ = Directory.CreateDirectory(malformedDir);
+        _ = Directory.CreateDirectory(Path.Combine(malformedDir, "modes"));
+
         // Write malformed JSON
-        File.WriteAllText(Path.Combine(malformedDir, "modes", "malformed.json"), "{ invalid json }");
-        
+        File.WriteAllText(
+            Path.Combine(malformedDir, "modes", "malformed.json"),
+            "{ invalid json }"
+        );
+
         var hostEnvMock = new Mock<IHostEnvironment>();
-        hostEnvMock.Setup(x => x.ContentRootPath).Returns(malformedDir);
-        
-        var service = new ModeService(_modeStorageMock.Object, _loggerMock.Object, hostEnvMock.Object);
-        
-        _modeStorageMock.Setup(x => x.GetModesByUserAsync(userId, It.IsAny<CancellationToken>()))
+        _ = hostEnvMock.Setup(x => x.ContentRootPath).Returns(malformedDir);
+
+        var service = new ModeService(
+            _modeStorageMock.Object,
+            _loggerMock.Object,
+            hostEnvMock.Object
+        );
+
+        _ = _modeStorageMock
+            .Setup(x => x.GetModesByUserAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((true, null, new List<ModeRecord>()));
 
         // Act
-        var result = await service.GetAllModesAsync(userId);
+        var (Success, Error, Modes) = await service.GetAllModesAsync(userId);
 
         // Assert
-        result.Success.Should().BeTrue(); // Should handle error gracefully
-        result.Modes.Should().BeEmpty(); // Malformed mode should be skipped
-        
+        _ = Success.Should().BeTrue(); // Should handle error gracefully
+        _ = Modes.Should().BeEmpty(); // Malformed mode should be skipped
+
         // Verify error was logged
         _loggerMock.Verify(
-            x => x.Log(
-                LogLevel.Error,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Failed to parse system mode JSON file")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.AtLeastOnce);
-        
+            x =>
+                x.Log(
+                    LogLevel.Error,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>(
+                        (o, t) => o.ToString()!.Contains("Failed to parse system mode JSON file")
+                    ),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()
+                ),
+            Times.AtLeastOnce
+        );
+
         // Cleanup
         Directory.Delete(malformedDir, true);
     }
@@ -514,43 +586,51 @@ public class ModeServiceTests : IDisposable
     {
         // Arrange
         var userId = "test-user-incomplete";
-        
+
         // Create a service with an incomplete mode (missing required fields)
         var incompleteDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        Directory.CreateDirectory(incompleteDir);
-        Directory.CreateDirectory(Path.Combine(incompleteDir, "modes"));
-        
+        _ = Directory.CreateDirectory(incompleteDir);
+        _ = Directory.CreateDirectory(Path.Combine(incompleteDir, "modes"));
+
         // Write JSON missing required fields
         var incompleteMode = new
         {
             id = "incomplete-mode",
-            name = "Incomplete Mode"
+            name = "Incomplete Mode",
             // Missing description, prompt, tools, category
         };
-        
-        var json = JsonSerializer.Serialize(incompleteMode, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = true
-        });
+
+        var json = JsonSerializer.Serialize(
+            incompleteMode,
+            new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                WriteIndented = true,
+            }
+        );
         File.WriteAllText(Path.Combine(incompleteDir, "modes", "incomplete.json"), json);
-        
+
         var hostEnvMock = new Mock<IHostEnvironment>();
-        hostEnvMock.Setup(x => x.ContentRootPath).Returns(incompleteDir);
-        
-        var service = new ModeService(_modeStorageMock.Object, _loggerMock.Object, hostEnvMock.Object);
-        
-        _modeStorageMock.Setup(x => x.GetModesByUserAsync(userId, It.IsAny<CancellationToken>()))
+        _ = hostEnvMock.Setup(x => x.ContentRootPath).Returns(incompleteDir);
+
+        var service = new ModeService(
+            _modeStorageMock.Object,
+            _loggerMock.Object,
+            hostEnvMock.Object
+        );
+
+        _ = _modeStorageMock
+            .Setup(x => x.GetModesByUserAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((true, null, new List<ModeRecord>()));
 
         // Act
-        var result = await service.GetAllModesAsync(userId);
+        var (Success, Error, Modes) = await service.GetAllModesAsync(userId);
 
         // Assert
-        result.Success.Should().BeTrue();
+        _ = Success.Should().BeTrue();
         // The mode may still load with null values for missing fields, depending on implementation
         // What matters is that it doesn't crash
-        
+
         // Cleanup
         Directory.Delete(incompleteDir, true);
     }
@@ -577,14 +657,21 @@ public class ModeServiceTests : IDisposable
                 DefaultModel = null,
                 Category = "custom",
                 CreatedAtUtc = DateTime.UtcNow,
-                UpdatedAtUtc = DateTime.UtcNow
-            }
+                UpdatedAtUtc = DateTime.UtcNow,
+            },
         };
 
         foreach (var userId in userIds)
         {
-            _modeStorageMock.Setup(x => x.GetModesByUserAsync(userId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync((true, null, userId == "concurrent-user-1" ? customModes : new List<ModeRecord>()));
+            _ = _modeStorageMock
+                .Setup(x => x.GetModesByUserAsync(userId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(
+                    (
+                        true,
+                        null,
+                        userId == "concurrent-user-1" ? customModes : new List<ModeRecord>()
+                    )
+                );
         }
 
         // Act - Concurrent calls
@@ -592,17 +679,17 @@ public class ModeServiceTests : IDisposable
         var results = await Task.WhenAll(tasks);
 
         // Assert
-        results.Should().HaveCount(10);
-        results.Should().OnlyContain(r => r.Success);
-        
+        _ = results.Should().HaveCount(10);
+        _ = results.Should().OnlyContain(r => r.Success);
+
         // User 1 should have 2 modes (1 system + 1 custom)
-        var user1Result = results[0];
-        user1Result.Modes.Should().HaveCount(2);
-        
+        var (Success, Error, Modes) = results[0];
+        _ = Modes.Should().HaveCount(2);
+
         // Other users should have 1 mode (system only)
         for (int i = 1; i < results.Length; i++)
         {
-            results[i].Modes.Should().HaveCount(1);
+            _ = results[i].Modes.Should().HaveCount(1);
         }
     }
 
@@ -612,7 +699,7 @@ public class ModeServiceTests : IDisposable
         // Arrange
         var userId = "test-user-concurrent-2";
         var modeId = "mode-concurrent";
-        
+
         var createRequest = new CreateModeRequest
         {
             Name = "Concurrent Mode",
@@ -620,7 +707,7 @@ public class ModeServiceTests : IDisposable
             Prompt = "Concurrent prompt",
             Tools = new[] { "tool1" },
             DefaultModel = null,
-            Category = "custom"
+            Category = "custom",
         };
 
         var updateRequest = new UpdateModeRequest
@@ -630,7 +717,7 @@ public class ModeServiceTests : IDisposable
             Prompt = "Updated prompt",
             Tools = new[] { "tool2" },
             DefaultModel = "gpt-4",
-            Category = "custom"
+            Category = "custom",
         };
 
         var createdMode = new ModeRecord
@@ -644,7 +731,7 @@ public class ModeServiceTests : IDisposable
             DefaultModel = null,
             Category = createRequest.Category,
             CreatedAtUtc = DateTime.UtcNow,
-            UpdatedAtUtc = DateTime.UtcNow
+            UpdatedAtUtc = DateTime.UtcNow,
         };
 
         var updatedMode = new ModeRecord
@@ -658,25 +745,35 @@ public class ModeServiceTests : IDisposable
             DefaultModel = updateRequest.DefaultModel,
             Category = updateRequest.Category,
             CreatedAtUtc = createdMode.CreatedAtUtc,
-            UpdatedAtUtc = DateTime.UtcNow
+            UpdatedAtUtc = DateTime.UtcNow,
         };
 
-        _modeStorageMock.Setup(x => x.CreateModeAsync(It.IsAny<ModeRecord>(), It.IsAny<CancellationToken>()))
+        _ = _modeStorageMock
+            .Setup(x => x.CreateModeAsync(It.IsAny<ModeRecord>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((true, null, createdMode));
 
-        _modeStorageMock.Setup(x => x.UpdateModeAsync(modeId, userId, It.IsAny<ModeRecord>(), It.IsAny<CancellationToken>()))
+        _ = _modeStorageMock
+            .Setup(x =>
+                x.UpdateModeAsync(
+                    modeId,
+                    userId,
+                    It.IsAny<ModeRecord>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
             .ReturnsAsync((true, null, updatedMode));
 
         // Act - Concurrent create and update
         var createTask = _service.CreateCustomModeAsync(createRequest, userId);
-        var updateTask = Task.Delay(10).ContinueWith(_ => 
-            _service.UpdateCustomModeAsync(modeId, updateRequest, userId)).Unwrap();
+        var updateTask = Task.Delay(10)
+            .ContinueWith(_ => _service.UpdateCustomModeAsync(modeId, updateRequest, userId))
+            .Unwrap();
 
         var results = await Task.WhenAll(createTask, updateTask);
 
         // Assert
-        results[0].Success.Should().BeTrue();
-        results[1].Success.Should().BeTrue();
+        _ = results[0].Success.Should().BeTrue();
+        _ = results[1].Success.Should().BeTrue();
     }
 
     #endregion
@@ -696,20 +793,27 @@ public class ModeServiceTests : IDisposable
             Prompt = "Should not update",
             Tools = new[] { "malicious-tool" },
             DefaultModel = null,
-            Category = "hacked"
+            Category = "hacked",
         };
 
         // Act
-        var result = await _service.UpdateCustomModeAsync(systemModeId, updateRequest, userId);
+        var (Success, Error, Mode) = await _service.UpdateCustomModeAsync(systemModeId, updateRequest, userId);
 
         // Assert
-        result.Success.Should().BeFalse();
-        result.Error.Should().Be("Cannot update system mode");
-        
+        _ = Success.Should().BeFalse();
+        _ = Error.Should().Be("Cannot update system mode");
+
         // Verify storage was not called
-        _modeStorageMock.Verify(x => x.UpdateModeAsync(
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<ModeRecord>(), It.IsAny<CancellationToken>()), 
-            Times.Never);
+        _modeStorageMock.Verify(
+            x =>
+                x.UpdateModeAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<ModeRecord>(),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Never
+        );
     }
 
     [Fact]
@@ -720,15 +824,22 @@ public class ModeServiceTests : IDisposable
         var nonExistentModeId = "non-existent-mode";
         var availableTools = new[] { "tool1", "tool2", "tool3" };
 
-        _modeStorageMock.Setup(x => x.GetModeByIdAsync(nonExistentModeId, userId, It.IsAny<CancellationToken>()))
+        _ = _modeStorageMock
+            .Setup(x =>
+                x.GetModeByIdAsync(nonExistentModeId, userId, It.IsAny<CancellationToken>())
+            )
             .ReturnsAsync((false, "NotFound", null));
 
         // Act
-        var result = await _service.FilterToolsByModeAsync(nonExistentModeId, userId, availableTools);
+        var (Success, Error, FilteredTools) = await _service.FilterToolsByModeAsync(
+            nonExistentModeId,
+            userId,
+            availableTools
+        );
 
         // Assert
-        result.Success.Should().BeTrue();
-        result.FilteredTools.Should().BeEquivalentTo(availableTools); // Returns all tools when mode not found
+        _ = Success.Should().BeTrue();
+        _ = FilteredTools.Should().BeEquivalentTo(availableTools); // Returns all tools when mode not found
     }
 
     [Fact]
@@ -740,11 +851,11 @@ public class ModeServiceTests : IDisposable
         var emptyTools = Array.Empty<string>();
 
         // Act
-        var result = await _service.FilterToolsByModeAsync(modeId, userId, emptyTools);
+        var (Success, Error, FilteredTools) = await _service.FilterToolsByModeAsync(modeId, userId, emptyTools);
 
         // Assert
-        result.Success.Should().BeTrue();
-        result.FilteredTools.Should().BeEmpty();
+        _ = Success.Should().BeTrue();
+        _ = FilteredTools.Should().BeEmpty();
     }
 
     [Fact]
@@ -754,15 +865,18 @@ public class ModeServiceTests : IDisposable
         var userId = "test-user-edge-4";
         var nonExistentModeId = "non-existent-mode";
 
-        _modeStorageMock.Setup(x => x.GetModeByIdAsync(nonExistentModeId, userId, It.IsAny<CancellationToken>()))
+        _ = _modeStorageMock
+            .Setup(x =>
+                x.GetModeByIdAsync(nonExistentModeId, userId, It.IsAny<CancellationToken>())
+            )
             .ReturnsAsync((false, "NotFound", null));
 
         // Act
-        var result = await _service.GetModeSystemPromptAsync(nonExistentModeId, userId);
+        var (Success, Error, SystemPrompt) = await _service.GetModeSystemPromptAsync(nonExistentModeId, userId);
 
         // Assert
-        result.Success.Should().BeTrue();
-        result.SystemPrompt.Should().BeNull();
+        _ = Success.Should().BeTrue();
+        _ = SystemPrompt.Should().BeNull();
     }
 
     #endregion

@@ -1,10 +1,10 @@
+using System.Text.Json.Serialization;
 using AchieveAi.LmDotnetTools.Misc.Utils;
 using AIChat.Server.Extensions;
 using AIChat.Server.Services;
 using AIChat.Server.Storage;
 using Lib.AspNetCore.ServerSentEvents;
 using Microsoft.AspNetCore.Mvc;
-using System.Text.Json.Serialization;
 using ChatDto = AIChat.Server.Services.ChatDto;
 
 namespace AIChat.Server.Controllers;
@@ -24,7 +24,8 @@ public class ChatController : ControllerBase
         ILogger<ChatController> logger,
         IServerSentEventsService serverSentEventsService,
         ITaskStorage taskStorage,
-        IChatStorage chatStorage)
+        IChatStorage chatStorage
+    )
     {
         _chatService = chatService;
         _logger = logger;
@@ -38,14 +39,22 @@ public class ChatController : ControllerBase
     public async Task<ActionResult<ChatHistoryResponse>> GetChatHistory(
         [FromQuery] string userId,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20)
+        [FromQuery] int pageSize = 20
+    )
     {
         var result = await _chatService.GetChatHistoryAsync(userId, page, pageSize);
 
         if (!result.Success)
         {
-            _logger.LogError("Error retrieving chat history for user {UserId}: {Error}", userId, result.Error);
-            return StatusCode(500, new { Error = result.Error ?? "Failed to retrieve chat history" });
+            _logger.LogError(
+                "Error retrieving chat history for user {UserId}: {Error}",
+                userId,
+                result.Error
+            );
+            return StatusCode(
+                500,
+                new { Error = result.Error ?? "Failed to retrieve chat history" }
+            );
         }
 
         var response = new ChatHistoryResponse
@@ -53,7 +62,7 @@ public class ChatController : ControllerBase
             Chats = result.Chats,
             TotalCount = result.TotalCount,
             Page = result.Page,
-            PageSize = result.PageSize
+            PageSize = result.PageSize,
         };
 
         return Ok(response);
@@ -88,7 +97,7 @@ public class ChatController : ControllerBase
             UserId = request.UserId,
             Message = request.Message,
             SystemPrompt = request.SystemPrompt,
-            ModeId = request.ModeId
+            ModeId = request.ModeId,
         };
 
         var result = await _chatService.CreateChatAsync(createRequest);
@@ -108,12 +117,7 @@ public class ChatController : ControllerBase
     {
         var success = await _chatService.DeleteChatAsync(id);
 
-        if (!success)
-        {
-            return NotFound(new { Error = "Chat not found" });
-        }
-
-        return NoContent();
+        return !success ? NotFound(new { Error = "Chat not found" }) : NoContent();
     }
 
     // GET: api/chat/{chatId}/tasks
@@ -121,8 +125,8 @@ public class ChatController : ControllerBase
     public async Task<ActionResult<GetTasksResponse>> GetTasks(string chatId)
     {
         // Verify chat exists and user has access
-        var chatResult = await _chatStorage.GetChatByIdAsync(chatId);
-        if (!chatResult.Success)
+        var (Success, Error, Chat) = await _chatStorage.GetChatByIdAsync(chatId);
+        if (!Success)
         {
             return NotFound(new { Error = "Chat not found" });
         }
@@ -131,24 +135,28 @@ public class ChatController : ControllerBase
         // For now, we'll skip authorization in development
 
         var taskState = await _taskStorage.GetTasksAsync(chatId);
-        
+
         if (taskState == null)
         {
             // Return empty task list if no tasks exist
-            return Ok(new GetTasksResponse
-            {
-                ChatId = chatId,
-                Tasks = new List<TaskManager.TaskItem>(),
-                Version = 0
-            });
+            return Ok(
+                new GetTasksResponse
+                {
+                    ChatId = chatId,
+                    Tasks = new List<TaskManager.TaskItem>(),
+                    Version = 0,
+                }
+            );
         }
 
-        return Ok(new GetTasksResponse
-        {
-            ChatId = taskState.ChatId,
-            Tasks = taskState.TaskManager.GetTasks(),
-            Version = taskState.Version
-        });
+        return Ok(
+            new GetTasksResponse
+            {
+                ChatId = taskState.ChatId,
+                Tasks = taskState.TaskManager.GetTasks(),
+                Version = taskState.Version,
+            }
+        );
     }
 
     // Note: Task updates are handled server-side only through LLM tool calls
@@ -158,7 +166,8 @@ public class ChatController : ControllerBase
     [HttpPost("stream-sse")]
     public async Task StreamChatCompletionSse(
         [FromBody] CreateChatRequest request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         // Set response headers for SSE
         Response.Headers.Append("Content-Type", "text/event-stream");
@@ -193,7 +202,7 @@ public class ChatController : ControllerBase
                 UserId = request.UserId,
                 Message = request.Message,
                 SystemPrompt = request.SystemPrompt,
-                ModeId = request.ModeId
+                ModeId = request.ModeId,
             };
 
             // Get initialization metadata from service
@@ -209,35 +218,42 @@ public class ChatController : ControllerBase
                 initResult.ChatId,
                 initResult.UserMessageId,
                 initResult.UserTimestamp,
-                initResult.UserSequenceNumber);
+                initResult.UserSequenceNumber
+            );
 
             var initId = $"{initResult.ChatId}<|>{initResult.UserMessageId}";
             await SendSseEvent("init", initEnvelope, initId);
 
             // Stream the assistant response using the assistant message created during initialization
-            await _chatService.StreamAssistantResponseAsync(
-                initResult.ChatId,
-                cancellationToken);
+            await _chatService.StreamAssistantResponseAsync(initResult.ChatId, cancellationToken);
 
             // Send completion event with final content
-            var completeEnvelope = SSEEventExtensions.CreateStreamCompleteEnvelope(initResult.ChatId);
+            var completeEnvelope = SSEEventExtensions.CreateStreamCompleteEnvelope(
+                initResult.ChatId
+            );
             await SendSseEvent("complete", completeEnvelope, initId);
         }
         catch (Exception ex)
         {
             // Avoid passing exception object to logger in watch/Test to prevent formatter crashes
-            _logger.LogError("Error streaming chat completion: {Type}: {Message}", ex.GetType().Name, ex.Message);
+            _logger.LogError(
+                "Error streaming chat completion: {Type}: {Message}",
+                ex.GetType().Name,
+                ex.Message
+            );
             var errorEnvelope = SSEEventExtensions.CreateErrorEnvelope(
                 currentChatId ?? "unknown",
                 currentAssistantMessageId,
                 currentAssistantSequenceNumber,
-                ex.Message);
+                ex.Message
+            );
             await SendSseEvent(
                 "message",
                 errorEnvelope,
                 currentChatId != null && currentAssistantMessageId != null
                     ? $"{currentChatId}<|>{currentAssistantMessageId}"
-                    : null);
+                    : null
+            );
         }
         finally
         {
@@ -249,7 +265,10 @@ public class ChatController : ControllerBase
     private async Task SendSseEvent(string eventType, object data, string? id = null)
     {
         // Always stream to the current HTTP response (client fetch())
-        var json = System.Text.Json.JsonSerializer.Serialize(data, Services.MessageSerializationOptions.Default);
+        var json = System.Text.Json.JsonSerializer.Serialize(
+            data,
+            Services.MessageSerializationOptions.Default
+        );
         if (!string.IsNullOrEmpty(id))
         {
             await Response.WriteAsync($"id: {id}\n");
@@ -260,10 +279,14 @@ public class ChatController : ControllerBase
 
         // Additionally, broadcast via IServerSentEventsService if any listeners are connected
         var clients = _serverSentEventsService.GetClients();
-        if (clients.Any())
+        if (clients.Count != 0)
         {
             var client = clients.First();
-            var sse = new ServerSentEvent { Type = eventType, Data = new List<string> { json } };
+            var sse = new ServerSentEvent
+            {
+                Type = eventType,
+                Data = new List<string> { json },
+            };
             if (!string.IsNullOrEmpty(id))
             {
                 sse.Id = id;
@@ -274,13 +297,19 @@ public class ChatController : ControllerBase
 }
 
 // Request DTOs for API endpoints
-public record CreateChatRequest(string? ChatId, string UserId, string Message, string? SystemPrompt, string? ModeId);
+public record CreateChatRequest(
+    string? ChatId,
+    string UserId,
+    string Message,
+    string? SystemPrompt,
+    string? ModeId
+);
 
 public class SendMessageRequest
 {
     [JsonPropertyName("message")]
     public string Message { get; set; } = string.Empty;
-    
+
     [JsonPropertyName("modeId")]
     public string? ModeId { get; set; }
 }
@@ -297,7 +326,8 @@ public class ChatHistoryResponse
 public class GetTasksResponse
 {
     public required string ChatId { get; set; }
-    public required IList<TaskManager.TaskItem> Tasks { get; set; } = new List<TaskManager.TaskItem>();
+    public required IList<TaskManager.TaskItem> Tasks { get; set; } =
+        new List<TaskManager.TaskItem>();
     public required int Version { get; set; }
 }
 

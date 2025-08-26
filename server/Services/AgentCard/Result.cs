@@ -1,5 +1,3 @@
-using System;
-
 namespace AIChat.Server.Services.AgentCards
 {
     /// <summary>
@@ -32,15 +30,12 @@ namespace AIChat.Server.Services.AgentCards
         /// <summary>
         /// Gets the success value. Throws if the result is a failure.
         /// </summary>
-        public T Value
-        {
-            get
-            {
-                if (!_isSuccess)
-                    throw new InvalidOperationException($"Cannot access Value on a failed result. Error: {_error}");
-                return _value!;
-            }
-        }
+        public T Value =>
+            !_isSuccess
+                ? throw new InvalidOperationException(
+                    $"Cannot access Value on a failed result. Error: {_error}"
+                )
+                : _value!;
 
         /// <summary>
         /// Gets the error message. Returns null if the result is a success.
@@ -52,9 +47,7 @@ namespace AIChat.Server.Services.AgentCards
         /// </summary>
         public static Result<T> Success(T value)
         {
-            if (value == null)
-                throw new ArgumentNullException(nameof(value));
-            return new Result<T>(value, null, true);
+            return value == null ? throw new ArgumentNullException(nameof(value)) : new Result<T>(value, null, true);
         }
 
         /// <summary>
@@ -62,9 +55,9 @@ namespace AIChat.Server.Services.AgentCards
         /// </summary>
         public static Result<T> Failure(string error)
         {
-            if (string.IsNullOrWhiteSpace(error))
-                throw new ArgumentException("Error message cannot be empty", nameof(error));
-            return new Result<T>(default, error, false);
+            return string.IsNullOrWhiteSpace(error)
+                ? throw new ArgumentException("Error message cannot be empty", nameof(error))
+                : new Result<T>(default, error, false);
         }
 
         /// <summary>
@@ -72,11 +65,10 @@ namespace AIChat.Server.Services.AgentCards
         /// </summary>
         public Result<TNew> Map<TNew>(Func<T, TNew> mapper)
         {
-            if (mapper == null)
-                throw new ArgumentNullException(nameof(mapper));
-            
-            return _isSuccess 
-                ? Result<TNew>.Success(mapper(_value!)) 
+            return mapper == null
+                ? throw new ArgumentNullException(nameof(mapper))
+                : _isSuccess
+                ? Result<TNew>.Success(mapper(_value!))
                 : Result<TNew>.Failure(_error!);
         }
 
@@ -85,12 +77,9 @@ namespace AIChat.Server.Services.AgentCards
         /// </summary>
         public Result<TNew> Bind<TNew>(Func<T, Result<TNew>> mapper)
         {
-            if (mapper == null)
-                throw new ArgumentNullException(nameof(mapper));
-            
-            return _isSuccess 
-                ? mapper(_value!) 
-                : Result<TNew>.Failure(_error!);
+            return mapper == null
+                ? throw new ArgumentNullException(nameof(mapper))
+                : _isSuccess ? mapper(_value!) : Result<TNew>.Failure(_error!);
         }
 
         /// <summary>
@@ -107,7 +96,10 @@ namespace AIChat.Server.Services.AgentCards
         public Result<T> OnSuccess(Action<T> action)
         {
             if (_isSuccess && action != null)
+            {
                 action(_value!);
+            }
+
             return this;
         }
 
@@ -117,7 +109,10 @@ namespace AIChat.Server.Services.AgentCards
         public Result<T> OnFailure(Action<string> action)
         {
             if (!_isSuccess && action != null)
+            {
                 action(_error!);
+            }
+
             return this;
         }
     }
@@ -140,12 +135,16 @@ namespace AIChat.Server.Services.AgentCards
         public bool IsFailure => !_isSuccess;
         public string? Error => _error;
 
-        public static Result Success() => new Result(null, true);
+        public static Result Success()
+        {
+            return new Result(null, true);
+        }
+
         public static Result Failure(string error)
         {
-            if (string.IsNullOrWhiteSpace(error))
-                throw new ArgumentException("Error message cannot be empty", nameof(error));
-            return new Result(error, false);
+            return string.IsNullOrWhiteSpace(error)
+                ? throw new ArgumentException("Error message cannot be empty", nameof(error))
+                : new Result(error, false);
         }
     }
 }

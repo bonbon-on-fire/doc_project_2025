@@ -1,29 +1,31 @@
-using AIChat.Server.Services;
-using AIChat.Server.Hubs;
 using AchieveAi.LmDotnetTools.LmConfig.Services;
 using AchieveAi.LmDotnetTools.LmCore.Agents;
-using AchieveAi.LmDotnetTools.OpenAIProvider.Agents;
-using AchieveAi.LmDotnetTools.Misc.Storage;
 using AchieveAi.LmDotnetTools.Misc.Configuration;
 using AchieveAi.LmDotnetTools.Misc.Http;
-using Lib.AspNetCore.ServerSentEvents;
-using AIChat.Server.Models;
-using AIChat.Server.Services.TestMode;
+using AchieveAi.LmDotnetTools.Misc.Storage;
+using AchieveAi.LmDotnetTools.OpenAIProvider.Agents;
+using AIChat.Server.Hubs;
 using AIChat.Server.Logging;
-using AIChat.Server.Storage.Sqlite;
+using AIChat.Server.Models;
+using AIChat.Server.Services;
+using AIChat.Server.Services.TestMode;
 using AIChat.Server.Storage;
+using AIChat.Server.Storage.Sqlite;
+using Lib.AspNetCore.ServerSentEvents;
 using Serilog;
 using Serilog.Formatting.Compact;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure Serilog for JSON file logging - ensure logs go to project root
-var projectRoot = Directory.GetParent(Directory.GetCurrentDirectory())?.FullName ?? Directory.GetCurrentDirectory();
+var projectRoot =
+    Directory.GetParent(Directory.GetCurrentDirectory())?.FullName
+    ?? Directory.GetCurrentDirectory();
 var logFileName = builder.Environment.EnvironmentName switch
 {
     "Development" => Path.Combine(projectRoot, "logs", "server", "app-dev.jsonl"),
     "Test" => Path.Combine(projectRoot, "logs", "server", "app-test.jsonl"),
-    _ => Path.Combine(projectRoot, "logs", "server", "app.jsonl")
+    _ => Path.Combine(projectRoot, "logs", "server", "app.jsonl"),
 };
 
 // Ensure log directory exists
@@ -33,23 +35,38 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Verbose()
     .WriteTo.Console()
     .WriteTo.File(
-        new CompactJsonFormatter(), 
+        new CompactJsonFormatter(),
         logFileName,
         shared: true,
         buffered: false,
-        restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Verbose)
+        restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Verbose
+    )
     .CreateLogger();
 
 builder.Host.UseSerilog();
 
 // Add services to the container
-builder.Services.AddControllers()
+builder
+    .Services.AddControllers()
     .AddJsonOptions(options =>
     {
         // Use the same serialization options as MessageSerializationOptions.Default
-        options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
-        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
-        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter(System.Text.Json.JsonNamingPolicy.CamelCase));
+        options.JsonSerializerOptions.DefaultIgnoreCondition = System
+            .Text
+            .Json
+            .Serialization
+            .JsonIgnoreCondition
+            .WhenWritingNull;
+        options.JsonSerializerOptions.PropertyNamingPolicy = System
+            .Text
+            .Json
+            .JsonNamingPolicy
+            .CamelCase;
+        options.JsonSerializerOptions.Converters.Add(
+            new System.Text.Json.Serialization.JsonStringEnumConverter(
+                System.Text.Json.JsonNamingPolicy.CamelCase
+            )
+        );
     });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -81,7 +98,9 @@ builder.Services.AddSingleton<SqliteConnectionFactory>(sp =>
     return new SqliteConnectionFactory(connStr!, keepRootOpen);
 });
 
-builder.Services.AddSingleton<ISqliteConnectionFactory>(sp => sp.GetRequiredService<SqliteConnectionFactory>());
+builder.Services.AddSingleton<ISqliteConnectionFactory>(sp =>
+    sp.GetRequiredService<SqliteConnectionFactory>()
+);
 
 // Register IChatStorage, ITaskStorage, and IModeStorage
 builder.Services.AddScoped<IChatStorage, SqliteChatStorage>();
@@ -112,99 +131,114 @@ builder.Services.AddSingleton<IMcpConfigurationValidator, McpConfigurationValida
 builder.Services.AddSingleton<IMcpClientManager, McpClientManager>();
 
 // Register IStreamingAgent as scoped service
-builder.Services.AddTransient<IStreamingAgent>(
-    provider =>
+builder.Services.AddTransient<IStreamingAgent>(provider =>
+{
+    // Register IStreamingAgent as an OpenAIProvider-based agent with caching
+    // Get configuration - prioritize environment variables, then User Secrets/config
+    var configuration = provider.GetRequiredService<IConfiguration>();
+    var logger = provider.GetRequiredService<ILogger<Program>>();
+    var hostEnv = provider.GetRequiredService<IHostEnvironment>();
+
+    var apiKey =
+        Environment.GetEnvironmentVariable("LLM_API_KEY") ?? configuration["OpenAI:ApiKey"] ?? "";
+    var baseUrl =
+        Environment.GetEnvironmentVariable("LLM_BASE_API_URL")
+        ?? configuration["OpenAI:BaseUrl"]
+        ?? "https://api.openai.com/v1";
+
+    // Diagnostic logging for API configuration
+    logger.LogInformation("[DIAGNOSTIC] API Configuration:");
+    logger.LogInformation("[DIAGNOSTIC] Base URL: {BaseUrl}", baseUrl);
+    logger.LogInformation("[DIAGNOSTIC] API Key Length: {ApiKeyLength}", apiKey?.Length ?? 0);
+    logger.LogInformation(
+        "[DIAGNOSTIC] API Key Prefix: {ApiKeyPrefix}",
+        apiKey?.Length > 10 ? string.Concat(apiKey.AsSpan(0, 10), "...") : "[EMPTY]"
+    );
+
+    if (hostEnv.IsEnvironment("Test"))
     {
-        // Register IStreamingAgent as an OpenAIProvider-based agent with caching
-        // Get configuration - prioritize environment variables, then User Secrets/config
-        var configuration = provider.GetRequiredService<IConfiguration>();
-        var logger = provider.GetRequiredService<ILogger<Program>>();
-        var hostEnv = provider.GetRequiredService<IHostEnvironment>();
-
-        var apiKey = Environment.GetEnvironmentVariable("LLM_API_KEY")
-                     ?? configuration["OpenAI:ApiKey"]
-                     ?? "";
-        var baseUrl = Environment.GetEnvironmentVariable("LLM_BASE_API_URL")
-                      ?? configuration["OpenAI:BaseUrl"]
-                      ?? "https://api.openai.com/v1";
-
-        // Diagnostic logging for API configuration
-        logger.LogInformation("[DIAGNOSTIC] API Configuration:");
-        logger.LogInformation("[DIAGNOSTIC] Base URL: {BaseUrl}", baseUrl);
-        logger.LogInformation("[DIAGNOSTIC] API Key Length: {ApiKeyLength}", apiKey?.Length ?? 0);
-        logger.LogInformation("[DIAGNOSTIC] API Key Prefix: {ApiKeyPrefix}", apiKey?.Length > 10 ? apiKey.Substring(0, 10) + "..." : "[EMPTY]");
-
-        if (hostEnv.IsEnvironment("Test"))
-        {
-            // In Test environment, synthesize streaming via TestSseMessageHandler and bypass API key
-            var testHandler = new TestSseMessageHandler();
-            var testHttpClient = new HttpClient(testHandler)
-            {
-                BaseAddress = new Uri(baseUrl),
-                Timeout = TimeSpan.FromMinutes(5)
-            };
-            var openClientTest = new OpenClient(testHttpClient, baseUrl, null, logger);
-            return new OpenClientAgent("OpenAi", openClientTest);
-        }
-
-        // Create an OpenAI client with caching (non-Test environments)
-        if (string.IsNullOrEmpty(apiKey))
-        {
-            throw new InvalidOperationException("OpenAI API key is required but was not provided.");
-        }
-
-        // Create cache infrastructure
-        var cacheDirectory = configuration["LlmCache:CacheDirectory"] ?? "./llm-cache";
-        var cache = new FileKvStore(cacheDirectory);
-
-        // Configure cache options
-        var cacheOptions = new LlmCacheOptions
-        {
-            EnableCaching = configuration.GetValue<bool>("LlmCache:EnableCaching", true),
-            CacheExpiration = configuration.GetValue<TimeSpan?>("LlmCache:CacheExpiration", TimeSpan.FromHours(24)),
-            MaxCacheItems = configuration.GetValue<int?>("LlmCache:MaxCacheItems", 10000)
-        };
-
-        // Create HTTP client with caching handler
-        var httpClientHandler = new HttpClientHandler();
-        var cachingHandler = new CachingHttpMessageHandler(cache, cacheOptions, httpClientHandler, logger);
-
-        var httpClient = new HttpClient(cachingHandler)
+        // In Test environment, synthesize streaming via TestSseMessageHandler and bypass API key
+        var testHandler = new TestSseMessageHandler();
+        var testHttpClient = new HttpClient(testHandler)
         {
             BaseAddress = new Uri(baseUrl),
-            Timeout = TimeSpan.FromMinutes(5)
+            Timeout = TimeSpan.FromMinutes(5),
         };
+        var openClientTest = new OpenClient(testHttpClient, baseUrl, null, logger);
+        return new OpenClientAgent("OpenAi", openClientTest);
+    }
 
-        // Add authentication headers
-        httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+    // Create an OpenAI client with caching (non-Test environments)
+    if (string.IsNullOrEmpty(apiKey))
+    {
+        throw new InvalidOperationException("OpenAI API key is required but was not provided.");
+    }
 
-        var openClient = new OpenClient(httpClient, baseUrl, null, logger);
-        return new OpenClientAgent("OpenAi", openClient);
-    });
+    // Create cache infrastructure
+    var cacheDirectory = configuration["LlmCache:CacheDirectory"] ?? "./llm-cache";
+    var cache = new FileKvStore(cacheDirectory);
+
+    // Configure cache options
+    var cacheOptions = new LlmCacheOptions
+    {
+        EnableCaching = configuration.GetValue<bool>("LlmCache:EnableCaching", true),
+        CacheExpiration = configuration.GetValue<TimeSpan?>(
+            "LlmCache:CacheExpiration",
+            TimeSpan.FromHours(24)
+        ),
+        MaxCacheItems = configuration.GetValue<int?>("LlmCache:MaxCacheItems", 10000),
+    };
+
+    // Create HTTP client with caching handler
+    var httpClientHandler = new HttpClientHandler();
+    var cachingHandler = new CachingHttpMessageHandler(
+        cache,
+        cacheOptions,
+        httpClientHandler,
+        logger
+    );
+
+    var httpClient = new HttpClient(cachingHandler)
+    {
+        BaseAddress = new Uri(baseUrl),
+        Timeout = TimeSpan.FromMinutes(5),
+    };
+
+    // Add authentication headers
+    httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+
+    var openClient = new OpenClient(httpClient, baseUrl, null, logger);
+    return new OpenClientAgent("OpenAi", openClient);
+});
 
 // Add CORS for development and test
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowSvelteApp", policy =>
-    {
-        policy.WithOrigins(
-            "http://localhost:5173",
-            "http://localhost:5174",
-            "http://localhost:5175",
-            "http://localhost:5176",
-            "http://localhost:5177",
-            "http://localhost:5178",
-            "http://localhost:5179",
-            "http://localhost:5180",
-            "http://localhost:5182",
-            "http://localhost:5183",
-            "http://localhost:5183",
-            "http://localhost:4173",
-            "http://localhost:5174")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
-    });
+    options.AddPolicy(
+        "AllowSvelteApp",
+        policy =>
+        {
+            _ = policy
+                .WithOrigins(
+                    "http://localhost:5173",
+                    "http://localhost:5174",
+                    "http://localhost:5175",
+                    "http://localhost:5176",
+                    "http://localhost:5177",
+                    "http://localhost:5178",
+                    "http://localhost:5179",
+                    "http://localhost:5180",
+                    "http://localhost:5182",
+                    "http://localhost:5183",
+                    "http://localhost:5183",
+                    "http://localhost:4173",
+                    "http://localhost:5174"
+                )
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        }
+    );
 });
 
 // Add timestamped Debug logger for Dev/Test so VS Output shows timestamps
@@ -213,7 +247,7 @@ builder.Services.AddLogging(logging =>
     // Add our timestamped Debug provider so VS Immediate/Output shows timestamps
     if (builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Test"))
     {
-        logging.AddProvider(new TimestampedDebugLoggerProvider());
+        _ = logging.AddProvider(new TimestampedDebugLoggerProvider());
     }
 });
 
@@ -238,8 +272,8 @@ var app = builder.Build();
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    _ = app.UseSwagger();
+    _ = app.UseSwaggerUI();
 }
 
 // Initialize database schema
@@ -265,7 +299,10 @@ var mcpValidator = app.Services.GetRequiredService<IMcpConfigurationValidator>()
 var mcpLogger = app.Services.GetRequiredService<ILogger<Program>>();
 if (!mcpValidator.Validate(out var validationErrors))
 {
-    mcpLogger.LogWarning("MCP configuration validation failed with {ErrorCount} errors:", validationErrors.Count);
+    mcpLogger.LogWarning(
+        "MCP configuration validation failed with {ErrorCount} errors:",
+        validationErrors.Count
+    );
     foreach (var error in validationErrors)
     {
         mcpLogger.LogWarning("  - {Error}", error);
@@ -285,7 +322,10 @@ _ = Task.Run(async () =>
     }
     catch (Exception ex)
     {
-        mcpLogger.LogError(ex, "Failed to initialize MCP clients at startup. They will be initialized on first use.");
+        mcpLogger.LogError(
+            ex,
+            "Failed to initialize MCP clients at startup. They will be initialized on first use."
+        );
     }
 });
 
@@ -294,7 +334,7 @@ app.UseCors("AllowSvelteApp");
 // Skip HTTPS redirection in Test (HTTP-only)
 if (!app.Environment.IsEnvironment("Test"))
 {
-    app.UseHttpsRedirection();
+    _ = app.UseHttpsRedirection();
 }
 
 app.MapControllers();
@@ -304,7 +344,10 @@ app.MapHub<ChatHub>("/api/chat-hub");
 app.MapServerSentEvents("/api/chat-sse");
 
 // Health check endpoint
-app.MapGet("/api/health", () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow }));
+app.MapGet(
+    "/api/health",
+    () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow })
+);
 
 app.Run();
 

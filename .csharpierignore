@@ -1,0 +1,19 @@
+# Ignore submodules - they have their own formatting configuration
+submodules/
+
+# Ignore node_modules
+node_modules/
+
+# Ignore build outputs
+**/bin/
+**/obj/
+
+# Ignore test results
+test-results/
+playwright-report/
+
+# Ignore logs
+logs/
+
+# Ignore cache files
+**/llm-cache/

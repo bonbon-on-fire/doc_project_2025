@@ -6,8 +6,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 // Use fully qualified names to avoid ambiguity
 using CreateChatRequest = AIChat.Server.Controllers.CreateChatRequest;
-using SendMessageRequest = AIChat.Server.Controllers.SendMessageRequest;
 using ModesResponse = AIChat.Server.Controllers.ModesResponse;
+using SendMessageRequest = AIChat.Server.Controllers.SendMessageRequest;
 
 namespace AIChat.Server.Tests.Api;
 
@@ -24,13 +24,13 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
-            builder.UseSetting("ASPNETCORE_ENVIRONMENT", "Test");
+            _ = builder.UseSetting("ASPNETCORE_ENVIRONMENT", "Test");
         });
-        
+
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         };
     }
 
@@ -42,17 +42,20 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         // Arrange
         var client = _factory.CreateClient();
         var userId = $"test-user-{Guid.NewGuid()}";
-        
+
         // First get available modes
         var modesResponse = await client.GetAsync($"/api/mode?userId={userId}");
-        modesResponse.EnsureSuccessStatusCode();
+        _ = modesResponse.EnsureSuccessStatusCode();
         var modesData = await modesResponse.Content.ReadFromJsonAsync<ModesResponse>(_jsonOptions);
-        modesData!.Modes.Should().NotBeEmpty("System modes should be available");
-        
+        _ = modesData!.Modes.Should().NotBeEmpty("System modes should be available");
+
         // Select a mode with specific tools (e.g., coding mode)
-        var codingMode = modesData.Modes.FirstOrDefault(m => m.Category == "task" && m.Name.Contains("Coding", StringComparison.OrdinalIgnoreCase))
-                        ?? modesData.Modes.First();
-        
+        var codingMode =
+            modesData.Modes.FirstOrDefault(m =>
+                m.Category == "task"
+                && m.Name.Contains("Coding", StringComparison.OrdinalIgnoreCase)
+            ) ?? modesData.Modes.First();
+
         // Create chat with selected mode
         var createRequest = new CreateChatRequest(
             ChatId: null,
@@ -61,17 +64,17 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             SystemPrompt: null,
             ModeId: codingMode.Id
         );
-        
+
         var createResponse = await client.PostAsJsonAsync("/api/chat", createRequest, _jsonOptions);
-        createResponse.EnsureSuccessStatusCode();
-        
+        _ = createResponse.EnsureSuccessStatusCode();
+
         var chat = await createResponse.Content.ReadFromJsonAsync<ChatDto>(_jsonOptions);
-        
+
         // Assert
-        chat.Should().NotBeNull();
-        chat!.Id.Should().NotBeNullOrEmpty();
-        chat.Messages.Should().NotBeEmpty();
-        
+        _ = chat.Should().NotBeNull();
+        _ = chat!.Id.Should().NotBeNullOrEmpty();
+        _ = chat.Messages.Should().NotBeEmpty();
+
         // Verify mode was applied
         // Note: The actual tool filtering happens internally, we verify by checking the chat was created successfully
         // In a real scenario, we'd check the tools available in the chat context
@@ -83,7 +86,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         // Arrange
         var client = _factory.CreateClient();
         var userId = $"test-user-{Guid.NewGuid()}";
-        
+
         // Create initial chat with general mode
         var createRequest = new CreateChatRequest(
             ChatId: null,
@@ -92,26 +95,30 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             SystemPrompt: null,
             ModeId: "general"
         );
-        
+
         var createResponse = await client.PostAsJsonAsync("/api/chat", createRequest, _jsonOptions);
-        createResponse.EnsureSuccessStatusCode();
+        _ = createResponse.EnsureSuccessStatusCode();
         var chat = await createResponse.Content.ReadFromJsonAsync<ChatDto>(_jsonOptions);
-        
+
         // Switch to a different mode (e.g., writing mode)
         var continueRequest = new SendMessageRequest
         {
             Message = "Now help me write a story",
-            ModeId = "writing" // Switch to writing mode
+            ModeId = "writing", // Switch to writing mode
         };
-        
+
         // Continue chat with new mode using the chat endpoint with ID
-        var continueResponse = await client.PostAsJsonAsync($"/api/chat/{chat!.Id}/messages?userId={userId}", continueRequest, _jsonOptions);
-        
+        var continueResponse = await client.PostAsJsonAsync(
+            $"/api/chat/{chat!.Id}/messages?userId={userId}",
+            continueRequest,
+            _jsonOptions
+        );
+
         // Assert
-        continueResponse.EnsureSuccessStatusCode();
+        _ = continueResponse.EnsureSuccessStatusCode();
         var updatedChat = await continueResponse.Content.ReadFromJsonAsync<ChatDto>(_jsonOptions);
-        updatedChat.Should().NotBeNull();
-        updatedChat!.Messages.Should().HaveCountGreaterThan(chat.Messages.Count);
+        _ = updatedChat.Should().NotBeNull();
+        _ = updatedChat!.Messages.Should().HaveCountGreaterThan(chat.Messages.Count);
     }
 
     [Fact]
@@ -120,7 +127,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         // Arrange
         var client = _factory.CreateClient();
         var userId = $"test-user-{Guid.NewGuid()}";
-        
+
         // Step 1: Create custom mode
         var customMode = new CreateModeRequest
         {
@@ -129,13 +136,17 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             Prompt = "You are a helpful test assistant",
             Tools = new[] { "search", "calculator" },
             DefaultModel = null,
-            Category = "custom"
+            Category = "custom",
         };
-        
-        var createModeResponse = await client.PostAsJsonAsync($"/api/mode?userId={userId}", customMode, _jsonOptions);
-        createModeResponse.EnsureSuccessStatusCode();
+
+        var createModeResponse = await client.PostAsJsonAsync(
+            $"/api/mode?userId={userId}",
+            customMode,
+            _jsonOptions
+        );
+        _ = createModeResponse.EnsureSuccessStatusCode();
         var createdMode = await createModeResponse.Content.ReadFromJsonAsync<ModeDto>(_jsonOptions);
-        
+
         // Step 2: Use custom mode in chat
         var createChatRequest = new CreateChatRequest(
             ChatId: null,
@@ -144,18 +155,24 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             SystemPrompt: null,
             ModeId: createdMode!.Id
         );
-        
-        var createChatResponse = await client.PostAsJsonAsync("/api/chat", createChatRequest, _jsonOptions);
-        createChatResponse.EnsureSuccessStatusCode();
+
+        var createChatResponse = await client.PostAsJsonAsync(
+            "/api/chat",
+            createChatRequest,
+            _jsonOptions
+        );
+        _ = createChatResponse.EnsureSuccessStatusCode();
         var chat = await createChatResponse.Content.ReadFromJsonAsync<ChatDto>(_jsonOptions);
-        
+
         // Step 3: Clean up - delete custom mode
-        var deleteResponse = await client.DeleteAsync($"/api/mode/{createdMode.Id}?userId={userId}");
-        
+        var deleteResponse = await client.DeleteAsync(
+            $"/api/mode/{createdMode.Id}?userId={userId}"
+        );
+
         // Assert
-        chat.Should().NotBeNull();
-        chat!.Messages.Should().NotBeEmpty();
-        deleteResponse.StatusCode.Should().Be(System.Net.HttpStatusCode.NoContent);
+        _ = chat.Should().NotBeNull();
+        _ = chat!.Messages.Should().NotBeEmpty();
+        _ = deleteResponse.StatusCode.Should().Be(System.Net.HttpStatusCode.NoContent);
     }
 
     #endregion
@@ -168,7 +185,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         // Arrange
         var client = _factory.CreateClient();
         var userId = $"test-user-{Guid.NewGuid()}";
-        
+
         // Try to create chat with non-existent mode
         var createRequest = new CreateChatRequest(
             ChatId: null,
@@ -177,14 +194,14 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             SystemPrompt: null,
             ModeId: "non-existent-mode-id"
         );
-        
+
         var response = await client.PostAsJsonAsync("/api/chat", createRequest, _jsonOptions);
-        
+
         // Assert - Should still succeed with fallback to general mode
-        response.EnsureSuccessStatusCode();
+        _ = response.EnsureSuccessStatusCode();
         var chat = await response.Content.ReadFromJsonAsync<ChatDto>(_jsonOptions);
-        chat.Should().NotBeNull();
-        chat!.Messages.Should().NotBeEmpty();
+        _ = chat.Should().NotBeNull();
+        _ = chat!.Messages.Should().NotBeEmpty();
     }
 
     [Fact]
@@ -193,7 +210,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         // Arrange
         var client = _factory.CreateClient();
         var userId = $"test-user-{Guid.NewGuid()}";
-        
+
         // Create mode with invalid data (empty name)
         var invalidMode = new CreateModeRequest
         {
@@ -202,13 +219,17 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             Prompt = "Test prompt",
             Tools = new[] { "tool1" },
             DefaultModel = null,
-            Category = "custom"
+            Category = "custom",
         };
-        
-        var response = await client.PostAsJsonAsync($"/api/mode?userId={userId}", invalidMode, _jsonOptions);
-        
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/mode?userId={userId}",
+            invalidMode,
+            _jsonOptions
+        );
+
         // Assert
-        response.StatusCode.Should().Be(System.Net.HttpStatusCode.BadRequest);
+        _ = response.StatusCode.Should().Be(System.Net.HttpStatusCode.BadRequest);
     }
 
     [Fact]
@@ -217,7 +238,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         // Arrange
         var client = _factory.CreateClient();
         var userId = $"test-user-{Guid.NewGuid()}";
-        
+
         // Try to update a system mode
         var updateRequest = new UpdateModeRequest
         {
@@ -226,16 +247,19 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             Prompt = "Malicious prompt",
             Tools = new[] { "malicious-tool" },
             DefaultModel = null,
-            Category = "hacked"
+            Category = "hacked",
         };
-        
-        var response = await client.PutAsJsonAsync($"/api/mode/general?userId={userId}", updateRequest, _jsonOptions);
-        
-        // Assert
-        response.StatusCode.Should().BeOneOf(
-            System.Net.HttpStatusCode.BadRequest,
-            System.Net.HttpStatusCode.Forbidden
+
+        var response = await client.PutAsJsonAsync(
+            $"/api/mode/general?userId={userId}",
+            updateRequest,
+            _jsonOptions
         );
+
+        // Assert
+        _ = response
+            .StatusCode.Should()
+            .BeOneOf(System.Net.HttpStatusCode.BadRequest, System.Net.HttpStatusCode.Forbidden);
     }
 
     [Fact]
@@ -244,15 +268,14 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         // Arrange
         var client = _factory.CreateClient();
         var userId = $"test-user-{Guid.NewGuid()}";
-        
+
         // Try to delete a system mode
         var response = await client.DeleteAsync($"/api/mode/general?userId={userId}");
-        
+
         // Assert
-        response.StatusCode.Should().BeOneOf(
-            System.Net.HttpStatusCode.BadRequest,
-            System.Net.HttpStatusCode.Forbidden
-        );
+        _ = response
+            .StatusCode.Should()
+            .BeOneOf(System.Net.HttpStatusCode.BadRequest, System.Net.HttpStatusCode.Forbidden);
     }
 
     #endregion
@@ -266,14 +289,16 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         var client = _factory.CreateClient();
         var userId = $"test-user-{Guid.NewGuid()}";
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        
+
         // Act
         var response = await client.GetAsync($"/api/mode?userId={userId}");
         stopwatch.Stop();
-        
+
         // Assert
-        response.EnsureSuccessStatusCode();
-        stopwatch.ElapsedMilliseconds.Should().BeLessThan(200, "Mode loading should complete within 200ms");
+        _ = response.EnsureSuccessStatusCode();
+        _ = stopwatch
+            .ElapsedMilliseconds.Should()
+            .BeLessThan(200, "Mode loading should complete within 200ms");
     }
 
     [Fact]
@@ -282,7 +307,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         // Arrange
         var client = _factory.CreateClient();
         var userId = $"test-user-{Guid.NewGuid()}";
-        
+
         // Create initial chat
         var createRequest = new CreateChatRequest(
             ChatId: null,
@@ -291,26 +316,30 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             SystemPrompt: null,
             ModeId: "general"
         );
-        
+
         var createResponse = await client.PostAsJsonAsync("/api/chat", createRequest, _jsonOptions);
-        createResponse.EnsureSuccessStatusCode();
+        _ = createResponse.EnsureSuccessStatusCode();
         var chat = await createResponse.Content.ReadFromJsonAsync<ChatDto>(_jsonOptions);
-        
+
         // Measure mode switch time
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        
+
         var continueRequest = new SendMessageRequest
         {
             Message = "Continue with different mode",
-            ModeId = "writing"
+            ModeId = "writing",
         };
-        
-        var continueResponse = await client.PostAsJsonAsync($"/api/chat/{chat!.Id}/messages?userId={userId}", continueRequest, _jsonOptions);
+
+        var continueResponse = await client.PostAsJsonAsync(
+            $"/api/chat/{chat!.Id}/messages?userId={userId}",
+            continueRequest,
+            _jsonOptions
+        );
         stopwatch.Stop();
-        
+
         // Assert
-        continueResponse.EnsureSuccessStatusCode();
-        stopwatch.ElapsedMilliseconds.Should().BeLessThan(500, "Mode switching should be fast");
+        _ = continueResponse.EnsureSuccessStatusCode();
+        _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(500, "Mode switching should be fast");
     }
 
     [Fact]
@@ -318,25 +347,30 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userIds = Enumerable.Range(1, 10).Select(i => $"concurrent-user-{i}-{Guid.NewGuid()}").ToList();
-        
+        var userIds = Enumerable
+            .Range(1, 10)
+            .Select(i => $"concurrent-user-{i}-{Guid.NewGuid()}")
+            .ToList();
+
         // Act - Concurrent mode requests
-        var tasks = userIds.Select(async userId =>
-        {
-            var response = await client.GetAsync($"/api/mode?userId={userId}");
-            return (userId, response);
-        }).ToList();
-        
+        var tasks = userIds
+            .Select(async userId =>
+            {
+                var response = await client.GetAsync($"/api/mode?userId={userId}");
+                return (userId, response);
+            })
+            .ToList();
+
         var results = await Task.WhenAll(tasks);
-        
+
         // Assert
-        results.Should().HaveCount(10);
+        _ = results.Should().HaveCount(10);
         foreach (var (userId, response) in results)
         {
-            response.EnsureSuccessStatusCode();
+            _ = response.EnsureSuccessStatusCode();
             var modes = await response.Content.ReadFromJsonAsync<ModesResponse>(_jsonOptions);
-            modes.Should().NotBeNull();
-            modes!.Modes.Should().NotBeEmpty($"User {userId} should receive modes");
+            _ = modes.Should().NotBeNull();
+            _ = modes!.Modes.Should().NotBeEmpty($"User {userId} should receive modes");
         }
     }
 
@@ -350,7 +384,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         // Arrange
         var client = _factory.CreateClient();
         var userId = $"test-user-{Guid.NewGuid()}";
-        
+
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");
         var createRequest = new CreateChatRequest(
             ChatId: null,
@@ -360,16 +394,19 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             ModeId: "general"
         );
         request.Content = JsonContent.Create(createRequest, options: _jsonOptions);
-        
+
         // Act
-        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-        response.EnsureSuccessStatusCode();
+        using var response = await client.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead
+        );
+        _ = response.EnsureSuccessStatusCode();
         var sseContent = await response.Content.ReadAsStringAsync();
-        
+
         // Assert
-        sseContent.Should().Contain("event: init");
-        sseContent.Should().Contain("event: messageupdate");
-        sseContent.Should().Contain("event: complete");
+        _ = sseContent.Should().Contain("event: init");
+        _ = sseContent.Should().Contain("event: messageupdate");
+        _ = sseContent.Should().Contain("event: complete");
         // The SSE stream should work with the specified mode
     }
 
@@ -383,7 +420,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         // Arrange
         var client = _factory.CreateClient();
         var userId = $"test-user-{Guid.NewGuid()}";
-        
+
         // Create custom mode
         var customMode = new CreateModeRequest
         {
@@ -392,13 +429,17 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             Prompt = "You are a persistent assistant",
             Tools = new[] { "search" },
             DefaultModel = null,
-            Category = "custom"
+            Category = "custom",
         };
-        
-        var createModeResponse = await client.PostAsJsonAsync($"/api/mode?userId={userId}", customMode, _jsonOptions);
-        createModeResponse.EnsureSuccessStatusCode();
+
+        var createModeResponse = await client.PostAsJsonAsync(
+            $"/api/mode?userId={userId}",
+            customMode,
+            _jsonOptions
+        );
+        _ = createModeResponse.EnsureSuccessStatusCode();
         var createdMode = await createModeResponse.Content.ReadFromJsonAsync<ModeDto>(_jsonOptions);
-        
+
         // Create multiple chats with the same mode
         var chatIds = new List<string>();
         for (int i = 0; i < 3; i++)
@@ -410,25 +451,29 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
                 SystemPrompt: null,
                 ModeId: createdMode!.Id
             );
-            
-            var response = await client.PostAsJsonAsync("/api/chat", createChatRequest, _jsonOptions);
-            response.EnsureSuccessStatusCode();
+
+            var response = await client.PostAsJsonAsync(
+                "/api/chat",
+                createChatRequest,
+                _jsonOptions
+            );
+            _ = response.EnsureSuccessStatusCode();
             var chat = await response.Content.ReadFromJsonAsync<ChatDto>(_jsonOptions);
             chatIds.Add(chat!.Id);
         }
-        
+
         // Verify mode is still available
         var modesResponse = await client.GetAsync($"/api/mode?userId={userId}");
-        modesResponse.EnsureSuccessStatusCode();
+        _ = modesResponse.EnsureSuccessStatusCode();
         var modes = await modesResponse.Content.ReadFromJsonAsync<ModesResponse>(_jsonOptions);
-        
+
         // Clean up
-        await client.DeleteAsync($"/api/mode/{createdMode!.Id}?userId={userId}");
-        
+        _ = await client.DeleteAsync($"/api/mode/{createdMode!.Id}?userId={userId}");
+
         // Assert
-        chatIds.Should().HaveCount(3);
-        chatIds.Should().OnlyHaveUniqueItems();
-        modes!.Modes.Should().Contain(m => m.Id == createdMode.Id);
+        _ = chatIds.Should().HaveCount(3);
+        _ = chatIds.Should().OnlyHaveUniqueItems();
+        _ = modes!.Modes.Should().Contain(m => m.Id == createdMode.Id);
     }
 
     #endregion

@@ -6,17 +6,12 @@ using Xunit;
 
 namespace AIChat.Server.Tests.Api;
 
-public class ChatApiTests : IClassFixture<WebApplicationFactory<Program>>
+public class ChatApiTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
 {
-    private readonly WebApplicationFactory<Program> _factory;
-
-    public ChatApiTests(WebApplicationFactory<Program> factory)
-    {
-        _factory = factory.WithWebHostBuilder(builder =>
+    private readonly WebApplicationFactory<Program> _factory = factory.WithWebHostBuilder(builder =>
         {
-            builder.UseSetting("ASPNETCORE_ENVIRONMENT", "Test");
+            _ = builder.UseSetting("ASPNETCORE_ENVIRONMENT", "Test");
         });
-    }
 
     [Fact]
     public async Task Create_And_Get_Chat_Works()
@@ -24,16 +19,16 @@ public class ChatApiTests : IClassFixture<WebApplicationFactory<Program>>
         var client = _factory.CreateClient();
         var create = new CreateChatRequest(null, "user-123", "hello world", null, null);
         var res = await client.PostAsJsonAsync("/api/chat", create);
-        res.EnsureSuccessStatusCode();
+        _ = res.EnsureSuccessStatusCode();
         var chat = await res.Content.ReadFromJsonAsync<AIChat.Server.Services.ChatDto>();
-        chat!.Id.Should().NotBeNullOrEmpty();
-        chat.Messages.Should().NotBeEmpty();
+        _ = chat!.Id.Should().NotBeNullOrEmpty();
+        _ = chat.Messages.Should().NotBeEmpty();
 
         var get = await client.GetAsync($"/api/chat/{chat.Id}");
-        get.EnsureSuccessStatusCode();
+        _ = get.EnsureSuccessStatusCode();
         var chat2 = await get.Content.ReadFromJsonAsync<AIChat.Server.Services.ChatDto>();
-        chat2!.Id.Should().Be(chat.Id);
-        chat2.Messages.Should().NotBeEmpty();
+        _ = chat2!.Id.Should().Be(chat.Id);
+        _ = chat2.Messages.Should().NotBeEmpty();
     }
 
     [Fact]
@@ -42,17 +37,17 @@ public class ChatApiTests : IClassFixture<WebApplicationFactory<Program>>
         var client = _factory.CreateClient();
         // Create one chat
         var create = new CreateChatRequest(null, "user-123", "hello again", null, null);
-        (await client.PostAsJsonAsync("/api/chat", create)).EnsureSuccessStatusCode();
+        _ = (await client.PostAsJsonAsync("/api/chat", create)).EnsureSuccessStatusCode();
 
         var hist = await client.GetAsync("/api/chat/history?userId=user-123&page=1&pageSize=10");
-        hist.EnsureSuccessStatusCode();
+        _ = hist.EnsureSuccessStatusCode();
         var history = await hist.Content.ReadFromJsonAsync<ChatHistoryResponse>();
-        history!.Chats.Should().NotBeNull();
-        history.Chats.Should().NotBeEmpty();
+        _ = history!.Chats.Should().NotBeNull();
+        _ = history.Chats.Should().NotBeEmpty();
 
         var id = history.Chats.First().Id;
         var del = await client.DeleteAsync($"/api/chat/{id}");
-        del.StatusCode.Should().Be(System.Net.HttpStatusCode.NoContent);
+        _ = del.StatusCode.Should().Be(System.Net.HttpStatusCode.NoContent);
     }
 
     [Fact]
@@ -60,14 +55,15 @@ public class ChatApiTests : IClassFixture<WebApplicationFactory<Program>>
     {
         var client = _factory.CreateClient();
         using var req = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");
-        req.Content = JsonContent.Create(new CreateChatRequest(null, "user-123", "Hello reasoning test", null, null));
+        req.Content = JsonContent.Create(
+            new CreateChatRequest(null, "user-123", "Hello reasoning test", null, null)
+        );
         using var res = await client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
-        res.EnsureSuccessStatusCode();
+        _ = res.EnsureSuccessStatusCode();
         var text = await res.Content.ReadAsStringAsync();
-        text.Should().Contain("event: init");
-        text.Should().Contain("event: messageupdate");
-        text.Should().Contain("event: complete");
-        text.Should().Contain("data:");
+        _ = text.Should().Contain("event: init");
+        _ = text.Should().Contain("event: messageupdate");
+        _ = text.Should().Contain("event: complete");
+        _ = text.Should().Contain("data:");
     }
 }
-

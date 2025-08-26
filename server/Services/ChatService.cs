@@ -1,66 +1,60 @@
-using AchieveAi.LmDotnetTools.LmCore.Agents;
-using AchieveAi.LmDotnetTools.LmCore.Messages;
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
-using Microsoft.Extensions.Options;
-using AIChat.Server.Storage;
-using System.Collections.Concurrent;
 using System.Text.Json;
-using AIChat.Server.Models;
+using AchieveAi.LmDotnetTools.LmCore.Agents;
+using AchieveAi.LmDotnetTools.LmCore.Messages;
 using AchieveAi.LmDotnetTools.LmCore.Middleware;
-using AchieveAi.LmDotnetTools.Misc.Utils;
+using AIChat.Server.Models;
+using AIChat.Server.Storage;
+using Microsoft.Extensions.Options;
 using static AchieveAi.LmDotnetTools.Misc.Utils.TaskManager;
 
 namespace AIChat.Server.Services;
 
-public class ChatService : IChatService, IToolResultCallback
+public class ChatService(
+    IChatStorage storage,
+    IStreamingAgent streamingAgent,
+    ILogger<ChatService> logger,
+    IOptions<AiOptions> aiOptions,
+    ITaskManagerService taskManagerService,
+    IToolingService toolingService,
+    IModeService modeService
+    ) : IChatService, IToolResultCallback
 {
-    private readonly IChatStorage _storage;
-    private readonly IStreamingAgent _streamingAgent;
-    private readonly ILogger<ChatService> _logger;
-    private readonly AiOptions _aiOptions;
-    private readonly ITaskManagerService _taskManagerService;
-    private readonly IToolingService _toolingService;
-    private readonly IModeService _modeService;
+    private readonly AiOptions _aiOptions = aiOptions.Value;
 
-    public ChatService(
-        IChatStorage storage,
-        IStreamingAgent streamingAgent,
-        ILogger<ChatService> logger,
-        IOptions<AiOptions> aiOptions,
-        ITaskManagerService taskManagerService,
-        IToolingService toolingService,
-        IModeService modeService)
-    {
-        _storage = storage;
-        _streamingAgent = streamingAgent;
-        _logger = logger;
-        _aiOptions = aiOptions.Value;
-        _taskManagerService = taskManagerService;
-        _toolingService = toolingService;
-        _modeService = modeService;
-    }
-    
-    private async Task<FunctionCallMiddleware?> CreateChatSpecificFunctionCallMiddleware(string chatId, string? modeId = null, string? userId = null)
+    private async Task<FunctionCallMiddleware?> CreateChatSpecificFunctionCallMiddleware(
+        string chatId,
+        string? modeId = null,
+        string? userId = null
+    )
     {
         // Delegate to the tooling service
-        return await _toolingService.CreateChatSpecificFunctionCallMiddlewareAsync(
-            chatId, 
-            modeId, 
-            userId, 
+        return await toolingService.CreateChatSpecificFunctionCallMiddlewareAsync(
+            chatId,
+            modeId,
+            userId,
             this, // Use this ChatService as the IToolResultCallback
-            CancellationToken.None);
+            CancellationToken.None
+        );
     }
 
     // Fields for tracking tool execution state
     private string? _currentChatId;
     private string? _currentMessageId;
     private int _nextSequence;
+
     // Map ToolCallId to MessageId and SequenceNumber for proper correlation
     // Using ConcurrentDictionary for thread-safe access during async streaming operations
-    private readonly ConcurrentDictionary<string, (string MessageId, int SequenceNumber)> _toolCallToMessageMap = new();
+    private readonly ConcurrentDictionary<
+        string,
+        (string MessageId, int SequenceNumber)
+    > _toolCallToMessageMap = new();
+
     // Map ToolCallId to FunctionName for TaskManager detection
     private readonly ConcurrentDictionary<string, string> _toolCallToFunctionMap = new();
+
     // Track the last seen tool call ID for sequential streaming updates
     private string? _lastSeenToolCallId;
 
@@ -75,17 +69,26 @@ public class ChatService : IChatService, IToolResultCallback
         {
             var now = DateTime.UtcNow;
             var title = GenerateChatTitle(request.Message);
-            var create = await _storage.CreateChatAsync(request.UserId, title, now, now, null);
+            var create = await storage.CreateChatAsync(request.UserId, title, now, now, null);
             if (!create.Success || create.Chat == null)
             {
-                return new ChatResult { Success = false, Error = create.Error ?? "Failed to create chat" };
+                return new ChatResult
+                {
+                    Success = false,
+                    Error = create.Error ?? "Failed to create chat",
+                };
             }
 
             var chat = create.Chat;
 
             // Insert initial user message
-            var (allocSeqSuccess, allocSeqError, allocSeqNextSequence) = await _storage.AllocateSequenceAsync(chat.Id);
-            if (!allocSeqSuccess) return new ChatResult { Success = false, Error = allocSeqError };
+            var (allocSeqSuccess, allocSeqError, allocSeqNextSequence) =
+                await storage.AllocateSequenceAsync(chat.Id);
+            if (!allocSeqSuccess)
+            {
+                return new ChatResult { Success = false, Error = allocSeqError };
+            }
+
             var userDto = new TextMessageDto
             {
                 Id = Guid.NewGuid().ToString(),
@@ -93,7 +96,7 @@ public class ChatService : IChatService, IToolResultCallback
                 Role = "user",
                 Timestamp = DateTime.UtcNow,
                 SequenceNumber = allocSeqNextSequence,
-                Text = request.Message
+                Text = request.Message,
             };
             var userRecord = new MessageRecord
             {
@@ -103,30 +106,50 @@ public class ChatService : IChatService, IToolResultCallback
                 Kind = "text",
                 TimestampUtc = userDto.Timestamp,
                 SequenceNumber = userDto.SequenceNumber,
-                MessageJson = JsonSerializer.Serialize<MessageDto>(userDto, MessageSerializationOptions.Default)
+                MessageJson = JsonSerializer.Serialize<MessageDto>(
+                    userDto,
+                    MessageSerializationOptions.Default
+                ),
             };
 
-            var insUser = await _storage.InsertMessageAsync(userRecord);
-            if (!insUser.Success) return new ChatResult { Success = false, Error = insUser.Error };
+            var insUser = await storage.InsertMessageAsync(userRecord);
+            if (!insUser.Success)
+            {
+                return new ChatResult { Success = false, Error = insUser.Error };
+            }
 
             // Handle mode-based system prompt or explicit system prompt
             string? systemPrompt = request.SystemPrompt;
             if (!string.IsNullOrEmpty(request.ModeId))
             {
-                var modePromptResult = await _modeService.GetModeSystemPromptAsync(request.ModeId, request.UserId);
-                if (modePromptResult.Success && !string.IsNullOrEmpty(modePromptResult.SystemPrompt))
+                var modePromptResult = await modeService.GetModeSystemPromptAsync(
+                    request.ModeId,
+                    request.UserId
+                );
+                if (
+                    modePromptResult.Success && !string.IsNullOrEmpty(modePromptResult.SystemPrompt)
+                )
                 {
                     // Mode system prompt takes precedence over request system prompt
                     systemPrompt = modePromptResult.SystemPrompt;
-                    _logger.LogInformation("Applied system prompt from mode {ModeId} for chat {ChatId}", request.ModeId, chat.Id);
+                    logger.LogInformation(
+                        "Applied system prompt from mode {ModeId} for chat {ChatId}",
+                        request.ModeId,
+                        chat.Id
+                    );
                 }
             }
 
             // Insert system prompt if available
             if (!string.IsNullOrWhiteSpace(systemPrompt))
             {
-                (allocSeqSuccess, allocSeqError, allocSeqNextSequence) = await _storage.AllocateSequenceAsync(chat.Id);
-                if (!allocSeqSuccess) return new ChatResult { Success = false, Error = allocSeqError };
+                (allocSeqSuccess, allocSeqError, allocSeqNextSequence) =
+                    await storage.AllocateSequenceAsync(chat.Id);
+                if (!allocSeqSuccess)
+                {
+                    return new ChatResult { Success = false, Error = allocSeqError };
+                }
+
                 var sysDto = new TextMessageDto
                 {
                     Id = Guid.NewGuid().ToString(),
@@ -134,7 +157,7 @@ public class ChatService : IChatService, IToolResultCallback
                     Role = "system",
                     Timestamp = DateTime.UtcNow.AddMilliseconds(-1),
                     SequenceNumber = allocSeqNextSequence,
-                    Text = systemPrompt!
+                    Text = systemPrompt!,
                 };
                 var sysRecord = new MessageRecord
                 {
@@ -144,24 +167,38 @@ public class ChatService : IChatService, IToolResultCallback
                     Kind = "text",
                     TimestampUtc = sysDto.Timestamp,
                     SequenceNumber = sysDto.SequenceNumber,
-                    MessageJson = JsonSerializer.Serialize<MessageDto>(sysDto, MessageSerializationOptions.Default)
+                    MessageJson = JsonSerializer.Serialize<MessageDto>(
+                        sysDto,
+                        MessageSerializationOptions.Default
+                    ),
                 };
-                var insSys = await _storage.InsertMessageAsync(sysRecord);
-                if (!insSys.Success) return new ChatResult { Success = false, Error = insSys.Error };
+                var insSys = await storage.InsertMessageAsync(sysRecord);
+                if (!insSys.Success)
+                {
+                    return new ChatResult { Success = false, Error = insSys.Error };
+                }
             }
 
             // Generate AI response with mode configuration
             var aiResponse = await GenerateAIResponseAsync(chat.Id, request.ModeId, request.UserId);
 
-            await _storage.UpdateChatUpdatedAtAsync(chat.Id, DateTime.UtcNow);
+            _ = await storage.UpdateChatUpdatedAtAsync(chat.Id, DateTime.UtcNow);
 
             // Build DTO with ordered messages
-            var (Success, Error, Messages) = await _storage.ListChatMessagesOrderedAsync(chat.Id);
-            
-            var messages = Success && Messages != null
-                ? Messages.Select(m => JsonSerializer.Deserialize<MessageDto>(m.MessageJson, MessageSerializationOptions.Default)!).ToList()
-                : new List<MessageDto> { userDto };
-            
+            var (Success, Error, Messages) = await storage.ListChatMessagesOrderedAsync(chat.Id);
+
+            var messages =
+                Success && Messages != null
+                    ? Messages
+                        .Select(m =>
+                            JsonSerializer.Deserialize<MessageDto>(
+                                m.MessageJson,
+                                MessageSerializationOptions.Default
+                            )!
+                        )
+                        .ToList()
+                    : new List<MessageDto> { userDto };
+
             return new ChatResult
             {
                 Success = true,
@@ -172,13 +209,13 @@ public class ChatService : IChatService, IToolResultCallback
                     Title = chat.Title,
                     CreatedAt = chat.CreatedAtUtc,
                     UpdatedAt = DateTime.UtcNow,
-                    Messages = messages
-                }
+                    Messages = messages,
+                },
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating chat");
+            logger.LogError(ex, "Error creating chat");
             return new ChatResult { Success = false, Error = "Failed to create chat" };
         }
     }
@@ -187,34 +224,49 @@ public class ChatService : IChatService, IToolResultCallback
     {
         try
         {
-            var chat = await _storage.GetChatByIdAsync(chatId);
+            var chat = await storage.GetChatByIdAsync(chatId);
             if (!chat.Success || chat.Chat == null)
             {
                 return new ChatResult { Success = false, Error = chat.Error ?? "Chat not found" };
             }
-            var (Success, Error, Messages) = await _storage.ListChatMessagesOrderedAsync(chatId);
-            
-            _logger.LogInformation("Loading messages for chat {ChatId}: Found {Count} messages", chatId, Messages?.Count ?? 0);
-            
+            var (Success, Error, Messages) = await storage.ListChatMessagesOrderedAsync(chatId);
+
+            logger.LogInformation(
+                "Loading messages for chat {ChatId}: Found {Count} messages",
+                chatId,
+                Messages?.Count ?? 0
+            );
+
             var messages = Success
-                ? Messages!.Select(m => {
-                    var dto = JsonSerializer.Deserialize<MessageDto>(m.MessageJson, MessageSerializationOptions.Default)!;
-                    
-                    // Log tool call messages for debugging
-                    if (dto is ToolCallMessageDto toolCallDto)
+                ? Messages!
+                    .Select(m =>
                     {
-                        _logger.LogInformation("Loaded tool call message: Id={MessageId}, ToolCalls={ToolCallCount}", 
-                            dto.Id, toolCallDto.ToolCalls?.Length ?? 0);
-                    }
-                    
-                    return dto;
-                })
-                .ToList()
+                        var dto = JsonSerializer.Deserialize<MessageDto>(
+                            m.MessageJson,
+                            MessageSerializationOptions.Default
+                        )!;
+
+                        // Log tool call messages for debugging
+                        if (dto is ToolCallMessageDto toolCallDto)
+                        {
+                            logger.LogInformation(
+                                "Loaded tool call message: Id={MessageId}, ToolCalls={ToolCallCount}",
+                                dto.Id,
+                                toolCallDto.ToolCalls?.Length ?? 0
+                            );
+                        }
+
+                        return dto;
+                    })
+                    .ToList()
                 : [];
 
             // Get task snapshot from TaskManagerService
-            var taskSnapshot = await _taskManagerService.GetTaskStateAsync(chatId, CancellationToken.None);
-            
+            var taskSnapshot = await taskManagerService.GetTaskStateAsync(
+                chatId,
+                CancellationToken.None
+            );
+
             return new ChatResult
             {
                 Success = true,
@@ -226,13 +278,13 @@ public class ChatService : IChatService, IToolResultCallback
                     Messages = messages,
                     CreatedAt = chat.Chat.CreatedAtUtc,
                     UpdatedAt = chat.Chat.UpdatedAtUtc,
-                    Tasks = taskSnapshot?.Item2
-                }
+                    Tasks = taskSnapshot?.Item2,
+                },
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving chat {ChatId}", chatId);
+            logger.LogError(ex, "Error retrieving chat {ChatId}", chatId);
             return new ChatResult { Success = false, Error = "Failed to retrieve chat" };
         }
     }
@@ -241,27 +293,38 @@ public class ChatService : IChatService, IToolResultCallback
     {
         try
         {
-            var (histSuccess, histError, histChats, histTotalCount) = await _storage.GetChatHistoryByUserAsync(userId, page, pageSize);
+            var (histSuccess, histError, histChats, histTotalCount) =
+                await storage.GetChatHistoryByUserAsync(userId, page, pageSize);
             var chats = histSuccess ? histChats : Array.Empty<ChatRecord>();
 
             var chatDtos = new List<ChatDto>(chats.Count);
             foreach (var c in chats)
             {
-                var (msgsSuccess, msgsError, msgsMessages) = await _storage.ListChatMessagesOrderedAsync(c.Id);
+                var (msgsSuccess, msgsError, msgsMessages) =
+                    await storage.ListChatMessagesOrderedAsync(c.Id);
                 var messages = msgsSuccess
-                    ? [.. msgsMessages
-                        .Select(m => JsonSerializer.Deserialize<MessageDto>(m.MessageJson, MessageSerializationOptions.Default)!)]
+                    ?
+                    [
+                        .. msgsMessages.Select(m =>
+                            JsonSerializer.Deserialize<MessageDto>(
+                                m.MessageJson,
+                                MessageSerializationOptions.Default
+                            )!
+                        ),
+                    ]
                     : new List<MessageDto>();
 
-                chatDtos.Add(new ChatDto
-                {
-                    Id = c.Id,
-                    UserId = c.UserId,
-                    Title = c.Title,
-                    Messages = messages,
-                    CreatedAt = c.CreatedAtUtc,
-                    UpdatedAt = c.UpdatedAtUtc
-                });
+                chatDtos.Add(
+                    new ChatDto
+                    {
+                        Id = c.Id,
+                        UserId = c.UserId,
+                        Title = c.Title,
+                        Messages = messages,
+                        CreatedAt = c.CreatedAtUtc,
+                        UpdatedAt = c.UpdatedAtUtc,
+                    }
+                );
             }
 
             return new ChatHistoryResult
@@ -270,13 +333,17 @@ public class ChatService : IChatService, IToolResultCallback
                 Chats = chatDtos,
                 TotalCount = histTotalCount,
                 Page = page,
-                PageSize = pageSize
+                PageSize = pageSize,
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving chat history for user {UserId}", userId);
-            return new ChatHistoryResult { Success = false, Error = "Failed to retrieve chat history" };
+            logger.LogError(ex, "Error retrieving chat history for user {UserId}", userId);
+            return new ChatHistoryResult
+            {
+                Success = false,
+                Error = "Failed to retrieve chat history",
+            };
         }
     }
 
@@ -285,15 +352,15 @@ public class ChatService : IChatService, IToolResultCallback
         try
         {
             // Clear TaskManager for this chat
-            await _taskManagerService.ClearTaskManagerAsync(chatId);
-            
+            await taskManagerService.ClearTaskManagerAsync(chatId);
+
             // Delete the chat
-            var res = await _storage.DeleteChatAsync(chatId);
-            return res.Success;
+            var (Success, Error) = await storage.DeleteChatAsync(chatId);
+            return Success;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting chat {ChatId}", chatId);
+            logger.LogError(ex, "Error deleting chat {ChatId}", chatId);
             return false;
         }
     }
@@ -302,8 +369,11 @@ public class ChatService : IChatService, IToolResultCallback
     {
         try
         {
-            var userSeq = await _storage.AllocateSequenceAsync(request.ChatId);
-            if (!userSeq.Success) return new MessageResult { Success = false, Error = userSeq.Error };
+            var (Success, Error, NextSequence) = await storage.AllocateSequenceAsync(request.ChatId);
+            if (!Success)
+            {
+                return new MessageResult { Success = false, Error = Error };
+            }
 
             var userDto = new TextMessageDto
             {
@@ -311,8 +381,8 @@ public class ChatService : IChatService, IToolResultCallback
                 ChatId = request.ChatId,
                 Role = "user",
                 Timestamp = DateTime.UtcNow,
-                SequenceNumber = userSeq.NextSequence,
-                Text = request.Message
+                SequenceNumber = NextSequence,
+                Text = request.Message,
             };
             var userRecord = new MessageRecord
             {
@@ -322,20 +392,35 @@ public class ChatService : IChatService, IToolResultCallback
                 Kind = "text",
                 TimestampUtc = userDto.Timestamp,
                 SequenceNumber = userDto.SequenceNumber,
-                MessageJson = JsonSerializer.Serialize<MessageDto>(userDto, MessageSerializationOptions.Default)
+                MessageJson = JsonSerializer.Serialize<MessageDto>(
+                    userDto,
+                    MessageSerializationOptions.Default
+                ),
             };
-            var insUser = await _storage.InsertMessageAsync(userRecord);
-            if (!insUser.Success) return new MessageResult { Success = false, Error = insUser.Error };
+            var insUser = await storage.InsertMessageAsync(userRecord);
+            if (!insUser.Success)
+            {
+                return new MessageResult { Success = false, Error = insUser.Error };
+            }
 
-            if (MessageCreated != null) await MessageCreated(new MessageCreatedEvent {
-                ChatId = request.ChatId,
-                Message = userDto
-            });
+            if (MessageCreated != null)
+            {
+                await MessageCreated(
+                    new MessageCreatedEvent { ChatId = request.ChatId, Message = userDto }
+                );
+            }
 
-            var aiResponse = await GenerateAIResponseAsync(request.ChatId, request.ModeId, request.UserId);
+            var aiResponse = await GenerateAIResponseAsync(
+                request.ChatId,
+                request.ModeId,
+                request.UserId
+            );
 
-            var asq = await _storage.AllocateSequenceAsync(request.ChatId);
-            if (!asq.Success) return new MessageResult { Success = false, Error = asq.Error };
+            var asq = await storage.AllocateSequenceAsync(request.ChatId);
+            if (!asq.Success)
+            {
+                return new MessageResult { Success = false, Error = asq.Error };
+            }
 
             var assistantDto = new TextMessageDto
             {
@@ -344,7 +429,7 @@ public class ChatService : IChatService, IToolResultCallback
                 Role = "assistant",
                 Timestamp = DateTime.UtcNow,
                 SequenceNumber = asq.NextSequence,
-                Text = aiResponse
+                Text = aiResponse,
             };
             var assistantRecord = new MessageRecord
             {
@@ -354,43 +439,55 @@ public class ChatService : IChatService, IToolResultCallback
                 Kind = "text",
                 TimestampUtc = assistantDto.Timestamp,
                 SequenceNumber = assistantDto.SequenceNumber,
-                MessageJson = JsonSerializer.Serialize<MessageDto>(assistantDto, MessageSerializationOptions.Default)
+                MessageJson = JsonSerializer.Serialize<MessageDto>(
+                    assistantDto,
+                    MessageSerializationOptions.Default
+                ),
             };
-            var insAsst = await _storage.InsertMessageAsync(assistantRecord);
-            if (!insAsst.Success) return new MessageResult { Success = false, Error = insAsst.Error };
-
-            await _storage.UpdateChatUpdatedAtAsync(request.ChatId, DateTime.UtcNow);
-
-            if (MessageCreated != null) await MessageCreated(new MessageCreatedEvent
+            var insAsst = await storage.InsertMessageAsync(assistantRecord);
+            if (!insAsst.Success)
             {
-                ChatId = request.ChatId,
-                Message = assistantDto
-            });
+                return new MessageResult { Success = false, Error = insAsst.Error };
+            }
+
+            _ = await storage.UpdateChatUpdatedAtAsync(request.ChatId, DateTime.UtcNow);
+
+            if (MessageCreated != null)
+            {
+                await MessageCreated(
+                    new MessageCreatedEvent { ChatId = request.ChatId, Message = assistantDto }
+                );
+            }
 
             return new MessageResult
             {
                 Success = true,
                 UserMessage = userDto,
-                AssistantMessage = assistantDto
+                AssistantMessage = assistantDto,
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error sending message for chat {ChatId}", request.ChatId);
+            logger.LogError(ex, "Error sending message for chat {ChatId}", request.ChatId);
             return new MessageResult { Success = false, Error = "Failed to send message" };
         }
     }
 
     public async Task<StreamInitResult> PrepareStreamChatAsync(StreamChatRequest request)
     {
-        _logger.LogInformation("[DEBUG] PrepareStreamChatAsync - UserId: {UserId}, Message: {Message}", request.UserId, request.Message);
+        logger.LogInformation(
+            "[DEBUG] PrepareStreamChatAsync - UserId: {UserId}, Message: {Message}",
+            request.UserId,
+            request.Message
+        );
         var now = DateTime.UtcNow;
-        var createRes = await _storage.CreateChatAsync(
+        var createRes = await storage.CreateChatAsync(
             request.UserId,
             GenerateChatTitle(request.Message),
             now,
             now,
-            null);
+            null
+        );
 
         if (!createRes.Success || createRes.Chat == null)
         {
@@ -399,19 +496,29 @@ public class ChatService : IChatService, IToolResultCallback
 
         var chatId = createRes.Chat.Id;
 
-        var (seqSuccess, seqError, userMsgSequence) = await _storage.AllocateSequenceAsync(chatId);
-        if (!seqSuccess) throw new InvalidOperationException(seqError);
+        var (seqSuccess, seqError, userMsgSequence) = await storage.AllocateSequenceAsync(chatId);
+        if (!seqSuccess)
+        {
+            throw new InvalidOperationException(seqError);
+        }
 
         // Handle mode-based system prompt or explicit system prompt
         string? systemPrompt = request.SystemPrompt;
         if (!string.IsNullOrEmpty(request.ModeId))
         {
-            var modePromptResult = await _modeService.GetModeSystemPromptAsync(request.ModeId, request.UserId);
-            if (modePromptResult.Success && !string.IsNullOrEmpty(modePromptResult.SystemPrompt))
+            var (Success, Error, SystemPrompt) = await modeService.GetModeSystemPromptAsync(
+                request.ModeId,
+                request.UserId
+            );
+            if (Success && !string.IsNullOrEmpty(SystemPrompt))
             {
                 // Mode system prompt takes precedence over request system prompt
-                systemPrompt = modePromptResult.SystemPrompt;
-                _logger.LogInformation("Applied system prompt from mode {ModeId} for stream chat {ChatId}", request.ModeId, chatId);
+                systemPrompt = SystemPrompt;
+                logger.LogInformation(
+                    "Applied system prompt from mode {ModeId} for stream chat {ChatId}",
+                    request.ModeId,
+                    chatId
+                );
             }
         }
 
@@ -424,19 +531,24 @@ public class ChatService : IChatService, IToolResultCallback
                 Role = "system",
                 Timestamp = DateTime.UtcNow.AddMilliseconds(-1),
                 SequenceNumber = userMsgSequence++,
-                Text = systemPrompt!
+                Text = systemPrompt!,
             };
 
-            await _storage.InsertMessageAsync(new MessageRecord
-            {
-                Id = sysDto.Id,
-                ChatId = chatId,
-                Role = sysDto.Role,
-                Kind = "text",
-                TimestampUtc = sysDto.Timestamp,
-                SequenceNumber = sysDto.SequenceNumber,
-                MessageJson = JsonSerializer.Serialize<MessageDto>(sysDto, MessageSerializationOptions.Default)
-            });
+            _ = await storage.InsertMessageAsync(
+                new MessageRecord
+                {
+                    Id = sysDto.Id,
+                    ChatId = chatId,
+                    Role = sysDto.Role,
+                    Kind = "text",
+                    TimestampUtc = sysDto.Timestamp,
+                    SequenceNumber = sysDto.SequenceNumber,
+                    MessageJson = JsonSerializer.Serialize<MessageDto>(
+                        sysDto,
+                        MessageSerializationOptions.Default
+                    ),
+                }
+            );
         }
 
         var userDto = new TextMessageDto
@@ -446,19 +558,24 @@ public class ChatService : IChatService, IToolResultCallback
             Role = "user",
             Timestamp = DateTime.UtcNow,
             SequenceNumber = userMsgSequence,
-            Text = request.Message
+            Text = request.Message,
         };
 
-        await _storage.InsertMessageAsync(new MessageRecord
-        {
-            Id = userDto.Id,
-            ChatId = chatId,
-            Role = userDto.Role,
-            Kind = "text",
-            TimestampUtc = userDto.Timestamp,
-            SequenceNumber = userDto.SequenceNumber,
-            MessageJson = JsonSerializer.Serialize<MessageDto>(userDto, MessageSerializationOptions.Default)
-        });
+        _ = await storage.InsertMessageAsync(
+            new MessageRecord
+            {
+                Id = userDto.Id,
+                ChatId = chatId,
+                Role = userDto.Role,
+                Kind = "text",
+                TimestampUtc = userDto.Timestamp,
+                SequenceNumber = userDto.SequenceNumber,
+                MessageJson = JsonSerializer.Serialize<MessageDto>(
+                    userDto,
+                    MessageSerializationOptions.Default
+                ),
+            }
+        );
 
         return new StreamInitResult
         {
@@ -471,30 +588,54 @@ public class ChatService : IChatService, IToolResultCallback
 
     public async Task StreamChatCompletionAsync(
         StreamChatRequest request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var init = await PrepareStreamChatAsync(request);
         var chatId = init.ChatId;
 
-        var convo = await _storage.ListChatMessagesOrderedAsync(chatId);
-        var history = convo.Messages
-            .Select(m => JsonSerializer.Deserialize<MessageDto>(m.MessageJson, MessageSerializationOptions.Default)!)
-            .Where(d => (d is TextMessageDto td && !string.IsNullOrWhiteSpace(td.Text)) || 
-                       d is ReasoningMessageDto) // Include ALL reasoning messages for LLM context
+        var (Success, Error, Messages) = await storage.ListChatMessagesOrderedAsync(chatId, cancellationToken);
+        var history = Messages.Select(m =>
+                JsonSerializer.Deserialize<MessageDto>(
+                    m.MessageJson,
+                    MessageSerializationOptions.Default
+                )!
+            )
+            .Where(d =>
+                (d is TextMessageDto td && !string.IsNullOrWhiteSpace(td.Text))
+                || d is ReasoningMessageDto
+            ) // Include ALL reasoning messages for LLM context
             .ToList();
 
-        await StreamChatCompletionAsync(chatId, history, cancellationToken, request.ModeId, request.UserId);
+        await StreamChatCompletionAsync(
+            chatId,
+            history,
+            cancellationToken,
+            request.ModeId,
+            request.UserId
+        );
     }
 
     public async Task StreamAssistantResponseAsync(
         string chatId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
-        var (_, _, messages) = await _storage.ListChatMessagesOrderedAsync(chatId, cancellationToken);
+        var (_, _, messages) = await storage.ListChatMessagesOrderedAsync(
+            chatId,
+            cancellationToken
+        );
         var history = messages
-            .Select(m => JsonSerializer.Deserialize<MessageDto>(m.MessageJson, MessageSerializationOptions.Default)!)
-            .Where(d => (d is TextMessageDto td && !string.IsNullOrWhiteSpace(td.Text)) || 
-                       d is ReasoningMessageDto) // Include ALL reasoning messages for LLM context
+            .Select(m =>
+                JsonSerializer.Deserialize<MessageDto>(
+                    m.MessageJson,
+                    MessageSerializationOptions.Default
+                )!
+            )
+            .Where(d =>
+                (d is TextMessageDto td && !string.IsNullOrWhiteSpace(td.Text))
+                || d is ReasoningMessageDto
+            ) // Include ALL reasoning messages for LLM context
             .ToList();
 
         // Note: This method doesn't have mode context, will use default behavior
@@ -506,7 +647,8 @@ public class ChatService : IChatService, IToolResultCallback
         List<MessageDto> history,
         CancellationToken cancellationToken,
         string? modeId = null,
-        string? userId = null)
+        string? userId = null
+    )
     {
         // Set context for tool result callbacks
         _currentChatId = chatId;
@@ -514,43 +656,57 @@ public class ChatService : IChatService, IToolResultCallback
         _toolCallToMessageMap.Clear(); // Clear mapping for new stream
         _toolCallToFunctionMap.Clear(); // Clear function mapping for new stream
         _lastSeenToolCallId = null; // Clear last seen tool call ID for new stream
-        
-        _logger.LogInformation("[DEBUG] StreamChatCompletionAsync - ChatId: {ChatId}, History count: {Count}", chatId, history.Count);
+
+        logger.LogInformation(
+            "[DEBUG] StreamChatCompletionAsync - ChatId: {ChatId}, History count: {Count}",
+            chatId,
+            history.Count
+        );
         foreach (var msg in history)
         {
-            _logger.LogInformation("[DEBUG] History message - Role: {Role}, Type: {Type}, Content: {Content}", 
-                msg.Role, msg.GetType().Name, 
-                msg is TextMessageDto textMsg ? textMsg.Text?.Substring(0, Math.Min(100, textMsg.Text.Length)) + "..." : "N/A");
+            logger.LogInformation(
+                "[DEBUG] History message - Role: {Role}, Type: {Type}, Content: {Content}",
+                msg.Role,
+                msg.GetType().Name,
+                msg is TextMessageDto textMsg
+                    ? textMsg.Text?.Substring(0, Math.Min(100, textMsg.Text.Length)) + "..."
+                    : "N/A"
+            );
         }
-        
+
         var lmMessages = history.Select(ConvertToLmMessage).ToList();
         var userMsgSequence = history.Count > 0 ? history.Max(m => m.SequenceNumber) : 0;
 
-        _logger.LogInformation("[DEBUG] Converted to {Count} LM messages", lmMessages.Count);
+        logger.LogInformation("[DEBUG] Converted to {Count} LM messages", lmMessages.Count);
         foreach (var lmMsg in lmMessages)
         {
-            _logger.LogInformation("[DEBUG] LM message - Role: {Role}, Type: {Type}", lmMsg.Role, lmMsg.GetType().Name);
+            logger.LogInformation(
+                "[DEBUG] LM message - Role: {Role}, Type: {Type}",
+                lmMsg.Role,
+                lmMsg.GetType().Name
+            );
         }
-        
-        _logger.LogInformation("Making API call to LLM for chat {ChatId}", chatId);
+
+        logger.LogInformation("Making API call to LLM for chat {ChatId}", chatId);
         var modelId = await GetModelIdAsync(modeId, userId);
-        var options = new GenerateReplyOptions {
+        var options = new GenerateReplyOptions
+        {
             ModelId = modelId,
             ExtraProperties = new Dictionary<string, object?>()
             {
-                ["reasoning"] = "low"
+                ["reasoning"] = "low",
                 // ["frequency_penalty"] = 1.0f,
                 // ["parallel_tool_calls"] = true,
                 // ["provider"] = new
                 // {
                 //     order = new[] { "chutes" }
                 // }
-            }.ToImmutableDictionary()
+            }.ToImmutableDictionary(),
         };
         var streamProcessor = ProcessStream(chatId, userMsgSequence);
 
         // Build middleware chain
-        var agent = _streamingAgent
+        var agent = streamingAgent
             .WithMiddleware(new JsonFragmentUpdateMiddleware())
             .WithMiddleware(
                 (context, agent, cancellationToken) =>
@@ -558,29 +714,41 @@ public class ChatService : IChatService, IToolResultCallback
                     return agent.GenerateReplyAsync(
                         context.Messages,
                         context.Options,
-                        cancellationToken);
+                        cancellationToken
+                    );
                 },
                 async (context, agent, cancellationToken) =>
                 {
                     var stream = await agent.GenerateReplyStreamingAsync(
                         context.Messages,
                         context.Options,
-                        cancellationToken);
+                        cancellationToken
+                    );
 
                     return streamProcessor(stream, cancellationToken);
                 }
             );
-            
+
         // Create and add chat-specific FunctionCallMiddleware
-        var functionCallMiddleware = await CreateChatSpecificFunctionCallMiddleware(chatId, modeId, userId);
+        var functionCallMiddleware = await CreateChatSpecificFunctionCallMiddleware(
+            chatId,
+            modeId,
+            userId
+        );
         if (functionCallMiddleware != null)
         {
-            _logger.LogInformation("Adding chat-specific FunctionCallMiddleware to processing chain for chat {ChatId}", chatId);
+            logger.LogInformation(
+                "Adding chat-specific FunctionCallMiddleware to processing chain for chat {ChatId}",
+                chatId
+            );
             agent = agent.WithMiddleware(functionCallMiddleware);
         }
         else
         {
-            _logger.LogWarning("FunctionCallMiddleware is null for chat {ChatId}, tool calls will not be processed", chatId);
+            logger.LogWarning(
+                "FunctionCallMiddleware is null for chat {ChatId}, tool calls will not be processed",
+                chatId
+            );
         }
 
         bool loop = false;
@@ -594,19 +762,21 @@ public class ChatService : IChatService, IToolResultCallback
                 .GenerateReplyStreamingAsync(
                     lmMessages,
                     options,
-                    cancellationToken: cancellationToken);
+                    cancellationToken: cancellationToken
+                );
 
-            _logger.LogInformation("Received response from LLM for chat {ChatId}", chatId);
+            logger.LogInformation("Received response from LLM for chat {ChatId}", chatId);
 
             Type? lastFullMessageType = null;
             var replies = new List<IMessage>();
             await foreach (var message in streamingResponse.WithCancellation(cancellationToken))
             {
                 replies.Add(message);
-                _logger.LogInformation(
+                logger.LogInformation(
                     "[MIDDLEWARE] Message from middleware stream - Type: {MessageType}, ChatId: {ChatId}",
                     message.GetType().Name,
-                    chatId);
+                    chatId
+                );
 
                 fullMessageIndex++;
 
@@ -616,29 +786,33 @@ public class ChatService : IChatService, IToolResultCallback
                 var fullMessageId = generationId + $"-{fullMessageIndex:D3}";
                 _currentMessageId = fullMessageId; // Track for tool result callbacks
 
-                _logger.LogInformation(
+                logger.LogInformation(
                     "Persisting message from middleware - Type: {MessageType}, MessageId: {MessageId}, ChatId: {ChatId}",
                     message.GetType().Name,
                     fullMessageId,
-                    chatId);
+                    chatId
+                );
 
                 var sequenceNumber = await PersistFullMessage(chatId, message, fullMessageId);
 
                 // Skip sending encrypted reasoning messages to client (they have sequence -1)
                 if (sequenceNumber == -1)
                 {
-                    _logger.LogInformation(
+                    logger.LogInformation(
                         "Encrypted reasoning persisted but not sent to client - ChatId: {ChatId}, MessageId: {MessageId}",
-                        chatId, fullMessageId);
+                        chatId,
+                        fullMessageId
+                    );
                     continue; // Skip to next message without sending to client
                 }
 
                 if (sequenceNumber != fullMessageIndex)
                 {
-                    _logger.LogError(
+                    logger.LogError(
                         "Sequence number mismatch: {Expected}, {Actual}",
                         fullMessageIndex,
-                        sequenceNumber);
+                        sequenceNumber
+                    );
                 }
 
                 if (MessageReceived != null)
@@ -651,7 +825,7 @@ public class ChatService : IChatService, IToolResultCallback
                             MessageId = fullMessageId,
                             Kind = "text",
                             SequenceNumber = sequenceNumber,
-                            Text = textMessage.Text
+                            Text = textMessage.Text,
                         },
                         ReasoningMessage reasoningMessage => new ReasoningEvent
                         {
@@ -660,7 +834,7 @@ public class ChatService : IChatService, IToolResultCallback
                             Kind = "reasoning",
                             SequenceNumber = sequenceNumber,
                             Reasoning = reasoningMessage.Reasoning,
-                            Visibility = reasoningMessage.Visibility
+                            Visibility = reasoningMessage.Visibility,
                         },
                         ToolsCallMessage toolsCallMessage => new ToolCallEvent
                         {
@@ -668,7 +842,7 @@ public class ChatService : IChatService, IToolResultCallback
                             MessageId = fullMessageId,
                             Kind = "tools_call",
                             SequenceNumber = sequenceNumber,
-                            ToolCalls = [.. toolsCallMessage.ToolCalls]
+                            ToolCalls = [.. toolsCallMessage.ToolCalls],
                         },
                         UsageMessage usageMessage => new UsageEvent
                         {
@@ -676,18 +850,20 @@ public class ChatService : IChatService, IToolResultCallback
                             MessageId = fullMessageId,
                             Kind = "usage",
                             SequenceNumber = sequenceNumber,
-                            Usage = usageMessage.Usage
+                            Usage = usageMessage.Usage,
                         },
-                        ToolsCallAggregateMessage toolsAggregateMessage => new ToolsCallAggregateEvent
-                        {
-                            ChatId = chatId,
-                            MessageId = fullMessageId,
-                            Kind = "tools_aggregate",
-                            SequenceNumber = sequenceNumber,
-                            ToolCalls = [.. toolsAggregateMessage.ToolsCallMessage.ToolCalls],
-                            ToolResults = toolsAggregateMessage.ToolsCallResult?.ToolCallResults?.ToArray()
-                        },
-                        _ => null
+                        ToolsCallAggregateMessage toolsAggregateMessage =>
+                            new ToolsCallAggregateEvent
+                            {
+                                ChatId = chatId,
+                                MessageId = fullMessageId,
+                                Kind = "tools_aggregate",
+                                SequenceNumber = sequenceNumber,
+                                ToolCalls = [.. toolsAggregateMessage.ToolsCallMessage.ToolCalls],
+                                ToolResults =
+                                    toolsAggregateMessage.ToolsCallResult?.ToolCallResults?.ToArray(),
+                            },
+                        _ => null,
                     };
 
                     if (evt != null)
@@ -695,78 +871,86 @@ public class ChatService : IChatService, IToolResultCallback
                         // Log tool call completion details and map tool calls to message IDs
                         if (evt is ToolCallEvent toolCallEvt)
                         {
-                            _logger.LogInformation(
+                            logger.LogInformation(
                                 "Sending ToolCallEvent - ChatId: {ChatId}, MessageId: {MessageId}, ToolCount: {ToolCount}, Sequence: {Sequence}",
                                 toolCallEvt.ChatId,
                                 toolCallEvt.MessageId,
                                 toolCallEvt.ToolCalls.Length,
-                                toolCallEvt.SequenceNumber);
+                                toolCallEvt.SequenceNumber
+                            );
                         }
 
                         await MessageReceived(evt);
                     }
                 }
 
-                loop = loop ||
-                    message is ToolsCallAggregateMessage;
-                hasTextMessage = hasTextMessage ||
-                    (message is TextMessage tmpTm && !string.IsNullOrWhiteSpace(tmpTm.Text));
+                loop = loop || message is ToolsCallAggregateMessage;
+                hasTextMessage =
+                    hasTextMessage
+                    || (message is TextMessage tmpTm && !string.IsNullOrWhiteSpace(tmpTm.Text));
             }
 
             loop = loop || !hasTextMessage;
-            await _storage.UpdateChatUpdatedAtAsync(chatId, DateTime.UtcNow, cancellationToken);
+            _ = await storage.UpdateChatUpdatedAtAsync(chatId, DateTime.UtcNow, cancellationToken);
 
             lmMessages.Add(
                 replies.Count == 1
-                ? replies[0]
-                : new CompositeMessage
-                {
-                    Messages = replies.ToImmutableList(),
-                    Role = Role.Assistant,
-                });
+                    ? replies[0]
+                    : new CompositeMessage
+                    {
+                        Messages = replies.ToImmutableList(),
+                        Role = Role.Assistant,
+                    }
+            );
         } while (loop);
     }
 
     /// <summary>
     /// IMPORTANT ARCHITECTURE NOTE:
-    /// 
+    ///
     /// This streaming pipeline has two distinct message flows:
-    /// 
+    ///
     /// 1. STREAMING CHUNKS (for real-time client display only):
     ///    - TextUpdateMessage, ReasoningUpdateMessage, ToolsCallUpdateMessage
     ///    - Sent to client via StreamChunkReceived events
     ///    - NOT PERSISTED to database
     ///    - Only used for progressive UI rendering
-    /// 
+    ///
     /// 2. COMPLETE MESSAGES (for persistence):
     ///    - TextMessage, ReasoningMessage, ToolsCallMessage (final accumulated results)
     ///    - Come from MessageUpdateJoinerMiddleware after accumulating all chunks
     ///    - PERSISTED to database via PersistFullMessage()
     ///    - Each gets ONE sequence number per logical message
-    /// 
+    ///
     /// SEQUENCE NUMBER CONFLICTS:
     /// If you see sequence conflicts, the issue is likely in CLIENT-SIDE streaming
     /// chunk management (SlimChatSyncManager), not server-side persistence.
     /// The server only persists final complete messages with proper sequences.
     /// </summary>
-    private Func<IAsyncEnumerable<IMessage>, CancellationToken, IAsyncEnumerable<IMessage>> ProcessStream(
-        string chatId,
-        int userMsgSequence)
+    private Func<
+        IAsyncEnumerable<IMessage>,
+        CancellationToken,
+        IAsyncEnumerable<IMessage>
+    > ProcessStream(string chatId, int userMsgSequence)
     {
         int messageIndex = userMsgSequence;
         int chunkSequenceId = 0;
         Type? lastType = null;
 
-        async IAsyncEnumerable<IMessage> ProcessStreamInternal(IAsyncEnumerable<IMessage> stream, [EnumeratorCancellation] CancellationToken cancellationToken)
+        async IAsyncEnumerable<IMessage> ProcessStreamInternal(
+            IAsyncEnumerable<IMessage> stream,
+            [EnumeratorCancellation] CancellationToken cancellationToken
+        )
         {
             await foreach (var message in stream.WithCancellation(cancellationToken))
             {
                 // Log every message type we receive from the stream
-                _logger.LogTrace(
+                logger.LogTrace(
                     "Received message from stream - Type: {MessageType}, ChatId: {ChatId}, MessageIndex: {MessageIndex}",
                     message.GetType().Name,
                     chatId,
-                    messageIndex);
+                    messageIndex
+                );
 
                 if (message.GetType() != lastType)
                 {
@@ -788,12 +972,13 @@ public class ChatService : IChatService, IToolResultCallback
                     var content = textMessage.Text;
                     if (!string.IsNullOrEmpty(content))
                     {
-                        _logger.LogTrace(
+                        logger.LogTrace(
                             "TextUpdateMessage - ChatId: {ChatId}, MessageId: {MessageId}, {Type}, Content: {Delta}",
                             chatId,
                             messageId,
                             "text",
-                            content);
+                            content
+                        );
 
                         if (StreamChunkReceived != null)
                         {
@@ -807,22 +992,28 @@ public class ChatService : IChatService, IToolResultCallback
                                     Delta = content,
                                     ChunkSequenceId = chunkSequenceId,
                                     SequenceNumber = messageIndex,
-                                });
+                                }
+                            );
                         }
                     }
                 }
                 else if (message is ReasoningUpdateMessage reasoningUpdate)
                 {
-                    if (reasoningUpdate.Visibility == ReasoningVisibility.Encrypted) continue;
+                    if (reasoningUpdate.Visibility == ReasoningVisibility.Encrypted)
+                    {
+                        continue;
+                    }
+
                     var delta = reasoningUpdate.Reasoning;
                     if (!string.IsNullOrEmpty(delta))
                     {
-                        _logger.LogTrace(
+                        logger.LogTrace(
                             "ReasoningUpdateMessage - ChatId: {ChatId}, MessageId: {MessageId}, {Type}, Content: {Delta}",
                             chatId,
                             messageId,
                             "reasoning",
-                            delta);
+                            delta
+                        );
 
                         if (StreamChunkReceived != null)
                         {
@@ -836,8 +1027,9 @@ public class ChatService : IChatService, IToolResultCallback
                                     Delta = delta,
                                     ChunkSequenceId = chunkSequenceId,
                                     SequenceNumber = messageIndex,
-                                    Visibility = reasoningUpdate.Visibility
-                                });
+                                    Visibility = reasoningUpdate.Visibility,
+                                }
+                            );
                         }
                     }
                 }
@@ -846,14 +1038,15 @@ public class ChatService : IChatService, IToolResultCallback
                     // These are streaming chunks - just pass them through for real-time display
                     // The message joiner middleware will accumulate these into a complete ToolsCallMessage
                     int toolCallIndex = 0;
-                    var toolCallCount = toolsCallUpdateMessage.ToolCallUpdates.Count();
+                    var toolCallCount = toolsCallUpdateMessage.ToolCallUpdates.Count;
 
-                    _logger.LogTrace(
+                    logger.LogTrace(
                         "Processing ToolsCallUpdateMessage (streaming chunk) - ChatId: {ChatId}, MessageId: {MessageId}, ToolCallCount: {ToolCallCount}, GenerationId: {GenerationId}",
                         chatId,
                         messageId,
                         toolCallCount,
-                        generationId);
+                        generationId
+                    );
 
                     foreach (var toolCallUpdate in toolsCallUpdateMessage.ToolCallUpdates)
                     {
@@ -869,12 +1062,16 @@ public class ChatService : IChatService, IToolResultCallback
                             // Update with tool_call_id - store as last seen
                             effectiveToolCallId = toolCallUpdate.ToolCallId;
                             _lastSeenToolCallId = effectiveToolCallId;
-                            _toolCallToMessageMap.TryAdd(effectiveToolCallId, (toolCallMessageId, toolCallSequence));
-                            
-                            _logger.LogInformation(
+                            _ = _toolCallToMessageMap.TryAdd(
+                                effectiveToolCallId,
+                                (toolCallMessageId, toolCallSequence)
+                            );
+
+                            logger.LogInformation(
                                 "Established ToolCallId {ToolCallId} for MessageId {MessageId} during streaming",
                                 effectiveToolCallId,
-                                toolCallMessageId);
+                                toolCallMessageId
+                            );
                         }
                         else
                         {
@@ -882,41 +1079,48 @@ public class ChatService : IChatService, IToolResultCallback
                             if (!string.IsNullOrEmpty(_lastSeenToolCallId))
                             {
                                 effectiveToolCallId = _lastSeenToolCallId;
-                                _logger.LogTrace(
+                                logger.LogTrace(
                                     "Reused last seen ToolCallId {ToolCallId} for MessageId {MessageId}",
                                     effectiveToolCallId,
-                                    toolCallMessageId);
+                                    toolCallMessageId
+                                );
                             }
                             else
                             {
                                 // No last seen tool call ID - this indicates a system bug
-                                _logger.LogError(
+                                logger.LogError(
                                     "Tool call update without ToolCallId and no last seen ID - MessageId: {MessageId}, Index: {Index}",
                                     toolCallMessageId,
-                                    toolCallUpdate.Index ?? toolCallIndex);
-                                throw new InvalidOperationException($"Tool call update without ToolCallId and no last seen ID for message {toolCallMessageId}");
+                                    toolCallUpdate.Index ?? toolCallIndex
+                                );
+                                throw new InvalidOperationException(
+                                    $"Tool call update without ToolCallId and no last seen ID for message {toolCallMessageId}"
+                                );
                             }
                         }
 
                         // Create a corrected tool call update with the effective tool_call_id
-                        var correctedToolCallUpdate = string.IsNullOrEmpty(toolCallUpdate.ToolCallId)
+                        var correctedToolCallUpdate = string.IsNullOrEmpty(
+                            toolCallUpdate.ToolCallId
+                        )
                             ? new ToolCallUpdate
                             {
                                 ToolCallId = effectiveToolCallId,
                                 Index = toolCallUpdate.Index,
                                 FunctionName = toolCallUpdate.FunctionName,
-                                FunctionArgs = toolCallUpdate.FunctionArgs
+                                FunctionArgs = toolCallUpdate.FunctionArgs,
                             }
                             : toolCallUpdate;
 
-                        _logger.LogTrace(
+                        logger.LogTrace(
                             "Streaming tool call update - Index: {Index}, FunctionName: {FunctionName}, ArgsLength: {ArgsLength}, ToolCallId: {ToolCallId}",
                             correctedToolCallUpdate.Index ?? toolCallIndex,
                             correctedToolCallUpdate.FunctionName ?? "null",
                             correctedToolCallUpdate.FunctionArgs?.Length ?? 0,
-                            correctedToolCallUpdate.ToolCallId ?? "null");
+                            correctedToolCallUpdate.ToolCallId ?? "null"
+                        );
 
-                        _logger.LogInformation(
+                        logger.LogInformation(
                             "ToolCall {ToolIndex}/{ToolCount} - ChatId: {ChatId}, MessageId: {MessageId}, Sequence: {Sequence}, ToolName: {ToolName}, ToolId: {ToolId}",
                             toolCallIndex + 1,
                             toolCallCount,
@@ -924,7 +1128,9 @@ public class ChatService : IChatService, IToolResultCallback
                             toolCallMessageId,
                             toolCallSequence,
                             correctedToolCallUpdate.FunctionName ?? "unknown",
-                            correctedToolCallUpdate.ToolCallId ?? $"idx_{correctedToolCallUpdate.Index}");
+                            correctedToolCallUpdate.ToolCallId
+                                ?? $"idx_{correctedToolCallUpdate.Index}"
+                        );
 
                         if (StreamChunkReceived != null)
                         {
@@ -937,17 +1143,19 @@ public class ChatService : IChatService, IToolResultCallback
                                     Done = false,
                                     ChunkSequenceId = chunkSequenceId,
                                     SequenceNumber = toolCallSequence, // Unique sequence for each tool
-                                    ToolCallUpdate = correctedToolCallUpdate
-                                });
+                                    ToolCallUpdate = correctedToolCallUpdate,
+                                }
+                            );
                         }
                         toolCallIndex++;
                     }
 
-                    _logger.LogTrace(
+                    logger.LogTrace(
                         "Streamed {Count} tool call updates - ChatId: {ChatId}, GenerationId: {GenerationId}",
                         toolCallIndex,
                         chatId,
-                        generationId);
+                        generationId
+                    );
                 }
 
                 yield return message;
@@ -962,15 +1170,18 @@ public class ChatService : IChatService, IToolResultCallback
     private async Task<int> PersistFullMessage(
         string chatId,
         IMessage message,
-        string fullMessageId)
+        string fullMessageId
+    )
     {
         // For encrypted reasoning messages, persist but don't assign sequence number
-        bool isEncryptedReasoning = message is ReasoningMessage reasoningMsg && reasoningMsg.Visibility == ReasoningVisibility.Encrypted;
-        
+        bool isEncryptedReasoning =
+            message is ReasoningMessage reasoningMsg
+            && reasoningMsg.Visibility == ReasoningVisibility.Encrypted;
+
         int nextSequence;
-        var (_, _, allocatedSequence) = await _storage.AllocateSequenceAsync(chatId);
+        var (_, _, allocatedSequence) = await storage.AllocateSequenceAsync(chatId);
         nextSequence = allocatedSequence;
-        
+
         var timestamp = DateTime.UtcNow;
         var messageRecord = message switch
         {
@@ -992,8 +1203,10 @@ public class ChatService : IChatService, IToolResultCallback
                         SequenceNumber = nextSequence,
                         Reasoning = reasoning.Reasoning,
                         Visibility = reasoning.Visibility,
-                        IsHidden = reasoning.Visibility == ReasoningVisibility.Encrypted
-                    }, MessageSerializationOptions.Default)
+                        IsHidden = reasoning.Visibility == ReasoningVisibility.Encrypted,
+                    },
+                    MessageSerializationOptions.Default
+                ),
             },
             TextMessage text => new MessageRecord
             {
@@ -1003,15 +1216,18 @@ public class ChatService : IChatService, IToolResultCallback
                 Kind = "text",
                 TimestampUtc = timestamp,
                 SequenceNumber = nextSequence,
-                MessageJson = JsonSerializer.Serialize<MessageDto>(new TextMessageDto
-                {
-                    Id = fullMessageId,
-                    ChatId = chatId,
-                    Role = message.Role.ToString(),
-                    Timestamp = timestamp,
-                    SequenceNumber = nextSequence,
-                    Text = text.Text
-                }, MessageSerializationOptions.Default)
+                MessageJson = JsonSerializer.Serialize<MessageDto>(
+                    new TextMessageDto
+                    {
+                        Id = fullMessageId,
+                        ChatId = chatId,
+                        Role = message.Role.ToString(),
+                        Timestamp = timestamp,
+                        SequenceNumber = nextSequence,
+                        Text = text.Text,
+                    },
+                    MessageSerializationOptions.Default
+                ),
             },
             UsageMessage usage => new MessageRecord
             {
@@ -1030,8 +1246,10 @@ public class ChatService : IChatService, IToolResultCallback
                         Timestamp = timestamp,
                         SequenceNumber = nextSequence,
                         Usage = usage.Usage,
-                        IsHidden = true
-                    }, MessageSerializationOptions.Default)
+                        IsHidden = true,
+                    },
+                    MessageSerializationOptions.Default
+                ),
             },
             ToolsCallMessage toolsCall => new MessageRecord
             {
@@ -1049,8 +1267,10 @@ public class ChatService : IChatService, IToolResultCallback
                         Role = toolsCall.Role.ToString(),
                         Timestamp = timestamp,
                         SequenceNumber = nextSequence,
-                        ToolCalls = [.. toolsCall.ToolCalls]
-                    }, MessageSerializationOptions.Default)
+                        ToolCalls = [.. toolsCall.ToolCalls],
+                    },
+                    MessageSerializationOptions.Default
+                ),
             },
             ToolsCallAggregateMessage aggregate => new MessageRecord
             {
@@ -1069,54 +1289,77 @@ public class ChatService : IChatService, IToolResultCallback
                         Timestamp = timestamp,
                         SequenceNumber = nextSequence,
                         ToolCalls = aggregate.ToolsCallMessage.ToolCalls.ToArray(),
-                        ToolResults = aggregate.ToolsCallResult?.ToolCallResults?.ToArray()
-                    }, MessageSerializationOptions.Default)
+                        ToolResults = aggregate.ToolsCallResult?.ToolCallResults?.ToArray(),
+                    },
+                    MessageSerializationOptions.Default
+                ),
             },
-            _ => null
+            _ => null,
         };
 
         if (messageRecord != null)
         {
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Persisting message - ChatId: {ChatId}, MessageId: {MessageId}, Role: {Role}, Kind: {Kind}, Sequence: {Sequence}",
-                chatId, fullMessageId, messageRecord.Role, messageRecord.Kind, nextSequence);
-            await _storage.InsertMessageAsync(messageRecord);
-            _logger.LogInformation(
+                chatId,
+                fullMessageId,
+                messageRecord.Role,
+                messageRecord.Kind,
+                nextSequence
+            );
+            _ = await storage.InsertMessageAsync(messageRecord);
+            logger.LogInformation(
                 "Message persisted successfully - ChatId: {ChatId}, MessageId: {MessageId}",
-                chatId, fullMessageId);
-            
+                chatId,
+                fullMessageId
+            );
+
             // Verify the message was actually persisted
-            var (_, _, messages) = await _storage.ListChatMessagesOrderedAsync(chatId);
+            var (_, _, messages) = await storage.ListChatMessagesOrderedAsync(chatId);
             var persistedMsg = messages.FirstOrDefault(m => m.Id == fullMessageId);
             if (persistedMsg != null)
             {
-                _logger.LogInformation(
+                logger.LogInformation(
                     "Verified message persistence - MessageId: {MessageId}, Kind: {Kind}, Role: {Role}",
-                    fullMessageId, persistedMsg.Kind, persistedMsg.Role);
+                    fullMessageId,
+                    persistedMsg.Kind,
+                    persistedMsg.Role
+                );
             }
             else
             {
-                _logger.LogError(
+                logger.LogError(
                     "Failed to verify message persistence - MessageId: {MessageId} not found in database",
-                    fullMessageId);
+                    fullMessageId
+                );
             }
         }
         else
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Unable to persist message - ChatId: {ChatId}, MessageId: {MessageId}, MessageType: {MessageType}",
-                chatId, fullMessageId, message.GetType().Name);
+                chatId,
+                fullMessageId,
+                message.GetType().Name
+            );
         }
 
         return nextSequence;
     }
 
-    public async Task<MessageResult> AddUserMessageToExistingChatAsync(string chatId, string userId, string message)
+    public async Task<MessageResult> AddUserMessageToExistingChatAsync(
+        string chatId,
+        string userId,
+        string message
+    )
     {
         try
         {
-            var (seqSuccess, seqError, nextSequence) = await _storage.AllocateSequenceAsync(chatId);
-            if (!seqSuccess) return new MessageResult { Success = false, Error = seqError };
+            var (seqSuccess, seqError, nextSequence) = await storage.AllocateSequenceAsync(chatId);
+            if (!seqSuccess)
+            {
+                return new MessageResult { Success = false, Error = seqError };
+            }
 
             var userDto = new TextMessageDto
             {
@@ -1125,7 +1368,7 @@ public class ChatService : IChatService, IToolResultCallback
                 Role = "user",
                 Timestamp = DateTime.UtcNow,
                 SequenceNumber = nextSequence,
-                Text = message
+                Text = message,
             };
             var userRecord = new MessageRecord
             {
@@ -1135,39 +1378,48 @@ public class ChatService : IChatService, IToolResultCallback
                 Kind = "text",
                 TimestampUtc = userDto.Timestamp,
                 SequenceNumber = userDto.SequenceNumber,
-                MessageJson = JsonSerializer.Serialize<MessageDto>(userDto, MessageSerializationOptions.Default)
+                MessageJson = JsonSerializer.Serialize<MessageDto>(
+                    userDto,
+                    MessageSerializationOptions.Default
+                ),
             };
-            var ins = await _storage.InsertMessageAsync(userRecord);
-            if (!ins.Success) return new MessageResult { Success = false, Error = ins.Error };
-
-            if (MessageCreated != null) await MessageCreated(new MessageCreatedEvent
+            var ins = await storage.InsertMessageAsync(userRecord);
+            if (!ins.Success)
             {
-                ChatId = chatId,
-                Message = userDto
-            });
+                return new MessageResult { Success = false, Error = ins.Error };
+            }
+
+            if (MessageCreated != null)
+            {
+                await MessageCreated(
+                    new MessageCreatedEvent { ChatId = chatId, Message = userDto }
+                );
+            }
 
             return new MessageResult
             {
                 Success = true,
                 UserMessage = userDto,
-                AssistantMessage = null
+                AssistantMessage = null,
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error adding user message to existing chat {ChatId}", chatId);
+            logger.LogError(ex, "Error adding user message to existing chat {ChatId}", chatId);
             return new MessageResult { Success = false, Error = "Failed to add user message" };
         }
     }
 
     public async Task<int> GetNextSequenceNumberAsync(string chatId)
     {
-        var (success, error, nextSequence) = await _storage.AllocateSequenceAsync(chatId);
-        if (!success) throw new InvalidOperationException(error);
-        return nextSequence;
+        var (success, error, nextSequence) = await storage.AllocateSequenceAsync(chatId);
+        return !success ? throw new InvalidOperationException(error) : nextSequence;
     }
 
-    public async Task<string> CreateAssistantMessageForStreamingAsync(string chatId, int sequenceNumber)
+    public async Task<string> CreateAssistantMessageForStreamingAsync(
+        string chatId,
+        int sequenceNumber
+    )
     {
         var dto = new TextMessageDto
         {
@@ -1176,7 +1428,7 @@ public class ChatService : IChatService, IToolResultCallback
             Role = "assistant",
             Timestamp = DateTime.UtcNow,
             SequenceNumber = sequenceNumber,
-            Text = ""
+            Text = "",
         };
         var record = new MessageRecord
         {
@@ -1186,16 +1438,18 @@ public class ChatService : IChatService, IToolResultCallback
             Kind = "text",
             TimestampUtc = dto.Timestamp,
             SequenceNumber = dto.SequenceNumber,
-            MessageJson = JsonSerializer.Serialize<MessageDto>(dto, MessageSerializationOptions.Default)
+            MessageJson = JsonSerializer.Serialize<MessageDto>(
+                dto,
+                MessageSerializationOptions.Default
+            ),
         };
-        var ins = await _storage.InsertMessageAsync(record);
-        if (!ins.Success) throw new InvalidOperationException(ins.Error);
-        return dto.Id;
+        var ins = await storage.InsertMessageAsync(record);
+        return !ins.Success ? throw new InvalidOperationException(ins.Error) : dto.Id;
     }
 
     public async Task<string> GetMessageContentAsync(string messageId)
     {
-        var (resSuccess, _, resContent) = await _storage.GetMessageContentAsync(messageId);
+        var (resSuccess, _, resContent) = await storage.GetMessageContentAsync(messageId);
         return resSuccess ? resContent ?? string.Empty : string.Empty;
     }
 
@@ -1208,20 +1462,20 @@ public class ChatService : IChatService, IToolResultCallback
                 var userMessageResult = await AddUserMessageToExistingChatAsync(
                     request.ChatId,
                     request.UserId,
-                    request.Message);
+                    request.Message
+                );
 
-                if (!userMessageResult.Success)
-                {
-                    throw new InvalidOperationException(userMessageResult.Error ?? "Failed to add user message");
-                }
-
-                return new StreamInitResult
-                {
-                    ChatId = request.ChatId,
-                    UserMessageId = userMessageResult.UserMessage!.Id,
-                    UserTimestamp = userMessageResult.UserMessage.Timestamp,
-                    UserSequenceNumber = userMessageResult.UserMessage.SequenceNumber,
-                };
+                return !userMessageResult.Success
+                    ? throw new InvalidOperationException(
+                        userMessageResult.Error ?? "Failed to add user message"
+                    )
+                    : new StreamInitResult
+                    {
+                        ChatId = request.ChatId,
+                        UserMessageId = userMessageResult.UserMessage!.Id,
+                        UserTimestamp = userMessageResult.UserMessage.Timestamp,
+                        UserSequenceNumber = userMessageResult.UserMessage.SequenceNumber,
+                    };
             }
             else
             {
@@ -1230,27 +1484,37 @@ public class ChatService : IChatService, IToolResultCallback
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error preparing unified stream chat");
+            logger.LogError(ex, "Error preparing unified stream chat");
             throw;
         }
     }
 
     public async Task StreamUnifiedChatCompletionAsync(
         StreamChatRequest request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         if (!string.IsNullOrEmpty(request.ChatId))
         {
             var assistantSeqNumber = await GetNextSequenceNumberAsync(request.ChatId) - 1;
-            var (_, _, listMessages) = await _storage.ListChatMessagesOrderedAsync(request.ChatId, cancellationToken);
+            var (_, _, listMessages) = await storage.ListChatMessagesOrderedAsync(
+                request.ChatId,
+                cancellationToken
+            );
             var lastAssistant = listMessages.FirstOrDefault(m =>
             {
-                var dto = JsonSerializer.Deserialize<MessageDto>(m.MessageJson, MessageSerializationOptions.Default)!;
+                var dto = JsonSerializer.Deserialize<MessageDto>(
+                    m.MessageJson,
+                    MessageSerializationOptions.Default
+                )!;
                 return dto.Role == "assistant" && dto.SequenceNumber == assistantSeqNumber;
             });
             if (lastAssistant == null)
             {
-                _logger.LogError("Assistant message not found for streaming in chat {ChatId}", request.ChatId);
+                logger.LogError(
+                    "Assistant message not found for streaming in chat {ChatId}",
+                    request.ChatId
+                );
                 throw new InvalidOperationException("Assistant message not found for streaming");
             }
 
@@ -1263,27 +1527,38 @@ public class ChatService : IChatService, IToolResultCallback
     }
 
     // Helper methods
-    private async Task<string> GenerateAIResponseAsync(string chatId, string? modeId = null, string? userId = null)
+    private async Task<string> GenerateAIResponseAsync(
+        string chatId,
+        string? modeId = null,
+        string? userId = null
+    )
     {
         try
         {
-            var (_, _, listMessages) = await _storage.ListChatMessagesOrderedAsync(chatId);
+            var (_, _, listMessages) = await storage.ListChatMessagesOrderedAsync(chatId);
             var history = listMessages
-                .Select(m => JsonSerializer.Deserialize<MessageDto>(m.MessageJson, MessageSerializationOptions.Default)!)
-                .Where(d => (d is TextMessageDto td && !string.IsNullOrWhiteSpace(td.Text)) || 
-                           d is ReasoningMessageDto) // Include ALL reasoning messages for LLM context
+                .Select(m =>
+                    JsonSerializer.Deserialize<MessageDto>(
+                        m.MessageJson,
+                        MessageSerializationOptions.Default
+                    )!
+                )
+                .Where(d =>
+                    (d is TextMessageDto td && !string.IsNullOrWhiteSpace(td.Text))
+                    || d is ReasoningMessageDto
+                ) // Include ALL reasoning messages for LLM context
                 .ToList();
             var lmMessages = history.Select(ConvertToLmMessage).ToList();
 
             // Get model ID from mode preference or fallback to default
             var modelId = await GetModelIdAsync(modeId, userId);
             var options = new GenerateReplyOptions { ModelId = modelId };
-            var messages = await _streamingAgent.GenerateReplyAsync(lmMessages, options);
+            var messages = await streamingAgent.GenerateReplyAsync(lmMessages, options);
             return string.Join("", messages.OfType<TextMessage>().Select(m => m.Text));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error generating AI response");
+            logger.LogError(ex, "Error generating AI response");
             return $"Error: Failed to generate AI response. {ex.Message}";
         }
     }
@@ -1293,21 +1568,28 @@ public class ChatService : IChatService, IToolResultCallback
         // Try to get model preference from mode first
         if (!string.IsNullOrEmpty(modeId) && !string.IsNullOrEmpty(userId))
         {
-            var modeModelResult = await _modeService.GetModeDefaultModelAsync(modeId, userId);
-            if (modeModelResult.Success && !string.IsNullOrEmpty(modeModelResult.DefaultModel))
+            var (Success, Error, DefaultModel) = await modeService.GetModeDefaultModelAsync(modeId, userId);
+            if (Success && !string.IsNullOrEmpty(DefaultModel))
             {
-                _logger.LogInformation("Using model {ModelId} from mode {ModeId}", modeModelResult.DefaultModel, modeId);
-                return modeModelResult.DefaultModel;
+                logger.LogInformation(
+                    "Using model {ModelId} from mode {ModeId}",
+                    DefaultModel,
+                    modeId
+                );
+                return DefaultModel;
             }
         }
 
         // Fallback to configuration or default
         var defaultModel = _aiOptions.ModelId ?? "openrouter/horizon-beta";
-        _logger.LogDebug("Using default model {ModelId}", defaultModel);
+        logger.LogDebug("Using default model {ModelId}", defaultModel);
         return defaultModel;
     }
 
-    private string GetModelId() => _aiOptions.ModelId ?? "openrouter/horizon-beta";
+    private string GetModelId()
+    {
+        return _aiOptions.ModelId ?? "openrouter/horizon-beta";
+    }
 
     private static IMessage ConvertToLmMessage(MessageDto message)
     {
@@ -1316,7 +1598,7 @@ public class ChatService : IChatService, IToolResultCallback
             "user" => Role.User,
             "assistant" => Role.Assistant,
             "system" => Role.System,
-            _ => Role.User
+            _ => Role.User,
         };
 
         if (message is TextMessageDto t)
@@ -1325,38 +1607,37 @@ public class ChatService : IChatService, IToolResultCallback
             {
                 Role = role,
                 Text = t.Text ?? string.Empty,
-                Metadata = ImmutableDictionary<string, object>.Empty
+                Metadata = ImmutableDictionary<string, object>.Empty,
             };
         }
-        if (message is ReasoningMessageDto r)
-        {
-            return new TextMessage
+        return message is ReasoningMessageDto r
+            ? new TextMessage
             {
                 Role = role,
                 Text = r.GetText() ?? string.Empty,
-                Metadata = ImmutableDictionary<string, object>.Empty
+                Metadata = ImmutableDictionary<string, object>.Empty,
+            }
+            : new TextMessage
+            {
+                Role = role,
+                Text = string.Empty,
+                Metadata = ImmutableDictionary<string, object>.Empty,
             };
-        }
-
-        return new TextMessage
-        {
-            Role = role,
-            Text = string.Empty,
-            Metadata = ImmutableDictionary<string, object>.Empty
-        };
     }
 
     private static string GenerateChatTitle(string firstMessage)
     {
-        var title = firstMessage.Length > 50
-            ? firstMessage[..47] + "..."
-            : firstMessage;
+        var title = firstMessage.Length > 50 ? firstMessage[..47] + "..." : firstMessage;
         return title;
     }
-    
+
     #region IToolResultCallback Implementation
-    
-    public async Task OnToolResultAvailableAsync(string toolCallId, ToolCallResult result, CancellationToken cancellationToken = default)
+
+    public async Task OnToolResultAvailableAsync(
+        string toolCallId,
+        ToolCallResult result,
+        CancellationToken cancellationToken = default
+    )
     {
         // Stream result to client immediately if we're in a streaming context
         if (StreamChunkReceived != null && !string.IsNullOrEmpty(_currentChatId))
@@ -1368,103 +1649,146 @@ public class ChatService : IChatService, IToolResultCallback
             {
                 messageId = mappedData.MessageId;
                 sequenceNumber = mappedData.SequenceNumber;
-                _logger.LogInformation(
+                logger.LogInformation(
                     "Resolved ToolCallId {ToolCallId} to MessageId {MessageId} with Sequence {Sequence} for result streaming",
                     toolCallId,
                     messageId,
-                    sequenceNumber);
+                    sequenceNumber
+                );
             }
             else
             {
                 // Fallback to current message ID and next sequence if mapping not found
                 messageId = _currentMessageId ?? $"unmapped-{toolCallId}";
                 sequenceNumber = _nextSequence++;
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Could not resolve ToolCallId {ToolCallId} to MessageId, using fallback: {MessageId} with Sequence {Sequence}",
                     toolCallId,
                     messageId,
-                    sequenceNumber);
+                    sequenceNumber
+                );
             }
-            
-            await StreamChunkReceived(new ToolResultStreamEvent
-            {
-                ChatId = _currentChatId,
-                MessageId = messageId,
-                Kind = "tool_result",
-                Done = true,
-                SequenceNumber = sequenceNumber,
-                ChunkSequenceId = 0,
-                ToolCallId = toolCallId,
-                Result = result.Result,
-                IsError = result.Result.StartsWith("Error")
-            });
-            
+
+            await StreamChunkReceived(
+                new ToolResultStreamEvent
+                {
+                    ChatId = _currentChatId,
+                    MessageId = messageId,
+                    Kind = "tool_result",
+                    Done = true,
+                    SequenceNumber = sequenceNumber,
+                    ChunkSequenceId = 0,
+                    ToolCallId = toolCallId,
+                    Result = result.Result,
+                    IsError = result.Result.StartsWith("Error"),
+                }
+            );
+
             // Check if this was a TaskManager function and save/broadcast task state if so
-            if (_toolCallToFunctionMap.TryGetValue(toolCallId, out var functionName) && 
-                IsTaskManagerFunction(functionName))
+            if (
+                _toolCallToFunctionMap.TryGetValue(toolCallId, out var functionName)
+                && IsTaskManagerFunction(functionName)
+            )
             {
-                _logger.LogInformation(
+                logger.LogInformation(
                     "TaskManager function {FunctionName} completed, saving and broadcasting task state for chat {ChatId}",
                     functionName,
-                    _currentChatId);
-                
+                    _currentChatId
+                );
+
                 // Save the TaskManager state after the operation
-                await _taskManagerService.SaveTaskManagerStateAsync(_currentChatId, cancellationToken);
-                
+                await taskManagerService.SaveTaskManagerStateAsync(
+                    _currentChatId,
+                    cancellationToken
+                );
+
                 // Get the updated task state and broadcast it
-                var taskState = await _taskManagerService.GetTaskStateAsync(_currentChatId, cancellationToken);
-                
+                var taskState = await taskManagerService.GetTaskStateAsync(
+                    _currentChatId,
+                    cancellationToken
+                );
+
                 if (taskState.HasValue)
                 {
-                    await StreamChunkReceived(new TaskUpdateStreamEvent
-                    {
-                        ChatId = _currentChatId,
-                        MessageId = messageId,
-                        Kind = "task_update",
-                        Done = true,
-                        SequenceNumber = _nextSequence++,
-                        ChunkSequenceId = 0,
-                        TaskState = taskState?.Item2 ?? Array.Empty<TaskItem>(),
-                        OperationType = "sync"
-                    });
+                    await StreamChunkReceived(
+                        new TaskUpdateStreamEvent
+                        {
+                            ChatId = _currentChatId,
+                            MessageId = messageId,
+                            Kind = "task_update",
+                            Done = true,
+                            SequenceNumber = _nextSequence++,
+                            ChunkSequenceId = 0,
+                            TaskState = taskState?.Item2 ?? Array.Empty<TaskItem>(),
+                            OperationType = "sync",
+                        }
+                    );
                 }
             }
         }
     }
-    
-    public async Task OnToolCallStartedAsync(string toolCallId, string functionName, string functionArgs, CancellationToken cancellationToken = default)
+
+    public async Task OnToolCallStartedAsync(
+        string toolCallId,
+        string functionName,
+        string functionArgs,
+        CancellationToken cancellationToken = default
+    )
     {
         // Store the function name for later use in OnToolResultAvailableAsync
         _toolCallToFunctionMap[toolCallId] = functionName;
-        
+
         // Log with message ID and sequence mapping if available
         if (_toolCallToMessageMap.TryGetValue(toolCallId, out var mappedData))
         {
-            _logger.LogInformation("Tool call started - ToolCallId: {ToolCallId}, MessageId: {MessageId}, Sequence: {Sequence}, Function: {FunctionName}", 
-                toolCallId, mappedData.MessageId, mappedData.SequenceNumber, functionName);
+            logger.LogInformation(
+                "Tool call started - ToolCallId: {ToolCallId}, MessageId: {MessageId}, Sequence: {Sequence}, Function: {FunctionName}",
+                toolCallId,
+                mappedData.MessageId,
+                mappedData.SequenceNumber,
+                functionName
+            );
         }
         else
         {
-            _logger.LogInformation("Tool call started - ToolCallId: {ToolCallId}, Function: {FunctionName} (no message mapping yet)", 
-                toolCallId, functionName);
+            logger.LogInformation(
+                "Tool call started - ToolCallId: {ToolCallId}, Function: {FunctionName} (no message mapping yet)",
+                toolCallId,
+                functionName
+            );
         }
         await Task.CompletedTask;
     }
-    
-    public async Task OnToolCallErrorAsync(string toolCallId, string functionName, string error, CancellationToken cancellationToken = default)
+
+    public async Task OnToolCallErrorAsync(
+        string toolCallId,
+        string functionName,
+        string error,
+        CancellationToken cancellationToken = default
+    )
     {
         // Log with message ID and sequence mapping if available
         if (_toolCallToMessageMap.TryGetValue(toolCallId, out var mappedData))
         {
-            _logger.LogError("Tool call error - ToolCallId: {ToolCallId}, MessageId: {MessageId}, Sequence: {Sequence}, Function: {FunctionName}, Error: {Error}", 
-                toolCallId, mappedData.MessageId, mappedData.SequenceNumber, functionName, error);
+            logger.LogError(
+                "Tool call error - ToolCallId: {ToolCallId}, MessageId: {MessageId}, Sequence: {Sequence}, Function: {FunctionName}, Error: {Error}",
+                toolCallId,
+                mappedData.MessageId,
+                mappedData.SequenceNumber,
+                functionName,
+                error
+            );
         }
         else
         {
-            _logger.LogError("Tool call error - ToolCallId: {ToolCallId}, Function: {FunctionName}, Error: {Error} (no message mapping)", 
-                toolCallId, functionName, error);
+            logger.LogError(
+                "Tool call error - ToolCallId: {ToolCallId}, Function: {FunctionName}, Error: {Error} (no message mapping)",
+                toolCallId,
+                functionName,
+                error
+            );
         }
-        
+
         // Stream error events to client if needed
         if (StreamChunkReceived != null && !string.IsNullOrEmpty(_currentChatId))
         {
@@ -1480,26 +1804,28 @@ public class ChatService : IChatService, IToolResultCallback
                 resolvedMessageId = _currentMessageId ?? $"unmapped-{toolCallId}";
                 resolvedSequence = _nextSequence++;
             }
-            
-            await StreamChunkReceived(new ToolResultStreamEvent
-            {
-                ChatId = _currentChatId,
-                MessageId = resolvedMessageId,
-                Kind = "tool_result",
-                Done = true,
-                SequenceNumber = resolvedSequence,
-                ChunkSequenceId = 0,
-                ToolCallId = toolCallId,
-                Result = $"Error: {error}",
-                IsError = true
-            });
+
+            await StreamChunkReceived(
+                new ToolResultStreamEvent
+                {
+                    ChatId = _currentChatId,
+                    MessageId = resolvedMessageId,
+                    Kind = "tool_result",
+                    Done = true,
+                    SequenceNumber = resolvedSequence,
+                    ChunkSequenceId = 0,
+                    ToolCallId = toolCallId,
+                    Result = $"Error: {error}",
+                    IsError = true,
+                }
+            );
         }
-        
+
         await Task.CompletedTask;
     }
-    
+
     #endregion
-    
+
     /// <summary>
     /// Simple check to determine if a function name is a TaskManager function
     /// </summary>
@@ -1517,24 +1843,29 @@ public class ChatService : IChatService, IToolResultCallback
             "list-notes",
             "get-task",
             "list-tasks",
-            "search-tasks"
+            "search-tasks",
         };
-        
-        return taskManagerFunctions.Any(func => functionName.EndsWith(func, StringComparison.OrdinalIgnoreCase));
+
+        return taskManagerFunctions.Any(func =>
+            functionName.EndsWith(func, StringComparison.OrdinalIgnoreCase)
+        );
     }
 
     /// <summary>
     /// Ensures generation ID is unique by adding time-based salt if needed.
     /// This prevents primary key conflicts when using cached LLM responses.
     /// </summary>
-    private string EnsureUniqueGenerationId(string? providedGenerationId, string chatId)
+    private static string EnsureUniqueGenerationId(string? providedGenerationId, string chatId)
     {
         // If no generation ID provided, create a new one with high precision timestamp
         if (string.IsNullOrEmpty(providedGenerationId))
         {
             var timestamp = DateTimeOffset.UtcNow;
             var microseconds = timestamp.Ticks / 10; // Convert ticks to microseconds
-            return $"gen-{timestamp.ToUnixTimeSeconds()}-{microseconds % 1000000:D6}-{Guid.NewGuid():N}".Substring(0, 32);
+            return $"gen-{timestamp.ToUnixTimeSeconds()}-{microseconds % 1000000:D6}-{Guid.NewGuid():N}".Substring(
+                0,
+                32
+            );
         }
 
         // If generation ID is provided (possibly from cache), add a unique suffix to ensure uniqueness
@@ -1547,12 +1878,15 @@ public class ChatService : IChatService, IToolResultCallback
 
         // Add time-based salt to the provided ID to ensure uniqueness
         var saltedId = $"{providedGenerationId}-{DateTimeOffset.UtcNow.Ticks:X}";
-        
+
         // Ensure it fits within reasonable ID length (32 chars)
         if (saltedId.Length > 32)
         {
             // Take first 16 chars of original and add time-based suffix
-            var truncated = providedGenerationId.Substring(0, Math.Min(16, providedGenerationId.Length));
+            var truncated = providedGenerationId.Substring(
+                0,
+                Math.Min(16, providedGenerationId.Length)
+            );
             return $"{truncated}-{DateTimeOffset.UtcNow.Ticks:X}".Substring(0, 32);
         }
 

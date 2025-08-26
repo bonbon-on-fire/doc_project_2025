@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -31,7 +28,7 @@ namespace AIChat.Server.Services.AgentCards
     public abstract class BaseSectionHandler : ISectionHandler
     {
         public abstract string SectionName { get; }
-        
+
         public abstract Result ProcessSection(string content, AgentCard card);
 
         /// <summary>
@@ -39,9 +36,7 @@ namespace AIChat.Server.Services.AgentCards
         /// </summary>
         protected Result ValidateContent(string content)
         {
-            if (string.IsNullOrWhiteSpace(content))
-                return Result.Failure($"{SectionName} section cannot be empty");
-            return Result.Success();
+            return string.IsNullOrWhiteSpace(content) ? Result.Failure($"{SectionName} section cannot be empty") : Result.Success();
         }
     }
 
@@ -56,7 +51,9 @@ namespace AIChat.Server.Services.AgentCards
         {
             var validation = ValidateContent(content);
             if (validation.IsFailure)
+            {
                 return validation;
+            }
 
             card.Role = content.Trim();
             return Result.Success();
@@ -74,7 +71,9 @@ namespace AIChat.Server.Services.AgentCards
         {
             var validation = ValidateContent(content);
             if (validation.IsFailure)
+            {
                 return validation;
+            }
 
             card.Objective = content.Trim();
             return Result.Success();
@@ -84,10 +83,10 @@ namespace AIChat.Server.Services.AgentCards
     /// <summary>
     /// Handles the WORKFLOW section of an agent card.
     /// </summary>
-    public sealed class WorkflowSectionHandler : BaseSectionHandler
+    public sealed partial class WorkflowSectionHandler : BaseSectionHandler
     {
-        private static readonly Regex StepPattern = new(@"^\d+\.\s+", RegexOptions.Compiled);
-        private static readonly Regex PhasePattern = new(@"^##\s+", RegexOptions.Compiled);
+        private static readonly Regex StepPattern = MyRegex();
+        private static readonly Regex PhasePattern = MyRegex1();
 
         public override string SectionName => "WORKFLOW";
 
@@ -101,7 +100,7 @@ namespace AIChat.Server.Services.AgentCards
 
             var steps = new List<string>();
             var lines = content.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-            
+
             foreach (var line in lines)
             {
                 var trimmed = line.Trim();
@@ -115,16 +114,19 @@ namespace AIChat.Server.Services.AgentCards
             card.Workflow = steps;
             return Result.Success();
         }
+
+        [GeneratedRegex(@"^\d+\.\s+", RegexOptions.Compiled)]
+        private static partial Regex MyRegex();
+        [GeneratedRegex(@"^##\s+", RegexOptions.Compiled)]
+        private static partial Regex MyRegex1();
     }
 
     /// <summary>
     /// Handles the OUTPUT SCHEMA section of an agent card.
     /// </summary>
-    public sealed class OutputSchemaSectionHandler : BaseSectionHandler
+    public sealed partial class OutputSchemaSectionHandler : BaseSectionHandler
     {
-        private static readonly Regex JsonBlockPattern = new(
-            @"```json\s*\n(.*?)\n```", 
-            RegexOptions.Singleline | RegexOptions.Compiled);
+        private static readonly Regex JsonBlockPattern = MyRegex();
 
         public override string SectionName => "OUTPUT SCHEMA";
 
@@ -157,19 +159,17 @@ namespace AIChat.Server.Services.AgentCards
                 return Result.Success(); // We still succeed, just with no schema
             }
         }
+
+        [GeneratedRegex(@"```json\s*\n(.*?)\n```", RegexOptions.Compiled | RegexOptions.Singleline)]
+        private static partial Regex MyRegex();
     }
 
     /// <summary>
     /// Generic handler for sections that are stored as-is without special processing.
     /// </summary>
-    public sealed class GenericSectionHandler : ISectionHandler
+    public sealed class GenericSectionHandler(string sectionName) : ISectionHandler
     {
-        public GenericSectionHandler(string sectionName)
-        {
-            SectionName = sectionName ?? throw new ArgumentNullException(nameof(sectionName));
-        }
-
-        public string SectionName { get; }
+        public string SectionName { get; } = sectionName ?? throw new ArgumentNullException(nameof(sectionName));
 
         public Result ProcessSection(string content, AgentCard card)
         {
@@ -191,7 +191,7 @@ namespace AIChat.Server.Services.AgentCards
         {
             _handlers = new Dictionary<string, ISectionHandler>(StringComparer.OrdinalIgnoreCase);
             _knownSections = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            
+
             // Register default handlers
             RegisterDefaultHandlers();
         }
@@ -202,18 +202,24 @@ namespace AIChat.Server.Services.AgentCards
             Register(new ObjectiveSectionHandler());
             Register(new WorkflowSectionHandler());
             Register(new OutputSchemaSectionHandler());
-            
+
             // Register generic handlers for other common sections
             var genericSections = new[]
             {
-                "CONTEXT", "TOOLS", "CONSTRAINTS", "STYLE", 
-                "EXAMPLES", "NOTES", "REQUIREMENTS", "REFERENCES"
+                "CONTEXT",
+                "TOOLS",
+                "CONSTRAINTS",
+                "STYLE",
+                "EXAMPLES",
+                "NOTES",
+                "REQUIREMENTS",
+                "REFERENCES",
             };
-            
+
             foreach (var section in genericSections)
             {
                 Register(new GenericSectionHandler(section));
-                _knownSections.Add(section);
+                _ = _knownSections.Add(section);
             }
         }
 
@@ -222,11 +228,10 @@ namespace AIChat.Server.Services.AgentCards
         /// </summary>
         public void Register(ISectionHandler handler)
         {
-            if (handler == null)
-                throw new ArgumentNullException(nameof(handler));
-            
+            ArgumentNullException.ThrowIfNull(handler);
+
             _handlers[handler.SectionName] = handler;
-            _knownSections.Add(handler.SectionName);
+            _ = _knownSections.Add(handler.SectionName);
         }
 
         /// <summary>
@@ -234,12 +239,7 @@ namespace AIChat.Server.Services.AgentCards
         /// </summary>
         public ISectionHandler? GetHandler(string sectionName)
         {
-            if (string.IsNullOrWhiteSpace(sectionName))
-                return null;
-            
-            return _handlers.TryGetValue(sectionName, out var handler) 
-                ? handler 
-                : null;
+            return string.IsNullOrWhiteSpace(sectionName) ? null : _handlers.TryGetValue(sectionName, out var handler) ? handler : null;
         }
 
         /// <summary>
@@ -248,13 +248,17 @@ namespace AIChat.Server.Services.AgentCards
         public ISectionHandler GetOrCreateHandler(string sectionName)
         {
             if (string.IsNullOrWhiteSpace(sectionName))
+            {
                 throw new ArgumentException("Section name cannot be empty", nameof(sectionName));
-            
+            }
+
             // Try to get existing handler
             var handler = GetHandler(sectionName);
             if (handler != null)
+            {
                 return handler;
-            
+            }
+
             // Create a generic handler for unknown sections
             var genericHandler = new GenericSectionHandler(sectionName);
             Register(genericHandler);
@@ -266,8 +270,7 @@ namespace AIChat.Server.Services.AgentCards
         /// </summary>
         public bool IsKnownSection(string sectionName)
         {
-            return !string.IsNullOrWhiteSpace(sectionName) && 
-                   _knownSections.Contains(sectionName);
+            return !string.IsNullOrWhiteSpace(sectionName) && _knownSections.Contains(sectionName);
         }
     }
 }

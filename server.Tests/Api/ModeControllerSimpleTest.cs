@@ -1,35 +1,31 @@
 using System.Net;
+using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
-using FluentAssertions;
 
 namespace AIChat.Server.Tests.Api;
 
-public class ModeControllerSimpleTest : IClassFixture<WebApplicationFactory<Program>>
+public class ModeControllerSimpleTest(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
 {
-    private readonly WebApplicationFactory<Program> _factory;
-
-    public ModeControllerSimpleTest(WebApplicationFactory<Program> factory)
-    {
-        _factory = factory.WithWebHostBuilder(builder =>
+    private readonly WebApplicationFactory<Program> _factory = factory.WithWebHostBuilder(builder =>
         {
-            builder.UseSetting("ASPNETCORE_ENVIRONMENT", "Test");
+            _ = builder.UseSetting("ASPNETCORE_ENVIRONMENT", "Test");
         });
-    }
 
     [Fact]
     public async Task ModeController_IsAccessible()
     {
         // Arrange
         var client = _factory.CreateClient();
-        
+
         // Act
         var response = await client.GetAsync("/api/mode?userId=test123");
-        
+
         // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound, 
-            "The /api/mode endpoint should be accessible");
-        
+        _ = response
+            .StatusCode.Should()
+            .NotBe(HttpStatusCode.NotFound, "The /api/mode endpoint should be accessible");
+
         // Log actual status for debugging
         if (response.StatusCode == HttpStatusCode.NotFound)
         {

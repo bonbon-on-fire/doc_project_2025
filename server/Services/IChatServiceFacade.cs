@@ -1,7 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
-using AIChat.Server.Models;
-
 namespace AIChat.Server.Services;
 
 /// <summary>
@@ -43,5 +39,8 @@ public interface IChatServiceFacade
     /// <summary>
     /// Streams a unified chat completion
     /// </summary>
-    Task StreamUnifiedChatCompletionAsync(StreamChatRequest request, CancellationToken cancellationToken = default);
+    Task StreamUnifiedChatCompletionAsync(
+        StreamChatRequest request,
+        CancellationToken cancellationToken = default
+    );
 }

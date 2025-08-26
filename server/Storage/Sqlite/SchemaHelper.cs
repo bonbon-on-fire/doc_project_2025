@@ -4,14 +4,20 @@ namespace AIChat.Server.Storage.Sqlite;
 
 public static class SchemaHelper
 {
-    public static async Task EnsurePragmasAsync(SqliteConnection connection, CancellationToken ct = default)
+    public static async Task EnsurePragmasAsync(
+        SqliteConnection connection,
+        CancellationToken ct = default
+    )
     {
         using var cmd = connection.CreateCommand();
         cmd.CommandText = "PRAGMA foreign_keys=ON;";
-        await cmd.ExecuteNonQueryAsync(ct);
+        _ = await cmd.ExecuteNonQueryAsync(ct);
     }
 
-    public static async Task EnsureSchemaAsync(SqliteConnection connection, CancellationToken ct = default)
+    public static async Task EnsureSchemaAsync(
+        SqliteConnection connection,
+        CancellationToken ct = default
+    )
     {
         // Detect existing schema and reset if mismatched (new project rule: nuke and recreate on mismatch)
         var needsReset = await NeedsSchemaResetAsync(connection, ct);
@@ -24,7 +30,8 @@ public static class SchemaHelper
                 using (var drop = connection.CreateCommand())
                 {
                     drop.Transaction = (SqliteTransaction)tx;
-                    drop.CommandText = @"
+                    drop.CommandText =
+                        @"
 DROP INDEX IF EXISTS idx_user_modes_user;
 DROP INDEX IF EXISTS idx_chat_tasks_chat_id;
 DROP INDEX IF EXISTS idx_chats_user_updated;
@@ -34,11 +41,12 @@ DROP TABLE IF EXISTS user_modes;
 DROP TABLE IF EXISTS chat_tasks;
 DROP TABLE IF EXISTS messages;
 DROP TABLE IF EXISTS chats;";
-                    await drop.ExecuteNonQueryAsync(ct);
+                    _ = await drop.ExecuteNonQueryAsync(ct);
                 }
             }
 
-            const string ddl = @"
+            const string ddl =
+                @"
 CREATE TABLE IF NOT EXISTS chats (
   Id TEXT PRIMARY KEY,
   UserId TEXT NOT NULL,
@@ -92,7 +100,7 @@ CREATE INDEX IF NOT EXISTS idx_user_modes_user ON user_modes (UserId);";
             {
                 cmd.Transaction = (SqliteTransaction)tx;
                 cmd.CommandText = ddl;
-                await cmd.ExecuteNonQueryAsync(ct);
+                _ = await cmd.ExecuteNonQueryAsync(ct);
             }
 
             // Optionally set user_version for future migrations
@@ -100,7 +108,7 @@ CREATE INDEX IF NOT EXISTS idx_user_modes_user ON user_modes (UserId);";
             {
                 ver.Transaction = (SqliteTransaction)tx;
                 ver.CommandText = "PRAGMA user_version = 3;";
-                await ver.ExecuteNonQueryAsync(ct);
+                _ = await ver.ExecuteNonQueryAsync(ct);
             }
 
             await tx.CommitAsync(ct);
@@ -112,13 +120,17 @@ CREATE INDEX IF NOT EXISTS idx_user_modes_user ON user_modes (UserId);";
         }
     }
 
-    public static async Task SeedUsersAsync(SqliteConnection connection, CancellationToken ct = default)
+    public static async Task SeedUsersAsync(
+        SqliteConnection connection,
+        CancellationToken ct = default
+    )
     {
         // Seed two known users if they do not exist
         const string systemUserId = "system-user-id";
         const string demoUserId = "user-123";
 
-        const string createUsersTable = @"CREATE TABLE IF NOT EXISTS users (
+        const string createUsersTable =
+            @"CREATE TABLE IF NOT EXISTS users (
   Id TEXT PRIMARY KEY,
   Email TEXT NOT NULL,
   Name TEXT NOT NULL,
@@ -133,11 +145,31 @@ CREATE INDEX IF NOT EXISTS idx_user_modes_user ON user_modes (UserId);";
         using (var cmd = connection.CreateCommand())
         {
             cmd.CommandText = createUsersTable;
-            await cmd.ExecuteNonQueryAsync(ct);
+            _ = await cmd.ExecuteNonQueryAsync(ct);
         }
 
-        await UpsertUserAsync(connection, systemUserId, "system@aichat.com", "System", "internal", null, null, new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc), ct);
-        await UpsertUserAsync(connection, demoUserId, "demo@aichat.com", "Demo User", "demo", null, null, new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc), ct);
+        await UpsertUserAsync(
+            connection,
+            systemUserId,
+            "system@aichat.com",
+            "System",
+            "internal",
+            null,
+            null,
+            new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            ct
+        );
+        await UpsertUserAsync(
+            connection,
+            demoUserId,
+            "demo@aichat.com",
+            "Demo User",
+            "demo",
+            null,
+            null,
+            new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            ct
+        );
     }
 
     private static async Task UpsertUserAsync(
@@ -149,27 +181,32 @@ CREATE INDEX IF NOT EXISTS idx_user_modes_user ON user_modes (UserId);";
         string? providerUserId,
         string? profileImageUrl,
         DateTime createdAtUtc,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
-        const string sql = @"
+        const string sql =
+            @"
 INSERT INTO users (Id, Email, Name, Provider, ProviderUserId, ProfileImageUrl, CreatedAt, UpdatedAt)
 VALUES ($id, $email, $name, $provider, $providerUserId, $profileImageUrl, $createdAt, $updatedAt)
 ON CONFLICT(Email) DO NOTHING;";
 
         using var cmd = connection.CreateCommand();
         cmd.CommandText = sql;
-        cmd.Parameters.AddWithValue("$id", id);
-        cmd.Parameters.AddWithValue("$email", email);
-        cmd.Parameters.AddWithValue("$name", name);
-        cmd.Parameters.AddWithValue("$provider", provider);
-        cmd.Parameters.AddWithValue("$providerUserId", (object?)providerUserId ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$profileImageUrl", (object?)profileImageUrl ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("$createdAt", createdAtUtc.ToString("o"));
-        cmd.Parameters.AddWithValue("$updatedAt", createdAtUtc.ToString("o"));
-        await cmd.ExecuteNonQueryAsync(ct);
+        _ = cmd.Parameters.AddWithValue("$id", id);
+        _ = cmd.Parameters.AddWithValue("$email", email);
+        _ = cmd.Parameters.AddWithValue("$name", name);
+        _ = cmd.Parameters.AddWithValue("$provider", provider);
+        _ = cmd.Parameters.AddWithValue("$providerUserId", (object?)providerUserId ?? DBNull.Value);
+        _ = cmd.Parameters.AddWithValue("$profileImageUrl", (object?)profileImageUrl ?? DBNull.Value);
+        _ = cmd.Parameters.AddWithValue("$createdAt", createdAtUtc.ToString("o"));
+        _ = cmd.Parameters.AddWithValue("$updatedAt", createdAtUtc.ToString("o"));
+        _ = await cmd.ExecuteNonQueryAsync(ct);
     }
 
-    private static async Task<bool> NeedsSchemaResetAsync(SqliteConnection connection, CancellationToken ct)
+    private static async Task<bool> NeedsSchemaResetAsync(
+        SqliteConnection connection,
+        CancellationToken ct
+    )
     {
         // If no chats/messages tables, no reset needed
         var hasChats = await TableExistsAsync(connection, "chats", ct);
@@ -185,7 +222,12 @@ ON CONFLICT(Email) DO NOTHING;";
         if (hasChats)
         {
             var cols = await GetColumnsAsync(connection, "chats", ct);
-            if (!cols.Contains("UpdatedAtUtc") || !cols.Contains("CreatedAtUtc") || !cols.Contains("Title") || !cols.Contains("UserId"))
+            if (
+                !cols.Contains("UpdatedAtUtc")
+                || !cols.Contains("CreatedAtUtc")
+                || !cols.Contains("Title")
+                || !cols.Contains("UserId")
+            )
             {
                 return true;
             }
@@ -195,7 +237,15 @@ ON CONFLICT(Email) DO NOTHING;";
         if (hasMessages)
         {
             var cols = await GetColumnsAsync(connection, "messages", ct);
-            var required = new[] { "ChatId", "Role", "Kind", "TimestampUtc", "SequenceNumber", "MessageJson" };
+            var required = new[]
+            {
+                "ChatId",
+                "Role",
+                "Kind",
+                "TimestampUtc",
+                "SequenceNumber",
+                "MessageJson",
+            };
             foreach (var col in required)
             {
                 if (!cols.Contains(col))
@@ -209,7 +259,14 @@ ON CONFLICT(Email) DO NOTHING;";
         if (hasChatTasks)
         {
             var cols = await GetColumnsAsync(connection, "chat_tasks", ct);
-            var required = new[] { "ChatId", "TaskData", "Version", "CreatedAtUtc", "UpdatedAtUtc" };
+            var required = new[]
+            {
+                "ChatId",
+                "TaskData",
+                "Version",
+                "CreatedAtUtc",
+                "UpdatedAtUtc",
+            };
             foreach (var col in required)
             {
                 if (!cols.Contains(col))
@@ -223,7 +280,17 @@ ON CONFLICT(Email) DO NOTHING;";
         if (hasUserModes)
         {
             var cols = await GetColumnsAsync(connection, "user_modes", ct);
-            var required = new[] { "UserId", "Name", "Description", "Prompt", "Tools", "Category", "CreatedAtUtc", "UpdatedAtUtc" };
+            var required = new[]
+            {
+                "UserId",
+                "Name",
+                "Description",
+                "Prompt",
+                "Tools",
+                "Category",
+                "CreatedAtUtc",
+                "UpdatedAtUtc",
+            };
             foreach (var col in required)
             {
                 if (!cols.Contains(col))
@@ -236,16 +303,24 @@ ON CONFLICT(Email) DO NOTHING;";
         return false;
     }
 
-    private static async Task<bool> TableExistsAsync(SqliteConnection connection, string tableName, CancellationToken ct)
+    private static async Task<bool> TableExistsAsync(
+        SqliteConnection connection,
+        string tableName,
+        CancellationToken ct
+    )
     {
         using var cmd = connection.CreateCommand();
         cmd.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name=$name;";
-        cmd.Parameters.AddWithValue("$name", tableName);
+        _ = cmd.Parameters.AddWithValue("$name", tableName);
         var result = await cmd.ExecuteScalarAsync(ct);
         return result is string;
     }
 
-    private static async Task<HashSet<string>> GetColumnsAsync(SqliteConnection connection, string tableName, CancellationToken ct)
+    private static async Task<HashSet<string>> GetColumnsAsync(
+        SqliteConnection connection,
+        string tableName,
+        CancellationToken ct
+    )
     {
         using var cmd = connection.CreateCommand();
         cmd.CommandText = $"PRAGMA table_info({tableName});";
@@ -253,11 +328,8 @@ ON CONFLICT(Email) DO NOTHING;";
         using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
-            columns.Add(reader.GetString(1)); // name column
+            _ = columns.Add(reader.GetString(1)); // name column
         }
         return columns;
     }
 }
-
-
-

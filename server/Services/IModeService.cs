@@ -1,5 +1,3 @@
-using AIChat.Server.Storage;
-
 namespace AIChat.Server.Services;
 
 /// <summary>
@@ -16,8 +14,9 @@ public interface IModeService
     /// <param name="ct">Cancellation token</param>
     /// <returns>Success status with list of all modes or error message</returns>
     Task<(bool Success, string? Error, IReadOnlyList<ModeDto> Modes)> GetAllModesAsync(
-        string userId, 
-        CancellationToken ct = default);
+        string userId,
+        CancellationToken ct = default
+    );
 
     /// <summary>
     /// Gets a specific mode by ID, checking both system modes and user custom modes.
@@ -29,7 +28,8 @@ public interface IModeService
     Task<(bool Success, string? Error, ModeDto? Mode)> GetModeByIdAsync(
         string modeId,
         string userId,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 
     /// <summary>
     /// Creates a new custom mode for a user.
@@ -41,7 +41,8 @@ public interface IModeService
     Task<(bool Success, string? Error, ModeDto? Mode)> CreateCustomModeAsync(
         CreateModeRequest mode,
         string userId,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 
     /// <summary>
     /// Updates an existing custom mode. Only the mode owner can update.
@@ -55,7 +56,8 @@ public interface IModeService
         string modeId,
         UpdateModeRequest mode,
         string userId,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 
     /// <summary>
     /// Deletes a custom mode. Only the mode owner can delete.
@@ -67,7 +69,8 @@ public interface IModeService
     Task<(bool Success, string? Error)> DeleteCustomModeAsync(
         string modeId,
         string userId,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 
     /// <summary>
     /// Filters available tools based on a mode's configuration.
@@ -81,7 +84,8 @@ public interface IModeService
         string modeId,
         string userId,
         IReadOnlyList<string> availableTools,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 
     /// <summary>
     /// Gets the system prompt for a mode, if one is configured.
@@ -93,7 +97,8 @@ public interface IModeService
     Task<(bool Success, string? Error, string? SystemPrompt)> GetModeSystemPromptAsync(
         string modeId,
         string userId,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 
     /// <summary>
     /// Gets the default model preference for a mode, if one is configured.
@@ -105,7 +110,8 @@ public interface IModeService
     Task<(bool Success, string? Error, string? DefaultModel)> GetModeDefaultModelAsync(
         string modeId,
         string userId,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 }
 
 /// <summary>
@@ -117,27 +123,27 @@ public sealed class CreateModeRequest
     /// Display name for the mode (1-100 characters).
     /// </summary>
     public required string Name { get; init; }
-    
+
     /// <summary>
     /// Description of what the mode is optimized for (1-500 characters).
     /// </summary>
     public required string Description { get; init; }
-    
+
     /// <summary>
     /// System prompt that shapes the AI's behavior (1-2000 characters).
     /// </summary>
     public required string Prompt { get; init; }
-    
+
     /// <summary>
     /// List of tool IDs available in this mode. Use ["*"] for all tools.
     /// </summary>
     public required IReadOnlyList<string> Tools { get; init; }
-    
+
     /// <summary>
     /// Optional preferred AI model for this mode (e.g., "openai/gpt-4").
     /// </summary>
     public string? DefaultModel { get; init; }
-    
+
     /// <summary>
     /// Optional category for organizing modes (task, role, custom). Defaults to "custom".
     /// </summary>
@@ -153,27 +159,27 @@ public sealed class UpdateModeRequest
     /// Updated display name for the mode (1-100 characters).
     /// </summary>
     public required string Name { get; init; }
-    
+
     /// <summary>
     /// Updated description of what the mode is optimized for (1-500 characters).
     /// </summary>
     public required string Description { get; init; }
-    
+
     /// <summary>
     /// Updated system prompt that shapes the AI's behavior (1-2000 characters).
     /// </summary>
     public required string Prompt { get; init; }
-    
+
     /// <summary>
     /// Updated list of tool IDs available in this mode. Use ["*"] for all tools.
     /// </summary>
     public required IReadOnlyList<string> Tools { get; init; }
-    
+
     /// <summary>
     /// Updated preferred AI model for this mode (e.g., "openai/gpt-4").
     /// </summary>
     public string? DefaultModel { get; init; }
-    
+
     /// <summary>
     /// Updated category for organizing modes (task, role, custom).
     /// </summary>
@@ -190,52 +196,52 @@ public sealed class ModeDto
     /// Unique identifier for the mode.
     /// </summary>
     public required string Id { get; init; }
-    
+
     /// <summary>
     /// Display name of the mode.
     /// </summary>
     public required string Name { get; init; }
-    
+
     /// <summary>
     /// Description of what the mode is optimized for.
     /// </summary>
     public required string Description { get; init; }
-    
+
     /// <summary>
     /// System prompt that shapes the AI's behavior.
     /// </summary>
     public required string Prompt { get; init; }
-    
+
     /// <summary>
     /// List of tool IDs available in this mode. ["*"] means all tools.
     /// </summary>
     public required IReadOnlyList<string> Tools { get; init; }
-    
+
     /// <summary>
     /// Optional preferred AI model for this mode.
     /// </summary>
     public string? DefaultModel { get; init; }
-    
+
     /// <summary>
     /// Indicates whether this is a system-provided mode (true) or user-created (false).
     /// </summary>
     public required bool IsSystem { get; init; }
-    
+
     /// <summary>
     /// User ID of the mode owner (null for system modes).
     /// </summary>
     public string? UserId { get; init; }
-    
+
     /// <summary>
     /// Category for organizing modes (task, role, custom).
     /// </summary>
     public string? Category { get; init; }
-    
+
     /// <summary>
     /// UTC timestamp when the mode was created (null for system modes).
     /// </summary>
     public DateTime? CreatedAt { get; init; }
-    
+
     /// <summary>
     /// UTC timestamp when the mode was last updated (null for system modes).
     /// </summary>

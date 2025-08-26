@@ -19,8 +19,10 @@ public class SseHandlerTests
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
+    private static readonly int[] elements = new[] { 0, 1 };
+    private static readonly int[] elementsArray = new[] { 0 };
 
     /// <summary>
     /// Builds an HTTP request message for testing SSE endpoints.
@@ -29,21 +31,22 @@ public class SseHandlerTests
     /// <param name="stream">Whether to enable streaming.</param>
     /// <param name="model">The model to use for the request.</param>
     /// <returns>An HTTP request message configured for testing.</returns>
-    private static HttpRequestMessage BuildRequest(string userMessage, bool stream = true, string? model = null)
+    private static HttpRequestMessage BuildRequest(
+        string userMessage,
+        bool stream = true,
+        string? model = null
+    )
     {
         var payload = new
         {
             model,
             stream,
-            messages = new object[]
-            {
-                new { role = "user", content = userMessage }
-            }
+            messages = new object[] { new { role = "user", content = userMessage } },
         };
         var json = JsonSerializer.Serialize(payload, JsonOptions);
         var req = new HttpRequestMessage(HttpMethod.Post, "http://localhost/v1/chat/completions")
         {
-            Content = new StringContent(json, Encoding.UTF8, "application/json")
+            Content = new StringContent(json, Encoding.UTF8, "application/json"),
         };
         return req;
     }
@@ -55,7 +58,7 @@ public class SseHandlerTests
         using var invoker = new HttpMessageInvoker(handler);
         var req = new HttpRequestMessage(HttpMethod.Post, "http://localhost/v1/completions");
         var res = await invoker.SendAsync(req, default);
-        res.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        _ = res.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
@@ -65,7 +68,7 @@ public class SseHandlerTests
         using var invoker = new HttpMessageInvoker(handler);
         var req = BuildRequest("hello", stream: false);
         var res = await invoker.SendAsync(req, default);
-        res.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        _ = res.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
@@ -75,20 +78,20 @@ public class SseHandlerTests
         using var invoker = new HttpMessageInvoker(handler);
         var req = BuildRequest("hello world", stream: true);
         var res = await invoker.SendAsync(req, default);
-        res.StatusCode.Should().Be(HttpStatusCode.OK);
-        res.Content.Headers.ContentType!.MediaType.Should().Be("text/event-stream");
+        _ = res.StatusCode.Should().Be(HttpStatusCode.OK);
+        _ = res.Content.Headers.ContentType!.MediaType.Should().Be("text/event-stream");
 
         var text = await res.Content.ReadAsStringAsync();
-        text.Should().Contain("data:");
-        text.Should().Contain("[DONE]");
+        _ = text.Should().Contain("data:");
+        _ = text.Should().Contain("[DONE]");
 
         var firstJson = GetFirstJsonLine(text);
         using var doc = JsonDocument.Parse(firstJson);
         var root = doc.RootElement;
-        root.GetProperty("object").GetString().Should().Be("chat.completion.chunk");
-        root.GetProperty("choices")[0].GetProperty("index").GetInt32().Should().Be(0);
-        root.TryGetProperty("id", out _).Should().BeTrue();
-        root.TryGetProperty("created", out _).Should().BeTrue();
+        _ = root.GetProperty("object").GetString().Should().Be("chat.completion.chunk");
+        _ = root.GetProperty("choices")[0].GetProperty("index").GetInt32().Should().Be(0);
+        _ = root.TryGetProperty("id", out _).Should().BeTrue();
+        _ = root.TryGetProperty("created", out _).Should().BeTrue();
     }
 
     [Fact]
@@ -101,7 +104,7 @@ public class SseHandlerTests
         var text = await res.Content.ReadAsStringAsync();
         var firstJson = GetFirstJsonLine(text);
         using var doc = JsonDocument.Parse(firstJson);
-        doc.RootElement.GetProperty("model").GetString().Should().Be("test-model");
+        _ = doc.RootElement.GetProperty("model").GetString().Should().Be("test-model");
     }
 
     [Fact]
@@ -115,15 +118,20 @@ public class SseHandlerTests
 
         var allJson = GetAllJsonLines(text).Select(s => JsonDocument.Parse(s)).ToList();
         var contents = allJson
-            .SelectMany(d => d.RootElement.GetProperty("choices")[0].GetProperty("delta").EnumerateObject()
-                .Where(p => p.NameEquals("content"))
-                .Select(p => p.Value.GetString() ?? string.Empty))
+            .SelectMany(d =>
+                d.RootElement.GetProperty("choices")[0]
+                    .GetProperty("delta")
+                    .EnumerateObject()
+                    .Where(p => p.NameEquals("content"))
+                    .Select(p => p.Value.GetString() ?? string.Empty)
+            )
             .ToList();
 
-        contents.Count.Should().BeGreaterThan(0);
+        _ = contents.Count.Should().BeGreaterThan(0);
         var echo = "test-echo";
-        var nonEchoWords = string.Join(" ", contents.Where(c => c != echo)).Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        nonEchoWords.Length.Should().BeGreaterThanOrEqualTo(5).And.BeLessThanOrEqualTo(500);
+        var nonEchoWords = string.Join(" ", contents.Where(c => c != echo))
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        _ = nonEchoWords.Length.Should().BeGreaterThanOrEqualTo(5).And.BeLessThanOrEqualTo(500);
     }
 
     [Fact]
@@ -147,7 +155,9 @@ public class SseHandlerTests
                 seenContent = true;
             }
 
-            if (delta.TryGetProperty("reasoning", out var r) && !string.IsNullOrEmpty(r.GetString()))
+            if (
+                delta.TryGetProperty("reasoning", out var r) && !string.IsNullOrEmpty(r.GetString())
+            )
             {
                 seenReasoning = true;
                 if (seenContent)
@@ -157,7 +167,7 @@ public class SseHandlerTests
             }
         }
 
-        seenReasoning.Should().BeTrue();
+        _ = seenReasoning.Should().BeTrue();
     }
 
     [Fact]
@@ -170,24 +180,36 @@ public class SseHandlerTests
             stream = true,
             messages = new object[]
             {
-                new { role = "user", content = new object[] { new { type = "text", text = "ignored" } } },
-                new { role = "user", content = "plain" }
-            }
+                new
+                {
+                    role = "user",
+                    content = new object[] { new { type = "text", text = "ignored" } },
+                },
+                new { role = "user", content = "plain" },
+            },
         };
         var json = JsonSerializer.Serialize(payload);
         var req = new HttpRequestMessage(HttpMethod.Post, "http://localhost/v1/chat/completions")
         {
-            Content = new StringContent(json, Encoding.UTF8, "application/json")
+            Content = new StringContent(json, Encoding.UTF8, "application/json"),
         };
         var res = await invoker.SendAsync(req, default);
         var text = await res.Content.ReadAsStringAsync();
         var allJson = GetAllJsonLines(text).Select(s => JsonDocument.Parse(s)).ToList();
         var contents = allJson
-                .SelectMany(d => d.RootElement.GetProperty("choices")[0].GetProperty("delta").EnumerateObject()
+            .SelectMany(d =>
+                d.RootElement.GetProperty("choices")[0]
+                    .GetProperty("delta")
+                    .EnumerateObject()
                     .Where(p => p.NameEquals("content"))
-                    .Select(p => p.Value.GetString() ?? string.Empty))
-                .ToList();
-        contents.Where(c => !string.IsNullOrEmpty(c)).Last().Should().Be("<|user_post|><|text_message|> plain");
+                    .Select(p => p.Value.GetString() ?? string.Empty)
+            )
+            .ToList();
+        _ = contents
+            .Where(c => !string.IsNullOrEmpty(c))
+            .Last()
+            .Should()
+            .Be("<|user_post|><|text_message|> plain");
     }
 
     [Fact]
@@ -204,9 +226,11 @@ public class SseHandlerTests
         var text = await res.Content.ReadAsStringAsync();
 
         // Assert
-        var dataLines = text.Split('\n').Where(l => l.StartsWith("data: ", StringComparison.Ordinal)).ToList();
-        dataLines.Count.Should().BeGreaterThan(3, "expected multiple SSE chunks to be emitted");
-        text.Should().Contain("[DONE]");
+        var dataLines = text.Split('\n')
+            .Where(l => l.StartsWith("data: ", StringComparison.Ordinal))
+            .ToList();
+        _ = dataLines.Count.Should().BeGreaterThan(3, "expected multiple SSE chunks to be emitted");
+        _ = text.Should().Contain("[DONE]");
     }
 
     [Fact]
@@ -223,12 +247,12 @@ public class SseHandlerTests
 
         // Assert: none of the JSON delta objects should include a 'reasoning' property
         var jsons = GetAllJsonLines(text).ToList();
-        jsons.Should().NotBeEmpty();
+        _ = jsons.Should().NotBeEmpty();
         foreach (var json in jsons)
         {
             using var doc = JsonDocument.Parse(json);
             var delta = doc.RootElement.GetProperty("choices")[0].GetProperty("delta");
-            delta.TryGetProperty("reasoning", out _).Should().BeFalse();
+            _ = delta.TryGetProperty("reasoning", out _).Should().BeFalse();
         }
     }
 
@@ -255,8 +279,10 @@ public class SseHandlerTests
             if (delta.TryGetProperty("content", out var c))
             {
                 var str = c.GetString() ?? string.Empty;
-                if (!str.Contains("<|user_pre|>", StringComparison.Ordinal) &&
-                    !str.Contains("<|user_post|>", StringComparison.Ordinal))
+                if (
+                    !str.Contains("<|user_pre|>", StringComparison.Ordinal)
+                    && !str.Contains("<|user_post|>", StringComparison.Ordinal)
+                )
                 {
                     loremChunkCount++;
                 }
@@ -268,8 +294,8 @@ public class SseHandlerTests
         // Allow generous overhead tolerance
         var toleranceMs = Math.Max(250, loremChunkCount * 10);
 
-        elapsed.TotalMilliseconds.Should().BeGreaterThan(minMs - 25);
-        elapsed.TotalMilliseconds.Should().BeLessThan(minMs + toleranceMs);
+        _ = elapsed.TotalMilliseconds.Should().BeGreaterThan(minMs - 25);
+        _ = elapsed.TotalMilliseconds.Should().BeLessThan(minMs + toleranceMs);
     }
 
     [Fact]
@@ -292,7 +318,9 @@ public class SseHandlerTests
         foreach (var d in docs)
         {
             var delta = d.RootElement.GetProperty("choices")[0].GetProperty("delta");
-            if (delta.TryGetProperty("reasoning", out var r) && !string.IsNullOrEmpty(r.GetString()))
+            if (
+                delta.TryGetProperty("reasoning", out var r) && !string.IsNullOrEmpty(r.GetString())
+            )
             {
                 sawReasoning = true;
             }
@@ -305,9 +333,9 @@ public class SseHandlerTests
                 }
             }
         }
-        sawReasoning.Should().BeTrue();
-        sawPostEcho.Should().BeTrue();
-        text.Should().Contain("[DONE]");
+        _ = sawReasoning.Should().BeTrue();
+        _ = sawPostEcho.Should().BeTrue();
+        _ = text.Should().Contain("[DONE]");
     }
 
     [Fact]
@@ -333,10 +361,10 @@ public class SseHandlerTests
         var res = await invoker.SendAsync(req, default);
         var text = await res.Content.ReadAsStringAsync();
 
-        text.Should().Contain("ID-XYZ");
-        text.Should().NotContain("outside header");
-        text.Should().NotContain("trailing");
-        text.Should().Contain("[DONE]");
+        _ = text.Should().Contain("ID-XYZ");
+        _ = text.Should().NotContain("outside header");
+        _ = text.Should().NotContain("trailing");
+        _ = text.Should().Contain("[DONE]");
     }
 
     [Fact]
@@ -368,7 +396,7 @@ public class SseHandlerTests
             .OrderBy(i => i)
             .ToArray();
 
-        indices.Should().Equal(new[] { 0, 1 });
+        _ = indices.Should().Equal(elements);
     }
 
     [Fact]
@@ -399,15 +427,19 @@ public class SseHandlerTests
             if (delta.TryGetProperty("content", out var c))
             {
                 var str = c.GetString() ?? string.Empty;
-                if (str == "ID-MARK") continue; // exclude id_message markers
+                if (str == "ID-MARK")
+                {
+                    continue; // exclude id_message markers
+                }
+
                 contents.Add(str);
             }
         }
         var words = string.Join(' ', contents).Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        words.Length.Should().Be(7);
+        _ = words.Length.Should().Be(7);
     }
 
-    [Fact(Skip = "Deferred until tool_call support is implemented")]
+    [Fact]
     public async Task InstructionMode_ToolCall_DeltaShape_And_Indexing()
     {
         var handler = new TestSseMessageHandler { ChunkDelayMs = 0 };
@@ -434,27 +466,33 @@ public class SseHandlerTests
         foreach (var d in docs)
         {
             var choice = d.RootElement.GetProperty("choices")[0];
-            indices.Add(choice.GetProperty("index").GetInt32());
+            _ = indices.Add(choice.GetProperty("index").GetInt32());
             var delta = choice.GetProperty("delta");
-            if (delta.TryGetProperty("tool_calls", out var tc) && tc.ValueKind == JsonValueKind.Array)
+            if (
+                delta.TryGetProperty("tool_calls", out var tc)
+                && tc.ValueKind == JsonValueKind.Array
+            )
             {
                 var entry = tc.EnumerateArray().First();
                 var func = entry.GetProperty("function");
-                if (func.TryGetProperty("name", out var nameEl) && nameEl.GetString() == "search_web")
+                if (
+                    func.TryGetProperty("name", out var nameEl)
+                    && nameEl.GetString() == "search_web"
+                )
                 {
                     sawName = true;
                 }
                 if (func.TryGetProperty("arguments", out var argEl))
                 {
-                    argConcat.Append(argEl.GetString());
+                    _ = argConcat.Append(argEl.GetString());
                 }
             }
         }
-        indices.Should().Equal(new[] { 0 });
-        sawName.Should().BeTrue();
+        _ = indices.Should().Equal(elementsArray);
+        _ = sawName.Should().BeTrue();
         // JSON of args without whitespace and in canonical order may vary; ensure both keys appear
-        argConcat.ToString().Should().Contain("query");
-        argConcat.ToString().Should().Contain("limit");
+        _ = argConcat.ToString().Should().Contain("query");
+        _ = argConcat.ToString().Should().Contain("limit");
     }
 
     [Fact]
@@ -483,8 +521,8 @@ public class SseHandlerTests
                 }
             }
         }
-        sawPostEcho.Should().BeTrue();
-        text.Should().Contain("[DONE]");
+        _ = sawPostEcho.Should().BeTrue();
+        _ = text.Should().Contain("[DONE]");
     }
 
     /// <summary>
@@ -497,7 +535,10 @@ public class SseHandlerTests
     {
         foreach (var line in response.Split('\n'))
         {
-            if (line.StartsWith("data: ", StringComparison.Ordinal) && !line.Contains("[DONE]", StringComparison.Ordinal))
+            if (
+                line.StartsWith("data: ", StringComparison.Ordinal)
+                && !line.Contains("[DONE]", StringComparison.Ordinal)
+            )
             {
                 return line.Substring(6).Trim();
             }
@@ -515,7 +556,10 @@ public class SseHandlerTests
     {
         foreach (var line in response.Split('\n'))
         {
-            if (line.StartsWith("data: ", StringComparison.Ordinal) && !line.Contains("[DONE]", StringComparison.Ordinal))
+            if (
+                line.StartsWith("data: ", StringComparison.Ordinal)
+                && !line.Contains("[DONE]", StringComparison.Ordinal)
+            )
             {
                 yield return line.Substring(6).Trim();
             }

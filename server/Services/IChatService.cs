@@ -1,8 +1,8 @@
-using AchieveAi.LmDotnetTools.LmCore.Core;
-using AchieveAi.LmDotnetTools.LmCore.Messages;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
+using AchieveAi.LmDotnetTools.LmCore.Core;
+using AchieveAi.LmDotnetTools.LmCore.Messages;
 using static AchieveAi.LmDotnetTools.Misc.Utils.TaskManager;
 
 namespace AIChat.Server.Services;
@@ -17,11 +17,21 @@ public interface IChatService
 
     // Message Operations
     Task<MessageResult> SendMessageAsync(SendMessageRequest request);
-    Task<MessageResult> AddUserMessageToExistingChatAsync(string chatId, string userId, string message);
+    Task<MessageResult> AddUserMessageToExistingChatAsync(
+        string chatId,
+        string userId,
+        string message
+    );
     Task<StreamInitResult> PrepareStreamChatAsync(StreamChatRequest request);
     Task<StreamInitResult> PrepareUnifiedStreamChatAsync(StreamChatRequest request);
-    Task StreamChatCompletionAsync(StreamChatRequest request, CancellationToken cancellationToken = default);
-    Task StreamUnifiedChatCompletionAsync(StreamChatRequest request, CancellationToken cancellationToken = default);
+    Task StreamChatCompletionAsync(
+        StreamChatRequest request,
+        CancellationToken cancellationToken = default
+    );
+    Task StreamUnifiedChatCompletionAsync(
+        StreamChatRequest request,
+        CancellationToken cancellationToken = default
+    );
     Task StreamAssistantResponseAsync(string chatId, CancellationToken cancellationToken = default);
     Task<int> GetNextSequenceNumberAsync(string chatId);
     Task<string> CreateAssistantMessageForStreamingAsync(string chatId, int sequenceNumber);
@@ -154,7 +164,7 @@ public record MessageCreatedEvent
 {
     [JsonPropertyName("chatId")]
     public required string ChatId { get; init; }
-    
+
     [JsonPropertyName("message")]
     public required MessageDto Message { get; init; }
 }
@@ -190,7 +200,7 @@ public record ToolsCallAggregateStreamEvent : StreamChunkEvent
 {
     [JsonPropertyName("toolCalls")]
     public ToolCall[]? ToolCalls { get; init; }
-    
+
     [JsonPropertyName("toolResults")]
     public ToolCallResult[]? ToolResults { get; init; }
 }
@@ -214,7 +224,7 @@ public record ToolCallStreamEvent : StreamChunkEvent
 {
     [JsonPropertyName("delta")]
     public required string Delta { get; init; }
-    
+
     [JsonPropertyName("toolCalls")]
     public object[]? ToolCalls { get; init; }
 }
@@ -223,17 +233,15 @@ public record ToolResultStreamEvent : StreamChunkEvent
 {
     [JsonPropertyName("toolCallId")]
     public required string ToolCallId { get; init; }
-    
+
     [JsonPropertyName("result")]
     public required string Result { get; init; }
-    
+
     [JsonPropertyName("isError")]
     public bool IsError { get; init; }
 }
 
-public record MessageStreamCompleteEvent : StreamChunkEvent
-{
-}
+public record MessageStreamCompleteEvent : StreamChunkEvent { }
 
 public abstract record MessageEvent
 {
@@ -260,7 +268,7 @@ public record ReasoningEvent : MessageEvent
 {
     [JsonPropertyName("reasoning")]
     public required string Reasoning { get; init; }
-    
+
     [JsonPropertyName("visibility")]
     public ReasoningVisibility? Visibility { get; init; }
 }
@@ -281,7 +289,7 @@ public record ToolsCallAggregateEvent : MessageEvent
 {
     [JsonPropertyName("toolCalls")]
     public required ToolCall[] ToolCalls { get; init; }
-    
+
     [JsonPropertyName("toolResults")]
     public ToolCallResult[]? ToolResults { get; init; }
 }
@@ -306,7 +314,7 @@ public record ChatDto
 
     [JsonPropertyName("messages")]
     public List<MessageDto> Messages { get; init; } = new();
-    
+
     [JsonPropertyName("tasks")]
     public IList<TaskItem>? Tasks { get; init; }
 }
@@ -352,7 +360,7 @@ public static class MessageSerializationOptions
         // Enable polymorphic serialization with type discriminator
         WriteIndented = false,
         IncludeFields = false,
-        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
 }
 
@@ -371,7 +379,10 @@ public class ReasoningMessageDto : MessageDto
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public ReasoningVisibility Visibility { get; set; }
 
-    public string? GetText() => Visibility == ReasoningVisibility.Encrypted ? null : Reasoning;
+    public string? GetText()
+    {
+        return Visibility == ReasoningVisibility.Encrypted ? null : Reasoning;
+    }
 }
 
 public class ToolCallMessageDto : MessageDto
@@ -390,7 +401,7 @@ public class ToolsCallAggregateMessageDto : MessageDto
 {
     [JsonPropertyName("toolCalls")]
     public required ToolCall[] ToolCalls { get; set; }
-    
+
     [JsonPropertyName("toolResults")]
     public ToolCallResult[]? ToolResults { get; set; }
 }

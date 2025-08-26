@@ -1,7 +1,7 @@
-using AIChat.Server.Services;
-using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using AIChat.Server.Services;
+using Microsoft.AspNetCore.Mvc;
 
 namespace AIChat.Server.Controllers;
 
@@ -11,18 +11,8 @@ namespace AIChat.Server.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-public class ModeController : ControllerBase
+public class ModeController(IModeService modeService, ILogger<ModeController> logger) : ControllerBase
 {
-    private readonly IModeService _modeService;
-    private readonly ILogger<ModeController> _logger;
-
-    public ModeController(
-        IModeService modeService,
-        ILogger<ModeController> logger)
-    {
-        _modeService = modeService;
-        _logger = logger;
-    }
 
     /// <summary>
     /// Get all available modes for a user, including system modes and user's custom modes.
@@ -37,18 +27,22 @@ public class ModeController : ControllerBase
             return BadRequest(new { Error = "UserId is required" });
         }
 
-        var result = await _modeService.GetAllModesAsync(userId);
+        var (Success, Error, Modes) = await modeService.GetAllModesAsync(userId);
 
-        if (!result.Success)
+        if (!Success)
         {
-            _logger.LogError("Error retrieving modes for user {UserId}: {Error}", userId, result.Error);
-            return StatusCode(500, new { Error = result.Error ?? "Failed to retrieve modes" });
+            logger.LogError(
+                "Error retrieving modes for user {UserId}: {Error}",
+                userId,
+                Error
+            );
+            return StatusCode(500, new { Error = Error ?? "Failed to retrieve modes" });
         }
 
         var response = new ModesResponse
         {
-            Modes = result.Modes.ToList(),
-            Count = result.Modes.Count
+            Modes = Modes.ToList(),
+            Count = Modes.Count,
         };
 
         return Ok(response);
@@ -68,20 +62,25 @@ public class ModeController : ControllerBase
             return BadRequest(new { Error = "UserId is required" });
         }
 
-        var result = await _modeService.GetModeByIdAsync(id, userId);
+        var (Success, Error, Mode) = await modeService.GetModeByIdAsync(id, userId);
 
-        if (!result.Success)
+        if (!Success)
         {
-            if (result.Error == "NotFound")
+            if (Error == "NotFound")
             {
                 return NotFound(new { Error = "Mode not found" });
             }
 
-            _logger.LogError("Error retrieving mode {ModeId} for user {UserId}: {Error}", id, userId, result.Error);
-            return StatusCode(500, new { Error = result.Error ?? "Failed to retrieve mode" });
+            logger.LogError(
+                "Error retrieving mode {ModeId} for user {UserId}: {Error}",
+                id,
+                userId,
+                Error
+            );
+            return StatusCode(500, new { Error = Error ?? "Failed to retrieve mode" });
         }
 
-        return Ok(result.Mode);
+        return Ok(Mode);
     }
 
     /// <summary>
@@ -104,7 +103,12 @@ public class ModeController : ControllerBase
         }
 
         // Additional business logic validation
-        var validationResult = ValidateModeRequest(request.Name, request.Description, request.Prompt, request.Tools);
+        var validationResult = ValidateModeRequest(
+            request.Name,
+            request.Description,
+            request.Prompt,
+            request.Tools
+        );
         if (validationResult != null)
         {
             return BadRequest(new { Error = validationResult });
@@ -118,23 +122,31 @@ public class ModeController : ControllerBase
             Prompt = request.Prompt,
             Tools = request.Tools,
             DefaultModel = request.DefaultModel,
-            Category = request.Category
+            Category = request.Category,
         };
 
-        var result = await _modeService.CreateCustomModeAsync(serviceRequest, request.UserId);
+        var (Success, Error, Mode) = await modeService.CreateCustomModeAsync(serviceRequest, request.UserId);
 
-        if (!result.Success)
+        if (!Success)
         {
-            if (result.Error?.Contains("already exists") == true)
+            if (Error?.Contains("already exists") == true)
             {
-                return Conflict(new { Error = result.Error });
+                return Conflict(new { Error = Error });
             }
 
-            _logger.LogError("Error creating mode for user {UserId}: {Error}", request.UserId, result.Error);
-            return StatusCode(500, new { Error = result.Error ?? "Failed to create mode" });
+            logger.LogError(
+                "Error creating mode for user {UserId}: {Error}",
+                request.UserId,
+                Error
+            );
+            return StatusCode(500, new { Error = Error ?? "Failed to create mode" });
         }
 
-        return CreatedAtAction(nameof(GetMode), new { id = result.Mode!.Id, userId = request.UserId }, result.Mode);
+        return CreatedAtAction(
+            nameof(GetMode),
+            new { id = Mode!.Id, userId = request.UserId },
+            Mode
+        );
     }
 
     /// <summary>
@@ -144,7 +156,10 @@ public class ModeController : ControllerBase
     /// <param name="request">Mode update request</param>
     /// <returns>Updated mode</returns>
     [HttpPut("{id}")]
-    public async Task<ActionResult<ModeDto>> UpdateMode(string id, [FromBody] UpdateModeApiRequest request)
+    public async Task<ActionResult<ModeDto>> UpdateMode(
+        string id,
+        [FromBody] UpdateModeApiRequest request
+    )
     {
         // Validate request
         if (!ModelState.IsValid)
@@ -158,7 +173,12 @@ public class ModeController : ControllerBase
         }
 
         // Additional business logic validation
-        var validationResult = ValidateModeRequest(request.Name, request.Description, request.Prompt, request.Tools);
+        var validationResult = ValidateModeRequest(
+            request.Name,
+            request.Description,
+            request.Prompt,
+            request.Tools
+        );
         if (validationResult != null)
         {
             return BadRequest(new { Error = validationResult });
@@ -172,23 +192,28 @@ public class ModeController : ControllerBase
             Prompt = request.Prompt,
             Tools = request.Tools,
             DefaultModel = request.DefaultModel,
-            Category = request.Category
+            Category = request.Category,
         };
 
-        var result = await _modeService.UpdateCustomModeAsync(id, serviceRequest, request.UserId);
+        var (Success, Error, Mode) = await modeService.UpdateCustomModeAsync(id, serviceRequest, request.UserId);
 
-        if (!result.Success)
+        if (!Success)
         {
-            if (result.Error == "NotFound")
+            if (Error == "NotFound")
             {
                 return NotFound(new { Error = "Mode not found or access denied" });
             }
 
-            _logger.LogError("Error updating mode {ModeId} for user {UserId}: {Error}", id, request.UserId, result.Error);
-            return StatusCode(500, new { Error = result.Error ?? "Failed to update mode" });
+            logger.LogError(
+                "Error updating mode {ModeId} for user {UserId}: {Error}",
+                id,
+                request.UserId,
+                Error
+            );
+            return StatusCode(500, new { Error = Error ?? "Failed to update mode" });
         }
 
-        return Ok(result.Mode);
+        return Ok(Mode);
     }
 
     /// <summary>
@@ -205,22 +230,27 @@ public class ModeController : ControllerBase
             return BadRequest(new { Error = "UserId is required" });
         }
 
-        var result = await _modeService.DeleteCustomModeAsync(id, userId);
+        var (Success, Error) = await modeService.DeleteCustomModeAsync(id, userId);
 
-        if (!result.Success)
+        if (!Success)
         {
-            if (result.Error == "NotFound")
+            if (Error == "NotFound")
             {
                 return NotFound(new { Error = "Mode not found or access denied" });
             }
 
-            if (result.Error == "Cannot delete system mode")
+            if (Error == "Cannot delete system mode")
             {
                 return BadRequest(new { Error = "Cannot delete system modes" });
             }
 
-            _logger.LogError("Error deleting mode {ModeId} for user {UserId}: {Error}", id, userId, result.Error);
-            return StatusCode(500, new { Error = result.Error ?? "Failed to delete mode" });
+            logger.LogError(
+                "Error deleting mode {ModeId} for user {UserId}: {Error}",
+                id,
+                userId,
+                Error
+            );
+            return StatusCode(500, new { Error = Error ?? "Failed to delete mode" });
         }
 
         return NoContent();
@@ -235,7 +265,12 @@ public class ModeController : ControllerBase
     /// <param name="prompt">System prompt</param>
     /// <param name="tools">Tool list</param>
     /// <returns>Error message if validation fails, null if valid</returns>
-    private static string? ValidateModeRequest(string name, string description, string prompt, IReadOnlyList<string> tools)
+    private static string? ValidateModeRequest(
+        string name,
+        string description,
+        string prompt,
+        IReadOnlyList<string> tools
+    )
     {
         // Business rule: Mode names should not contain special characters that could cause issues
         if (name.Contains('<') || name.Contains('>') || name.Contains('&'))
@@ -250,8 +285,10 @@ public class ModeController : ControllerBase
         }
 
         // Business rule: Prevent potential XSS in descriptions and prompts
-        if (description.Contains("<script>", StringComparison.OrdinalIgnoreCase) || 
-            prompt.Contains("<script>", StringComparison.OrdinalIgnoreCase))
+        if (
+            description.Contains("<script>", StringComparison.OrdinalIgnoreCase)
+            || prompt.Contains("<script>", StringComparison.OrdinalIgnoreCase)
+        )
         {
             return "Mode content cannot contain script tags";
         }
