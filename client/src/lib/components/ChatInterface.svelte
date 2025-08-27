@@ -3,6 +3,7 @@
 	import ChatSidebar from './ChatSidebar.svelte';
 	import ChatWindow from './ChatWindow.svelte';
 	import { chatActions, error, currentChat, chats } from '$lib/stores/chat';
+	import { logger } from '$lib/utils/logger';
 
 	let isInitialized = false;
 
@@ -11,7 +12,7 @@
 			await chatActions.initialize();
 			isInitialized = true;
 		} catch (err) {
-			console.error('Failed to initialize chat:', err);
+			logger.error({ error: err }, 'Failed to initialize chat');
 		}
 	});
 
@@ -56,7 +57,7 @@
 
 	<!-- Error Toast -->
 	{#if $error}
-		<div class="fixed top-4 right-4 z-50 max-w-md">
+		<div class="fixed right-4 top-4 z-50 max-w-md">
 			<div
 				class="flex items-center justify-between rounded-lg bg-red-500 px-6 py-4 text-white shadow-lg"
 			>

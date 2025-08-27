@@ -6,6 +6,7 @@
 // Import what we need internally
 import { registerRenderer } from './RendererRegistry.js';
 import { registerComponentLoader, componentRegistry } from './ComponentRegistry.js';
+import { logger } from '$lib/utils/logger';
 
 // Export the main RendererRegistry class and utilities
 export {
@@ -97,7 +98,7 @@ export function registerBuiltInRenderers(): void {
 	// Also register the component loaders
 	registerBuiltInComponentLoaders();
 
-	console.info('Built-in message renderers and components registered successfully');
+	logger.info('Built-in message renderers and components registered successfully');
 }
 
 /**
@@ -160,7 +161,7 @@ function registerBuiltInComponentLoaders(): void {
 export async function getRendererComponent(messageType: string): Promise<any> {
 	const component = await componentRegistry.getComponent(messageType);
 	if (!component) {
-		console.warn(`No component found for message type '${messageType}', using fallback`);
+		logger.warn({ messageType }, 'No component found for message type, using fallback');
 	}
 	return component;
 }

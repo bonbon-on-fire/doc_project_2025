@@ -13,9 +13,23 @@ Debugging follows these systematic steps:
 
 To achieve this methodology (in absence of debugger access), you MUST use Logs and 'duckdb' to debug the system.
 
+## Start server and client
+
+**These scripts will stop any ongoing process, build and restart the server**
+The following scripts will redirect build logs to respective locations for checking offline
+Application logs are also redirected to respective locations to be queried later.
+
+Powershell:
+  MUST use `pwsh build-and-start-server.ps1` for starting / restarting server
+  MUST use `pwsh build-and-start-client.ps1` for starting / restarting client
+Bash:
+  MUST use `bash build-and-start-server.sh` for starting / restarting server
+  MUST use `bash build-and-start-client.sh` for starting / restarting client
+
 ## Logging Infrastructure
 
 ### Log Configuration
+
 - **JSONL Format**: Structured JSON logs for easy parsing
 - **Trace Level**: Verbose logging in development/testing
   - Serilog: Verbose
@@ -23,6 +37,7 @@ To achieve this methodology (in absence of debugger access), you MUST use Logs a
 - **DuckDB Integration**: Query logs with SQL for debugging
 
 ### Log Locations
+
 - **Server Logs**:
   - Development: `logs/server/app-dev.jsonl`
   - Test: `logs/server/app-test.jsonl`
@@ -30,6 +45,7 @@ To achieve this methodology (in absence of debugger access), you MUST use Logs a
 - **Client Logs**: `logs/client/app.jsonl`
 
 ### Querying Logs with DuckDB
+
 ```sql
 -- Query server test logs
 SELECT * FROM read_json_auto('logs/server/app-test.jsonl')
@@ -43,6 +59,7 @@ LIMIT 100;
 ```
 
 ### Logging Features
+
 - **Server**: Serilog with CompactJsonFormatter
   - Request tracing
   - Performance metrics
@@ -56,6 +73,7 @@ LIMIT 100;
 When fixing failed tests, follow this systematic process using sequential thinking.
 
 ### Essential Practices
+
 You MUST use temporary notebooks created in `scratchpad/` directory to track:
 1. Checklist of debugging steps
 2. Learnings from investigation
@@ -63,42 +81,49 @@ You MUST use temporary notebooks created in `scratchpad/` directory to track:
 4. Other related tasks
 
 ### Step 0: Act & Observe
+
 Take steps to reproduce the bug and observe the behavior and logs of the system.
 - Run the failing test in isolation
 - Capture all log output
 - Note exact error messages and stack traces
 
 ### Step 1: Assert
+
 Look at the failure, analyze the code and come up with Root Cause Assertion.
 - Document supporting evidence
 - Create hypothesis about failure cause
 - Note any patterns or correlations
 
 ### Step 2: Proof of Assertion
+
 Validate the assertion by adding diagnostic logs to the code and re-running tests.
 - Changes should be for diagnostic purposes only
 - Add targeted logging at suspected failure points
 - Confirm or refute the hypothesis
 
 ### Step 3: Design & Plan Fix
+
 If Root Cause is validated, design changes to address it.
 - Use supporting evidence to validate design
 - Consider edge cases and side effects
 - Use sequential thinking for complex problems
 
 ### Step 4: Plan Fix Implementation
+
 Break down the fix into discrete steps/tasks.
 - Define "definition of done" for each task
 - Order tasks by dependency
 - Estimate complexity and risk
 
 ### Step 5: Apply Fix
+
 Work through the tasks one by one to implement the fix.
 - Follow the planned sequence
 - Test incrementally
 - Document any deviations from plan
 
 ### Step 6: Validate Fix
+
 Confirm the fix resolves the issue.
 - Run original failing test
 - Run related test suite
@@ -108,21 +133,25 @@ Confirm the fix resolves the issue.
 ## Common Debugging Scenarios
 
 ### SSE Stream Issues
+
 1. Check `logs/server/app-test.jsonl` for SSE handler logs
 2. Verify message sequencing in `MessageSequenceService`
 3. Confirm stream completion character (`▋`) handling
 
 ### SignalR Connection Problems
+
 1. Check WebSocket upgrade logs
 2. Verify CORS configuration
 3. Confirm authentication/authorization
 
 ### Database Consistency
+
 1. Check EF Core migration logs
 2. Verify SQLite file permissions
 3. Confirm transaction boundaries
 
 ### Test Environment Issues
+
 1. Ensure `ASPNETCORE_ENVIRONMENT=Test`
 2. Verify port 5099 availability
 3. Check in-memory database initialization
@@ -130,6 +159,7 @@ Confirm the fix resolves the issue.
 ## Tools and Utilities
 
 ### Process Monitoring (Windows)
+
 ```powershell
 # Find hanging test processes
 Get-Process | Where-Object {$_.ProcessName -like "*test*"}
@@ -139,6 +169,7 @@ Stop-Process -Name "dotnet" -Force
 ```
 
 ### Log Analysis Commands
+
 ```bash
 # Count errors in logs
 duckdb -c "SELECT COUNT(*) FROM read_json_auto('logs/server/app-test.jsonl') WHERE level = 'Error'"

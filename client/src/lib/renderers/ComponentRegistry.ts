@@ -1,4 +1,5 @@
 import type { ComponentType } from 'svelte';
+import { logger } from '$lib/utils/logger';
 
 /**
  * Registry for dynamically loading Svelte components for message renderers.
@@ -83,7 +84,7 @@ export class ComponentRegistry {
 		// Check if we have a loader for this type
 		const loader = this.componentLoaders.get(messageType);
 		if (!loader) {
-			console.warn(`No component loader found for message type '${messageType}'`);
+			logger.warn({ messageType }, 'No component loader found for message type');
 			return null;
 		}
 
@@ -94,7 +95,7 @@ export class ComponentRegistry {
 			this.loadedComponents.set(messageType, component);
 			return component;
 		} catch (error) {
-			console.error(`Failed to load component for message type '${messageType}':`, error);
+			logger.error({ messageType, error }, 'Failed to load component for message type');
 			return null;
 		}
 	}

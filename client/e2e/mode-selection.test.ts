@@ -16,16 +16,53 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Mode Selection E2E Tests', () => {
 	test.beforeEach(async ({ page }) => {
+		// Clean up any existing chats to ensure ModeSelector is visible
+		try {
+			// Get all chats and delete them via API
+			const response = await page.request.get('http://localhost:5099/api/chat/history/user123');
+			if (response.ok()) {
+				const data = await response.json();
+				if (data.chats && data.chats.length > 0) {
+					// Delete all existing chats
+					for (const chat of data.chats) {
+						await page.request.delete(`http://localhost:5099/api/chat/${chat.id}`);
+					}
+					console.log(`Cleaned up ${data.chats.length} existing chats`);
+				}
+			}
+		} catch (error) {
+			console.log('Note: Could not clean up chats via API:', error);
+		}
+
 		// Navigate to the app and wait for it to be ready
 		await page.goto('http://localhost:5173/chat');
 		await page.waitForLoadState('networkidle');
 
 		// Wait for the chat interface to be ready
 		await expect(page.getByPlaceholder('Start a new conversation...')).toBeVisible();
+
+		// Give time for the chat state to update after cleanup
+		await page.waitForTimeout(1000);
 	});
 
 	test('Test 1: Mode selector visibility and loading', async ({ page }) => {
 		console.log('🎯 Test 1: Testing mode selector visibility and loading');
+
+		// Debug: Take screenshot and check page state
+		await page.screenshot({ path: 'debug-mode-selector-test.png', fullPage: true });
+
+		// Debug: Check if currentChatId is set
+		const currentChatId = await page.evaluate(() => {
+			// Try to access the store state through any global references
+			return document.querySelector('[data-testid="chat-sidebar"]')
+				? 'chat-sidebar-present'
+				: 'no-chat-sidebar';
+		});
+		console.log('Debug - Chat sidebar state:', currentChatId);
+
+		// Debug: Check if ModeSelector element exists at all
+		const modeSelectorExists = await page.locator('[data-testid="mode-selector"]').count();
+		console.log('Debug - ModeSelector elements found:', modeSelectorExists);
 
 		// Check if mode selector is visible in welcome screen
 		const modeSelector = page.getByTestId('mode-selector');

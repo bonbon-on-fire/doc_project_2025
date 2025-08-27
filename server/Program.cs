@@ -265,7 +265,7 @@ builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddScoped<IChatServiceFacade, ChatServiceFacade>();
 
 // Add mode service
-builder.Services.AddSingleton<IModeService, ModeService>();
+builder.Services.AddScoped<IModeService, ModeService>();
 
 var app = builder.Build();
 

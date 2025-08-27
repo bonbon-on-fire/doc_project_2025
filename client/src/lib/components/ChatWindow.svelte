@@ -13,6 +13,7 @@
 	import MessageInput from './MessageInput.svelte';
 	import PinnedTaskTracker from './PinnedTaskTracker.svelte';
 	import ModeSelector from './ModeSelector.svelte';
+	import { logger } from '$lib/utils/logger';
 
 	let messagesContainer: HTMLElement;
 	let isSending = false;
@@ -168,13 +169,13 @@
 	}
 
 	function handleModeChanged(event: CustomEvent<{ modeId: string | null }>) {
-		console.log('Mode changed in ChatWindow:', event.detail);
+		logger.debug({ modeId: event.detail.modeId }, 'Mode changed in ChatWindow');
 		// Mode state is automatically handled by the ModeSelector component
 		// and the selectedModeId store, so no additional action needed here
 	}
 
 	function handleModeError(event: CustomEvent<{ message: string }>) {
-		console.error('Mode selector error:', event.detail.message);
+		logger.error({ message: event.detail.message }, 'Mode selector error');
 		// Could show a toast notification or other user feedback here
 	}
 </script>

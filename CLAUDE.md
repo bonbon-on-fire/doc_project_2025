@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 📚 Quick Reference Guide
 
 ### Development Instructions
+
 All detailed instructions are organized in `.repo-instructions/` directory:
 
 | Category | File | Description |
@@ -16,6 +17,7 @@ All detailed instructions are organized in `.repo-instructions/` directory:
 | 📦 **Build & Test** | [build-and-test.md](.repo-instructions/build-and-test.md) | Package publishing and testing procedures |
 
 ### Code Standards
+
 | Standard | File | Focus Area |
 |----------|------|------------|
 | 📝 **Naming** | [naming-types.md](.repo-instructions/naming-types.md) | Variable naming and type declarations |
@@ -30,6 +32,7 @@ All detailed instructions are organized in `.repo-instructions/` directory:
 ## 🚀 Quick Start
 
 ### Essential Commands
+
 ```bash
 # Frontend
 cd client && npm install && npm run dev
@@ -43,6 +46,7 @@ dotnet test           # Server unit tests
 ```
 
 ### Package Management (LmDotnetTools)
+
 ```bash
 # Quick publish to local feed
 cd submodules/LmDotnetTools
@@ -53,12 +57,14 @@ See [build-and-test.md](.repo-instructions/build-and-test.md) for detailed instr
 ## 🏛️ Architecture Overview
 
 ### Tech Stack
+
 - **Frontend**: SvelteKit 2.22, Svelte 5.0, TypeScript 5.0, Tailwind CSS 4.0
 - **Backend**: ASP.NET 9.0, SignalR, Entity Framework Core
 - **Database**: SQLite with Drizzle ORM (client) + EF Core (server)
 - **AI**: LmDotnetTools suite - see `docs/LmDotNet-doc.md`
 
 ### Project Structure
+
 ```
 ├── client/              # SvelteKit frontend
 ├── server/              # ASP.NET backend
@@ -73,6 +79,7 @@ See [build-and-test.md](.repo-instructions/build-and-test.md) for detailed instr
 ## 🧠 Critical Development Rules
 
 ### MUST DO
+
 1. **Use Scratchpad**: Create session directories in `scratchpad/` for ALL work
 2. **Sequential Thinking**: Break complex problems into documented steps
 3. **Use Checklists**: Track progress systematically
@@ -80,6 +87,7 @@ See [build-and-test.md](.repo-instructions/build-and-test.md) for detailed instr
 5. **Follow Standards**: Reference instruction files for code standards
 
 ### Key Patterns
+
 - **Messages**: Flow through `MessageRouter.svelte` for rendering
 - **Real-time**: REST for persistence, SignalR/SSE for updates
 - **Types**: Use shared interfaces from `shared/types/`
@@ -99,21 +107,38 @@ See [development-workflow.md](.repo-instructions/development-workflow.md#develop
 ## 🔧 Environment Configuration
 
 ### Required Variables
+
 - `LLM_API_KEY` - LLM provider API key
 - `LLM_BASE_API_URL` - Provider base URL (optional)
 - `ASPNETCORE_ENVIRONMENT` - Set to "Test" for testing
 
 ### Config Files
+
 - `client/.env.local` - Frontend environment
 - `server/appsettings.{Environment}.json` - Server settings
+
+## Start server and client
+
+**These scripts will stop any ongoing process, build and restart the server**
+The following scripts will redirect build logs to respective locations for checking offline
+Application logs are also redirected to respective locations to be queried later.
+
+Powershell:
+  MUST use `pwsh build-and-start-server.ps1` for starting / restarting server
+  MUST use `pwsh build-and-start-client.ps1` for starting / restarting client
+Bash:
+  MUST use `bash build-and-start-server.sh` for starting / restarting server
+  MUST use `bash build-and-start-client.sh` for starting / restarting client
 
 ## 📊 Logging & Debugging
 
 ### Log Locations
+
 - Server: `logs/server/app-{env}.jsonl`
 - Client: `logs/client/app.jsonl`
 
 ### Query with DuckDB
+
 ```sql
 SELECT * FROM read_json_auto('logs/server/app-test.jsonl')
 WHERE level = 'Error' ORDER BY timestamp DESC;
@@ -122,7 +147,7 @@ WHERE level = 'Error' ORDER BY timestamp DESC;
 ## 🎯 Important Notes
 
 **Remember**: 
-- Always use `scratchpad/` for notes and learning capture
+- ALWAYS use `scratchpad/` for notes and learning capture
 - Follow the debugging methodology in [debugging-guide.md](.repo-instructions/debugging-guide.md)
 - Reference instruction files for specific standards
 - Use sequential thinking for complex problems

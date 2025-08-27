@@ -29,6 +29,7 @@ import type {
 } from './sseEventTypes';
 import { SSEEventGuards, StreamChunkPayloadGuards } from './sseEventTypes';
 import type { MessageHandlerRegistry, HandlerEvent, HandlerEventListener } from './messageHandlers';
+import { logger } from '$lib/utils/logger';
 
 /**
  * Slim chat sync manager - just routes events to handlers
@@ -75,22 +76,23 @@ export class SlimChatSyncManager implements HandlerEventListener {
 
 	/** Map server event id + kind to a stable, UI-unique message id */
 	private toDisplayId(kind: string, messageId: string): string {
-		/*
-		* Ignore defensive programming...
 		// For tool-related events, map them all to the same aggregate message ID
 		// This ensures tool_call_update and tool_result go to the same message
-		if (kind === 'tools_call_update'
-			|| kind === 'tool_result'
-			|| kind === 'tools_aggregate') {
+		if (kind === 'tools_call_update' || kind === 'tool_result' || kind === 'tools_aggregate') {
 			return messageId;
 		}
-		// Ensure reasoning/text/tools do not collide if server reuses ids
-		// Include all known message types to prevent ID collisions
-		if (kind === 'text' || kind === 'reasoning' || 
-		    kind === 'tool_call' || kind === 'usage') {
+
+		// Ensure reasoning/text messages do not collide if server reuses base IDs
+		// This prevents reasoning messages from being overwritten by text messages
+		if (kind === 'text' || kind === 'reasoning') {
+			return `${messageId}:${kind}`;
+		}
+
+		// Other message types use base ID
+		if (kind === 'tool_call' || kind === 'usage') {
 			return messageId;
 		}
-		*/
+
 		return messageId;
 	}
 
@@ -124,10 +126,10 @@ export class SlimChatSyncManager implements HandlerEventListener {
 			} else if (SSEEventGuards.isErrorEvent(envelope)) {
 				this.handleErrorEvent(envelope);
 			} else {
-				console.warn('Unknown SSE event type:', envelope);
+				logger.warn({ envelope }, 'Unknown SSE event type');
 			}
 		} catch (error) {
-			console.error('Error processing SSE event:', error, envelope);
+			logger.error({ error, envelope }, 'Error processing SSE event');
 			this.handleError({
 				chatId: envelope.chatId,
 				messageId: 'messageId' in envelope ? envelope.messageId : undefined,
@@ -172,7 +174,7 @@ export class SlimChatSyncManager implements HandlerEventListener {
 
 		const handler = this.handlerRegistry.getHandler(handlerType);
 		if (!handler) {
-			console.warn(`No handler found for message type: ${handlerType}`);
+			logger.warn({ handlerType }, 'No handler found for message type');
 			return;
 		}
 
@@ -194,7 +196,7 @@ export class SlimChatSyncManager implements HandlerEventListener {
 			// Update streaming UI state based on the updated snapshot
 			this.updateStreamingState(displayId, snapshot.messageType, snapshot);
 		} catch (error) {
-			console.error(`Error processing chunk for ${envelope.kind}:`, error);
+			logger.error({ error, kind: envelope.kind }, 'Error processing chunk');
 		}
 	}
 
@@ -228,7 +230,7 @@ export class SlimChatSyncManager implements HandlerEventListener {
 
 		const handler = this.handlerRegistry.getHandler(handlerType);
 		if (!handler) {
-			console.warn(`No handler found for message type: ${handlerType}`);
+			logger.warn({ handlerType }, 'No handler found for message type');
 			return;
 		}
 
@@ -250,7 +252,7 @@ export class SlimChatSyncManager implements HandlerEventListener {
 			// Message completion is handled by the handler event listener
 			// The handler will emit a 'message_completed' event that we'll handle
 		} catch (error) {
-			console.error(`Error completing message for ${envelope.kind}:`, error);
+			logger.error({ error, kind: envelope.kind }, 'Error completing message');
 		}
 	}
 
@@ -258,7 +260,7 @@ export class SlimChatSyncManager implements HandlerEventListener {
 	 * Handle stream complete event - finalize all messages and clear state
 	 */
 	private handleStreamCompleteEvent(envelope: StreamCompleteEventEnvelope): void {
-		console.log(`Stream completed for chat ${envelope.chatId}`);
+		logger.info({ chatId: envelope.chatId }, 'Stream completed for chat');
 
 		// Finalize any remaining messages that haven't been explicitly completed
 		this.finalizeAllPendingMessages();
@@ -394,8 +396,13 @@ export class SlimChatSyncManager implements HandlerEventListener {
 	 * Handle message completed by handler
 	 */
 	private onMessageCompleted(messageId: string, chatId: string, dto: MessageDto): void {
-		console.log(
-			`[SlimChatSyncManager] Completing message ${messageId} with sequence ${dto.sequenceNumber}, messageType: ${dto.messageType}`
+		logger.debug(
+			{
+				messageId,
+				sequenceNumber: dto.sequenceNumber,
+				messageType: dto.messageType
+			},
+			'Completing message'
 		);
 
 		// Remove from streaming message set
@@ -403,11 +410,14 @@ export class SlimChatSyncManager implements HandlerEventListener {
 
 		// Log tool call specific data
 		if (dto.messageType === 'tool_call') {
-			console.log('[SlimChatSyncManager] Tool call message completion:', {
-				messageId: dto.id,
-				toolCalls: (dto as any).toolCalls,
-				toolCallsCount: (dto as any).toolCalls?.length || 0
-			});
+			logger.debug(
+				{
+					messageId: dto.id,
+					toolCalls: (dto as any).toolCalls,
+					toolCallsCount: (dto as any).toolCalls?.length || 0
+				},
+				'Tool call message completion'
+			);
 		}
 
 		// Preserve original messageType before any modifications
@@ -416,8 +426,13 @@ export class SlimChatSyncManager implements HandlerEventListener {
 		// Overwrite with final server-provided sequence number if available
 		const finalSeq = this.finalSeqByMessageId.get(messageId);
 		if (typeof finalSeq === 'number') {
-			console.log(
-				`Overriding sequence ${dto.sequenceNumber} -> ${finalSeq} for message ${messageId}`
+			logger.debug(
+				{
+					messageId,
+					oldSequence: dto.sequenceNumber,
+					newSequence: finalSeq
+				},
+				'Overriding sequence number'
 			);
 			(dto as any).sequenceNumber = finalSeq;
 			// Ensure messageType is preserved after sequence override
@@ -435,32 +450,42 @@ export class SlimChatSyncManager implements HandlerEventListener {
 			(dto as any).messageType = originalMessageType || 'text';
 		}
 
-		console.log(`[SlimChatSyncManager] Final DTO for message ${messageId}:`, {
-			id: dto.id,
-			messageType: dto.messageType,
-			role: dto.role,
-			sequenceNumber: dto.sequenceNumber,
-			hasToolCalls: this.hasToolCalls(dto)
-		});
+		logger.debug(
+			{
+				messageId,
+				id: dto.id,
+				messageType: dto.messageType,
+				role: dto.role,
+				sequenceNumber: dto.sequenceNumber,
+				hasToolCalls: this.hasToolCalls(dto)
+			},
+			'Final DTO for message'
+		);
 
 		// Check if this message already exists in chat (from placeholder creation)
 		const currentChat = get(this.currentChatStore);
 		const existingMessage = currentChat?.messages.find((m) => m.id === messageId);
 
 		if (existingMessage) {
-			console.log(`[SlimChatSyncManager] Replacing existing placeholder for message ${messageId}`, {
-				oldMessageType: existingMessage.messageType,
-				newMessageType: dto.messageType
-			});
-			// Replace the placeholder with the final DTO
-			this.updateMessageInChat(messageId, dto);
-		} else {
-			console.log(
-				`[SlimChatSyncManager] Adding late completion for message ${messageId} (no placeholder found)`
+			logger.debug(
+				{
+					messageId,
+					oldMessageType: existingMessage.messageType,
+					newMessageType: dto.messageType
+				},
+				'Replacing existing placeholder for message'
 			);
+			// Ensure DTO uses the normalized messageId to prevent ID collisions
+			const normalizedDto = { ...dto, id: messageId };
+			// Replace the placeholder with the final DTO
+			this.updateMessageInChat(messageId, normalizedDto);
+		} else {
+			logger.info({ messageId }, 'Adding late completion for message (no placeholder found)');
+			// Ensure DTO uses the normalized messageId to prevent ID collisions
+			const normalizedDto = { ...dto, id: messageId };
 			// Add the completed message to chat - this handles late completions
 			// where the message completed after a new message started streaming
-			this.addMessageToChat(dto);
+			this.addMessageToChat(normalizedDto);
 		}
 
 		// Mark snapshot as complete (retain entry for UI phase-based reactions)
@@ -561,7 +586,7 @@ export class SlimChatSyncManager implements HandlerEventListener {
 	 * Handle errors
 	 */
 	handleError(error: ErrorEvent): void {
-		console.error('SlimChatSyncManager error:', error);
+		logger.error({ error }, 'SlimChatSyncManager error');
 
 		// Clear streaming state on error
 		this.streamingMessageIds.clear();
@@ -583,13 +608,16 @@ export class SlimChatSyncManager implements HandlerEventListener {
 
 	// Helper methods for chat state management
 	private addMessageToChat(messageDto: MessageDto): void {
-		console.log('[SlimChatSyncManager] addMessageToChat called:', {
-			messageId: messageDto.id,
-			messageType: messageDto.messageType,
-			hasToolCalls: this.hasToolCalls(messageDto),
-			toolCallsCount:
-				(messageDto as any).toolCalls?.length || (messageDto as any).toolCallPairs?.length || 0
-		});
+		logger.debug(
+			{
+				messageId: messageDto.id,
+				messageType: messageDto.messageType,
+				hasToolCalls: this.hasToolCalls(messageDto),
+				toolCallsCount:
+					(messageDto as any).toolCalls?.length || (messageDto as any).toolCallPairs?.length || 0
+			},
+			'addMessageToChat called'
+		);
 
 		this.currentChatStore.update((chat) => {
 			if (!chat) return null;
@@ -624,12 +652,15 @@ export class SlimChatSyncManager implements HandlerEventListener {
 	}
 
 	private updateMessageInChat(messageId: string, dto: MessageDto): void {
-		console.log('[SlimChatSyncManager] updateMessageInChat called:', {
-			messageId,
-			newMessageType: dto.messageType,
-			hasToolCalls: this.hasToolCalls(dto),
-			toolCallsCount: (dto as any).toolCalls?.length || (dto as any).toolCallPairs?.length || 0
-		});
+		logger.debug(
+			{
+				messageId,
+				newMessageType: dto.messageType,
+				hasToolCalls: this.hasToolCalls(dto),
+				toolCallsCount: (dto as any).toolCalls?.length || (dto as any).toolCallPairs?.length || 0
+			},
+			'updateMessageInChat called'
+		);
 
 		this.currentChatStore.update((chat) => {
 			if (!chat) return null;

@@ -114,16 +114,19 @@ export const chatActions = {
 				(m: any) => m.messageType === 'tool_call' || m.toolCalls
 			);
 			if (toolCallMessages.length > 0) {
-				console.log('[Chat Store] Loaded chat with tool call messages:', {
-					chatId,
-					toolCallMessages: toolCallMessages.map((m: any) => ({
-						id: m.id,
-						messageType: m.messageType,
-						toolCalls: m.toolCalls,
-						hasToolCalls: !!m.toolCalls,
-						toolCallsCount: m.toolCalls?.length || 0
-					}))
-				});
+				logger.debug(
+					{
+						chatId,
+						toolCallMessages: toolCallMessages.map((m: any) => ({
+							id: m.id,
+							messageType: m.messageType,
+							toolCalls: m.toolCalls,
+							hasToolCalls: !!m.toolCalls,
+							toolCallsCount: m.toolCalls?.length || 0
+						}))
+					},
+					'Loaded chat with tool call messages'
+				);
 			}
 
 			// Transform messages to ensure proper format
@@ -136,11 +139,14 @@ export const chatActions = {
 
 				// Transform tools_aggregate messages to have toolCallPairs
 				if (message.messageType === 'tools_aggregate' && message.toolCalls && message.toolResults) {
-					console.log('[Chat Store] Transforming tools_aggregate message:', {
-						id: message.id,
-						toolCallsCount: message.toolCalls.length,
-						toolResultsCount: message.toolResults?.length || 0
-					});
+					logger.debug(
+						{
+							id: message.id,
+							toolCallsCount: message.toolCalls.length,
+							toolResultsCount: message.toolResults?.length || 0
+						},
+						'Transforming tools_aggregate message'
+					);
 
 					// Create a map of results by tool_call_id
 					const resultsMap = new Map();
@@ -158,11 +164,14 @@ export const chatActions = {
 						const toolCallId = toolCall.tool_call_id || toolCall.id || `tool_${toolCall.index}`;
 						const result = resultsMap.get(toolCallId);
 
-						console.log('[Chat Store] Pairing tool call:', {
-							toolCallId,
-							toolName: toolCall.function_name || toolCall.name,
-							hasResult: !!result
-						});
+						logger.debug(
+							{
+								toolCallId,
+								toolName: toolCall.function_name || toolCall.name,
+								hasResult: !!result
+							},
+							'Pairing tool call'
+						);
 
 						return {
 							toolCall,
@@ -171,10 +180,13 @@ export const chatActions = {
 					});
 
 					// Keep original arrays for compatibility but mark that we have pairs
-					console.log('[Chat Store] Created toolCallPairs:', {
-						pairsCount: message.toolCallPairs.length,
-						withResults: message.toolCallPairs.filter((p: any) => p.toolResult).length
-					});
+					logger.debug(
+						{
+							pairsCount: message.toolCallPairs.length,
+							withResults: message.toolCallPairs.filter((p: any) => p.toolResult).length
+						},
+						'Created toolCallPairs'
+					);
 				}
 
 				return message;
@@ -184,7 +196,7 @@ export const chatActions = {
 			currentChatId.set(chatId);
 		} catch (err) {
 			error.set(err instanceof Error ? err.message : 'Failed to load chat');
-			console.error('Failed to select chat:', err);
+			logger.error({ error: err }, 'Failed to select chat');
 		} finally {
 			isLoading.set(false);
 		}
@@ -216,7 +228,7 @@ export const chatActions = {
 			return newChat.id;
 		} catch (err) {
 			error.set(err instanceof Error ? err.message : 'Failed to create chat');
-			console.error('Failed to create chat:', err);
+			logger.error({ error: err }, 'Failed to create chat');
 			return null;
 		} finally {
 			isLoading.set(false);
@@ -234,7 +246,7 @@ export const chatActions = {
 			await orchestrator.streamNewChat(message, systemPrompt, modeId);
 		} catch (err) {
 			error.set(err instanceof Error ? err.message : 'Failed to stream chat completion');
-			console.error('Failed to stream chat completion:', err);
+			logger.error({ error: err }, 'Failed to stream chat completion');
 			streamingState.update((state) => ({ ...state, isStreaming: false }));
 			throw err;
 		}
@@ -259,7 +271,7 @@ export const chatActions = {
 			}
 		} catch (err) {
 			error.set(err instanceof Error ? err.message : 'Failed to delete chat');
-			console.error('Failed to delete chat:', err);
+			logger.error({ error: err }, 'Failed to delete chat');
 		} finally {
 			isLoading.set(false);
 		}
@@ -280,7 +292,7 @@ export const chatActions = {
 			// Ensure we have the current chat loaded with all its messages
 			const existingChat = get(currentChat);
 			if (!existingChat || existingChat.id !== chatId) {
-				console.log('Reloading chat before streaming reply');
+				logger.info('Reloading chat before streaming reply');
 				await chatActions.selectChat(chatId);
 			}
 
@@ -289,7 +301,7 @@ export const chatActions = {
 			await orchestrator.streamReply(message, chatId);
 		} catch (err) {
 			error.set(err instanceof Error ? err.message : 'Failed to stream reply');
-			console.error('Failed to stream reply:', err);
+			logger.error({ error: err }, 'Failed to stream reply');
 			streamingState.update((state) => ({ ...state, isStreaming: false }));
 		}
 	},
@@ -305,7 +317,7 @@ export const chatActions = {
 			await chatActions.loadChatHistory();
 		} catch (err) {
 			error.set(err instanceof Error ? err.message : 'Failed to initialize chat system');
-			console.error('Failed to initialize chat system:', err);
+			logger.error({ error: err }, 'Failed to initialize chat system');
 		}
 	},
 

@@ -71,8 +71,30 @@
 			// Get renderer from registry
 			const renderer = getRenderer(effectiveMessageType);
 
+			// Debug renderer resolution
+			logger.info(
+				{
+					component: 'MessageRouter',
+					messageType: effectiveMessageType,
+					rendererFound: !!renderer,
+					rendererType: renderer?.messageType
+				},
+				'Debug: Renderer resolution'
+			);
+
 			// Try to get the actual Svelte component for this renderer
 			const RendererComponentModule = await getRendererComponent(effectiveMessageType);
+
+			// Debug component resolution
+			logger.info(
+				{
+					component: 'MessageRouter',
+					messageType: effectiveMessageType,
+					componentFound: !!RendererComponentModule,
+					rendererIsFallback: renderer.messageType === 'fallback'
+				},
+				'Debug: Component resolution'
+			);
 
 			if (RendererComponentModule && renderer.messageType !== 'fallback') {
 				RendererComponent = RendererComponentModule;
@@ -102,6 +124,21 @@
 	function handleStateChange(newState: Partial<MessageState>) {
 		if (!message.id) return;
 
+		// Log expansion state changes specifically
+		if (newState.expanded !== undefined) {
+			logger.debug(
+				{
+					component: 'MessageRouter',
+					messageId: message.id,
+					messageType: message.messageType,
+					oldExpanded: currentMessageState?.expanded,
+					newExpanded: newState.expanded,
+					action: 'EXPANSION_STATE_CHANGE'
+				},
+				'Message expansion state changing'
+			);
+		}
+
 		updateMessageState(message.id, newState);
 
 		// Notify parent component if callback provided
@@ -124,6 +161,20 @@
 	onMount(() => {
 		mounted = true;
 
+		// Log message being displayed
+		logger.info(
+			{
+				component: 'MessageRouter',
+				messageId: message.id,
+				messageType: message.messageType || 'text',
+				isLatest,
+				sequenceNumber: message.sequenceNumber,
+				role: message.role,
+				action: 'MESSAGE_DISPLAYED'
+			},
+			'Message displayed in chat'
+		);
+
 		// Initialize message state if not already present
 		if (message.id && !currentMessageState) {
 			initializeMessageState(message.id, isLatest);
@@ -135,6 +186,17 @@
 
 	// Clean up when component unmounts
 	onDestroy(() => {
+		// Log message being removed
+		logger.debug(
+			{
+				component: 'MessageRouter',
+				messageId: message.id,
+				messageType: message.messageType || 'text',
+				action: 'MESSAGE_UNMOUNTED'
+			},
+			'Message removed from chat'
+		);
+
 		mounted = false;
 	});
 
@@ -145,7 +207,10 @@
 
 	$: if (mounted && message.id && isLatest !== undefined) {
 		// Update expansion state when isLatest changes
-		handleStateChange({ expanded: isLatest });
+		// But don't collapse reasoning messages when they're no longer latest
+		if (isLatest || message.messageType !== 'reasoning') {
+			handleStateChange({ expanded: isLatest });
+		}
 	}
 
 	// Reactive: drive render phase and expansion from external policy and snapshots
@@ -167,6 +232,15 @@
 	$: if (mounted && message?.id && messageSnapshot) {
 		if (messageSnapshotIsStreaming && !currentMessageState?.expanded) {
 			// Expand while streaming
+			logger.debug(
+				{
+					component: 'MessageRouter',
+					messageId: message.id,
+					messageType: message.messageType,
+					action: 'EXPANDING_FOR_STREAMING'
+				},
+				'Expanding message for streaming'
+			);
 			handleStateChange({ expanded: true });
 		} else if (
 			!messageSnapshotIsStreaming &&
@@ -175,6 +249,18 @@
 			currentMessageState?.expanded
 		) {
 			// Collapse reasoning on completion; text stays as-is
+			logger.debug(
+				{
+					component: 'MessageRouter',
+					messageId: message.id,
+					messageType: message.messageType,
+					messageSnapshotType,
+					messageSnapshotPhase,
+					messageSnapshotIsStreaming,
+					action: 'COLLAPSING_REASONING_ON_COMPLETION'
+				},
+				'Collapsing reasoning message on completion'
+			);
 			handleStateChange({ expanded: false });
 		}
 	}

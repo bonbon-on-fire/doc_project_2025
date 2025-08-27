@@ -509,7 +509,9 @@ public sealed class ModeService : IModeService
         try
         {
             // Load from agents directory (Agent Card files)
-            var agentsPath = Path.Combine(_hostEnvironment.ContentRootPath, "agents");
+            // Look in solution root, not server directory
+            var solutionRoot = Path.GetDirectoryName(_hostEnvironment.ContentRootPath);
+            var agentsPath = Path.Combine(solutionRoot ?? _hostEnvironment.ContentRootPath, "agents");
 
             if (!Directory.Exists(agentsPath))
             {

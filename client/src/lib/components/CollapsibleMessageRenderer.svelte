@@ -63,7 +63,7 @@
 				<button
 					class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-r {iconColors} {collapsible
 						? 'cursor-pointer transition-all duration-200 hover:scale-105'
-						: ''} focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:outline-none"
+						: ''} focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
 					class:opacity-70={!expanded && collapsible}
 					on:click={toggle}
 					on:keydown={handleKeydown}
@@ -81,14 +81,10 @@
 				<!-- Expand/collapse indicator -->
 				{#if collapsible}
 					<div
-						class="absolute -right-0.5 -bottom-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-gray-200 bg-white shadow-md"
+						class="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 transform items-center justify-center rounded-full border border-gray-200 bg-white shadow-md transition-transform duration-200"
+						class:rotate-90={expanded}
 					>
-						<svg
-							class="h-2.5 w-2.5 transform text-gray-600 transition-transform duration-200"
-							class:rotate-90={expanded}
-							fill="currentColor"
-							viewBox="0 0 20 20"
-						>
+						<svg class="h-2.5 w-2.5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
 							<path
 								fill-rule="evenodd"
 								d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
@@ -114,7 +110,7 @@
 					aria-label="Expand {messageType}"
 				>
 					<div class="flex items-center space-x-2">
-						<span class="text-xs font-medium tracking-wide uppercase opacity-75">{messageType}</span
+						<span class="text-xs font-medium uppercase tracking-wide opacity-75">{messageType}</span
 						>
 						<span class="flex-1 truncate text-sm">{collapsedPreview}</span>
 						<span class="text-xs opacity-50">▶</span>

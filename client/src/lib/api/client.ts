@@ -2,6 +2,7 @@
 import { PUBLIC_API_BASE_URL } from '$env/static/public';
 import type { ChatDto, CreateChatRequest, ChatHistoryResponse } from '$lib/types/chat';
 import type { Mode } from '$shared/types/mode';
+import { logger } from '$lib/utils/logger';
 
 export class ApiClient {
 	private baseUrl: string;
@@ -35,7 +36,7 @@ export class ApiClient {
 
 			return await response.json();
 		} catch (error) {
-			console.error(`API request failed: ${endpoint}`, error);
+			logger.error({ endpoint, error }, 'API request failed');
 			throw error;
 		}
 	}

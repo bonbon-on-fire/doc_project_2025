@@ -8,6 +8,7 @@
 		isStreaming
 	} from '$lib/stores/chat';
 	import { formatTime } from '$lib/utils/time';
+	import { logger } from '$lib/utils/logger';
 
 	function getPreviewText(msg: any): string {
 		if (!msg) return '';
@@ -29,7 +30,7 @@
 			await chatActions.streamNewChat(newChatMessage.trim());
 			newChatMessage = '';
 		} catch (err) {
-			console.error('Failed to create chat:', err);
+			logger.error({ error: err }, 'Failed to create chat');
 		}
 	}
 
@@ -154,7 +155,7 @@
 							</div>
 							<button
 								on:click={(e) => deleteChat(chat.id, e)}
-								class="ml-2 p-1 text-gray-400 opacity-0 transition-all group-hover:opacity-100 hover:text-red-500"
+								class="ml-2 p-1 text-gray-400 opacity-0 transition-all hover:text-red-500 group-hover:opacity-100"
 								title="Delete chat"
 								aria-label="Delete chat"
 							>

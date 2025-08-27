@@ -26,6 +26,7 @@ import { createSlimChatSyncManager } from './slimChatSyncManager';
 import { createSSEParser } from './sseParser';
 import { apiClient } from '$lib/api/client';
 import type { TaskItem } from '$shared/types/tasks';
+import { logger } from '$lib/utils/logger';
 
 /**
  * Modern SSE Stream Orchestrator using handler-based architecture
@@ -121,7 +122,7 @@ export class HandlerBasedSSEOrchestrator {
 	 */
 	private async startStream(request: CreateChatRequest, userMessage: string): Promise<void> {
 		if (this.isStreamActive) {
-			console.warn('Stream already active, ignoring new request');
+			logger.warn('Stream already active, ignoring new request');
 			return;
 		}
 
@@ -148,7 +149,7 @@ export class HandlerBasedSSEOrchestrator {
 
 			await this.processSSEStream(response.body, userMessage);
 		} catch (error) {
-			console.error('Error starting stream:', error);
+			logger.error({ error }, 'Error starting stream');
 			this.handleError({
 				message: error instanceof Error ? error.message : 'Unknown streaming error',
 				kind: 'error'
@@ -174,7 +175,7 @@ export class HandlerBasedSSEOrchestrator {
 				const { done, value } = await reader.read();
 
 				if (done) {
-					console.log('SSE stream completed');
+					logger.info('SSE stream completed');
 					// Reset streaming state when stream naturally completes
 					this.streamingStateStore.update((state) => ({
 						...state,
@@ -200,9 +201,9 @@ export class HandlerBasedSSEOrchestrator {
 			}
 		} catch (error) {
 			if (error instanceof Error && error.name === 'AbortError') {
-				console.log('SSE stream was cancelled');
+				logger.info('SSE stream was cancelled');
 			} else {
-				console.error('Error processing SSE stream:', error);
+				logger.error({ error }, 'Error processing SSE stream');
 				this.handleError({
 					message: error instanceof Error ? error.message : 'Stream processing error',
 					kind: 'error'
@@ -220,18 +221,21 @@ export class HandlerBasedSSEOrchestrator {
 	 */
 	private async processSSEBlock(block: string): Promise<void> {
 		try {
-			console.log('[HandlerBasedSSEOrchestrator] Processing SSE block:', block);
+			logger.debug({ block }, 'Processing SSE block');
 
 			const parsedEvent = this.sseParser.parseSSEData(block);
 			if (!parsedEvent) {
-				console.log('[HandlerBasedSSEOrchestrator] No parsed event from block');
+				logger.debug('No parsed event from block');
 				return;
 			}
 
-			console.log('[HandlerBasedSSEOrchestrator] Parsed event:', {
-				eventType: parsedEvent.eventType,
-				eventData: parsedEvent.eventData
-			});
+			logger.debug(
+				{
+					eventType: parsedEvent.eventType,
+					eventData: parsedEvent.eventData
+				},
+				'Parsed event'
+			);
 
 			const raw = JSON.parse(parsedEvent.eventData);
 			const base = {
@@ -342,11 +346,11 @@ export class HandlerBasedSSEOrchestrator {
 					break;
 				}
 				default: {
-					console.warn('Unhandled SSE eventType:', parsedEvent.eventType, raw);
+					logger.warn({ eventType: parsedEvent.eventType, raw }, 'Unhandled SSE eventType');
 				}
 			}
 		} catch (error) {
-			console.error('Error processing SSE block:', error, { block });
+			logger.error({ error, block }, 'Error processing SSE block');
 		}
 	}
 
@@ -374,16 +378,16 @@ export class HandlerBasedSSEOrchestrator {
 		// Get current chat ID from the current chat store
 		const currentChat = this.getCurrentChat();
 		if (currentChat?.id) {
-			console.log(
-				'[Orchestrator] Connection lost, attempting to reload tasks for chat:',
-				currentChat.id
+			logger.info(
+				{ chatId: currentChat.id },
+				'Connection lost, attempting to reload tasks for chat'
 			);
 			// Attempt to reload tasks from API when connection is restored
 			// This is a graceful recovery mechanism
 			setTimeout(() => {
 				import('../stores/taskManager').then(({ taskManager }) => {
 					taskManager.loadTasks(currentChat.id).catch((error) => {
-						console.error('Failed to reload tasks after connection loss:', error);
+						logger.error({ error }, 'Failed to reload tasks after connection loss');
 					});
 				});
 			}, 2000); // Wait 2 seconds before attempting to reload
@@ -409,12 +413,15 @@ export class HandlerBasedSSEOrchestrator {
 	private handleTaskOperationEvent(event: TaskOperationEventEnvelope): void {
 		const { chatId, payload } = event;
 
-		console.log('[Orchestrator] Processing task operation event:', {
-			chatId,
-			operationType: payload.operationType,
-			hasTaskState: !!payload.taskState,
-			version: payload.version
-		});
+		logger.debug(
+			{
+				chatId,
+				operationType: payload.operationType,
+				hasTaskState: !!payload.taskState,
+				version: payload.version
+			},
+			'Processing task operation event'
+		);
 
 		try {
 			switch (payload.operationType) {
@@ -442,7 +449,10 @@ export class HandlerBasedSSEOrchestrator {
 								taskManager.updateFromServerEvent(chatId, tasks, payload.version);
 							});
 						} catch (parseError) {
-							console.error('Error parsing task state:', parseError, payload.taskState);
+							logger.error(
+								{ parseError, taskState: payload.taskState },
+								'Error parsing task state'
+							);
 						}
 					}
 					// Clear loading state
@@ -465,10 +475,10 @@ export class HandlerBasedSSEOrchestrator {
 					break;
 
 				default:
-					console.warn('Unknown task operation type:', payload.operationType);
+					logger.warn({ operationType: payload.operationType }, 'Unknown task operation type');
 			}
 		} catch (error) {
-			console.error('Error handling task operation event:', error);
+			logger.error({ error }, 'Error handling task operation event');
 			import('../stores/taskManager').then(({ taskManager }) => {
 				taskManager.setLoading(chatId, false);
 			});
@@ -479,7 +489,7 @@ export class HandlerBasedSSEOrchestrator {
 	 * Handle errors
 	 */
 	private handleError(error: ErrorEvent): void {
-		console.error('Stream orchestrator error:', error);
+		logger.error({ error }, 'Stream orchestrator error');
 
 		this.streamingStateStore.update((state) => ({
 			...state,

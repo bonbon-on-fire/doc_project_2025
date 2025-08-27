@@ -194,13 +194,14 @@
 		{disabled}
 		class="flex w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2
 			text-left text-sm transition-colors duration-200 hover:border-gray-400 focus:border-blue-500
-			focus:ring-2 focus:ring-blue-500/20 focus:outline-none disabled:cursor-not-allowed
+			focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed
 			disabled:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white
 			dark:hover:border-gray-500 dark:focus:border-blue-400 dark:disabled:bg-gray-800"
 		class:compact
 		aria-describedby={showingTooltip && $selectedMode
 			? `mode-tooltip-${$selectedMode.id}`
 			: undefined}
+		data-testid="mode-selector"
 	>
 		<!-- Loading state -->
 		{#if $modesLoading}
@@ -280,7 +281,7 @@
 	{#if $modesError}
 		<button
 			on:click={retryFetch}
-			class="absolute top-2 right-2 text-xs text-red-600 underline hover:no-underline dark:text-red-400"
+			class="absolute right-2 top-2 text-xs text-red-600 underline hover:no-underline dark:text-red-400"
 			aria-label="Retry loading modes"
 		>
 			Retry
@@ -296,6 +297,7 @@
 				dark:ring-white/10"
 			role="listbox"
 			aria-label="Available modes"
+			data-testid="mode-dropdown"
 		>
 			<!-- Grouped modes display -->
 			{#each Object.entries($groupedModes) as [category, modes]}
@@ -303,7 +305,7 @@
 					<!-- Category header -->
 					<div class="border-b border-gray-100 px-3 py-2 dark:border-gray-600">
 						<div
-							class="flex items-center space-x-2 text-xs font-semibold tracking-wide text-gray-600 uppercase dark:text-gray-300"
+							class="flex items-center space-x-2 text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300"
 						>
 							<span aria-hidden="true">{getCategoryIcon(category as ModeCategory | 'system')}</span>
 							<span>{getCategoryLabel(category as ModeCategory | 'system')}</span>
@@ -327,6 +329,7 @@
 							role="option"
 							aria-selected={$selectedModeId === mode.id}
 							data-mode-id={mode.id}
+							data-testid="mode-option-{mode.id}"
 						>
 							<!-- Mode icon -->
 							<span class="flex-shrink-0 text-base" aria-hidden="true">
@@ -413,7 +416,7 @@
 	{#if showingTooltip && showTooltip && $selectedMode && !compact}
 		<div
 			id="mode-tooltip-{$selectedMode.id}"
-			class="absolute z-60 mt-2 w-80 rounded-lg border border-gray-200 bg-white p-3 shadow-lg
+			class="z-60 absolute mt-2 w-80 rounded-lg border border-gray-200 bg-white p-3 shadow-lg
 				ring-1 ring-black/5 dark:border-gray-600 dark:bg-gray-800 dark:ring-white/10"
 			role="tooltip"
 		>
