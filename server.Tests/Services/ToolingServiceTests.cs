@@ -1,4 +1,7 @@
 using AchieveAi.LmDotnetTools.LmCore.Middleware;
+using AchieveAi.LmDotnetTools.McpMiddleware;
+using AchieveAi.LmDotnetTools.Misc.Utils;
+using AIChat.Server.Functions;
 using AIChat.Server.Models;
 using AIChat.Server.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,12 +37,26 @@ public class ToolingServiceTests
         _mockMcpClient = new Mock<IMcpClient>();
 
         // Setup default service provider behavior
-        var serviceCollection = new ServiceCollection();
-        _ = serviceCollection.AddSingleton(_mockLogger.Object);
-        var serviceProvider = serviceCollection.BuildServiceProvider();
+        var mockFunctionCallLogger = new Mock<ILogger<FunctionCallMiddleware>>();
+        var mockWeatherLogger = new Mock<ILogger<WeatherFunction>>();
+        var mockMcpClientLogger = new Mock<ILogger<McpClientFunctionProvider>>();
+        
+        // Mock GetService to return appropriate loggers (GetRequiredService uses GetService internally)
         _ = _mockServiceProvider
             .Setup(x => x.GetService(typeof(ILogger<FunctionCallMiddleware>)))
-            .Returns(new Mock<ILogger<FunctionCallMiddleware>>().Object);
+            .Returns(mockFunctionCallLogger.Object);
+        _ = _mockServiceProvider
+            .Setup(x => x.GetService(typeof(ILogger<WeatherFunction>)))
+            .Returns(mockWeatherLogger.Object);
+        _ = _mockServiceProvider
+            .Setup(x => x.GetService(typeof(ILogger<McpClientFunctionProvider>)))
+            .Returns(mockMcpClientLogger.Object);
+        
+        // Setup TaskManagerService to return a valid TaskManager
+        var taskManager = new AchieveAi.LmDotnetTools.Misc.Utils.TaskManager();
+        _ = _mockTaskManagerService
+            .Setup(x => x.GetTaskManagerAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(taskManager);
     }
 
     #region FunctionFiltering Tests
@@ -107,7 +124,7 @@ public class ToolingServiceTests
                     It.Is<LogLevel>(l => l == LogLevel.Information),
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>(
-                        (v, t) => v.ToString()!.Contains("MCP tool filtering enabled")
+                        (v, t) => v.ToString()!.Contains("Function filtering enabled")
                     ),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()
@@ -123,7 +140,7 @@ public class ToolingServiceTests
 #pragma warning disable CS0618 // Type or member is obsolete
         var config = new McpConfiguration
         {
-            ToolFiltering = new McpToolFilterConfig
+            ToolFiltering = new AIChat.Server.Models.McpToolFilterConfig
             {
                 EnableFiltering = true,
                 GlobalAllowedTools = new List<string> { "search*" },
@@ -177,7 +194,7 @@ public class ToolingServiceTests
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>(
                         (v, t) =>
-                            v.ToString()!.Contains("MCP tool filtering enabled (legacy config)")
+                            v.ToString()!.Contains("Function filtering enabled")
                     ),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()
@@ -309,7 +326,7 @@ public class ToolingServiceTests
                     It.Is<LogLevel>(l => l == LogLevel.Information),
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>(
-                        (v, t) => v.ToString()!.Contains("MCP tool filtering enabled")
+                        (v, t) => v.ToString()!.Contains("Function filtering enabled")
                     ),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()
@@ -416,9 +433,9 @@ public class ToolingServiceTests
         var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        // Setup to throw when cancelled
-        _ = _mockMcpClientManager
-            .Setup(x => x.GetActiveClientsAsync(It.IsAny<CancellationToken>()))
+        // Setup TaskManagerService to throw when cancelled
+        _ = _mockTaskManagerService
+            .Setup(x => x.GetTaskManagerAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new OperationCanceledException());
 
         var toolingService = new ToolingService(

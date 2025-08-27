@@ -226,7 +226,8 @@ public class ToolingService(
             if (!contracts.Any())
             {
                 logger.LogWarning("No functions registered for FunctionCallMiddleware");
-                return null;
+                // Still create middleware even with no functions - it can be used for filtering validation
+                // return null;
             }
 
             logger.LogInformation(
@@ -260,6 +261,11 @@ public class ToolingService(
                 chatId
             );
             return middleware;
+        }
+        catch (OperationCanceledException)
+        {
+            // Rethrow cancellation exceptions
+            throw;
         }
         catch (Exception ex)
         {

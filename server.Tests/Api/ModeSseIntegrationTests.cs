@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 // Use fully qualified names to avoid ambiguity
 using CreateChatRequest = AIChat.Server.Controllers.CreateChatRequest;
-using SendMessageRequest = AIChat.Server.Controllers.SendMessageRequest;
+// SendMessageRequest removed - using CreateChatRequest for all chat operations
 
 namespace AIChat.Server.Tests.Api;
 
@@ -38,7 +38,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = $"test-user-{Guid.NewGuid()}";
+        var userId = "user-123"; // Use seeded test user
 
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");
         var createRequest = new CreateChatRequest(
@@ -96,7 +96,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = $"test-user-{Guid.NewGuid()}";
+        var userId = "user-123"; // Use seeded test user
 
         // First create a custom mode with limited tools
         var customMode = new CreateModeRequest
@@ -110,8 +110,8 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         };
 
         var createModeResponse = await client.PostAsJsonAsync(
-            $"/api/modes?userId={userId}",
-            customMode,
+            "/api/mode",
+            new { userId, name = customMode.Name, description = customMode.Description, prompt = customMode.Prompt, tools = customMode.Tools, defaultModel = customMode.DefaultModel, category = customMode.Category },
             _jsonOptions
         );
         _ = createModeResponse.EnsureSuccessStatusCode();
@@ -168,7 +168,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = $"test-user-{Guid.NewGuid()}";
+        var userId = "user-123"; // Use seeded test user
 
         // Create initial chat with general mode
         using var request1 = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");
@@ -217,15 +217,17 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         _ = chatId.Should().NotBeNullOrEmpty("Should have a chat ID");
 
         // Continue with different mode
-        var continueRequest = new SendMessageRequest
-        {
-            Message = "Continue with writing mode",
-            ModeId = "writing",
-        };
+        var continueRequest = new CreateChatRequest(
+            ChatId: chatId,
+            UserId: userId,
+            Message: "Continue with writing mode",
+            SystemPrompt: null,
+            ModeId: "writing"
+        );
 
         using var request2 = new HttpRequestMessage(
             HttpMethod.Post,
-            $"/api/chat/{chatId}/messages-sse?userId={userId}"
+            "/api/chat/stream-sse"
         );
         request2.Content = JsonContent.Create(continueRequest, options: _jsonOptions);
 
@@ -263,7 +265,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = $"test-user-{Guid.NewGuid()}";
+        var userId = "user-123"; // Use seeded test user
 
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");
         var createRequest = new CreateChatRequest(
@@ -298,7 +300,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = $"test-user-{Guid.NewGuid()}";
+        var userId = "user-123"; // Use seeded test user
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");

@@ -26,12 +26,14 @@ public class ModeServiceTests : IDisposable
         _loggerMock = new Mock<ILogger<ModeService>>();
         _hostEnvironmentMock = new Mock<IHostEnvironment>();
 
-        // Create a temporary directory for test system modes
+        // Create a temporary directory structure that mimics the solution
         _tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        _ = Directory.CreateDirectory(_tempDir);
-        _ = Directory.CreateDirectory(Path.Combine(_tempDir, "modes"));
+        var serverDir = Path.Combine(_tempDir, "server");
+        _ = Directory.CreateDirectory(serverDir);
+        _ = Directory.CreateDirectory(Path.Combine(_tempDir, "agents"));
 
-        _ = _hostEnvironmentMock.Setup(x => x.ContentRootPath).Returns(_tempDir);
+        // Set ContentRootPath to server directory so parent is solution root
+        _ = _hostEnvironmentMock.Setup(x => x.ContentRootPath).Returns(serverDir);
 
         _service = new ModeService(
             _modeStorageMock.Object,
@@ -45,27 +47,41 @@ public class ModeServiceTests : IDisposable
 
     private void CreateTestSystemMode()
     {
-        var systemMode = new
+        CreateAgentCard(_tempDir, "test-system", "Test System Mode", "test", 
+            "You are a test assistant", new[] { "tool1", "tool2" });
+    }
+
+    private void CreateAgentCard(string basePath, string agentId, string name, string category, 
+        string prompt, string[] tools, string? defaultModel = null)
+    {
+        var toolsList = tools.Length > 0 
+            ? string.Join(", ", tools.Select(t => $"\"{t}\""))
+            : "";
+            
+        var modelLine = !string.IsNullOrEmpty(defaultModel) 
+            ? $"\nmodel_hints: [\"{defaultModel}\"]" 
+            : "";
+            
+        var agentCardContent = $@"---
+agent: ""{agentId}""
+name: ""{name}""
+version: ""1.0.0""
+category: ""{category}""{modelLine}
+capabilities:
+  tools: [{toolsList}]
+---
+
+# ROLE
+{prompt}
+";
+
+        var agentsPath = Path.Combine(basePath, "agents");
+        if (!Directory.Exists(agentsPath))
         {
-            id = "test-system",
-            name = "Test System Mode",
-            description = "A test system mode",
-            category = "test",
-            prompt = "You are a test assistant",
-            tools = new[] { "tool1", "tool2" },
-            defaultModel = (string?)null,
-        };
-
-        var json = JsonSerializer.Serialize(
-            systemMode,
-            new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                WriteIndented = true,
-            }
-        );
-
-        File.WriteAllText(Path.Combine(_tempDir, "modes", "test-system.json"), json);
+            Directory.CreateDirectory(agentsPath);
+        }
+        
+        File.WriteAllText(Path.Combine(agentsPath, $"{agentId}.agent.md"), agentCardContent);
     }
 
     [Fact]
@@ -353,27 +369,8 @@ public class ModeServiceTests : IDisposable
         var availableTools = new[] { "tool1", "tool2", "tool3", "tool4" };
 
         // Create system mode with wildcard
-        var wildcardMode = new
-        {
-            id = "wildcard-mode",
-            name = "Wildcard Mode",
-            description = "Mode with all tools",
-            category = "test",
-            prompt = "You have all tools",
-            tools = new[] { "*" },
-            defaultModel = (string?)null,
-        };
-
-        var json = JsonSerializer.Serialize(
-            wildcardMode,
-            new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                WriteIndented = true,
-            }
-        );
-
-        File.WriteAllText(Path.Combine(_tempDir, "modes", "wildcard-mode.json"), json);
+        CreateAgentCard(_tempDir, "wildcard-mode", "Wildcard Mode", "test", 
+            "You have all tools", new[] { "*" });
 
         // Act
         var (Success, Error, FilteredTools) = await _service.FilterToolsByModeAsync("wildcard-mode", userId, availableTools);
@@ -447,28 +444,12 @@ public class ModeServiceTests : IDisposable
         _ = await _service.GetAllModesAsync(userId);
 
         // Modify the system mode file
-        var systemModeFile = Path.Combine(_tempDir, "modes", "test-system.json");
+        var systemModeFile = Path.Combine(_tempDir, "agents", "test-system.agent.md");
         var originalContent = File.ReadAllText(systemModeFile);
-        var modifiedMode = new
-        {
-            id = "test-system",
-            name = "Modified System Mode", // Changed name
-            description = "A modified test system mode",
-            category = "test",
-            prompt = "You are a modified test assistant",
-            tools = new[] { "tool1", "tool2" },
-            defaultModel = (string?)null,
-        };
-
-        var json = JsonSerializer.Serialize(
-            modifiedMode,
-            new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                WriteIndented = true,
-            }
-        );
-        File.WriteAllText(systemModeFile, json);
+        
+        // Write modified agent card
+        CreateAgentCard(_tempDir, "test-system", "Modified System Mode", "test",
+            "You are a modified test assistant", new[] { "tool1", "tool2" });
 
         // Act - Second call (should use cached version)
         var (Success, Error, Modes) = await _service.GetAllModesAsync(userId);
@@ -531,19 +512,25 @@ public class ModeServiceTests : IDisposable
         // Arrange
         var userId = "test-user-malformed";
 
-        // Create a service with a malformed JSON file
+        // Create a service with a malformed Agent Card file
         var malformedDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        _ = Directory.CreateDirectory(malformedDir);
-        _ = Directory.CreateDirectory(Path.Combine(malformedDir, "modes"));
+        var serverDir = Path.Combine(malformedDir, "server");
+        _ = Directory.CreateDirectory(serverDir);
+        _ = Directory.CreateDirectory(Path.Combine(malformedDir, "agents"));
 
-        // Write malformed JSON
+        // Write malformed Agent Card YAML
         File.WriteAllText(
-            Path.Combine(malformedDir, "modes", "malformed.json"),
-            "{ invalid json }"
+            Path.Combine(malformedDir, "agents", "malformed.agent.md"),
+            @"---
+invalid yaml: [ missing closing bracket
+---
+
+# Role
+Test"
         );
 
         var hostEnvMock = new Mock<IHostEnvironment>();
-        _ = hostEnvMock.Setup(x => x.ContentRootPath).Returns(malformedDir);
+        _ = hostEnvMock.Setup(x => x.ContentRootPath).Returns(serverDir);
 
         var service = new ModeService(
             _modeStorageMock.Object,
@@ -562,14 +549,14 @@ public class ModeServiceTests : IDisposable
         _ = Success.Should().BeTrue(); // Should handle error gracefully
         _ = Modes.Should().BeEmpty(); // Malformed mode should be skipped
 
-        // Verify error was logged
+        // Verify warning was logged for failed agent card
         _loggerMock.Verify(
             x =>
                 x.Log(
-                    LogLevel.Error,
+                    LogLevel.Warning,
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>(
-                        (o, t) => o.ToString()!.Contains("Failed to parse system mode JSON file")
+                        (o, t) => o.ToString()!.Contains("Failed to load agent card")
                     ),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()
@@ -587,31 +574,24 @@ public class ModeServiceTests : IDisposable
         // Arrange
         var userId = "test-user-incomplete";
 
-        // Create a service with an incomplete mode (missing required fields)
+        // Create a service with an incomplete Agent Card (missing required fields)
         var incompleteDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        _ = Directory.CreateDirectory(incompleteDir);
-        _ = Directory.CreateDirectory(Path.Combine(incompleteDir, "modes"));
+        var serverDir = Path.Combine(incompleteDir, "server");
+        _ = Directory.CreateDirectory(serverDir);
+        _ = Directory.CreateDirectory(Path.Combine(incompleteDir, "agents"));
 
-        // Write JSON missing required fields
-        var incompleteMode = new
-        {
-            id = "incomplete-mode",
-            name = "Incomplete Mode",
-            // Missing description, prompt, tools, category
-        };
+        // Write Agent Card missing required agent field
+        var incompleteAgentCard = @"---
+name: ""Incomplete Mode""
+category: ""test""
+---
 
-        var json = JsonSerializer.Serialize(
-            incompleteMode,
-            new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                WriteIndented = true,
-            }
-        );
-        File.WriteAllText(Path.Combine(incompleteDir, "modes", "incomplete.json"), json);
+# Role
+Incomplete";
+        File.WriteAllText(Path.Combine(incompleteDir, "agents", "incomplete.agent.md"), incompleteAgentCard);
 
         var hostEnvMock = new Mock<IHostEnvironment>();
-        _ = hostEnvMock.Setup(x => x.ContentRootPath).Returns(incompleteDir);
+        _ = hostEnvMock.Setup(x => x.ContentRootPath).Returns(serverDir);
 
         var service = new ModeService(
             _modeStorageMock.Object,

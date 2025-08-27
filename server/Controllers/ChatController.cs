@@ -92,6 +92,38 @@ public class ChatController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<ChatDto>> CreateChat([FromBody] CreateChatRequest request)
     {
+        // If ChatId is provided, this is a continuation of an existing chat
+        if (!string.IsNullOrEmpty(request.ChatId))
+        {
+            // Send message to existing chat  
+            var sendMessageRequest = new Services.SendMessageRequest
+            {
+                ChatId = request.ChatId,
+                UserId = request.UserId,
+                Message = request.Message,
+                ModeId = request.ModeId,
+            };
+            
+            var sendResult = await _chatService.SendMessageAsync(sendMessageRequest);
+            
+            if (!sendResult.Success)
+            {
+                _logger.LogError("Error sending message to chat {ChatId}: {Error}", request.ChatId, sendResult.Error);
+                return StatusCode(500, new { Error = sendResult.Error ?? "Failed to send message" });
+            }
+            
+            // Get the updated chat
+            var chatResult = await _chatService.GetChatAsync(request.ChatId);
+            if (!chatResult.Success)
+            {
+                _logger.LogError("Error retrieving updated chat {ChatId}: {Error}", request.ChatId, chatResult.Error);
+                return StatusCode(500, new { Error = chatResult.Error ?? "Failed to retrieve updated chat" });
+            }
+            
+            return Ok(chatResult.Chat);
+        }
+        
+        // Create new chat
         var createRequest = new Services.CreateChatRequest
         {
             UserId = request.UserId,

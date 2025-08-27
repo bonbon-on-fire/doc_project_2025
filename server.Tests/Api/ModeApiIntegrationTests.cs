@@ -7,7 +7,7 @@ using Xunit;
 // Use fully qualified names to avoid ambiguity
 using CreateChatRequest = AIChat.Server.Controllers.CreateChatRequest;
 using ModesResponse = AIChat.Server.Controllers.ModesResponse;
-using SendMessageRequest = AIChat.Server.Controllers.SendMessageRequest;
+// SendMessageRequest removed - using CreateChatRequest for all chat operations
 
 namespace AIChat.Server.Tests.Api;
 
@@ -41,7 +41,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = $"test-user-{Guid.NewGuid()}";
+        var userId = "user-123"; // Use seeded test user
 
         // First get available modes
         var modesResponse = await client.GetAsync($"/api/mode?userId={userId}");
@@ -85,7 +85,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = $"test-user-{Guid.NewGuid()}";
+        var userId = "user-123"; // Use seeded test user
 
         // Create initial chat with general mode
         var createRequest = new CreateChatRequest(
@@ -101,15 +101,17 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         var chat = await createResponse.Content.ReadFromJsonAsync<ChatDto>(_jsonOptions);
 
         // Switch to a different mode (e.g., writing mode)
-        var continueRequest = new SendMessageRequest
-        {
-            Message = "Now help me write a story",
-            ModeId = "writing", // Switch to writing mode
-        };
+        var continueRequest = new CreateChatRequest(
+            ChatId: chat!.Id,
+            UserId: userId,
+            Message: "Now help me write a story",
+            SystemPrompt: null,
+            ModeId: "writing" // Switch to writing mode
+        );
 
         // Continue chat with new mode using the chat endpoint with ID
         var continueResponse = await client.PostAsJsonAsync(
-            $"/api/chat/{chat!.Id}/messages?userId={userId}",
+            "/api/chat",
             continueRequest,
             _jsonOptions
         );
@@ -126,24 +128,33 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = $"test-user-{Guid.NewGuid()}";
+        var userId = "user-123"; // Use seeded test user
 
         // Step 1: Create custom mode
-        var customMode = new CreateModeRequest
+        var customMode = new
         {
-            Name = $"Custom Test Mode {Guid.NewGuid()}",
-            Description = "A custom mode for integration testing",
-            Prompt = "You are a helpful test assistant",
-            Tools = new[] { "search", "calculator" },
-            DefaultModel = null,
-            Category = "custom",
+            userId,
+            name = $"Custom Test Mode {Guid.NewGuid()}",
+            description = "A custom mode for integration testing",
+            prompt = "You are a helpful test assistant",
+            tools = new[] { "search", "calculator" },
+            defaultModel = (string?)null,
+            category = "custom",
         };
 
         var createModeResponse = await client.PostAsJsonAsync(
-            $"/api/mode?userId={userId}",
+            "/api/mode",
             customMode,
             _jsonOptions
         );
+        
+        // Get error details if the request failed
+        if (!createModeResponse.IsSuccessStatusCode)
+        {
+            var errorContent = await createModeResponse.Content.ReadAsStringAsync();
+            throw new Exception($"Failed to create mode. Status: {createModeResponse.StatusCode}, Error: {errorContent}");
+        }
+        
         _ = createModeResponse.EnsureSuccessStatusCode();
         var createdMode = await createModeResponse.Content.ReadFromJsonAsync<ModeDto>(_jsonOptions);
 
@@ -184,7 +195,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = $"test-user-{Guid.NewGuid()}";
+        var userId = "user-123"; // Use seeded test user
 
         // Try to create chat with non-existent mode
         var createRequest = new CreateChatRequest(
@@ -209,7 +220,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = $"test-user-{Guid.NewGuid()}";
+        var userId = "user-123"; // Use seeded test user
 
         // Create mode with invalid data (empty name)
         var invalidMode = new CreateModeRequest
@@ -237,7 +248,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = $"test-user-{Guid.NewGuid()}";
+        var userId = "user-123"; // Use seeded test user
 
         // Try to update a system mode
         var updateRequest = new UpdateModeRequest
@@ -267,7 +278,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = $"test-user-{Guid.NewGuid()}";
+        var userId = "user-123"; // Use seeded test user
 
         // Try to delete a system mode
         var response = await client.DeleteAsync($"/api/mode/general?userId={userId}");
@@ -287,7 +298,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = $"test-user-{Guid.NewGuid()}";
+        var userId = "user-123"; // Use seeded test user
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         // Act
@@ -306,7 +317,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = $"test-user-{Guid.NewGuid()}";
+        var userId = "user-123"; // Use seeded test user
 
         // Create initial chat
         var createRequest = new CreateChatRequest(
@@ -324,14 +335,16 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         // Measure mode switch time
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-        var continueRequest = new SendMessageRequest
-        {
-            Message = "Continue with different mode",
-            ModeId = "writing",
-        };
+        var continueRequest = new CreateChatRequest(
+            ChatId: chat!.Id,
+            UserId: userId,
+            Message: "Continue with different mode",
+            SystemPrompt: null,
+            ModeId: "writing"
+        );
 
         var continueResponse = await client.PostAsJsonAsync(
-            $"/api/chat/{chat!.Id}/messages?userId={userId}",
+            "/api/chat",
             continueRequest,
             _jsonOptions
         );
@@ -383,7 +396,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = $"test-user-{Guid.NewGuid()}";
+        var userId = "user-123"; // Use seeded test user
 
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");
         var createRequest = new CreateChatRequest(
@@ -419,21 +432,22 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = $"test-user-{Guid.NewGuid()}";
+        var userId = "user-123"; // Use seeded test user
 
         // Create custom mode
-        var customMode = new CreateModeRequest
+        var customMode = new
         {
-            Name = $"Persistent Mode {Guid.NewGuid()}",
-            Description = "Test mode persistence",
-            Prompt = "You are a persistent assistant",
-            Tools = new[] { "search" },
-            DefaultModel = null,
-            Category = "custom",
+            userId,
+            name = $"Persistent Mode {Guid.NewGuid()}",
+            description = "Test mode persistence",
+            prompt = "You are a persistent assistant",
+            tools = new[] { "search" },
+            defaultModel = (string?)null,
+            category = "custom",
         };
 
         var createModeResponse = await client.PostAsJsonAsync(
-            $"/api/mode?userId={userId}",
+            "/api/mode",
             customMode,
             _jsonOptions
         );
