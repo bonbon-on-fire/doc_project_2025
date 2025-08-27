@@ -170,7 +170,10 @@ WHERE Id=$id AND UserId=$userId";
                 (object?)updatedMode.DefaultModel ?? DBNull.Value
             );
             _ = cmd.Parameters.AddWithValue("$category", updatedMode.Category);
-            _ = cmd.Parameters.AddWithValue("$updatedAtUtc", updatedMode.UpdatedAtUtc.ToString("o"));
+            _ = cmd.Parameters.AddWithValue(
+                "$updatedAtUtc",
+                updatedMode.UpdatedAtUtc.ToString("o")
+            );
 
             var rows = await cmd.ExecuteNonQueryAsync(ct);
             if (rows > 0)

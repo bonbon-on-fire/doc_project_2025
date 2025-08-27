@@ -18,7 +18,7 @@ public interface IMcpConfigurationValidator
 public class McpConfigurationValidator(
     IOptions<McpConfiguration> configuration,
     ILogger<McpConfigurationValidator> logger
-    ) : IMcpConfigurationValidator
+) : IMcpConfigurationValidator
 {
     private readonly McpConfiguration _configuration = configuration.Value;
 

@@ -3,7 +3,8 @@ namespace AIChat.Server.Services;
 /// <summary>
 /// Facade for ChatService that provides a simplified API and reduces coupling
 /// </summary>
-public class ChatServiceFacade(IChatService chatService, ILogger<ChatServiceFacade> logger) : IChatServiceFacade
+public class ChatServiceFacade(IChatService chatService, ILogger<ChatServiceFacade> logger)
+    : IChatServiceFacade
 {
     public async Task<ChatResult> CreateChatAsync(CreateChatRequest request)
     {

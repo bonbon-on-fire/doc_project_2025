@@ -19,7 +19,7 @@ public class McpClientManager(
     IOptions<McpConfiguration> configuration,
     IConfiguration appConfiguration,
     ILogger<McpClientManager> logger
-    ) : IMcpClientManager, IAsyncDisposable
+) : IMcpClientManager, IAsyncDisposable
 {
     private readonly McpConfiguration _configuration = configuration.Value;
     private readonly Dictionary<string, IMcpClient> _clients = new();
@@ -49,10 +49,7 @@ public class McpClientManager(
             {
                 if (!serverConfig.Enabled)
                 {
-                    logger.LogInformation(
-                        "Skipping disabled MCP server: {ServerName}",
-                        serverName
-                    );
+                    logger.LogInformation("Skipping disabled MCP server: {ServerName}", serverName);
                     continue;
                 }
 
@@ -126,7 +123,10 @@ public class McpClientManager(
 
         try
         {
-            var client = await McpClientFactory.CreateAsync(transport, cancellationToken: cancellationToken);
+            var client = await McpClientFactory.CreateAsync(
+                transport,
+                cancellationToken: cancellationToken
+            );
 
             _clients[serverName] = client;
             _transports[serverName] = transport;
@@ -155,11 +155,7 @@ public class McpClientManager(
         }
         catch (Exception ex)
         {
-            logger.LogError(
-                ex,
-                "Failed to create MCP client for server: {ServerName}",
-                serverName
-            );
+            logger.LogError(ex, "Failed to create MCP client for server: {ServerName}", serverName);
             if (transport is IDisposable disposableTransport)
             {
                 disposableTransport.Dispose();

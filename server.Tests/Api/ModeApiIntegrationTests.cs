@@ -7,6 +7,7 @@ using Xunit;
 // Use fully qualified names to avoid ambiguity
 using CreateChatRequest = AIChat.Server.Controllers.CreateChatRequest;
 using ModesResponse = AIChat.Server.Controllers.ModesResponse;
+
 // SendMessageRequest removed - using CreateChatRequest for all chat operations
 
 namespace AIChat.Server.Tests.Api;
@@ -147,14 +148,16 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             customMode,
             _jsonOptions
         );
-        
+
         // Get error details if the request failed
         if (!createModeResponse.IsSuccessStatusCode)
         {
             var errorContent = await createModeResponse.Content.ReadAsStringAsync();
-            throw new Exception($"Failed to create mode. Status: {createModeResponse.StatusCode}, Error: {errorContent}");
+            throw new Exception(
+                $"Failed to create mode. Status: {createModeResponse.StatusCode}, Error: {errorContent}"
+            );
         }
-        
+
         _ = createModeResponse.EnsureSuccessStatusCode();
         var createdMode = await createModeResponse.Content.ReadFromJsonAsync<ModeDto>(_jsonOptions);
 

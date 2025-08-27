@@ -8,7 +8,9 @@ public interface ISqliteConnectionFactory
     SqliteConnection? RootConnection { get; }
 }
 
-public sealed class SqliteConnectionFactory(string connectionString, bool keepRootOpen) : ISqliteConnectionFactory, IAsyncDisposable
+public sealed class SqliteConnectionFactory(string connectionString, bool keepRootOpen)
+    : ISqliteConnectionFactory,
+        IAsyncDisposable
 {
     private SqliteConnection? _rootConnection;
 

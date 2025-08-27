@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 // Use fully qualified names to avoid ambiguity
 using CreateChatRequest = AIChat.Server.Controllers.CreateChatRequest;
+
 // SendMessageRequest removed - using CreateChatRequest for all chat operations
 
 namespace AIChat.Server.Tests.Api;
@@ -111,7 +112,16 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
 
         var createModeResponse = await client.PostAsJsonAsync(
             "/api/mode",
-            new { userId, name = customMode.Name, description = customMode.Description, prompt = customMode.Prompt, tools = customMode.Tools, defaultModel = customMode.DefaultModel, category = customMode.Category },
+            new
+            {
+                userId,
+                name = customMode.Name,
+                description = customMode.Description,
+                prompt = customMode.Prompt,
+                tools = customMode.Tools,
+                defaultModel = customMode.DefaultModel,
+                category = customMode.Category,
+            },
             _jsonOptions
         );
         _ = createModeResponse.EnsureSuccessStatusCode();
@@ -225,10 +235,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             ModeId: "writing"
         );
 
-        using var request2 = new HttpRequestMessage(
-            HttpMethod.Post,
-            "/api/chat/stream-sse"
-        );
+        using var request2 = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");
         request2.Content = JsonContent.Create(continueRequest, options: _jsonOptions);
 
         // Act
@@ -391,10 +398,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
                 .Contain(e => e.EventType == "init", $"Mode {mode} should have init event");
             _ = events
                 .Should()
-                .Contain(
-                    e => e.EventType == "complete",
-                    $"Mode {mode} should have complete event"
-                );
+                .Contain(e => e.EventType == "complete", $"Mode {mode} should have complete event");
         }
     }
 

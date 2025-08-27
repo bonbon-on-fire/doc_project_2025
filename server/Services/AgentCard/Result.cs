@@ -47,7 +47,9 @@ namespace AIChat.Server.Services.AgentCards
         /// </summary>
         public static Result<T> Success(T value)
         {
-            return value == null ? throw new ArgumentNullException(nameof(value)) : new Result<T>(value, null, true);
+            return value == null
+                ? throw new ArgumentNullException(nameof(value))
+                : new Result<T>(value, null, true);
         }
 
         /// <summary>
@@ -65,10 +67,8 @@ namespace AIChat.Server.Services.AgentCards
         /// </summary>
         public Result<TNew> Map<TNew>(Func<T, TNew> mapper)
         {
-            return mapper == null
-                ? throw new ArgumentNullException(nameof(mapper))
-                : _isSuccess
-                ? Result<TNew>.Success(mapper(_value!))
+            return mapper == null ? throw new ArgumentNullException(nameof(mapper))
+                : _isSuccess ? Result<TNew>.Success(mapper(_value!))
                 : Result<TNew>.Failure(_error!);
         }
 
@@ -77,9 +77,9 @@ namespace AIChat.Server.Services.AgentCards
         /// </summary>
         public Result<TNew> Bind<TNew>(Func<T, Result<TNew>> mapper)
         {
-            return mapper == null
-                ? throw new ArgumentNullException(nameof(mapper))
-                : _isSuccess ? mapper(_value!) : Result<TNew>.Failure(_error!);
+            return mapper == null ? throw new ArgumentNullException(nameof(mapper))
+                : _isSuccess ? mapper(_value!)
+                : Result<TNew>.Failure(_error!);
         }
 
         /// <summary>

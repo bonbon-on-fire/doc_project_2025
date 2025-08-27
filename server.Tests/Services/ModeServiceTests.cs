@@ -19,6 +19,8 @@ public class ModeServiceTests : IDisposable
     private static readonly string[] expected = new[] { "tool1", "tool2" };
     private static readonly string[] expectedArray = new[] { "tool3", "tool4" };
     private static readonly string[] unexpected = new[] { "tool3", "tool4" };
+    private static readonly string[] stringArray = new[] { "tool1", "tool2" };
+    private static readonly string[] stringArray0 = new[] { "*" };
 
     public ModeServiceTests()
     {
@@ -47,22 +49,34 @@ public class ModeServiceTests : IDisposable
 
     private void CreateTestSystemMode()
     {
-        CreateAgentCard(_tempDir, "test-system", "Test System Mode", "test", 
-            "You are a test assistant", new[] { "tool1", "tool2" });
+        CreateAgentCard(
+            _tempDir,
+            "test-system",
+            "Test System Mode",
+            "test",
+            "You are a test assistant",
+            stringArray
+        );
     }
 
-    private void CreateAgentCard(string basePath, string agentId, string name, string category, 
-        string prompt, string[] tools, string? defaultModel = null)
+    private static void CreateAgentCard(
+        string basePath,
+        string agentId,
+        string name,
+        string category,
+        string prompt,
+        string[] tools,
+        string? defaultModel = null
+    )
     {
-        var toolsList = tools.Length > 0 
-            ? string.Join(", ", tools.Select(t => $"\"{t}\""))
+        var toolsList = tools.Length > 0 ? string.Join(", ", tools.Select(t => $"\"{t}\"")) : "";
+
+        var modelLine = !string.IsNullOrEmpty(defaultModel)
+            ? $"\nmodel_hints: [\"{defaultModel}\"]"
             : "";
-            
-        var modelLine = !string.IsNullOrEmpty(defaultModel) 
-            ? $"\nmodel_hints: [\"{defaultModel}\"]" 
-            : "";
-            
-        var agentCardContent = $@"---
+
+        var agentCardContent =
+            $@"---
 agent: ""{agentId}""
 name: ""{name}""
 version: ""1.0.0""
@@ -80,7 +94,7 @@ capabilities:
         {
             Directory.CreateDirectory(agentsPath);
         }
-        
+
         File.WriteAllText(Path.Combine(agentsPath, $"{agentId}.agent.md"), agentCardContent);
     }
 
@@ -276,7 +290,11 @@ capabilities:
             .ReturnsAsync((true, null, updatedMode));
 
         // Act
-        var (Success, Error, Mode) = await _service.UpdateCustomModeAsync(modeId, updateRequest, userId);
+        var (Success, Error, Mode) = await _service.UpdateCustomModeAsync(
+            modeId,
+            updateRequest,
+            userId
+        );
 
         // Assert
         _ = Success.Should().BeTrue();
@@ -353,7 +371,11 @@ capabilities:
         var availableTools = new[] { "tool1", "tool2", "tool3", "tool4" };
 
         // Act (system mode has tool1, tool2)
-        var (Success, Error, FilteredTools) = await _service.FilterToolsByModeAsync(modeId, userId, availableTools);
+        var (Success, Error, FilteredTools) = await _service.FilterToolsByModeAsync(
+            modeId,
+            userId,
+            availableTools
+        );
 
         // Assert
         _ = Success.Should().BeTrue();
@@ -369,11 +391,21 @@ capabilities:
         var availableTools = new[] { "tool1", "tool2", "tool3", "tool4" };
 
         // Create system mode with wildcard
-        CreateAgentCard(_tempDir, "wildcard-mode", "Wildcard Mode", "test", 
-            "You have all tools", new[] { "*" });
+        CreateAgentCard(
+            _tempDir,
+            "wildcard-mode",
+            "Wildcard Mode",
+            "test",
+            "You have all tools",
+            stringArray0
+        );
 
         // Act
-        var (Success, Error, FilteredTools) = await _service.FilterToolsByModeAsync("wildcard-mode", userId, availableTools);
+        var (Success, Error, FilteredTools) = await _service.FilterToolsByModeAsync(
+            "wildcard-mode",
+            userId,
+            availableTools
+        );
 
         // Assert
         _ = Success.Should().BeTrue();
@@ -388,7 +420,10 @@ capabilities:
         var modeId = "test-system";
 
         // Act
-        var (Success, Error, SystemPrompt) = await _service.GetModeSystemPromptAsync(modeId, userId);
+        var (Success, Error, SystemPrompt) = await _service.GetModeSystemPromptAsync(
+            modeId,
+            userId
+        );
 
         // Assert
         _ = Success.Should().BeTrue();
@@ -420,7 +455,10 @@ capabilities:
             .ReturnsAsync((true, null, customMode));
 
         // Act
-        var (Success, Error, DefaultModel) = await _service.GetModeDefaultModelAsync(modeId, userId);
+        var (Success, Error, DefaultModel) = await _service.GetModeDefaultModelAsync(
+            modeId,
+            userId
+        );
 
         // Assert
         _ = Success.Should().BeTrue();
@@ -446,10 +484,16 @@ capabilities:
         // Modify the system mode file
         var systemModeFile = Path.Combine(_tempDir, "agents", "test-system.agent.md");
         var originalContent = File.ReadAllText(systemModeFile);
-        
+
         // Write modified agent card
-        CreateAgentCard(_tempDir, "test-system", "Modified System Mode", "test",
-            "You are a modified test assistant", new[] { "tool1", "tool2" });
+        CreateAgentCard(
+            _tempDir,
+            "test-system",
+            "Modified System Mode",
+            "test",
+            "You are a modified test assistant",
+            stringArray
+        );
 
         // Act - Second call (should use cached version)
         var (Success, Error, Modes) = await _service.GetAllModesAsync(userId);
@@ -581,14 +625,18 @@ Test"
         _ = Directory.CreateDirectory(Path.Combine(incompleteDir, "agents"));
 
         // Write Agent Card missing required agent field
-        var incompleteAgentCard = @"---
+        var incompleteAgentCard =
+            @"---
 name: ""Incomplete Mode""
 category: ""test""
 ---
 
 # Role
 Incomplete";
-        File.WriteAllText(Path.Combine(incompleteDir, "agents", "incomplete.agent.md"), incompleteAgentCard);
+        File.WriteAllText(
+            Path.Combine(incompleteDir, "agents", "incomplete.agent.md"),
+            incompleteAgentCard
+        );
 
         var hostEnvMock = new Mock<IHostEnvironment>();
         _ = hostEnvMock.Setup(x => x.ContentRootPath).Returns(serverDir);
@@ -777,7 +825,11 @@ Incomplete";
         };
 
         // Act
-        var (Success, Error, Mode) = await _service.UpdateCustomModeAsync(systemModeId, updateRequest, userId);
+        var (Success, Error, Mode) = await _service.UpdateCustomModeAsync(
+            systemModeId,
+            updateRequest,
+            userId
+        );
 
         // Assert
         _ = Success.Should().BeFalse();
@@ -831,7 +883,11 @@ Incomplete";
         var emptyTools = Array.Empty<string>();
 
         // Act
-        var (Success, Error, FilteredTools) = await _service.FilterToolsByModeAsync(modeId, userId, emptyTools);
+        var (Success, Error, FilteredTools) = await _service.FilterToolsByModeAsync(
+            modeId,
+            userId,
+            emptyTools
+        );
 
         // Assert
         _ = Success.Should().BeTrue();
@@ -852,7 +908,10 @@ Incomplete";
             .ReturnsAsync((false, "NotFound", null));
 
         // Act
-        var (Success, Error, SystemPrompt) = await _service.GetModeSystemPromptAsync(nonExistentModeId, userId);
+        var (Success, Error, SystemPrompt) = await _service.GetModeSystemPromptAsync(
+            nonExistentModeId,
+            userId
+        );
 
         // Assert
         _ = Success.Should().BeTrue();

@@ -20,7 +20,7 @@ public class ChatService(
     ITaskManagerService taskManagerService,
     IToolingService toolingService,
     IModeService modeService
-    ) : IChatService, IToolResultCallback
+) : IChatService, IToolResultCallback
 {
     private readonly AiOptions _aiOptions = aiOptions.Value;
 
@@ -369,7 +369,9 @@ public class ChatService(
     {
         try
         {
-            var (Success, Error, NextSequence) = await storage.AllocateSequenceAsync(request.ChatId);
+            var (Success, Error, NextSequence) = await storage.AllocateSequenceAsync(
+                request.ChatId
+            );
             if (!Success)
             {
                 return new MessageResult { Success = false, Error = Error };
@@ -594,8 +596,12 @@ public class ChatService(
         var init = await PrepareStreamChatAsync(request);
         var chatId = init.ChatId;
 
-        var (Success, Error, Messages) = await storage.ListChatMessagesOrderedAsync(chatId, cancellationToken);
-        var history = Messages.Select(m =>
+        var (Success, Error, Messages) = await storage.ListChatMessagesOrderedAsync(
+            chatId,
+            cancellationToken
+        );
+        var history = Messages
+            .Select(m =>
                 JsonSerializer.Deserialize<MessageDto>(
                     m.MessageJson,
                     MessageSerializationOptions.Default
@@ -1568,7 +1574,10 @@ public class ChatService(
         // Try to get model preference from mode first
         if (!string.IsNullOrEmpty(modeId) && !string.IsNullOrEmpty(userId))
         {
-            var (Success, Error, DefaultModel) = await modeService.GetModeDefaultModelAsync(modeId, userId);
+            var (Success, Error, DefaultModel) = await modeService.GetModeDefaultModelAsync(
+                modeId,
+                userId
+            );
             if (Success && !string.IsNullOrEmpty(DefaultModel))
             {
                 logger.LogInformation(

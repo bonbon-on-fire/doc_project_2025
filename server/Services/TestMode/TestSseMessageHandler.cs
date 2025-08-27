@@ -32,8 +32,7 @@ public sealed class TestSseMessageHandler : HttpMessageHandler
                 .CreateLogger<TestSseMessageHandler>(),
             null,
             null
-        )
-    { }
+        ) { }
 
     /// <summary>
     /// Initializes a new instance with dependency injection.

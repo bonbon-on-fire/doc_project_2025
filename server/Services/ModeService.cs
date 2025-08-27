@@ -159,10 +159,8 @@ public sealed class ModeService : IModeService
             {
                 var tools = string.IsNullOrEmpty(Mode.Tools)
                     ? new List<string>()
-                    : JsonSerializer.Deserialize<List<string>>(
-                        Mode.Tools,
-                        _jsonOptions
-                    ) ?? new List<string>();
+                    : JsonSerializer.Deserialize<List<string>>(Mode.Tools, _jsonOptions)
+                        ?? new List<string>();
 
                 var dto = new ModeDto
                 {
@@ -285,7 +283,12 @@ public sealed class ModeService : IModeService
                 UpdatedAtUtc = DateTime.UtcNow,
             };
 
-            var (Success, Error, Mode) = await _modeStorage.UpdateModeAsync(modeId, userId, updatedRecord, ct);
+            var (Success, Error, Mode) = await _modeStorage.UpdateModeAsync(
+                modeId,
+                userId,
+                updatedRecord,
+                ct
+            );
             if (!Success || Mode == null)
             {
                 return (false, Error, null);
@@ -428,9 +431,7 @@ public sealed class ModeService : IModeService
                 return (true, null, null);
             }
 
-            var prompt = string.IsNullOrWhiteSpace(Mode.Prompt)
-                ? null
-                : Mode.Prompt;
+            var prompt = string.IsNullOrWhiteSpace(Mode.Prompt) ? null : Mode.Prompt;
             return (true, null, prompt);
         }
         catch (Exception ex)
@@ -484,7 +485,7 @@ public sealed class ModeService : IModeService
             return;
         }
 
-        await _loadSemaphore.WaitAsync(ct);
+        await _loadSemaphore.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             if (_systemModesLoaded)
@@ -492,7 +493,7 @@ public sealed class ModeService : IModeService
                 return;
             }
 
-            await LoadSystemModesAsync(ct);
+            await LoadSystemModesAsync(ct).ConfigureAwait(false);
             _systemModesLoaded = true;
         }
         finally
@@ -504,14 +505,19 @@ public sealed class ModeService : IModeService
     /// <summary>
     /// Loads system modes from Agent Card files in the agents directory.
     /// </summary>
-    private async Task LoadSystemModesAsync(CancellationToken ct = default)
+    private Task LoadSystemModesAsync(CancellationToken ct = default)
     {
-        try
+        return Task.Run(() =>
         {
+            try
+            {
             // Load from agents directory (Agent Card files)
             // Look in solution root, not server directory
             var solutionRoot = Path.GetDirectoryName(_hostEnvironment.ContentRootPath);
-            var agentsPath = Path.Combine(solutionRoot ?? _hostEnvironment.ContentRootPath, "agents");
+            var agentsPath = Path.Combine(
+                solutionRoot ?? _hostEnvironment.ContentRootPath,
+                "agents"
+            );
 
             if (!Directory.Exists(agentsPath))
             {
@@ -579,11 +585,12 @@ public sealed class ModeService : IModeService
             }
 
             _logger.LogInformation("Successfully loaded {Count} system modes", _systemModes.Count);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error loading system modes from directory");
-        }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading system modes from directory");
+            }
+        }, ct);
     }
 }
 

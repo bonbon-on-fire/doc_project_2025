@@ -6,12 +6,13 @@ using Xunit;
 
 namespace AIChat.Server.Tests.Api;
 
-public class ChatApiTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
+public class ChatApiTests(WebApplicationFactory<Program> factory)
+    : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly WebApplicationFactory<Program> _factory = factory.WithWebHostBuilder(builder =>
-        {
-            _ = builder.UseSetting("ASPNETCORE_ENVIRONMENT", "Test");
-        });
+    {
+        _ = builder.UseSetting("ASPNETCORE_ENVIRONMENT", "Test");
+    });
 
     [Fact]
     public async Task Create_And_Get_Chat_Works()

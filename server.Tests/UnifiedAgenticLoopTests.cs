@@ -20,7 +20,8 @@ namespace AIChat.Server.Tests;
 /// </summary>
 public class UnifiedAgenticLoopTests(ITestOutputHelper output)
 {
-    private readonly ILogger<TestSseMessageHandler> _logger = new XunitLogger<TestSseMessageHandler>(output);
+    private readonly ILogger<TestSseMessageHandler> _logger =
+        new XunitLogger<TestSseMessageHandler>(output);
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -868,9 +869,7 @@ Get the weather for San Francisco";
                 Messages = replyMessages.ToImmutableList(),
             };
             messages.Add(aggregatedMessage);
-            output.WriteLine(
-                $"Created CompositeMessage with {replyMessages.Count} inner messages"
-            );
+            output.WriteLine($"Created CompositeMessage with {replyMessages.Count} inner messages");
         }
         else if (replyMessages.Count == 1)
         {
@@ -908,7 +907,9 @@ Get the weather for San Francisco";
             .BeGreaterThan(1, "CompositeMessage should contain multiple message types");
 
         // Verify conversation history now contains the CompositeMessage
-        _ = messages.Count.Should().Be(2, "Should have user message and composite assistant message");
+        _ = messages
+            .Count.Should()
+            .Be(2, "Should have user message and composite assistant message");
         _ = messages[1]
             .Should()
             .BeOfType<CompositeMessage>("Second message should be CompositeMessage");
@@ -1231,7 +1232,9 @@ Get the weather for San Francisco";
 
         // Verify the CompositeMessage in history is structured correctly
         var historyComposite = messages[2] as CompositeMessage;
-        _ = historyComposite.Should().NotBeNull("Second assistant message should be CompositeMessage");
+        _ = historyComposite
+            .Should()
+            .NotBeNull("Second assistant message should be CompositeMessage");
         _ = historyComposite!
             .Messages.Should()
             .HaveCount(3, "CompositeMessage should contain 3 inner messages");
@@ -1323,9 +1326,7 @@ Get the weather for San Francisco";
                 Role = Role.Assistant,
                 Messages = replyMessages.ToImmutableList(),
             };
-            output.WriteLine(
-                $"Created CompositeMessage with {replyMessages.Count} inner messages"
-            );
+            output.WriteLine($"Created CompositeMessage with {replyMessages.Count} inner messages");
         }
         else if (replyMessages.Count == 1)
         {
@@ -1492,7 +1493,7 @@ Get the weather for San Francisco";
 
         // Act - Should fallback gracefully instead of throwing
         var res = await invoker.SendAsync(req, default);
-        
+
         // Assert - Should return a valid response (fallback behavior)
         _ = res.StatusCode.Should().Be(HttpStatusCode.OK);
         var text = await res.Content.ReadAsStringAsync();

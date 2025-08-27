@@ -14,9 +14,10 @@ namespace AIChat.Server.Services;
 public class ImprovedTaskManagerService(
     ITaskStorage taskStorage,
     ILogger<ImprovedTaskManagerService> logger
-    ) : ITaskManagerService
+) : ITaskManagerService
 {
-    private readonly ConcurrentDictionary<string, CachedTaskManager> _taskManagers = new ConcurrentDictionary<string, CachedTaskManager>();
+    private readonly ConcurrentDictionary<string, CachedTaskManager> _taskManagers =
+        new ConcurrentDictionary<string, CachedTaskManager>();
     private readonly SemaphoreSlim _saveLock = new(1, 1);
 
     /// <summary>

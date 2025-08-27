@@ -5,6 +5,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <EnableDefaultContentItems>false</EnableDefaultContentItems>
     <UserSecretsId>16d0d730-3c71-4ed2-9e03-b9c8a40204bc</UserSecretsId>
+    <!-- Treat warnings as errors to maintain code quality -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningLevel>5</WarningLevel>
+    <!-- Optionally suppress specific warnings that are from external dependencies -->
+    <NoWarn>CS0618</NoWarn> <!-- Suppress obsolete warnings from submodules -->
   </PropertyGroup>
   <!-- Standard package references -->
   <ItemGroup>

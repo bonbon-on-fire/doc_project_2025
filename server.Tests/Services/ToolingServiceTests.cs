@@ -40,7 +40,7 @@ public class ToolingServiceTests
         var mockFunctionCallLogger = new Mock<ILogger<FunctionCallMiddleware>>();
         var mockWeatherLogger = new Mock<ILogger<WeatherFunction>>();
         var mockMcpClientLogger = new Mock<ILogger<McpClientFunctionProvider>>();
-        
+
         // Mock GetService to return appropriate loggers (GetRequiredService uses GetService internally)
         _ = _mockServiceProvider
             .Setup(x => x.GetService(typeof(ILogger<FunctionCallMiddleware>)))
@@ -51,7 +51,7 @@ public class ToolingServiceTests
         _ = _mockServiceProvider
             .Setup(x => x.GetService(typeof(ILogger<McpClientFunctionProvider>)))
             .Returns(mockMcpClientLogger.Object);
-        
+
         // Setup TaskManagerService to return a valid TaskManager
         var taskManager = new AchieveAi.LmDotnetTools.Misc.Utils.TaskManager();
         _ = _mockTaskManagerService
@@ -193,8 +193,7 @@ public class ToolingServiceTests
                     It.Is<LogLevel>(l => l == LogLevel.Information),
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>(
-                        (v, t) =>
-                            v.ToString()!.Contains("Function filtering enabled")
+                        (v, t) => v.ToString()!.Contains("Function filtering enabled")
                     ),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()
@@ -448,14 +447,15 @@ public class ToolingServiceTests
         );
 
         // Act & Assert
-        _ = await Assert.ThrowsAsync<OperationCanceledException>(() =>
-            toolingService.CreateChatSpecificFunctionCallMiddlewareAsync(
-                "test-chat-id",
-                null,
-                null,
-                null,
-                cts.Token
-            )
+        _ = await Assert.ThrowsAsync<OperationCanceledException>(
+            () =>
+                toolingService.CreateChatSpecificFunctionCallMiddlewareAsync(
+                    "test-chat-id",
+                    null,
+                    null,
+                    null,
+                    cts.Token
+                )
         );
     }
 

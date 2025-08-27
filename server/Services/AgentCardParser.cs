@@ -22,9 +22,9 @@ namespace AIChat.Server.Services
         private static readonly Regex SectionRegex = MyRegex1();
 
         private readonly IDeserializer _yamlDeserializer = new DeserializerBuilder()
-                .WithNamingConvention(UnderscoredNamingConvention.Instance)
-                .IgnoreUnmatchedProperties()
-                .Build();
+            .WithNamingConvention(UnderscoredNamingConvention.Instance)
+            .IgnoreUnmatchedProperties()
+            .Build();
         private readonly SectionHandlerRegistry _sectionRegistry = new SectionHandlerRegistry();
 
         /// <summary>
@@ -85,7 +85,9 @@ namespace AIChat.Server.Services
                 return Result.Failure("Agent card content cannot be empty");
             }
 
-            return !FrontMatterRegex.IsMatch(content) ? Result.Failure("Agent card must have YAML front matter") : Result.Success();
+            return !FrontMatterRegex.IsMatch(content)
+                ? Result.Failure("Agent card must have YAML front matter")
+                : Result.Success();
         }
 
         /// <summary>
@@ -258,9 +260,16 @@ namespace AIChat.Server.Services
             }
         }
 
-        [GeneratedRegex(@"^---\s*\n(.*?)\n---\s*\n", RegexOptions.Compiled | RegexOptions.Singleline)]
+        [GeneratedRegex(
+            @"^---\s*\n(.*?)\n---\s*\n",
+            RegexOptions.Compiled | RegexOptions.Singleline
+        )]
         private static partial Regex MyRegex();
-        [GeneratedRegex(@"^#\s+([A-Z\s]+)\s*\n(.*?)(?=^#\s+|\z)", RegexOptions.Multiline | RegexOptions.Compiled | RegexOptions.Singleline)]
+
+        [GeneratedRegex(
+            @"^#\s+([A-Z\s]+)\s*\n(.*?)(?=^#\s+|\z)",
+            RegexOptions.Multiline | RegexOptions.Compiled | RegexOptions.Singleline
+        )]
         private static partial Regex MyRegex1();
     }
 
@@ -299,7 +308,12 @@ namespace AIChat.Server.Services
         /// </summary>
         public JsonDocument? OutputSchema { get; set; }
 
-        private static readonly string[] sourceArray = new[] { "ROLE", "OBJECTIVE", "OUTPUT SCHEMA" };
+        private static readonly string[] sourceArray = new[]
+        {
+            "ROLE",
+            "OBJECTIVE",
+            "OUTPUT SCHEMA",
+        };
 
         /// <summary>
         /// Converts the agent card to a ModeDto object for compatibility with the mode system.
@@ -345,12 +359,7 @@ namespace AIChat.Server.Services
             foreach (var section in Sections)
             {
                 // Skip sections already added or schema sections
-                if (
-                    !sourceArray.Contains(
-                        section.Key,
-                        StringComparer.OrdinalIgnoreCase
-                    )
-                )
+                if (!sourceArray.Contains(section.Key, StringComparer.OrdinalIgnoreCase))
                 {
                     promptParts.Add($"{section.Key}:\n{section.Value}");
                 }

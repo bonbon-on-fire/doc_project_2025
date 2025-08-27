@@ -14,7 +14,7 @@ public sealed class InstructionPlan(
     string idMessage,
     int? reasoningLength,
     List<InstructionMessage> messages
-    )
+)
 {
     public string IdMessage { get; } = idMessage;
     public int? ReasoningLength { get; } = reasoningLength;

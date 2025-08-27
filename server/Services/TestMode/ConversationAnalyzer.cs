@@ -8,10 +8,12 @@ namespace AIChat.Server.Services.TestMode;
 public sealed class ConversationAnalyzer(
     ILogger<ConversationAnalyzer> logger,
     IInstructionChainParser chainParser
-    ) : IConversationAnalyzer
+) : IConversationAnalyzer
 {
-    private readonly ILogger<ConversationAnalyzer> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    private readonly IInstructionChainParser _chainParser = chainParser ?? throw new ArgumentNullException(nameof(chainParser));
+    private readonly ILogger<ConversationAnalyzer> _logger =
+        logger ?? throw new ArgumentNullException(nameof(logger));
+    private readonly IInstructionChainParser _chainParser =
+        chainParser ?? throw new ArgumentNullException(nameof(chainParser));
 
     /// <inheritdoc />
     public (InstructionPlan? plan, int assistantResponseCount) AnalyzeConversation(JsonElement root)
@@ -179,7 +181,10 @@ public sealed class ConversationAnalyzer(
         return (chain, chainMessageIndex);
     }
 
-    private static int CountAssistantResponsesAfterChain(JsonElement messages, int chainMessageIndex)
+    private static int CountAssistantResponsesAfterChain(
+        JsonElement messages,
+        int chainMessageIndex
+    )
     {
         var messageArray = messages.EnumerateArray().ToList();
         int assistantCount = 0;

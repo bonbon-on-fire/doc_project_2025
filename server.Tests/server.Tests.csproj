@@ -4,6 +4,11 @@
     <IsPackable>false</IsPackable>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Treat warnings as errors to maintain code quality -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningLevel>5</WarningLevel>
+    <!-- Optionally suppress specific warnings that are from external dependencies -->
+    <NoWarn>CS0618;CS8602;CS8604;CS8620</NoWarn> <!-- Suppress obsolete warnings from submodules and nullable reference warnings temporarily -->
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />

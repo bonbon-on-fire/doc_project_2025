@@ -3,6 +3,7 @@
 
 <!-- AI: DO NOT MODIFY THIS SECTION -->
 ## MANDATORY: Analyzer Requirements
+
 - **WHITESPACE**: Eliminate unnecessary whitespace
 - **THIS KEYWORD**: Always use `this.variable` and `this.method` when possible
 - **COLLECTIONS**: Always use trailing commas in collections
@@ -19,6 +20,7 @@
 ## ROSLYN ANALYSIS
 <!-- Static analysis and code style enforcement configuration -->
 ### REQUIRED: Roslyn Analyzer Configuration
+
 - **ANALYZER ENABLEMENT**: All projects must use Roslyn Analyzers (EnableRoslynAnalyzers=true)
 - **PACKAGES.CONFIG EXCLUSION**: Roslyn Analyzers are automatically disabled for projects with packages.config files
 - **NOTARGETS SDK EXCLUSION**: Roslyn Analyzers are automatically disabled for projects using Microsoft.NoTargets.Sdk
@@ -33,23 +35,28 @@
 <!-- StyleCop static analysis rules for consistent code formatting and structure -->
 
 ### REQUIRED: Indentation Standards
+
 - **INDENTATION SIZE**: Use 4 spaces for indentation (default indentation size)
 - **TAB WIDTH**: Use 4 spaces for tab width
 - **SPACES ONLY**: Always use spaces instead of tabs for indentation
 
 ### MANDATORY: Spacing Rules
+
 - **CONSISTENCY**: Follow all StyleCop spacing requirements for consistent code formatting
 
 ### REQUIRED: Readability Rules
+
 - **TYPE ALIASES**: Use built-in type aliases (e.g., use `int` instead of `Int32`) for better readability and consistency with existing codebase
 
 ### MANDATORY: Ordering Rules
+
 - **ELEMENT ORDER**: Order elements within a document by: kind, accessibility, constant, static, readonly
 - **USING DIRECTIVES**: Always place System using directives first before other using directives
 - **NAMESPACE PLACEMENT**: Place using directives inside the namespace definition
 - **BLANK LINES**: Allow blank lines between using groups (optional but permitted)
 
 ### REQUIRED: Naming Rules
+
 - **FORBIDDEN**: Never use Hungarian notation prefixes
 - **TUPLE NAMES**: Use PascalCase for tuple element names
 - **INFERRED TUPLES**: Do not include inferred tuple element names in analysis by default
@@ -57,16 +64,19 @@
 - **LOWERCASE COMPONENTS**: Allow specific namespace components that begin with lowercase letters when configured
 
 ### REQUIRED: Maintainability Rules
+
 - **FILE SEPARATION**: Place classes in separate files according to the class name
 - **TYPE ORGANIZATION**: Each top-level type (class, interface, struct, delegate, enum) should be in its own file when it's a class
 - **GROUPING ALLOWANCE**: By default, only classes require separate files; interfaces, structs, delegates, and enums can be grouped
 
 ### PREFERRED: Layout Rules
+
 - **FILE ENDINGS**: Allow files to end with a single newline character (but not required)
 - **USING STATEMENTS**: Allow consecutive using statements without braces
 - **LOOP FORMATTING**: Do not place 'while' expression of a 'do'/'while' loop on the same line as the closing brace
 
 ### MANDATORY: Documentation Rules
+
 - **PUBLIC DOCUMENTATION**: Document all publicly-exposed types and members
 - **INTERNAL DOCUMENTATION**: Document all internally-exposed types and members
 - **PRIVATE ELEMENTS**: Do not require documentation for private elements by default
@@ -85,6 +95,7 @@
 <!-- Additional coding style rules that complement StyleCop -->
 
 ### REQUIRED: Expression Simplification
+
 - **CONDITION**: When writing expressions and declarations
 - **SIMPLIFIED NEW**: Use simplified new expressions when possible
 - **PARAMETER FORMATTING**: When parameters are nested, put each nested parameter on a separate line and indent the nested parameters
@@ -125,6 +136,7 @@ public class OrderService
 ```
 
 ### REQUIRED: Property and Constant Patterns
+
 - **CONDITION**: When declaring properties and constants
 - **INIT PROPERTIES**: If using `init` on a property, also use `required`
 - **CONSTANTS**: Use `const` instead of `readonly static` when possible

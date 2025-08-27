@@ -197,7 +197,10 @@ ON CONFLICT(Email) DO NOTHING;";
         _ = cmd.Parameters.AddWithValue("$name", name);
         _ = cmd.Parameters.AddWithValue("$provider", provider);
         _ = cmd.Parameters.AddWithValue("$providerUserId", (object?)providerUserId ?? DBNull.Value);
-        _ = cmd.Parameters.AddWithValue("$profileImageUrl", (object?)profileImageUrl ?? DBNull.Value);
+        _ = cmd.Parameters.AddWithValue(
+            "$profileImageUrl",
+            (object?)profileImageUrl ?? DBNull.Value
+        );
         _ = cmd.Parameters.AddWithValue("$createdAt", createdAtUtc.ToString("o"));
         _ = cmd.Parameters.AddWithValue("$updatedAt", createdAtUtc.ToString("o"));
         _ = await cmd.ExecuteNonQueryAsync(ct);

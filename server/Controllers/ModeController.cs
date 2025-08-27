@@ -11,9 +11,9 @@ namespace AIChat.Server.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-public class ModeController(IModeService modeService, ILogger<ModeController> logger) : ControllerBase
+public class ModeController(IModeService modeService, ILogger<ModeController> logger)
+    : ControllerBase
 {
-
     /// <summary>
     /// Get all available modes for a user, including system modes and user's custom modes.
     /// </summary>
@@ -31,19 +31,11 @@ public class ModeController(IModeService modeService, ILogger<ModeController> lo
 
         if (!Success)
         {
-            logger.LogError(
-                "Error retrieving modes for user {UserId}: {Error}",
-                userId,
-                Error
-            );
+            logger.LogError("Error retrieving modes for user {UserId}: {Error}", userId, Error);
             return StatusCode(500, new { Error = Error ?? "Failed to retrieve modes" });
         }
 
-        var response = new ModesResponse
-        {
-            Modes = Modes.ToList(),
-            Count = Modes.Count,
-        };
+        var response = new ModesResponse { Modes = Modes.ToList(), Count = Modes.Count };
 
         return Ok(response);
     }
@@ -125,7 +117,10 @@ public class ModeController(IModeService modeService, ILogger<ModeController> lo
             Category = request.Category,
         };
 
-        var (Success, Error, Mode) = await modeService.CreateCustomModeAsync(serviceRequest, request.UserId);
+        var (Success, Error, Mode) = await modeService.CreateCustomModeAsync(
+            serviceRequest,
+            request.UserId
+        );
 
         if (!Success)
         {
@@ -195,7 +190,11 @@ public class ModeController(IModeService modeService, ILogger<ModeController> lo
             Category = request.Category,
         };
 
-        var (Success, Error, Mode) = await modeService.UpdateCustomModeAsync(id, serviceRequest, request.UserId);
+        var (Success, Error, Mode) = await modeService.UpdateCustomModeAsync(
+            id,
+            serviceRequest,
+            request.UserId
+        );
 
         if (!Success)
         {

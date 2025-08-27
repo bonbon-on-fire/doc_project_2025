@@ -19,7 +19,7 @@ public class ToolingService(
     IModeService modeService,
     IOptions<McpConfiguration> mcpConfiguration,
     ILogger<ToolingService> logger
-    ) : IToolingService
+) : IToolingService
 {
     private readonly IMcpClientManager _mcpClientManager = mcpClientManager;
 
@@ -134,7 +134,10 @@ public class ToolingService(
             logger.LogInformation("Added WeatherFunction provider to registry");
 
             // Get or create TaskManager for this specific chat
-            var taskManager = await taskManagerService.GetTaskManagerAsync(chatId, cancellationToken);
+            var taskManager = await taskManagerService.GetTaskManagerAsync(
+                chatId,
+                cancellationToken
+            );
             _ = registry.AddFunctionsFromObject(taskManager, "TaskManager");
             logger.LogInformation("Added TaskManager functions for chat {ChatId}", chatId);
 
@@ -150,8 +153,14 @@ public class ToolingService(
 
                     // Note: Filtering is now handled at the FunctionRegistry level for ALL providers
                     // We pass null for the filter configs here since they're already configured in the registry
-                    _ = await registry.AddMcpClientsAsync(mcpClients, null, null, "McpServers", mcpLogger
-, cancellationToken: cancellationToken);
+                    _ = await registry.AddMcpClientsAsync(
+                        mcpClients,
+                        null,
+                        null,
+                        "McpServers",
+                        mcpLogger,
+                        cancellationToken: cancellationToken
+                    );
 
                     logger.LogInformation(
                         "Added {Count} MCP clients to function registry",
@@ -179,8 +188,12 @@ public class ToolingService(
                 }
 
                 var availableToolNames = allDescriptors.Select(d => d.Contract.Name).ToList();
-                var (Success, Error, FilteredTools) = await modeService.FilterToolsByModeAsync(modeId, userId, availableToolNames
-, cancellationToken);
+                var (Success, Error, FilteredTools) = await modeService.FilterToolsByModeAsync(
+                    modeId,
+                    userId,
+                    availableToolNames,
+                    cancellationToken
+                );
 
                 if (Success)
                 {
@@ -198,8 +211,7 @@ public class ToolingService(
                     }
 
                     // Set the global allowed functions based on mode
-                    functionFilterConfig.GlobalAllowedFunctions =
-                        FilteredTools.ToList();
+                    functionFilterConfig.GlobalAllowedFunctions = FilteredTools.ToList();
                     _ = registry.WithFilterConfig(functionFilterConfig);
 
                     logger.LogInformation(

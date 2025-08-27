@@ -5,12 +5,14 @@ namespace AIChat.Server.Services.TestMode;
 /// <summary>
 /// Default implementation of instruction chain parser for test mode.
 /// </summary>
-public sealed class InstructionChainParser(ILogger<InstructionChainParser> logger) : IInstructionChainParser
+public sealed class InstructionChainParser(ILogger<InstructionChainParser> logger)
+    : IInstructionChainParser
 {
     private const string InstructionStartTag = "<|instruction_start|>";
     private const string InstructionEndTag = "<|instruction_end|>";
 
-    private readonly ILogger<InstructionChainParser> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    private readonly ILogger<InstructionChainParser> _logger =
+        logger ?? throw new ArgumentNullException(nameof(logger));
 
     /// <inheritdoc />
     public InstructionPlan[]? ExtractInstructionChain(string content)

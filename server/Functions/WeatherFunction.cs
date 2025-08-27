@@ -131,7 +131,8 @@ public class WeatherFunction(ILogger<WeatherFunction> logger) : IFunctionProvide
             return 0;
         }
 
-        return double.TryParse(parts[0].Trim(), out var a)
+        return
+            double.TryParse(parts[0].Trim(), out var a)
             && double.TryParse(parts[1].Trim(), out var b)
             ? op switch
             {

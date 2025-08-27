@@ -36,7 +36,9 @@ namespace AIChat.Server.Services.AgentCards
         /// </summary>
         protected Result ValidateContent(string content)
         {
-            return string.IsNullOrWhiteSpace(content) ? Result.Failure($"{SectionName} section cannot be empty") : Result.Success();
+            return string.IsNullOrWhiteSpace(content)
+                ? Result.Failure($"{SectionName} section cannot be empty")
+                : Result.Success();
         }
     }
 
@@ -117,6 +119,7 @@ namespace AIChat.Server.Services.AgentCards
 
         [GeneratedRegex(@"^\d+\.\s+", RegexOptions.Compiled)]
         private static partial Regex MyRegex();
+
         [GeneratedRegex(@"^##\s+", RegexOptions.Compiled)]
         private static partial Regex MyRegex1();
     }
@@ -169,7 +172,8 @@ namespace AIChat.Server.Services.AgentCards
     /// </summary>
     public sealed class GenericSectionHandler(string sectionName) : ISectionHandler
     {
-        public string SectionName { get; } = sectionName ?? throw new ArgumentNullException(nameof(sectionName));
+        public string SectionName { get; } =
+            sectionName ?? throw new ArgumentNullException(nameof(sectionName));
 
         public Result ProcessSection(string content, AgentCard card)
         {
@@ -239,7 +243,9 @@ namespace AIChat.Server.Services.AgentCards
         /// </summary>
         public ISectionHandler? GetHandler(string sectionName)
         {
-            return string.IsNullOrWhiteSpace(sectionName) ? null : _handlers.TryGetValue(sectionName, out var handler) ? handler : null;
+            return string.IsNullOrWhiteSpace(sectionName) ? null
+                : _handlers.TryGetValue(sectionName, out var handler) ? handler
+                : null;
         }
 
         /// <summary>
