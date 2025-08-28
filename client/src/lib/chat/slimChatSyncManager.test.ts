@@ -69,12 +69,13 @@ describe('SlimChatSyncManager streamingSnapshots behavior', () => {
 		mgr.processSSEEvent(r1);
 
 		// Expect snapshot for reasoning exists and is active
+		// Note: Message IDs have the type appended for text/reasoning messages
 		let state = get(streamingStateStore);
-		expect(state.currentMessageId).toBe('m_reason');
-		expect(state.streamingSnapshots['m_reason']).toBeDefined();
-		expect(state.streamingSnapshots['m_reason'].isStreaming).toBe(true);
-		expect(state.streamingSnapshots['m_reason'].phase).toBe('streaming');
-		expect(state.streamingSnapshots['m_reason'].reasoningDelta).toBe('thinking...');
+		expect(state.currentMessageId).toBe('m_reason:reasoning');
+		expect(state.streamingSnapshots['m_reason:reasoning']).toBeDefined();
+		expect(state.streamingSnapshots['m_reason:reasoning'].isStreaming).toBe(true);
+		expect(state.streamingSnapshots['m_reason:reasoning'].phase).toBe('streaming');
+		expect(state.streamingSnapshots['m_reason:reasoning'].reasoningDelta).toBe('thinking...');
 
 		// Stream a text chunk for a new assistant message
 		const t1: StreamChunkEventEnvelope = {
@@ -89,15 +90,15 @@ describe('SlimChatSyncManager streamingSnapshots behavior', () => {
 
 		state = get(streamingStateStore);
 		// Active stream switches to text message
-		expect(state.currentMessageId).toBe('m_text');
+		expect(state.currentMessageId).toBe('m_text:text');
 		// Reasoning snapshot remains but is no longer marked streaming
-		expect(state.streamingSnapshots['m_reason']).toBeDefined();
-		expect(state.streamingSnapshots['m_reason'].isStreaming).toBe(false);
+		expect(state.streamingSnapshots['m_reason:reasoning']).toBeDefined();
+		expect(state.streamingSnapshots['m_reason:reasoning'].isStreaming).toBe(false);
 		// Text snapshot is streaming with its own delta
-		expect(state.streamingSnapshots['m_text']).toBeDefined();
-		expect(state.streamingSnapshots['m_text'].isStreaming).toBe(true);
-		expect(state.streamingSnapshots['m_text'].phase).toBe('streaming');
-		expect(state.streamingSnapshots['m_text'].textDelta).toBe('Hello');
+		expect(state.streamingSnapshots['m_text:text']).toBeDefined();
+		expect(state.streamingSnapshots['m_text:text'].isStreaming).toBe(true);
+		expect(state.streamingSnapshots['m_text:text'].phase).toBe('streaming');
+		expect(state.streamingSnapshots['m_text:text'].textDelta).toBe('Hello');
 
 		// Complete the reasoning message
 		const rc: MessageCompleteEventEnvelope = {

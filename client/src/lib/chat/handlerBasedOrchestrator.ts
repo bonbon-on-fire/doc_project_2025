@@ -446,7 +446,7 @@ export class HandlerBasedSSEOrchestrator {
 								throw new Error('Invalid task state format');
 							}
 							import('../stores/taskManager').then(({ taskManager }) => {
-								taskManager.updateFromServerEvent(chatId, tasks, payload.version);
+								taskManager.updateFromSSE(chatId, tasks);
 							});
 						} catch (parseError) {
 							logger.error(
@@ -469,7 +469,7 @@ export class HandlerBasedSSEOrchestrator {
 							: payload.taskState.tasks || [];
 
 						import('../stores/taskManager').then(({ taskManager }) => {
-							taskManager.updateFromServerEvent(chatId, tasks, payload.version);
+							taskManager.updateFromSSE(chatId, tasks);
 						});
 					}
 					break;

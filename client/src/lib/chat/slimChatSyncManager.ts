@@ -348,10 +348,12 @@ export class SlimChatSyncManager implements HandlerEventListener {
 		} else if (dtoMessageType === 'tools_aggregate' && snapshot.toolCallPairs) {
 			// Use paired structure for aggregate messages
 			(messageDto as any).toolCallPairs = snapshot.toolCallPairs || [];
-		} else if (dtoMessageType === 'text' && snapshot.textDelta) {
-			(messageDto as any).text = snapshot.textDelta;
-		} else if (dtoMessageType === 'reasoning' && snapshot.reasoningDelta) {
-			(messageDto as any).reasoning = snapshot.reasoningDelta;
+		} else if (dtoMessageType === 'text') {
+			// CRITICAL FIX: Always set text field, use either text or textDelta
+			(messageDto as any).text = snapshot.text || snapshot.textDelta || '';
+		} else if (dtoMessageType === 'reasoning') {
+			// Similar fix for reasoning messages
+			(messageDto as any).reasoning = snapshot.reasoning || snapshot.reasoningDelta || '';
 		}
 
 		this.addMessageToChat(messageDto);
@@ -361,33 +363,45 @@ export class SlimChatSyncManager implements HandlerEventListener {
 	 * Handle message updated by handler (streaming)
 	 */
 	private onMessageUpdated(messageId: string, chatId: string, snapshot: any): void {
-		// For tool call messages, update the placeholder with current tool calls
-		if (snapshot.messageType === 'tool_call' && snapshot.toolCalls) {
-			const currentChat = get(this.currentChatStore);
-			const existingMessage = currentChat?.messages.find((m) => m.id === messageId);
+		const currentChat = get(this.currentChatStore);
+		const existingMessage = currentChat?.messages.find((m) => m.id === messageId);
 
-			if (existingMessage && existingMessage.messageType === 'tool_call') {
-				// Update the existing message with current tool calls
-				const updatedDto = {
-					...existingMessage,
-					toolCalls: snapshot.toolCalls
-				};
-				this.updateMessageInChat(messageId, updatedDto);
-			}
+		if (!existingMessage) return;
+
+		// For text messages, update the placeholder with current text content
+		if (snapshot.messageType === 'text') {
+			const updatedDto = {
+				...existingMessage,
+				text: snapshot.text || snapshot.textDelta || ''
+			};
+			this.updateMessageInChat(messageId, updatedDto);
+		}
+		// For reasoning messages, update the placeholder with current reasoning content
+		else if (snapshot.messageType === 'reasoning') {
+			const updatedDto = {
+				...existingMessage,
+				reasoning: snapshot.reasoning || snapshot.reasoningDelta || '',
+				visibility: snapshot.visibility
+			};
+			this.updateMessageInChat(messageId, updatedDto);
+		}
+		// For tool call messages, update the placeholder with current tool calls
+		else if (snapshot.messageType === 'tool_call' && snapshot.toolCalls) {
+			// Update the existing message with current tool calls
+			const updatedDto = {
+				...existingMessage,
+				toolCalls: snapshot.toolCalls
+			};
+			this.updateMessageInChat(messageId, updatedDto);
 		}
 		// For tools aggregate messages, update with paired structure
 		else if (snapshot.messageType === 'tools_aggregate' && snapshot.toolCallPairs) {
-			const currentChat = get(this.currentChatStore);
-			const existingMessage = currentChat?.messages.find((m) => m.id === messageId);
-
-			if (existingMessage && existingMessage.messageType === 'tools_aggregate') {
-				// Update the existing message with paired structure
-				const updatedDto = {
-					...existingMessage,
-					toolCallPairs: snapshot.toolCallPairs || []
-				};
-				this.updateMessageInChat(messageId, updatedDto);
-			}
+			// Update the existing message with paired structure
+			const updatedDto = {
+				...existingMessage,
+				toolCallPairs: snapshot.toolCallPairs || []
+			};
+			this.updateMessageInChat(messageId, updatedDto);
 		}
 		// Other message types handled by streaming state
 	}

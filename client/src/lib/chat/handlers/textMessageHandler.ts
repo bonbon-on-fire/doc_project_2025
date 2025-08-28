@@ -79,19 +79,6 @@ export class TextMessageHandler extends BaseMessageHandler {
 	processChunk(messageId: string, envelope: StreamChunkEventEnvelope): MessageSnapshot {
 		let snapshot = this.getSnapshot(messageId);
 
-		// Create snapshot if it doesn't exist - this handles cases where:
-		// 1. First chunk for a new message
-		// 2. Server streams multiple messages sequentially (reasoning -> text)
-		// 3. Late completion events arrive after next message starts chunking
-		if (!snapshot) {
-			snapshot = this.initializeMessage(
-				messageId,
-				envelope.chatId,
-				new Date(envelope.ts),
-				envelope.sequenceId
-			);
-		}
-
 		// Validate payload type (gracefully handle missing 'done' as text)
 		if (!StreamChunkPayloadGuards.isTextStreamChunk(envelope.payload)) {
 			console.error(
@@ -107,10 +94,34 @@ export class TextMessageHandler extends BaseMessageHandler {
 		// Accumulate text delta if present; tolerate missing/empty
 		const delta = typeof textPayload.delta === 'string' ? textPayload.delta : '';
 
+		// Create snapshot if it doesn't exist - this handles cases where:
+		// 1. First chunk for a new message
+		// 2. Server streams multiple messages sequentially (reasoning -> text)
+		// 3. Late completion events arrive after next message starts chunking
+		if (!snapshot) {
+			// Initialize with the first chunk of text content
+			snapshot = this.initializeMessage(
+				messageId,
+				envelope.chatId,
+				new Date(envelope.ts),
+				envelope.sequenceId
+			);
+
+			// CRITICAL: Set initial text content immediately
+			snapshot = this.updateSnapshot(messageId, {
+				textDelta: delta,
+				text: delta,
+				isStreaming: textPayload.done !== true
+			});
+
+			return snapshot;
+		}
+
 		if (delta.length === 0) {
 			// Nothing to append; keep current snapshot and streaming state
 			return this.updateSnapshot(messageId, {
 				textDelta: snapshot.textDelta || '',
+				text: snapshot.textDelta || '', // CRITICAL: Also set text field for message placeholder
 				isStreaming: textPayload.done === true ? false : true
 			});
 		}
@@ -119,6 +130,7 @@ export class TextMessageHandler extends BaseMessageHandler {
 
 		return this.updateSnapshot(messageId, {
 			textDelta: newTextDelta,
+			text: newTextDelta, // CRITICAL: Also set text field for message placeholder
 			isStreaming: textPayload.done === true ? false : true
 		});
 	}

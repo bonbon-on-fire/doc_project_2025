@@ -75,6 +75,13 @@ export class ReasoningMessageHandler extends BaseMessageHandler {
 	processChunk(messageId: string, envelope: StreamChunkEventEnvelope): MessageSnapshot {
 		let snapshot = this.getSnapshot(messageId);
 
+		// Validate payload type
+		if (!StreamChunkPayloadGuards.isReasoningStreamChunk(envelope.payload)) {
+			throw new Error(`Invalid payload for reasoning message: ${messageId}`);
+		}
+
+		const reasoningPayload = envelope.payload as ReasoningStreamChunkPayload;
+
 		// Create snapshot if it doesn't exist - this handles cases where:
 		// 1. First chunk for a new message
 		// 2. Server streams multiple messages sequentially (reasoning -> text)
@@ -86,20 +93,31 @@ export class ReasoningMessageHandler extends BaseMessageHandler {
 				new Date(envelope.ts),
 				envelope.sequenceId
 			);
-		}
 
-		// Validate payload type
-		if (!StreamChunkPayloadGuards.isReasoningStreamChunk(envelope.payload)) {
-			throw new Error(`Invalid payload for reasoning message: ${messageId}`);
-		}
+			// CRITICAL: Set initial reasoning content immediately
+			const updates: Partial<MessageSnapshot> = {
+				reasoningDelta: reasoningPayload.delta,
+				reasoning: reasoningPayload.delta,
+				isStreaming: true
+			};
 
-		const reasoningPayload = envelope.payload as ReasoningStreamChunkPayload;
+			// Update visibility if provided
+			if (reasoningPayload.visibility) {
+				// Convert server casing (lowercase) to client casing (Pascal)
+				const visibility = (reasoningPayload.visibility.charAt(0).toUpperCase() +
+					reasoningPayload.visibility.slice(1)) as 'Plain' | 'Summary' | 'Encrypted';
+				updates.visibility = visibility;
+			}
+
+			return this.updateSnapshot(messageId, updates);
+		}
 
 		// Accumulate reasoning delta
 		const newReasoningDelta = (snapshot.reasoningDelta || '') + reasoningPayload.delta;
 
 		const updates: Partial<MessageSnapshot> = {
 			reasoningDelta: newReasoningDelta,
+			reasoning: newReasoningDelta, // CRITICAL: Also set reasoning field for message placeholder
 			isStreaming: true // Reasoning messages don't have a "done" flag in chunks
 		};
 

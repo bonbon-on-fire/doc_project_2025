@@ -19,8 +19,22 @@ describe('taskManager Store', () => {
 	describe('loadTasks', () => {
 		it('should load tasks from API successfully', async () => {
 			const mockTasks: TaskItem[] = [
-				{ id: 1, title: 'Task 1', status: 'NotStarted', notes: [] },
-				{ id: 2, title: 'Task 2', status: 'InProgress', notes: [] }
+				{
+					id: 1,
+					title: 'Task 1',
+					status: 'NotStarted',
+					notes: [],
+					subtasks: [],
+					parentId: undefined
+				},
+				{
+					id: 2,
+					title: 'Task 2',
+					status: 'InProgress',
+					notes: [],
+					subtasks: [],
+					parentId: undefined
+				}
 			];
 
 			(global.fetch as any).mockResolvedValueOnce({
@@ -79,24 +93,51 @@ describe('taskManager Store', () => {
 		});
 	});
 
-	describe('updateFromServerEvent', () => {
+	describe('updateFromSSE', () => {
 		it('should update tasks from server event', () => {
-			const tasks: TaskItem[] = [{ id: 1, title: 'Task 1', status: 'Completed', notes: [] }];
+			const tasks: TaskItem[] = [
+				{
+					id: 1,
+					title: 'Task 1',
+					status: 'Completed',
+					notes: [],
+					subtasks: [],
+					parentId: undefined
+				}
+			];
 
-			taskManager.updateFromServerEvent('test-chat-1', tasks, 2);
+			taskManager.updateFromSSE('test-chat-1', tasks);
 
 			const state = get(taskManager);
 			const chatTasks = state.tasks.get('test-chat-1');
 			expect(chatTasks?.tasks).toEqual(tasks);
-			expect(chatTasks?.version).toBe(2);
+			expect(chatTasks?.version).toBe(1);
 		});
 
 		it('should increment version if not provided', () => {
-			const tasks1: TaskItem[] = [{ id: 1, title: 'Task 1', status: 'NotStarted', notes: [] }];
-			const tasks2: TaskItem[] = [{ id: 1, title: 'Task 1', status: 'InProgress', notes: [] }];
+			const tasks1: TaskItem[] = [
+				{
+					id: 1,
+					title: 'Task 1',
+					status: 'NotStarted',
+					notes: [],
+					subtasks: [],
+					parentId: undefined
+				}
+			];
+			const tasks2: TaskItem[] = [
+				{
+					id: 1,
+					title: 'Task 1',
+					status: 'InProgress',
+					notes: [],
+					subtasks: [],
+					parentId: undefined
+				}
+			];
 
-			taskManager.updateFromServerEvent('test-chat-1', tasks1, 1);
-			taskManager.updateFromServerEvent('test-chat-1', tasks2);
+			taskManager.updateFromSSE('test-chat-1', tasks1);
+			taskManager.updateFromSSE('test-chat-1', tasks2);
 
 			const state = get(taskManager);
 			const chatTasks = state.tasks.get('test-chat-1');
@@ -113,7 +154,14 @@ describe('taskManager Store', () => {
 			};
 
 			const resultTasks: TaskItem[] = [
-				{ id: 1, title: 'New Task', status: 'NotStarted', notes: [] }
+				{
+					id: 1,
+					title: 'New Task',
+					status: 'NotStarted',
+					notes: [],
+					subtasks: [],
+					parentId: undefined
+				}
 			];
 
 			taskManager.updateFromToolCall('test-chat-1', operation, resultTasks);
@@ -126,8 +174,17 @@ describe('taskManager Store', () => {
 
 	describe('clearTasks', () => {
 		it('should remove tasks for a specific chat', () => {
-			const tasks: TaskItem[] = [{ id: 1, title: 'Task 1', status: 'NotStarted', notes: [] }];
-			taskManager.updateFromServerEvent('test-chat-1', tasks);
+			const tasks: TaskItem[] = [
+				{
+					id: 1,
+					title: 'Task 1',
+					status: 'NotStarted',
+					notes: [],
+					subtasks: [],
+					parentId: undefined
+				}
+			];
+			taskManager.updateFromSSE('test-chat-1', tasks);
 
 			taskManager.clearTasks('test-chat-1');
 
@@ -186,9 +243,11 @@ describe('currentChatTasks derived store', () => {
 	});
 
 	it('should return tasks for active chat', () => {
-		const mockTasks: TaskItem[] = [{ id: 1, title: 'Task 1', status: 'NotStarted', notes: [] }];
+		const mockTasks: TaskItem[] = [
+			{ id: 1, title: 'Task 1', status: 'NotStarted', notes: [], subtasks: [], parentId: undefined }
+		];
 
-		taskManager.updateFromServerEvent('test-chat-1', mockTasks);
+		taskManager.updateFromSSE('test-chat-1', mockTasks);
 		taskManager.setActiveChat('test-chat-1');
 
 		const tasks = get(currentChatTasks);
@@ -217,10 +276,24 @@ describe('taskStats derived store', () => {
 
 	it('should calculate task statistics correctly', () => {
 		const tasks: TaskItem[] = [
-			{ id: 1, title: 'Task 1', status: 'Completed', notes: [] },
-			{ id: 2, title: 'Task 2', status: 'InProgress', notes: [] },
-			{ id: 3, title: 'Task 3', status: 'NotStarted', notes: [] },
-			{ id: 4, title: 'Task 4', status: 'NotStarted', notes: [] }
+			{ id: 1, title: 'Task 1', status: 'Completed', notes: [], subtasks: [], parentId: undefined },
+			{
+				id: 2,
+				title: 'Task 2',
+				status: 'InProgress',
+				notes: [],
+				subtasks: [],
+				parentId: undefined
+			},
+			{
+				id: 3,
+				title: 'Task 3',
+				status: 'NotStarted',
+				notes: [],
+				subtasks: [],
+				parentId: undefined
+			},
+			{ id: 4, title: 'Task 4', status: 'NotStarted', notes: [], subtasks: [], parentId: undefined }
 		];
 
 		taskManager.updateFromServerEvent('test-chat-1', tasks);
@@ -248,7 +321,7 @@ describe('taskStats derived store', () => {
 					{ id: 12, title: 'Subtask 2', status: 'NotStarted', parentId: 1, notes: [] }
 				]
 			},
-			{ id: 2, title: 'Task 2', status: 'Completed', notes: [] }
+			{ id: 2, title: 'Task 2', status: 'Completed', notes: [], subtasks: [], parentId: undefined }
 		];
 
 		taskManager.updateFromServerEvent('test-chat-1', tasks);
@@ -266,9 +339,9 @@ describe('taskStats derived store', () => {
 
 	it('should ignore removed tasks', () => {
 		const tasks: TaskItem[] = [
-			{ id: 1, title: 'Task 1', status: 'Completed', notes: [] },
-			{ id: 2, title: 'Task 2', status: 'Removed', notes: [] },
-			{ id: 3, title: 'Task 3', status: 'NotStarted', notes: [] }
+			{ id: 1, title: 'Task 1', status: 'Completed', notes: [], subtasks: [], parentId: undefined },
+			{ id: 2, title: 'Task 2', status: 'Removed', notes: [], subtasks: [], parentId: undefined },
+			{ id: 3, title: 'Task 3', status: 'NotStarted', notes: [], subtasks: [], parentId: undefined }
 		];
 
 		taskManager.updateFromServerEvent('test-chat-1', tasks);

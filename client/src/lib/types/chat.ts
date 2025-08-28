@@ -93,6 +93,7 @@ export interface ToolCall {
 export interface ToolCallResult {
 	toolCallId: string;
 	result: string;
+	isError?: boolean;
 }
 
 export interface ToolCallMessageDto extends MessageDto {

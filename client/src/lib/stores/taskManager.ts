@@ -870,6 +870,71 @@ function createTaskManagerStore() {
 		// Clear error
 		clearError: () => {
 			update((state) => ({ ...state, error: null }));
+		},
+
+		// Load tasks from API (for compatibility with tests)
+		loadTasks: async (chatId: string) => {
+			update((state) => ({ ...state, isLoading: true, activeChat: chatId }));
+
+			try {
+				const response = await fetch(`/api/tasks/${chatId}`);
+
+				if (response.ok) {
+					const data = await response.json();
+					update((state) => {
+						const tasks = data.tasks || [];
+						const normalizedTasks = tasks.map(normalizeTaskFromSSE);
+
+						const taskState: ChatTaskState = {
+							chatId,
+							tasks: normalizedTasks,
+							version: data.version || 1,
+							lastUpdatedUtc: new Date().toISOString()
+						};
+
+						// Calculate next ID
+						let maxId = 0;
+						const findMaxId = (taskList: TaskItem[]) => {
+							if (!taskList || !Array.isArray(taskList)) return;
+							for (const task of taskList) {
+								if (task.id > maxId) maxId = task.id;
+								if (task.subtasks) findMaxId(task.subtasks);
+							}
+						};
+						findMaxId(normalizedTasks);
+
+						state.tasks.set(chatId, taskState);
+						state.nextIds.set(chatId, maxId + 1);
+						return { ...state, isLoading: false, error: null };
+					});
+				} else if (response.status === 404) {
+					// Initialize empty task state for 404
+					update((state) => {
+						const taskState: ChatTaskState = {
+							chatId,
+							tasks: [],
+							version: 0,
+							lastUpdatedUtc: new Date().toISOString()
+						};
+						state.tasks.set(chatId, taskState);
+						state.nextIds.set(chatId, 1);
+						return { ...state, isLoading: false, error: null };
+					});
+				} else {
+					throw new Error(response.statusText);
+				}
+			} catch (error) {
+				update((state) => ({
+					...state,
+					isLoading: false,
+					error: `Failed to load tasks: ${error instanceof Error ? error.message : 'Unknown error'}`
+				}));
+			}
+		},
+
+		// Alias for updateFromSSE (for compatibility with tests)
+		updateFromServerEvent: (chatId: string, taskState: any) => {
+			return taskManager.updateFromSSE(chatId, taskState);
 		}
 	};
 }

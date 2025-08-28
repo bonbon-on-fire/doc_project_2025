@@ -218,7 +218,7 @@ export class ToolsAggregateMessageHandler extends BaseMessageHandler {
 		}
 
 		// Accumulate function arguments (fallback + persistence parity)
-		if (update.function_args) {
+		if (update.function_args !== undefined) {
 			const currentArgs = (pair.toolCall.function_args || '') + update.function_args;
 			pair.toolCall.function_args = currentArgs;
 
@@ -259,7 +259,8 @@ export class ToolsAggregateMessageHandler extends BaseMessageHandler {
 		// Update the result in the pair
 		pair.toolResult = {
 			toolCallId: result.toolCallId,
-			result: result.result
+			result: result.result,
+			isError: result.isError
 		};
 
 		// Mark the document as complete since tool result received
