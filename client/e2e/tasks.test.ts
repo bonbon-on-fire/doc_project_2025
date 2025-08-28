@@ -1,7 +1,23 @@
 import { test, expect } from '@playwright/test';
 
+// Helper to generate unique user IDs for test isolation
+function generateUniqueUserId(testName?: string): string {
+	const timestamp = Date.now();
+	const randomId = Math.random().toString(36).substring(2, 10);
+	const sanitizedTestName = testName ? testName.replace(/[^a-z0-9]/gi, '-').toLowerCase() : '';
+	return sanitizedTestName
+		? `test-${sanitizedTestName}-${timestamp}-${randomId}`
+		: `test-user-${timestamp}-${randomId}`;
+}
+
 test.describe('Task List Server-Driven Synchronization', () => {
-	test.beforeEach(async ({ page }) => {
+	let testUserId: string;
+
+	test.beforeEach(async ({ page }, testInfo) => {
+		// Generate unique user ID for this test to ensure isolation
+		testUserId = generateUniqueUserId(testInfo.title);
+		console.log(`🔑 Test user ID: ${testUserId}`);
+
 		// Capture browser console logs for debugging
 		page.on('console', (msg) => {
 			const type = msg.type();
@@ -10,8 +26,8 @@ test.describe('Task List Server-Driven Synchronization', () => {
 			}
 		});
 
-		// Navigate to the chat page
-		await page.goto('http://localhost:5173/chat');
+		// Navigate to the chat page with unique user ID
+		await page.goto(`http://localhost:5173/chat?userId=${testUserId}`);
 		await page.waitForLoadState('networkidle');
 		await expect(page.getByPlaceholder('Start a new conversation...')).toBeVisible();
 	});

@@ -211,7 +211,7 @@ public class ToolingService(
                     }
 
                     // Set the global allowed functions based on mode
-                    functionFilterConfig.GlobalAllowedFunctions = FilteredTools.ToList();
+                    functionFilterConfig.GlobalAllowedFunctions = [.. FilteredTools];
                     _ = registry.WithFilterConfig(functionFilterConfig);
 
                     logger.LogInformation(

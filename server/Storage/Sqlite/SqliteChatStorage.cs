@@ -87,7 +87,7 @@ VALUES ($id, $userId, $title, $createdAtUtc, $updatedAtUtc, $chatJson);";
     )
     {
         await using var conn = await factory.CreateOpenConnectionAsync(ct);
-        int offset = Math.Max(0, (page - 1) * pageSize);
+        var offset = Math.Max(0, (page - 1) * pageSize);
         const string countSql = "SELECT COUNT(*) FROM chats WHERE UserId=$userId";
         const string pageSql =
             @"SELECT Id, UserId, Title, CreatedAtUtc, UpdatedAtUtc, ChatJson

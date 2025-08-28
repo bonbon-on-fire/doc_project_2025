@@ -10,15 +10,15 @@ public class ChatApiTests(WebApplicationFactory<Program> factory)
     : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly WebApplicationFactory<Program> _factory = factory.WithWebHostBuilder(builder =>
-    {
-        _ = builder.UseSetting("ASPNETCORE_ENVIRONMENT", "Test");
-    });
+        _ = builder.UseSetting("ASPNETCORE_ENVIRONMENT", "Test")
+    );
 
     [Fact]
     public async Task Create_And_Get_Chat_Works()
     {
         var client = _factory.CreateClient();
-        var create = new CreateChatRequest(null, "user-123", "hello world", null, null);
+        var userId = TestHelpers.GenerateUniqueUserId("create-chat-test");
+        var create = new CreateChatRequest(null, userId, "hello world", null, null);
         var res = await client.PostAsJsonAsync("/api/chat", create);
         _ = res.EnsureSuccessStatusCode();
         var chat = await res.Content.ReadFromJsonAsync<AIChat.Server.Services.ChatDto>();
@@ -37,10 +37,11 @@ public class ChatApiTests(WebApplicationFactory<Program> factory)
     {
         var client = _factory.CreateClient();
         // Create one chat
-        var create = new CreateChatRequest(null, "user-123", "hello again", null, null);
+        var userId = TestHelpers.GenerateUniqueUserId("chat-history-test");
+        var create = new CreateChatRequest(null, userId, "hello again", null, null);
         _ = (await client.PostAsJsonAsync("/api/chat", create)).EnsureSuccessStatusCode();
 
-        var hist = await client.GetAsync("/api/chat/history?userId=user-123&page=1&pageSize=10");
+        var hist = await client.GetAsync($"/api/chat/history?userId={userId}&page=1&pageSize=10");
         _ = hist.EnsureSuccessStatusCode();
         var history = await hist.Content.ReadFromJsonAsync<ChatHistoryResponse>();
         _ = history!.Chats.Should().NotBeNull();
@@ -55,9 +56,10 @@ public class ChatApiTests(WebApplicationFactory<Program> factory)
     public async Task Stream_SSE_Completes_And_Contains_Done()
     {
         var client = _factory.CreateClient();
+        var userId = TestHelpers.GenerateUniqueUserId("sse-stream-test");
         using var req = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");
         req.Content = JsonContent.Create(
-            new CreateChatRequest(null, "user-123", "Hello reasoning test", null, null)
+            new CreateChatRequest(null, userId, "Hello reasoning test", null, null)
         );
         using var res = await client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
         _ = res.EnsureSuccessStatusCode();

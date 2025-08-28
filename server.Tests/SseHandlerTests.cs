@@ -21,8 +21,8 @@ public class SseHandlerTests
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
-    private static readonly int[] elements = new[] { 0, 1 };
-    private static readonly int[] elementsArray = new[] { 0 };
+    private static readonly int[] elements = [0, 1];
+    private static readonly int[] elementsArray = [0];
 
     /// <summary>
     /// Builds an HTTP request message for testing SSE endpoints.
@@ -273,7 +273,7 @@ public class SseHandlerTests
 
         // Count lorem chunks (exclude pre/post markers)
         var jsons = GetAllJsonLines(text).Select(s => JsonDocument.Parse(s)).ToList();
-        int loremChunkCount = 0;
+        var loremChunkCount = 0;
         foreach (var doc in jsons)
         {
             var delta = doc.RootElement.GetProperty("choices")[0].GetProperty("delta");
@@ -314,8 +314,8 @@ public class SseHandlerTests
 
         // Assert via parsed JSON: ensure reasoning appears and post text echo marker present in content
         var docs = GetAllJsonLines(text).Select(s => JsonDocument.Parse(s)).ToList();
-        bool sawReasoning = false;
-        bool sawPostEcho = false;
+        var sawReasoning = false;
+        var sawPostEcho = false;
         foreach (var d in docs)
         {
             var delta = d.RootElement.GetProperty("choices")[0].GetProperty("delta");
@@ -508,7 +508,7 @@ public class SseHandlerTests
 
         // Legacy should emit user_post marker (decoded) and DONE
         var docs = GetAllJsonLines(text).Select(s => JsonDocument.Parse(s)).ToList();
-        bool sawPostEcho = false;
+        var sawPostEcho = false;
         foreach (var d in docs)
         {
             var delta = d.RootElement.GetProperty("choices")[0].GetProperty("delta");
@@ -541,7 +541,7 @@ public class SseHandlerTests
                 && !line.Contains("[DONE]", StringComparison.Ordinal)
             )
             {
-                return line.Substring(6).Trim();
+                return line[6..].Trim();
             }
         }
 
@@ -562,7 +562,7 @@ public class SseHandlerTests
                 && !line.Contains("[DONE]", StringComparison.Ordinal)
             )
             {
-                yield return line.Substring(6).Trim();
+                yield return line[6..].Trim();
             }
         }
     }

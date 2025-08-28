@@ -136,7 +136,7 @@ public class McpConfigurationValidator(
                 // Check for input references
                 if (value?.StartsWith("${input:") == true && value.EndsWith("}"))
                 {
-                    var inputId = value.Substring(8, value.Length - 9);
+                    var inputId = value[8..^1];
                     if (
                         _configuration.Inputs == null
                         || !_configuration.Inputs.Any(i => i.Id == inputId)

@@ -128,12 +128,12 @@ public sealed class ConversationAnalyzer(
     )
     {
         InstructionPlan[]? chain = null;
-        int chainMessageIndex = -1;
+        var chainMessageIndex = -1;
 
         // Find last instruction chain by scanning messages from newest to oldest
         var messageArray = messages.EnumerateArray().ToList();
 
-        for (int i = messageArray.Count - 1; i >= 0; i--)
+        for (var i = messageArray.Count - 1; i >= 0; i--)
         {
             var message = messageArray[i];
             if (message.ValueKind != JsonValueKind.Object)
@@ -187,9 +187,9 @@ public sealed class ConversationAnalyzer(
     )
     {
         var messageArray = messages.EnumerateArray().ToList();
-        int assistantCount = 0;
+        var assistantCount = 0;
 
-        for (int i = chainMessageIndex + 1; i < messageArray.Count; i++)
+        for (var i = chainMessageIndex + 1; i < messageArray.Count; i++)
         {
             var message = messageArray[i];
             if (message.ValueKind != JsonValueKind.Object)

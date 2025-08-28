@@ -119,7 +119,7 @@ public class ChatService(
             }
 
             // Handle mode-based system prompt or explicit system prompt
-            string? systemPrompt = request.SystemPrompt;
+            var systemPrompt = request.SystemPrompt;
             if (!string.IsNullOrEmpty(request.ModeId))
             {
                 var modePromptResult = await modeService.GetModeSystemPromptAsync(
@@ -189,14 +189,13 @@ public class ChatService(
 
             var messages =
                 Success && Messages != null
-                    ? Messages
+                    ? [.. Messages
                         .Select(m =>
                             JsonSerializer.Deserialize<MessageDto>(
                                 m.MessageJson,
                                 MessageSerializationOptions.Default
                             )!
-                        )
-                        .ToList()
+                        )]
                     : new List<MessageDto> { userDto };
 
             return new ChatResult
@@ -295,7 +294,7 @@ public class ChatService(
         {
             var (histSuccess, histError, histChats, histTotalCount) =
                 await storage.GetChatHistoryByUserAsync(userId, page, pageSize);
-            var chats = histSuccess ? histChats : Array.Empty<ChatRecord>();
+            var chats = histSuccess ? histChats : [];
 
             var chatDtos = new List<ChatDto>(chats.Count);
             foreach (var c in chats)
@@ -505,7 +504,7 @@ public class ChatService(
         }
 
         // Handle mode-based system prompt or explicit system prompt
-        string? systemPrompt = request.SystemPrompt;
+        var systemPrompt = request.SystemPrompt;
         if (!string.IsNullOrEmpty(request.ModeId))
         {
             var (Success, Error, SystemPrompt) = await modeService.GetModeSystemPromptAsync(
@@ -675,7 +674,7 @@ public class ChatService(
                 msg.Role,
                 msg.GetType().Name,
                 msg is TextMessageDto textMsg
-                    ? textMsg.Text?.Substring(0, Math.Min(100, textMsg.Text.Length)) + "..."
+                    ? textMsg.Text?[..Math.Min(100, textMsg.Text.Length)] + "..."
                     : "N/A"
             );
         }
@@ -715,14 +714,11 @@ public class ChatService(
         var agent = streamingAgent
             .WithMiddleware(new JsonFragmentUpdateMiddleware())
             .WithMiddleware(
-                (context, agent, cancellationToken) =>
-                {
-                    return agent.GenerateReplyAsync(
+                (context, agent, cancellationToken) => agent.GenerateReplyAsync(
                         context.Messages,
                         context.Options,
                         cancellationToken
-                    );
-                },
+                    ),
                 async (context, agent, cancellationToken) =>
                 {
                     var stream = await agent.GenerateReplyStreamingAsync(
@@ -757,9 +753,9 @@ public class ChatService(
             );
         }
 
-        bool loop = false;
-        bool hasTextMessage = false;
-        int fullMessageIndex = userMsgSequence;
+        var loop = false;
+        var hasTextMessage = false;
+        var fullMessageIndex = userMsgSequence;
         do
         {
             loop = false;
@@ -904,7 +900,7 @@ public class ChatService(
                     ? replies[0]
                     : new CompositeMessage
                     {
-                        Messages = replies.ToImmutableList(),
+                        Messages = [.. replies],
                         Role = Role.Assistant,
                     }
             );
@@ -939,8 +935,8 @@ public class ChatService(
         IAsyncEnumerable<IMessage>
     > ProcessStream(string chatId, int userMsgSequence)
     {
-        int messageIndex = userMsgSequence;
-        int chunkSequenceId = 0;
+        var messageIndex = userMsgSequence;
+        var chunkSequenceId = 0;
         Type? lastType = null;
 
         async IAsyncEnumerable<IMessage> ProcessStreamInternal(
@@ -1043,7 +1039,7 @@ public class ChatService(
                 {
                     // These are streaming chunks - just pass them through for real-time display
                     // The message joiner middleware will accumulate these into a complete ToolsCallMessage
-                    int toolCallIndex = 0;
+                    var toolCallIndex = 0;
                     var toolCallCount = toolsCallUpdateMessage.ToolCallUpdates.Count;
 
                     logger.LogTrace(
@@ -1180,7 +1176,7 @@ public class ChatService(
     )
     {
         // For encrypted reasoning messages, persist but don't assign sequence number
-        bool isEncryptedReasoning =
+        var isEncryptedReasoning =
             message is ReasoningMessage reasoningMsg
             && reasoningMsg.Visibility == ReasoningVisibility.Encrypted;
 
@@ -1294,7 +1290,7 @@ public class ChatService(
                         Role = aggregate.Role.ToString(),
                         Timestamp = timestamp,
                         SequenceNumber = nextSequence,
-                        ToolCalls = aggregate.ToolsCallMessage.ToolCalls.ToArray(),
+                        ToolCalls = [.. aggregate.ToolsCallMessage.ToolCalls],
                         ToolResults = aggregate.ToolsCallResult?.ToolCallResults?.ToArray(),
                     },
                     MessageSerializationOptions.Default
@@ -1610,16 +1606,14 @@ public class ChatService(
             _ => Role.User,
         };
 
-        if (message is TextMessageDto t)
-        {
-            return new TextMessage
+        return message is TextMessageDto t
+            ? new TextMessage
             {
                 Role = role,
                 Text = t.Text ?? string.Empty,
                 Metadata = ImmutableDictionary<string, object>.Empty,
-            };
-        }
-        return message is ReasoningMessageDto r
+            }
+            : message is ReasoningMessageDto r
             ? new TextMessage
             {
                 Role = role,
@@ -1871,10 +1865,9 @@ public class ChatService(
         {
             var timestamp = DateTimeOffset.UtcNow;
             var microseconds = timestamp.Ticks / 10; // Convert ticks to microseconds
-            return $"gen-{timestamp.ToUnixTimeSeconds()}-{microseconds % 1000000:D6}-{Guid.NewGuid():N}".Substring(
-                0,
-                32
-            );
+            return $"gen-{timestamp.ToUnixTimeSeconds()}-{microseconds % 1000000:D6}-{Guid.NewGuid():N}"[
+..32
+            ];
         }
 
         // If generation ID is provided (possibly from cache), add a unique suffix to ensure uniqueness
@@ -1882,7 +1875,7 @@ public class ChatService(
         if (providedGenerationId.StartsWith("gen-") && providedGenerationId.Length >= 32)
         {
             // Already has our format, likely unique
-            return providedGenerationId + $"-{chatId.Substring(0, 8)}";
+            return providedGenerationId + $"-{chatId[..8]}";
         }
 
         // Add time-based salt to the provided ID to ensure uniqueness
@@ -1892,11 +1885,10 @@ public class ChatService(
         if (saltedId.Length > 32)
         {
             // Take first 16 chars of original and add time-based suffix
-            var truncated = providedGenerationId.Substring(
-                0,
-                Math.Min(16, providedGenerationId.Length)
-            );
-            return $"{truncated}-{DateTimeOffset.UtcNow.Ticks:X}".Substring(0, 32);
+            var truncated = providedGenerationId[
+..Math.Min(16, providedGenerationId.Length)
+            ];
+            return $"{truncated}-{DateTimeOffset.UtcNow.Ticks:X}"[..32];
         }
 
         return saltedId;

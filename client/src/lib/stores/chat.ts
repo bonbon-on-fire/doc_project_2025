@@ -30,8 +30,21 @@ export const currentStreamingMessageId = derived(
 export const streamingSnapshots = derived(streamingState, ($state) => $state.streamingSnapshots);
 
 // User state (mock for now - will be replaced with actual auth)
+// Check URL params for test user ID (for E2E tests)
+const getUserIdFromUrl = () => {
+	if (typeof window !== 'undefined') {
+		const params = new URLSearchParams(window.location.search);
+		const testUserId = params.get('userId');
+		if (testUserId) {
+			logger.info({ userId: testUserId }, 'Using test user ID from URL');
+			return testUserId;
+		}
+	}
+	return 'user-123'; // Default demo user
+};
+
 export const currentUser = writable({
-	id: 'user-123',
+	id: getUserIdFromUrl(),
 	name: 'Demo User',
 	email: 'demo@example.com'
 });

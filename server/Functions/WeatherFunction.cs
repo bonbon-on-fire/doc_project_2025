@@ -126,13 +126,9 @@ public class WeatherFunction(ILogger<WeatherFunction> logger) : IFunctionProvide
     private static double EvaluateSimple(string expression, char op)
     {
         var parts = expression.Split(op);
-        if (parts.Length != 2)
-        {
-            return 0;
-        }
-
-        return
-            double.TryParse(parts[0].Trim(), out var a)
+        return parts.Length != 2
+            ? 0
+            : double.TryParse(parts[0].Trim(), out var a)
             && double.TryParse(parts[1].Trim(), out var b)
             ? op switch
             {

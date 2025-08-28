@@ -12,7 +12,7 @@ public class SchemaHelperTests
         return new SqliteConnection("Data Source=File:schematest?mode=memory&cache=shared");
     }
 
-    private static readonly string[] expected = new[] { "chats", "messages" };
+    private static readonly string[] expected = ["chats", "messages"];
 
     [Fact]
     public async Task Schema_Creation_Is_Idempotent()

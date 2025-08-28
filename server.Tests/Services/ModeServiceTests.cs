@@ -1,4 +1,3 @@
-using System.Text.Json;
 using AIChat.Server.Services;
 using AIChat.Server.Storage;
 using FluentAssertions;
@@ -16,11 +15,11 @@ public class ModeServiceTests : IDisposable
     private readonly Mock<IHostEnvironment> _hostEnvironmentMock;
     private readonly ModeService _service;
     private readonly string _tempDir;
-    private static readonly string[] expected = new[] { "tool1", "tool2" };
-    private static readonly string[] expectedArray = new[] { "tool3", "tool4" };
-    private static readonly string[] unexpected = new[] { "tool3", "tool4" };
-    private static readonly string[] stringArray = new[] { "tool1", "tool2" };
-    private static readonly string[] stringArray0 = new[] { "*" };
+    private static readonly string[] expected = ["tool1", "tool2"];
+    private static readonly string[] expectedArray = ["tool3", "tool4"];
+    private static readonly string[] unexpected = ["tool3", "tool4"];
+    private static readonly string[] stringArray = ["tool1", "tool2"];
+    private static readonly string[] stringArray0 = ["*"];
 
     public ModeServiceTests()
     {
@@ -102,7 +101,7 @@ capabilities:
     public async Task GetAllModesAsync_ReturnsSystemAndCustomModes()
     {
         // Arrange
-        var userId = "test-user-1";
+        var userId = TestHelpers.GenerateUniqueUserId();
         var customModes = new List<ModeRecord>
         {
             new()
@@ -146,7 +145,7 @@ capabilities:
     public async Task GetModeByIdAsync_ReturnsSystemMode()
     {
         // Arrange
-        var userId = "test-user-1";
+        var userId = TestHelpers.GenerateUniqueUserId();
         var modeId = "test-system";
 
         // Act
@@ -164,7 +163,7 @@ capabilities:
     public async Task GetModeByIdAsync_ReturnsCustomMode()
     {
         // Arrange
-        var userId = "test-user-1";
+        var userId = TestHelpers.GenerateUniqueUserId();
         var modeId = "custom-1";
         var customMode = new ModeRecord
         {
@@ -199,7 +198,7 @@ capabilities:
     public async Task CreateCustomModeAsync_CreatesMode()
     {
         // Arrange
-        var userId = "test-user-1";
+        var userId = TestHelpers.GenerateUniqueUserId();
         var createRequest = new CreateModeRequest
         {
             Name = "New Custom Mode",
@@ -252,7 +251,7 @@ capabilities:
     public async Task UpdateCustomModeAsync_UpdatesMode()
     {
         // Arrange
-        var userId = "test-user-1";
+        var userId = TestHelpers.GenerateUniqueUserId();
         var modeId = "custom-mode-1";
         var updateRequest = new UpdateModeRequest
         {
@@ -318,7 +317,7 @@ capabilities:
     public async Task DeleteCustomModeAsync_DeletesMode()
     {
         // Arrange
-        var userId = "test-user-1";
+        var userId = TestHelpers.GenerateUniqueUserId();
         var modeId = "custom-mode-1";
 
         _ = _modeStorageMock
@@ -341,7 +340,7 @@ capabilities:
     public async Task DeleteCustomModeAsync_CannotDeleteSystemMode()
     {
         // Arrange
-        var userId = "test-user-1";
+        var userId = TestHelpers.GenerateUniqueUserId();
         var modeId = "test-system"; // This is a system mode
 
         // Act
@@ -366,7 +365,7 @@ capabilities:
     public async Task FilterToolsByModeAsync_FiltersCorrectly()
     {
         // Arrange
-        var userId = "test-user-1";
+        var userId = TestHelpers.GenerateUniqueUserId();
         var modeId = "test-system";
         var availableTools = new[] { "tool1", "tool2", "tool3", "tool4" };
 
@@ -387,7 +386,7 @@ capabilities:
     public async Task FilterToolsByModeAsync_AllowsAllToolsWithWildcard()
     {
         // Arrange
-        var userId = "test-user-1";
+        var userId = TestHelpers.GenerateUniqueUserId();
         var availableTools = new[] { "tool1", "tool2", "tool3", "tool4" };
 
         // Create system mode with wildcard
@@ -416,7 +415,7 @@ capabilities:
     public async Task GetModeSystemPromptAsync_ReturnsPrompt()
     {
         // Arrange
-        var userId = "test-user-1";
+        var userId = TestHelpers.GenerateUniqueUserId();
         var modeId = "test-system";
 
         // Act
@@ -434,7 +433,7 @@ capabilities:
     public async Task GetModeDefaultModelAsync_ReturnsModel()
     {
         // Arrange
-        var userId = "test-user-1";
+        var userId = TestHelpers.GenerateUniqueUserId();
         var modeId = "custom-1";
         var customMode = new ModeRecord
         {
@@ -471,7 +470,7 @@ capabilities:
     public async Task GetAllModesAsync_CachesSystemModes()
     {
         // Arrange
-        var userId = "test-user-cache-1";
+        var userId = TestHelpers.GenerateUniqueUserId("cache-test");
 
         // Setup mock to return empty user modes list
         _ = _modeStorageMock
@@ -515,7 +514,7 @@ capabilities:
     public async Task GetAllModesAsync_HandlesEmptyModesDirectory()
     {
         // Arrange
-        var userId = "test-user-empty-dir";
+        var userId = TestHelpers.GenerateUniqueUserId("empty-dir");
 
         // Create a service with an empty modes directory
         var emptyDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
@@ -554,7 +553,7 @@ capabilities:
     public async Task GetAllModesAsync_HandlesMalformedSystemModeJson()
     {
         // Arrange
-        var userId = "test-user-malformed";
+        var userId = TestHelpers.GenerateUniqueUserId("malformed-file");
 
         // Create a service with a malformed Agent Card file
         var malformedDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
@@ -616,7 +615,7 @@ Test"
     public async Task GetAllModesAsync_HandlesIncompleteModeJson()
     {
         // Arrange
-        var userId = "test-user-incomplete";
+        var userId = TestHelpers.GenerateUniqueUserId("incomplete-yaml");
 
         // Create a service with an incomplete Agent Card (missing required fields)
         var incompleteDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
@@ -671,7 +670,7 @@ Incomplete";
     public async Task GetAllModesAsync_HandlesConcurrentAccess()
     {
         // Arrange
-        var userIds = Enumerable.Range(1, 10).Select(i => $"concurrent-user-{i}").ToList();
+        var userIds = TestHelpers.GenerateUniqueUserIds(10, "concurrent-test").ToList();
         var customModes = new List<ModeRecord>
         {
             new()
@@ -694,11 +693,7 @@ Incomplete";
             _ = _modeStorageMock
                 .Setup(x => x.GetModesByUserAsync(userId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(
-                    (
-                        true,
-                        null,
-                        userId == "concurrent-user-1" ? customModes : new List<ModeRecord>()
-                    )
+                    (true, null, userId == userIds[0] ? customModes : new List<ModeRecord>())
                 );
         }
 
@@ -715,7 +710,7 @@ Incomplete";
         _ = Modes.Should().HaveCount(2);
 
         // Other users should have 1 mode (system only)
-        for (int i = 1; i < results.Length; i++)
+        for (var i = 1; i < results.Length; i++)
         {
             _ = results[i].Modes.Should().HaveCount(1);
         }
@@ -725,7 +720,7 @@ Incomplete";
     public async Task CreateAndUpdateMode_HandlesConcurrentOperations()
     {
         // Arrange
-        var userId = "test-user-concurrent-2";
+        var userId = TestHelpers.GenerateUniqueUserId("crud-sequence");
         var modeId = "mode-concurrent";
 
         var createRequest = new CreateModeRequest
@@ -812,7 +807,7 @@ Incomplete";
     public async Task UpdateCustomModeAsync_CannotUpdateSystemMode()
     {
         // Arrange
-        var userId = "test-user-edge-1";
+        var userId = TestHelpers.GenerateUniqueUserId("edge-case-1");
         var systemModeId = "test-system";
         var updateRequest = new UpdateModeRequest
         {
@@ -852,7 +847,7 @@ Incomplete";
     public async Task FilterToolsByModeAsync_WithNonExistentMode_ReturnsAllTools()
     {
         // Arrange
-        var userId = "test-user-edge-2";
+        var userId = TestHelpers.GenerateUniqueUserId("edge-case-2");
         var nonExistentModeId = "non-existent-mode";
         var availableTools = new[] { "tool1", "tool2", "tool3" };
 
@@ -878,7 +873,7 @@ Incomplete";
     public async Task FilterToolsByModeAsync_WithEmptyToolsList_ReturnsNoTools()
     {
         // Arrange
-        var userId = "test-user-edge-3";
+        var userId = TestHelpers.GenerateUniqueUserId("edge-case-3");
         var modeId = "test-system";
         var emptyTools = Array.Empty<string>();
 
@@ -898,7 +893,7 @@ Incomplete";
     public async Task GetModeSystemPromptAsync_WithNonExistentMode_ReturnsNull()
     {
         // Arrange
-        var userId = "test-user-edge-4";
+        var userId = TestHelpers.GenerateUniqueUserId("edge-case-4");
         var nonExistentModeId = "non-existent-mode";
 
         _ = _modeStorageMock

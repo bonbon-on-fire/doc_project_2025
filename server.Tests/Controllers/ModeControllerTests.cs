@@ -18,8 +18,8 @@ public class ModeControllerTests
     private readonly Mock<IModeService> _modeServiceMock;
     private readonly Mock<ILogger<ModeController>> _loggerMock;
     private readonly ModeController _controller;
-    private static readonly string[] item = new[] { "tool1", "tool2" };
-    private static readonly string[] itemArray = new[] { "tool3" };
+    private static readonly string[] item = ["tool1", "tool2"];
+    private static readonly string[] itemArray = ["tool3"];
 
     public ModeControllerTests()
     {

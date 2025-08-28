@@ -122,7 +122,7 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
                 && !line.Contains("[DONE]", StringComparison.Ordinal)
             )
             {
-                yield return line.Substring(6).Trim();
+                yield return line[6..].Trim();
             }
         }
     }
@@ -841,7 +841,7 @@ Get the weather for San Francisco";
         // Act - Follow the exact pattern from ExamplePythonMCPClient
         var streamingResponse = await agent.GenerateReplyStreamingAsync(messages);
         var replyMessages = new List<IMessage>();
-        bool hasToolCall = false;
+        var hasToolCall = false;
 
         await foreach (var reply in streamingResponse)
         {
@@ -1050,7 +1050,7 @@ Get the weather for San Francisco";
             },
         };
 
-        bool hasToolCall = step2ReplyMessages.Any(m => m is ToolsCallUpdateMessage);
+        var hasToolCall = step2ReplyMessages.Any(m => m is ToolsCallUpdateMessage);
 
         foreach (var msg in step2ReplyMessages)
         {
@@ -1295,7 +1295,7 @@ Get the weather for San Francisco";
         // Act - Demonstrate the complete agent loop pattern from ExamplePythonMCPClient
         output.WriteLine("=== Agent Loop Iteration ===");
 
-        bool continueLoop = false;
+        var continueLoop = false;
         var replyMessages = new List<IMessage>();
 
         // Step 1: Stream replies and collect messages

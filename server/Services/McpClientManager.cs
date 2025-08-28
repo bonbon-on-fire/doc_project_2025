@@ -30,7 +30,7 @@ public class McpClientManager(
 
     public bool IsInitialized => _isInitialized;
 
-    private static readonly string[] separator = new[] { ":-" };
+    private static readonly string[] separator = [":-"];
 
     public async Task InitializeClientsAsync(CancellationToken cancellationToken = default)
     {
@@ -185,7 +185,7 @@ public class McpClientManager(
         {
             Name = serverName,
             Command = config.Command,
-            Arguments = config.Args?.ToArray() ?? Array.Empty<string>(),
+            Arguments = config.Args?.ToArray() ?? [],
             WorkingDirectory = config.WorkingDirectory,
         };
 
@@ -228,7 +228,7 @@ public class McpClientManager(
             if (value.StartsWith("${input:") && value.EndsWith("}"))
             {
                 // Handle input references
-                var inputId = value.Substring(8, value.Length - 9);
+                var inputId = value[8..^1];
                 var inputConfig = _configuration.Inputs?.FirstOrDefault(i => i.Id == inputId);
 
                 if (inputConfig != null)
@@ -254,7 +254,7 @@ public class McpClientManager(
             else if (value.StartsWith("${") && value.EndsWith("}"))
             {
                 // Handle variable references with optional defaults
-                var variableExpression = value.Substring(2, value.Length - 3);
+                var variableExpression = value[2..^1];
                 var parts = variableExpression.Split(separator, 2, StringSplitOptions.None);
                 var variableName = parts[0];
                 var defaultValue = parts.Length > 1 ? parts[1] : string.Empty;

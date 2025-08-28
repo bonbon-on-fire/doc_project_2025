@@ -5,29 +5,29 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
-namespace AIChat.Server.Tests.Services
+namespace AIChat.Server.Tests.Services;
+
+public class AgentCardParserTests
 {
-    public class AgentCardParserTests
+    private readonly AgentCardParser _parser;
+    private readonly Mock<ILogger<AgentCardParser>> _loggerMock;
+    private static readonly string[] expectation = ["gpt-4", "claude-3"];
+    private static readonly string[] expectationArray = ["search", "edit"];
+    private static readonly string[] expectationArray0 = ["test", "example"];
+    private static readonly string[] expectationArray1 = ["tool1", "tool2"];
+
+    public AgentCardParserTests()
     {
-        private readonly AgentCardParser _parser;
-        private readonly Mock<ILogger<AgentCardParser>> _loggerMock;
-        private static readonly string[] expectation = new[] { "gpt-4", "claude-3" };
-        private static readonly string[] expectationArray = new[] { "search", "edit" };
-        private static readonly string[] expectationArray0 = new[] { "test", "example" };
-        private static readonly string[] expectationArray1 = new[] { "tool1", "tool2" };
+        _loggerMock = new Mock<ILogger<AgentCardParser>>();
+        _parser = new AgentCardParser(_loggerMock.Object);
+    }
 
-        public AgentCardParserTests()
-        {
-            _loggerMock = new Mock<ILogger<AgentCardParser>>();
-            _parser = new AgentCardParser(_loggerMock.Object);
-        }
-
-        [Fact]
-        public void ParseAgentCard_WithValidCompleteCard_ShouldParseAllFields()
-        {
-            // Arrange
-            var content =
-                @"---
+    [Fact]
+    public void ParseAgentCard_WithValidCompleteCard_ShouldParseAllFields()
+    {
+        // Arrange
+        var content =
+            @"---
 agent: ""test-agent""
 name: ""Test Agent""
 version: ""1.0.0""
@@ -71,39 +71,39 @@ Validate the parser functionality.
 }
 ```";
 
-            // Act
-            var result = _parser.ParseAgentCard(content);
+        // Act
+        var result = _parser.ParseAgentCard(content);
 
-            // Assert
-            _ = result.IsSuccess.Should().BeTrue();
-            _ = result.Error.Should().BeNull();
+        // Assert
+        _ = result.IsSuccess.Should().BeTrue();
+        _ = result.Error.Should().BeNull();
 
-            var card = result.Value;
-            _ = card.Should().NotBeNull();
-            _ = card.Metadata.Agent.Should().Be("test-agent");
-            _ = card.Metadata.Name.Should().Be("Test Agent");
-            _ = card.Metadata.Version.Should().Be("1.0.0");
-            _ = card.Metadata.Category.Should().Be("testing");
-            _ = card.Metadata.ModelHints.Should().BeEquivalentTo(expectation);
-            _ = card.Metadata.Capabilities.Tools.Should().BeEquivalentTo(expectationArray);
-            _ = card.Metadata.Capabilities.Memory.Should().Be("episodic");
-            _ = card.Metadata.Capabilities.MaxTokens.Should().Be(4096);
-            _ = card.Metadata.OutputContract.Should().Be("json_schema");
-            _ = card.Metadata.RiskLevel.Should().Be("low");
-            _ = card.Metadata.Tags.Should().BeEquivalentTo(expectationArray0);
+        var card = result.Value;
+        _ = card.Should().NotBeNull();
+        _ = card.Metadata.Agent.Should().Be("test-agent");
+        _ = card.Metadata.Name.Should().Be("Test Agent");
+        _ = card.Metadata.Version.Should().Be("1.0.0");
+        _ = card.Metadata.Category.Should().Be("testing");
+        _ = card.Metadata.ModelHints.Should().BeEquivalentTo(expectation);
+        _ = card.Metadata.Capabilities.Tools.Should().BeEquivalentTo(expectationArray);
+        _ = card.Metadata.Capabilities.Memory.Should().Be("episodic");
+        _ = card.Metadata.Capabilities.MaxTokens.Should().Be(4096);
+        _ = card.Metadata.OutputContract.Should().Be("json_schema");
+        _ = card.Metadata.RiskLevel.Should().Be("low");
+        _ = card.Metadata.Tags.Should().BeEquivalentTo(expectationArray0);
 
-            _ = card.Role.Should().Be("You are a test agent for validation.");
-            _ = card.Objective.Should().Be("Validate the parser functionality.");
-            _ = card.Workflow.Should().HaveCount(2);
-            _ = card.OutputSchema.Should().NotBeNull();
-        }
+        _ = card.Role.Should().Be("You are a test agent for validation.");
+        _ = card.Objective.Should().Be("Validate the parser functionality.");
+        _ = card.Workflow.Should().HaveCount(2);
+        _ = card.OutputSchema.Should().NotBeNull();
+    }
 
-        [Fact]
-        public void ParseAgentCard_WithMinimalCard_ShouldParseRequiredFields()
-        {
-            // Arrange
-            var content =
-                @"---
+    [Fact]
+    public void ParseAgentCard_WithMinimalCard_ShouldParseRequiredFields()
+    {
+        // Arrange
+        var content =
+            @"---
 agent: ""minimal-agent""
 name: ""Minimal Agent""
 ---
@@ -114,66 +114,66 @@ A minimal test agent.
 # OBJECTIVE
 Test minimal configuration.";
 
-            // Act
-            var result = _parser.ParseAgentCard(content);
+        // Act
+        var result = _parser.ParseAgentCard(content);
 
-            // Assert
-            _ = result.IsSuccess.Should().BeTrue();
+        // Assert
+        _ = result.IsSuccess.Should().BeTrue();
 
-            var card = result.Value;
-            _ = card.Should().NotBeNull();
-            _ = card.Metadata.Agent.Should().Be("minimal-agent");
-            _ = card.Metadata.Name.Should().Be("Minimal Agent");
-            _ = card.Metadata.Version.Should().Be("1.0.0"); // Default
-            _ = card.Metadata.Category.Should().Be("general"); // Default
-            _ = card.Role.Should().Be("A minimal test agent.");
-            _ = card.Objective.Should().Be("Test minimal configuration.");
-        }
+        var card = result.Value;
+        _ = card.Should().NotBeNull();
+        _ = card.Metadata.Agent.Should().Be("minimal-agent");
+        _ = card.Metadata.Name.Should().Be("Minimal Agent");
+        _ = card.Metadata.Version.Should().Be("1.0.0"); // Default
+        _ = card.Metadata.Category.Should().Be("general"); // Default
+        _ = card.Role.Should().Be("A minimal test agent.");
+        _ = card.Objective.Should().Be("Test minimal configuration.");
+    }
 
-        [Fact]
-        public void ParseAgentCard_WithoutFrontMatter_ShouldReturnFailure()
-        {
-            // Arrange
-            var content =
-                @"# ROLE
+    [Fact]
+    public void ParseAgentCard_WithoutFrontMatter_ShouldReturnFailure()
+    {
+        // Arrange
+        var content =
+            @"# ROLE
 Some role without front matter";
 
-            // Act
-            var result = _parser.ParseAgentCard(content);
+        // Act
+        var result = _parser.ParseAgentCard(content);
 
-            // Assert
-            _ = result.IsFailure.Should().BeTrue();
-            _ = result.Error.Should().Be("Agent card must have YAML front matter");
-        }
+        // Assert
+        _ = result.IsFailure.Should().BeTrue();
+        _ = result.Error.Should().Be("Agent card must have YAML front matter");
+    }
 
-        [Fact]
-        public void ParseAgentCard_WithEmptyContent_ShouldReturnFailure()
-        {
-            // Act
-            var result = _parser.ParseAgentCard("");
+    [Fact]
+    public void ParseAgentCard_WithEmptyContent_ShouldReturnFailure()
+    {
+        // Act
+        var result = _parser.ParseAgentCard("");
 
-            // Assert
-            _ = result.IsFailure.Should().BeTrue();
-            _ = result.Error.Should().Be("Agent card content cannot be empty");
-        }
+        // Assert
+        _ = result.IsFailure.Should().BeTrue();
+        _ = result.Error.Should().Be("Agent card content cannot be empty");
+    }
 
-        [Fact]
-        public void ParseAgentCard_WithNullContent_ShouldReturnFailure()
-        {
-            // Act
-            var result = _parser.ParseAgentCard(null!);
+    [Fact]
+    public void ParseAgentCard_WithNullContent_ShouldReturnFailure()
+    {
+        // Act
+        var result = _parser.ParseAgentCard(null!);
 
-            // Assert
-            _ = result.IsFailure.Should().BeTrue();
-            _ = result.Error.Should().Be("Agent card content cannot be empty");
-        }
+        // Assert
+        _ = result.IsFailure.Should().BeTrue();
+        _ = result.Error.Should().Be("Agent card content cannot be empty");
+    }
 
-        [Fact]
-        public void ToMode_ShouldConvertCorrectly()
-        {
-            // Arrange
-            var content =
-                @"---
+    [Fact]
+    public void ToMode_ShouldConvertCorrectly()
+    {
+        // Arrange
+        var content =
+            @"---
 agent: ""converter-test""
 name: ""Converter Test""
 category: ""development""
@@ -195,31 +195,31 @@ Convert to Mode object.
 - Constraint 1
 - Constraint 2";
 
-            // Act
-            var result = _parser.ParseAgentCard(content);
-            var card = result.Value;
-            var mode = card.ToMode();
+        // Act
+        var result = _parser.ParseAgentCard(content);
+        var card = result.Value;
+        var mode = card.ToMode();
 
-            // Assert
-            _ = mode.Should().NotBeNull();
-            _ = mode.Id.Should().Be("converter-test");
-            _ = mode.Name.Should().Be("Converter Test");
-            _ = mode.Description.Should().Be("Convert to Mode object.");
-            _ = mode.Category.Should().Be("development");
-            _ = mode.Tools.Should().BeEquivalentTo(expectationArray1);
-            _ = mode.DefaultModel.Should().Be("gpt-4");
-            _ = mode.IsSystem.Should().BeFalse();
-            _ = mode.Prompt.Should().Contain("Test conversion agent");
-            _ = mode.Prompt.Should().Contain("Objective: Convert to Mode object");
-            _ = mode.Prompt.Should().Contain("CONSTRAINTS");
-        }
+        // Assert
+        _ = mode.Should().NotBeNull();
+        _ = mode.Id.Should().Be("converter-test");
+        _ = mode.Name.Should().Be("Converter Test");
+        _ = mode.Description.Should().Be("Convert to Mode object.");
+        _ = mode.Category.Should().Be("development");
+        _ = mode.Tools.Should().BeEquivalentTo(expectationArray1);
+        _ = mode.DefaultModel.Should().Be("gpt-4");
+        _ = mode.IsSystem.Should().BeFalse();
+        _ = mode.Prompt.Should().Contain("Test conversion agent");
+        _ = mode.Prompt.Should().Contain("Objective: Convert to Mode object");
+        _ = mode.Prompt.Should().Contain("CONSTRAINTS");
+    }
 
-        [Fact]
-        public void ParseWorkflow_WithNumberedSteps_ShouldExtractSteps()
-        {
-            // Arrange
-            var content =
-                @"---
+    [Fact]
+    public void ParseWorkflow_WithNumberedSteps_ShouldExtractSteps()
+    {
+        // Arrange
+        var content =
+            @"---
 agent: ""workflow-test""
 ---
 
@@ -232,24 +232,24 @@ Test agent
 3. Third and final step
 Some additional text that's not a step";
 
-            // Act
-            var result = _parser.ParseAgentCard(content);
+        // Act
+        var result = _parser.ParseAgentCard(content);
 
-            // Assert
-            _ = result.IsSuccess.Should().BeTrue();
-            var card = result.Value;
-            _ = card.Workflow.Should().HaveCount(3);
-            _ = card.Workflow[0].Should().Be("1. First step in process");
-            _ = card.Workflow[1].Should().Be("2. Second step with details");
-            _ = card.Workflow[2].Should().Be("3. Third and final step");
-        }
+        // Assert
+        _ = result.IsSuccess.Should().BeTrue();
+        var card = result.Value;
+        _ = card.Workflow.Should().HaveCount(3);
+        _ = card.Workflow[0].Should().Be("1. First step in process");
+        _ = card.Workflow[1].Should().Be("2. Second step with details");
+        _ = card.Workflow[2].Should().Be("3. Third and final step");
+    }
 
-        [Fact]
-        public void ParseJsonSchema_WithValidSchema_ShouldParseCorrectly()
-        {
-            // Arrange
-            var content =
-                @"---
+    [Fact]
+    public void ParseJsonSchema_WithValidSchema_ShouldParseCorrectly()
+    {
+        // Arrange
+        var content =
+            @"---
 agent: ""schema-test""
 ---
 
@@ -273,24 +273,24 @@ Test
 }
 ```";
 
-            // Act
-            var result = _parser.ParseAgentCard(content);
+        // Act
+        var result = _parser.ParseAgentCard(content);
 
-            // Assert
-            _ = result.IsSuccess.Should().BeTrue();
-            var card = result.Value;
-            _ = card.OutputSchema.Should().NotBeNull();
-            var root = card.OutputSchema.RootElement;
-            _ = root.GetProperty("name").GetString().Should().Be("TestOutput");
-            _ = root.GetProperty("schema").GetProperty("type").GetString().Should().Be("object");
-        }
+        // Assert
+        _ = result.IsSuccess.Should().BeTrue();
+        var card = result.Value;
+        _ = card.OutputSchema.Should().NotBeNull();
+        var root = card.OutputSchema.RootElement;
+        _ = root.GetProperty("name").GetString().Should().Be("TestOutput");
+        _ = root.GetProperty("schema").GetProperty("type").GetString().Should().Be("object");
+    }
 
-        [Fact]
-        public void ParseJsonSchema_WithInvalidJson_ShouldGracefullyDegrade()
-        {
-            // Arrange
-            var content =
-                @"---
+    [Fact]
+    public void ParseJsonSchema_WithInvalidJson_ShouldGracefullyDegrade()
+    {
+        // Arrange
+        var content =
+            @"---
 agent: ""invalid-schema-test""
 ---
 
@@ -305,21 +305,21 @@ Test
 }
 ```";
 
-            // Act
-            var result = _parser.ParseAgentCard(content);
+        // Act
+        var result = _parser.ParseAgentCard(content);
 
-            // Assert
-            _ = result.IsSuccess.Should().BeTrue(); // Should still succeed with graceful degradation
-            var card = result.Value;
-            _ = card.OutputSchema.Should().BeNull(); // Schema should be null due to invalid JSON
-        }
+        // Assert
+        _ = result.IsSuccess.Should().BeTrue(); // Should still succeed with graceful degradation
+        var card = result.Value;
+        _ = card.OutputSchema.Should().BeNull(); // Schema should be null due to invalid JSON
+    }
 
-        [Fact]
-        public void ParseSections_ShouldHandleAllStandardSections()
-        {
-            // Arrange
-            var content =
-                @"---
+    [Fact]
+    public void ParseSections_ShouldHandleAllStandardSections()
+    {
+        // Arrange
+        var content =
+            @"---
 agent: ""sections-test""
 ---
 
@@ -344,28 +344,28 @@ Style content
 # EXAMPLES
 Examples content";
 
-            // Act
-            var result = _parser.ParseAgentCard(content);
+        // Act
+        var result = _parser.ParseAgentCard(content);
 
-            // Assert
-            _ = result.IsSuccess.Should().BeTrue();
-            var card = result.Value;
-            _ = card.Sections.Should().HaveCount(7);
-            _ = card.Sections["ROLE"].Should().Be("Role content");
-            _ = card.Sections["OBJECTIVE"].Should().Be("Objective content");
-            _ = card.Sections["CONTEXT"].Should().Be("Context content");
-            _ = card.Sections["TOOLS"].Should().Be("Tools content");
-            _ = card.Sections["CONSTRAINTS"].Should().Be("Constraints content");
-            _ = card.Sections["STYLE"].Should().Be("Style content");
-            _ = card.Sections["EXAMPLES"].Should().Be("Examples content");
-        }
+        // Assert
+        _ = result.IsSuccess.Should().BeTrue();
+        var card = result.Value;
+        _ = card.Sections.Should().HaveCount(7);
+        _ = card.Sections["ROLE"].Should().Be("Role content");
+        _ = card.Sections["OBJECTIVE"].Should().Be("Objective content");
+        _ = card.Sections["CONTEXT"].Should().Be("Context content");
+        _ = card.Sections["TOOLS"].Should().Be("Tools content");
+        _ = card.Sections["CONSTRAINTS"].Should().Be("Constraints content");
+        _ = card.Sections["STYLE"].Should().Be("Style content");
+        _ = card.Sections["EXAMPLES"].Should().Be("Examples content");
+    }
 
-        [Fact]
-        public void ParseSections_ShouldHandleUnknownSections()
-        {
-            // Arrange
-            var content =
-                @"---
+    [Fact]
+    public void ParseSections_ShouldHandleUnknownSections()
+    {
+        // Arrange
+        var content =
+            @"---
 agent: ""custom-sections-test""
 ---
 
@@ -378,68 +378,68 @@ This is a custom section that should still be parsed
 # ANOTHER CUSTOM
 Another custom section content";
 
-            // Act
-            var result = _parser.ParseAgentCard(content);
+        // Act
+        var result = _parser.ParseAgentCard(content);
 
-            // Assert
-            _ = result.IsSuccess.Should().BeTrue();
-            var card = result.Value;
-            _ = card.Sections.Should().ContainKey("CUSTOM SECTION");
-            _ = card.Sections["CUSTOM SECTION"]
-                .Should()
-                .Be("This is a custom section that should still be parsed");
-            _ = card.Sections.Should().ContainKey("ANOTHER CUSTOM");
-            _ = card.Sections["ANOTHER CUSTOM"].Should().Be("Another custom section content");
-        }
+        // Assert
+        _ = result.IsSuccess.Should().BeTrue();
+        var card = result.Value;
+        _ = card.Sections.Should().ContainKey("CUSTOM SECTION");
+        _ = card.Sections["CUSTOM SECTION"]
+            .Should()
+            .Be("This is a custom section that should still be parsed");
+        _ = card.Sections.Should().ContainKey("ANOTHER CUSTOM");
+        _ = card.Sections["ANOTHER CUSTOM"].Should().Be("Another custom section content");
+    }
 
-        [Fact]
-        public void ParseAgentCard_WithMissingAgentId_ShouldReturnFailure()
-        {
-            // Arrange
-            var content =
-                @"---
+    [Fact]
+    public void ParseAgentCard_WithMissingAgentId_ShouldReturnFailure()
+    {
+        // Arrange
+        var content =
+            @"---
 name: ""No Agent ID""
 ---
 
 # ROLE
 Test";
 
-            // Act
-            var result = _parser.ParseAgentCard(content);
+        // Act
+        var result = _parser.ParseAgentCard(content);
 
-            // Assert
-            _ = result.IsFailure.Should().BeTrue();
-            _ = result.Error.Should().Be("Agent ID is required in metadata");
-        }
+        // Assert
+        _ = result.IsFailure.Should().BeTrue();
+        _ = result.Error.Should().Be("Agent ID is required in metadata");
+    }
 
-        [Fact]
-        public void LoadFromFile_WithNonExistentFile_ShouldReturnFailure()
-        {
-            // Act
-            var result = AgentCardParser.LoadFromFile("/nonexistent/file.agent.md");
+    [Fact]
+    public void LoadFromFile_WithNonExistentFile_ShouldReturnFailure()
+    {
+        // Act
+        var result = AgentCardParser.LoadFromFile("/nonexistent/file.agent.md");
 
-            // Assert
-            _ = result.IsFailure.Should().BeTrue();
-            _ = result.Error.Should().Contain("Agent card file not found");
-        }
+        // Assert
+        _ = result.IsFailure.Should().BeTrue();
+        _ = result.Error.Should().Contain("Agent card file not found");
+    }
 
-        [Fact]
-        public void LoadFromFile_WithEmptyPath_ShouldReturnFailure()
-        {
-            // Act
-            var result = AgentCardParser.LoadFromFile("");
+    [Fact]
+    public void LoadFromFile_WithEmptyPath_ShouldReturnFailure()
+    {
+        // Act
+        var result = AgentCardParser.LoadFromFile("");
 
-            // Assert
-            _ = result.IsFailure.Should().BeTrue();
-            _ = result.Error.Should().Be("File path cannot be empty");
-        }
+        // Assert
+        _ = result.IsFailure.Should().BeTrue();
+        _ = result.Error.Should().Be("File path cannot be empty");
+    }
 
-        [Fact]
-        public void ParseAgentCard_WithInvalidYaml_ShouldReturnFailure()
-        {
-            // Arrange
-            var content =
-                @"---
+    [Fact]
+    public void ParseAgentCard_WithInvalidYaml_ShouldReturnFailure()
+    {
+        // Arrange
+        var content =
+            @"---
 agent: ""test-agent""
 invalid yaml syntax here
   - this is not valid
@@ -448,85 +448,84 @@ invalid yaml syntax here
 # ROLE
 Test";
 
-            // Act
-            var result = _parser.ParseAgentCard(content);
+        // Act
+        var result = _parser.ParseAgentCard(content);
 
-            // Assert
-            _ = result.IsFailure.Should().BeTrue();
-            _ = result.Error.Should().Contain("Invalid YAML format");
-        }
+        // Assert
+        _ = result.IsFailure.Should().BeTrue();
+        _ = result.Error.Should().Contain("Invalid YAML format");
+    }
 
-        [Fact]
-        public void SectionHandlerRegistry_ShouldBeExtensible()
+    [Fact]
+    public void SectionHandlerRegistry_ShouldBeExtensible()
+    {
+        // Arrange
+        var registry = new SectionHandlerRegistry();
+        var customHandler = new TestCustomSectionHandler();
+
+        // Act
+        registry.Register(customHandler);
+        var handler = registry.GetHandler("TEST CUSTOM");
+
+        // Assert
+        _ = handler.Should().NotBeNull();
+        _ = handler.Should().Be(customHandler);
+    }
+
+    [Fact]
+    public void Result_Map_ShouldTransformSuccessValue()
+    {
+        // Arrange
+        var result = Result<int>.Success(42);
+
+        // Act
+        var mapped = result.Map(x => x.ToString());
+
+        // Assert
+        _ = mapped.IsSuccess.Should().BeTrue();
+        _ = mapped.Value.Should().Be("42");
+    }
+
+    [Fact]
+    public void Result_Map_ShouldPropagateFailure()
+    {
+        // Arrange
+        var result = Result<int>.Failure("Error message");
+
+        // Act
+        var mapped = result.Map(x => x.ToString());
+
+        // Assert
+        _ = mapped.IsFailure.Should().BeTrue();
+        _ = mapped.Error.Should().Be("Error message");
+    }
+
+    [Fact]
+    public void Result_Bind_ShouldChainOperations()
+    {
+        // Arrange
+        var result = Result<int>.Success(10);
+
+        // Act
+        var chained = result.Bind(x =>
+            x > 5
+                ? Result<string>.Success($"Value is {x}")
+                : Result<string>.Failure("Value too small")
+        );
+
+        // Assert
+        _ = chained.IsSuccess.Should().BeTrue();
+        _ = chained.Value.Should().Be("Value is 10");
+    }
+
+    private class TestCustomSectionHandler : ISectionHandler
+    {
+        public string SectionName => "TEST CUSTOM";
+
+        public Result ProcessSection(string content, AgentCard card)
         {
-            // Arrange
-            var registry = new SectionHandlerRegistry();
-            var customHandler = new TestCustomSectionHandler();
-
-            // Act
-            registry.Register(customHandler);
-            var handler = registry.GetHandler("TEST CUSTOM");
-
-            // Assert
-            _ = handler.Should().NotBeNull();
-            _ = handler.Should().Be(customHandler);
-        }
-
-        [Fact]
-        public void Result_Map_ShouldTransformSuccessValue()
-        {
-            // Arrange
-            var result = Result<int>.Success(42);
-
-            // Act
-            var mapped = result.Map(x => x.ToString());
-
-            // Assert
-            _ = mapped.IsSuccess.Should().BeTrue();
-            _ = mapped.Value.Should().Be("42");
-        }
-
-        [Fact]
-        public void Result_Map_ShouldPropagateFailure()
-        {
-            // Arrange
-            var result = Result<int>.Failure("Error message");
-
-            // Act
-            var mapped = result.Map(x => x.ToString());
-
-            // Assert
-            _ = mapped.IsFailure.Should().BeTrue();
-            _ = mapped.Error.Should().Be("Error message");
-        }
-
-        [Fact]
-        public void Result_Bind_ShouldChainOperations()
-        {
-            // Arrange
-            var result = Result<int>.Success(10);
-
-            // Act
-            var chained = result.Bind(x =>
-                x > 5
-                    ? Result<string>.Success($"Value is {x}")
-                    : Result<string>.Failure("Value too small")
-            );
-
-            // Assert
-            _ = chained.IsSuccess.Should().BeTrue();
-            _ = chained.Value.Should().Be("Value is 10");
-        }
-
-        private class TestCustomSectionHandler : ISectionHandler
-        {
-            public string SectionName => "TEST CUSTOM";
-
-            public Result ProcessSection(string content, AgentCard card)
-            {
-                card.Sections[SectionName] = content;
-                return Result.Success();
-            }
+            card.Sections[SectionName] = content;
+            return Result.Success();
         }
     }
 }

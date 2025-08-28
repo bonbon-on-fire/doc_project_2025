@@ -178,7 +178,7 @@ public sealed class SseStreamHttpContent : HttpContent
 
         async Task WriteSseAsync(object payload)
         {
-            string json = JsonSerializer.Serialize(payload, _jsonSerializerOptionsWithReasoning);
+            var json = JsonSerializer.Serialize(payload, _jsonSerializerOptionsWithReasoning);
 
             await writer.WriteAsync("data: ");
             await writer.WriteAsync(json);
@@ -269,7 +269,7 @@ public sealed class SseStreamHttpContent : HttpContent
             choices = choices.Concat(ChunkTextMessage(0, plan.IdMessage, _wordsPerChunk));
         }
 
-        for (int msgIndex = 0; msgIndex < plan.Messages.Count; msgIndex++)
+        for (var msgIndex = 0; msgIndex < plan.Messages.Count; msgIndex++)
         {
             var message = plan.Messages[msgIndex];
             if (message.TextLength is int textLen)
@@ -311,7 +311,7 @@ public sealed class SseStreamHttpContent : HttpContent
     private static int CalculateStableWordCount(string seed)
     {
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(seed ?? string.Empty));
-        uint val = BitConverter.ToUInt32(bytes, 0);
+        var val = BitConverter.ToUInt32(bytes, 0);
         return 5 + (int)(val % 100u);
     }
 
@@ -331,12 +331,12 @@ public sealed class SseStreamHttpContent : HttpContent
         ).Split(' ');
 
         var words = new List<string>(totalWords);
-        for (int i = 0; i < totalWords; i++)
+        for (var i = 0; i < totalWords; i++)
         {
             words.Add(lorem[i % lorem.Length]);
         }
 
-        for (int i = 0; i < words.Count; i += wordsPerChunk)
+        for (var i = 0; i < words.Count; i += wordsPerChunk)
         {
             var chunkWords = words.Skip(i).Take(Math.Min(wordsPerChunk, words.Count - i));
             yield return string.Join(' ', chunkWords);
@@ -405,7 +405,7 @@ public sealed class SseStreamHttpContent : HttpContent
             ".",
         };
 
-        for (int i = 0; i < basis.Length; i += wordsPerChunk)
+        for (var i = 0; i < basis.Length; i += wordsPerChunk)
         {
             var chunkTokens = basis
                 .Skip(i)
@@ -423,7 +423,7 @@ public sealed class SseStreamHttpContent : HttpContent
     {
         var tokens = reasoning.Split(' ');
         var useReasoning = true; // reasoning.GetHashCode() % 2 == 0;
-        for (int i = 0; i < tokens.Length; i += wordsPerChunk)
+        for (var i = 0; i < tokens.Length; i += wordsPerChunk)
         {
             var chunkTokens = string.Join(
                 ' ',
@@ -485,7 +485,7 @@ public sealed class SseStreamHttpContent : HttpContent
     )
     {
         var tokens = textContent.Split(' ');
-        for (int i = 0; i < tokens.Length; i += wordsPerChunk)
+        for (var i = 0; i < tokens.Length; i += wordsPerChunk)
         {
             var chunkTokens = string.Join(
                 ' ',
@@ -510,7 +510,7 @@ public sealed class SseStreamHttpContent : HttpContent
     )
     {
         var allToolCalls = new List<FunctionContent>();
-        int idx = -1;
+        var idx = -1;
 
         foreach (var (functionName, argsJson) in toolCalls)
         {
@@ -548,7 +548,7 @@ public sealed class SseStreamHttpContent : HttpContent
 
             // Subsequent chunks: NO function name, only argument fragments
             // OpenAI omits the function name in subsequent chunks (not empty string)
-            for (int i = 0; i < argsJson.Length; i += wordsPerChunk)
+            for (var i = 0; i < argsJson.Length; i += wordsPerChunk)
             {
                 var len = Math.Min(wordsPerChunk, argsJson.Length - i);
                 yield return new Choice

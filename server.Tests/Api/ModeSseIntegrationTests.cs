@@ -23,9 +23,8 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     public ModeSseIntegrationTests(WebApplicationFactory<Program> factory)
     {
         _factory = factory.WithWebHostBuilder(builder =>
-        {
-            _ = builder.UseSetting("ASPNETCORE_ENVIRONMENT", "Test");
-        });
+            _ = builder.UseSetting("ASPNETCORE_ENVIRONMENT", "Test")
+        );
 
         _jsonOptions = new JsonSerializerOptions
         {
@@ -39,7 +38,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = "user-123"; // Use seeded test user
+        var userId = TestHelpers.GenerateUniqueUserId();
 
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");
         var createRequest = new CreateChatRequest(
@@ -97,7 +96,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = "user-123"; // Use seeded test user
+        var userId = TestHelpers.GenerateUniqueUserId();
 
         // First create a custom mode with limited tools
         var customMode = new CreateModeRequest
@@ -178,7 +177,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = "user-123"; // Use seeded test user
+        var userId = TestHelpers.GenerateUniqueUserId();
 
         // Create initial chat with general mode
         using var request1 = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");
@@ -272,7 +271,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = "user-123"; // Use seeded test user
+        var userId = TestHelpers.GenerateUniqueUserId();
 
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");
         var createRequest = new CreateChatRequest(
@@ -307,7 +306,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = "user-123"; // Use seeded test user
+        var userId = TestHelpers.GenerateUniqueUserId();
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");
@@ -429,12 +428,12 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
                     );
                 }
 
-                currentEventType = line.Substring(7).Trim();
+                currentEventType = line[7..].Trim();
                 dataLines.Clear();
             }
             else if (line.StartsWith("data: "))
             {
-                dataLines.Add(line.Substring(6));
+                dataLines.Add(line[6..]);
             }
         }
 

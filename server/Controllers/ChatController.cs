@@ -222,7 +222,7 @@ public class ChatController : ControllerBase
 
         string? currentChatId = null;
         string? currentAssistantMessageId = null;
-        int currentAssistantSequenceNumber = 0;
+        var currentAssistantSequenceNumber = 0;
 
         // Generic side-channel forwarder
         async Task ForwardSideChannel(StreamChunkEvent ev)

@@ -68,7 +68,8 @@ public sealed class InstructionChainParser(ILogger<InstructionChainParser> logge
                         "Parsed instruction chain with {Count} instructions",
                         chain.Count
                     );
-                    return chain.ToArray();
+
+                    return [.. chain];
                 }
 
                 // Empty chain array - return null to indicate no instructions
@@ -81,7 +82,7 @@ public sealed class InstructionChainParser(ILogger<InstructionChainParser> logge
             if (singleInstruction != null)
             {
                 _logger.LogInformation("Parsed single instruction (backward compatibility mode)");
-                return new[] { singleInstruction };
+                return [singleInstruction];
             }
 
             _logger.LogWarning("No valid instruction format found in JSON");

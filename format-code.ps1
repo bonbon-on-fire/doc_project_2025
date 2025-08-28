@@ -1,6 +1,6 @@
 # Format Code PowerShell Script for DOC_Project_2025
 # Formats the root project using ReSharper CLT, and submodules using CSharpier
-# 
+#
 # Roslynator CLI documentation: https://josefpihrt.github.io/docs/roslynator/cli/commands/fix/
 # Note: Roslynator requires the project to be built before running fixes
 
@@ -23,7 +23,7 @@ function Show-Help {
     Write-Host ""
     Write-Host "TOOLS USED (Root Project):"
     Write-Host "  1. dotnet format style         # Code style fixes (IDE0032, etc.)"
-    Write-Host "  2. Roslynator CLI (optional)   # Advanced code analysis fixes"
+    Write-Host "  2. Roslynator CLI (optional)   # Advanced code analysis fixes, fixes code styles e.g. using `[]` vs. `Array.Empty<T>()` "
     Write-Host "  3. ReSharper CLT               # Comprehensive formatting"
     Write-Host ""
     Write-Host "TOOLS USED (Submodules):"
@@ -40,7 +40,7 @@ function Show-Help {
 
 function Test-ToolInstalled {
     param($ToolCommand, $ToolName)
-    
+
     try {
         & $ToolCommand --version > $null 2>&1
         return $true
@@ -53,29 +53,29 @@ function Test-ToolInstalled {
 
 function Format-RootProject {
     param([bool]$CheckOnly)
-    
+
     Write-Host "Formatting root project with multiple tools..." -ForegroundColor Yellow
-    
+
     # Check required tools
     if (-not (Test-ToolInstalled "jb" "ReSharper Command Line Tools")) {
         Write-Host "Please install with: dotnet tool install -g JetBrains.ReSharper.GlobalTools" -ForegroundColor Red
         return $false
     }
-    
+
     try {
         if ($CheckOnly) {
             Write-Host "Checking root project formatting..."
-            
+
             # Check dotnet format style issues
             Write-Host "Checking code style issues..."
             dotnet format style --verify-no-changes --verbosity minimal
-            
+
             # Check Roslynator issues if available
             if (Test-ToolInstalled "roslynator" "Roslynator CLI") {
                 Write-Host "Checking Roslynator issues..."
                 roslynator analyze server/AIChat.Server.csproj --severity-level info --verbosity minimal
             }
-            
+
             Write-Host "Note: ReSharper CLT doesn't support check-only mode. Use git diff after running format." -ForegroundColor Yellow
             return $true
         }
@@ -83,20 +83,20 @@ function Format-RootProject {
             # Step 1: Apply code style fixes (like IDE0032)
             Write-Host "Step 1/4: Applying dotnet format style fixes (IDE0032, etc.)..." -ForegroundColor Cyan
             dotnet format style --diagnostics "IDE0032 IDE0017 IDE0028 IDE0025" --verbosity minimal
-            
+
             # Step 2: Apply Roslynator fixes (if available)
             if (Test-ToolInstalled "roslynator" "Roslynator CLI") {
                 Write-Host "Step 2/4: Applying Roslynator code analysis fixes..." -ForegroundColor Cyan
-                
+
                 # Build projects first (required for Roslynator)
                 Write-Host "  - Building projects (required for Roslynator)..."
                 dotnet build server/AIChat.Server.csproj --verbosity minimal --nologo
                 dotnet build server.Tests/server.Tests.csproj --verbosity minimal --nologo
-                
+
                 # Fix server project
                 Write-Host "  - Fixing server project with Roslynator..."
                 roslynator fix server/AIChat.Server.csproj --severity-level info --verbosity minimal --ignore-compiler-errors --fix-scope project
-                
+
                 # Fix test project
                 Write-Host "  - Fixing test project with Roslynator..."
                 roslynator fix server.Tests/server.Tests.csproj --severity-level info --verbosity minimal --ignore-compiler-errors --fix-scope project
@@ -105,15 +105,15 @@ function Format-RootProject {
                 Write-Host "Step 2/4: Roslynator not installed, skipping advanced fixes" -ForegroundColor Yellow
                 Write-Host "  Install with: dotnet tool install -g Roslynator.DotNet.Cli" -ForegroundColor Gray
             }
-            
+
             # Step 3: Format server project with ReSharper
             Write-Host "Step 3/4: Formatting server project with ReSharper CLT..." -ForegroundColor Cyan
             jb cleanupcode server/AIChat.Server.csproj
-            
+
             # Step 4: Format test project with ReSharper
             Write-Host "Step 4/4: Formatting test project with ReSharper CLT..." -ForegroundColor Cyan
             jb cleanupcode server.Tests/server.Tests.csproj
-            
+
             Write-Host "Root project formatting completed!" -ForegroundColor Green
             return $true
         }
@@ -126,24 +126,24 @@ function Format-RootProject {
 
 function Format-Submodules {
     param([bool]$CheckOnly)
-    
+
     Write-Host "Formatting submodules with CSharpier..." -ForegroundColor Yellow
-    
+
     if (-not (Test-ToolInstalled "csharpier" "CSharpier")) {
         Write-Host "Please install with: dotnet tool install -g csharpier" -ForegroundColor Red
         return $false
     }
-    
+
     $submodulesPath = "submodules/LmDotnetTools"
-    
+
     if (-not (Test-Path $submodulesPath)) {
         Write-Host "Submodules directory not found: $submodulesPath" -ForegroundColor Red
         return $false
     }
-    
+
     try {
         Push-Location $submodulesPath
-        
+
         if ($CheckOnly) {
             Write-Host "Checking submodules formatting..."
             csharpier --check .
@@ -192,10 +192,10 @@ elseif ($SubmodulesOnly) {
 else {
     # Format both
     Write-Host "Formatting both root project and submodules..." -ForegroundColor Cyan
-    
+
     $rootSuccess = Format-RootProject -CheckOnly $CheckOnly
     $submodulesSuccess = Format-Submodules -CheckOnly $CheckOnly
-    
+
     $success = $rootSuccess -and $submodulesSuccess
 }
 

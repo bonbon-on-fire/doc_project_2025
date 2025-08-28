@@ -212,13 +212,9 @@ builder.Services.AddTransient<IStreamingAgent>(provider =>
 });
 
 // Add CORS for development and test
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy(
+builder.Services.AddCors(options => options.AddPolicy(
         "AllowSvelteApp",
-        policy =>
-        {
-            _ = policy
+        policy => _ = policy
                 .WithOrigins(
                     "http://localhost:5173",
                     "http://localhost:5174",
@@ -236,10 +232,7 @@ builder.Services.AddCors(options =>
                 )
                 .AllowAnyHeader()
                 .AllowAnyMethod()
-                .AllowCredentials();
-        }
-    );
-});
+                .AllowCredentials()));
 
 // Add timestamped Debug logger for Dev/Test so VS Output shows timestamps
 builder.Services.AddLogging(logging =>

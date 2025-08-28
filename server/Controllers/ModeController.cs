@@ -35,7 +35,7 @@ public class ModeController(IModeService modeService, ILogger<ModeController> lo
             return StatusCode(500, new { Error = Error ?? "Failed to retrieve modes" });
         }
 
-        var response = new ModesResponse { Modes = Modes.ToList(), Count = Modes.Count };
+        var response = new ModesResponse { Modes = [.. Modes], Count = Modes.Count };
 
         return Ok(response);
     }

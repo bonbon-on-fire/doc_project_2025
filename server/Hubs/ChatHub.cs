@@ -117,7 +117,7 @@ public class ChatHub : Hub
     private async Task OnStreamChunkReceived(StreamChunkEvent chunkEvent)
     {
         // Extract delta based on the specific event type
-        string delta = chunkEvent switch
+        var delta = chunkEvent switch
         {
             ReasoningStreamEvent reasoningEvent => reasoningEvent.Delta,
             TextStreamEvent textEvent => textEvent.Delta,

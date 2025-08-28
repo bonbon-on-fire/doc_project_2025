@@ -24,9 +24,8 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     public ModeApiIntegrationTests(WebApplicationFactory<Program> factory)
     {
         _factory = factory.WithWebHostBuilder(builder =>
-        {
-            _ = builder.UseSetting("ASPNETCORE_ENVIRONMENT", "Test");
-        });
+            _ = builder.UseSetting("ASPNETCORE_ENVIRONMENT", "Test")
+        );
 
         _jsonOptions = new JsonSerializerOptions
         {
@@ -42,7 +41,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = "user-123"; // Use seeded test user
+        var userId = TestHelpers.GenerateUniqueUserId("chat-mode-filter");
 
         // First get available modes
         var modesResponse = await client.GetAsync($"/api/mode?userId={userId}");
@@ -86,7 +85,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = "user-123"; // Use seeded test user
+        var userId = TestHelpers.GenerateUniqueUserId("switch-mode");
 
         // Create initial chat with general mode
         var createRequest = new CreateChatRequest(
@@ -129,7 +128,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = "user-123"; // Use seeded test user
+        var userId = TestHelpers.GenerateUniqueUserId("custom-mode-flow");
 
         // Step 1: Create custom mode
         var customMode = new
@@ -198,7 +197,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = "user-123"; // Use seeded test user
+        var userId = TestHelpers.GenerateUniqueUserId("invalid-mode-fallback");
 
         // Try to create chat with non-existent mode
         var createRequest = new CreateChatRequest(
@@ -223,7 +222,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = "user-123"; // Use seeded test user
+        var userId = TestHelpers.GenerateUniqueUserId("invalid-mode-data");
 
         // Create mode with invalid data (empty name)
         var invalidMode = new CreateModeRequest
@@ -251,7 +250,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = "user-123"; // Use seeded test user
+        var userId = TestHelpers.GenerateUniqueUserId("update-system-mode");
 
         // Try to update a system mode
         var updateRequest = new UpdateModeRequest
@@ -281,7 +280,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = "user-123"; // Use seeded test user
+        var userId = TestHelpers.GenerateUniqueUserId("delete-system-mode");
 
         // Try to delete a system mode
         var response = await client.DeleteAsync($"/api/mode/general?userId={userId}");
@@ -301,7 +300,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = "user-123"; // Use seeded test user
+        var userId = TestHelpers.GenerateUniqueUserId("perf-get-modes");
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         // Act
@@ -320,7 +319,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = "user-123"; // Use seeded test user
+        var userId = TestHelpers.GenerateUniqueUserId("perf-switch-mode");
 
         // Create initial chat
         var createRequest = new CreateChatRequest(
@@ -363,10 +362,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userIds = Enumerable
-            .Range(1, 10)
-            .Select(i => $"concurrent-user-{i}-{Guid.NewGuid()}")
-            .ToList();
+        var userIds = TestHelpers.GenerateUniqueUserIds(10, "concurrent-access").ToList();
 
         // Act - Concurrent mode requests
         var tasks = userIds
@@ -399,7 +395,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = "user-123"; // Use seeded test user
+        var userId = TestHelpers.GenerateUniqueUserId("sse-mode-info");
 
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");
         var createRequest = new CreateChatRequest(
@@ -435,7 +431,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = "user-123"; // Use seeded test user
+        var userId = TestHelpers.GenerateUniqueUserId("mode-persistence");
 
         // Create custom mode
         var customMode = new
@@ -459,7 +455,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
 
         // Create multiple chats with the same mode
         var chatIds = new List<string>();
-        for (int i = 0; i < 3; i++)
+        for (var i = 0; i < 3; i++)
         {
             var createChatRequest = new CreateChatRequest(
                 ChatId: null,

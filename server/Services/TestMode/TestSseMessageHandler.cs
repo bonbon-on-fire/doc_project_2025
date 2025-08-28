@@ -32,7 +32,8 @@ public sealed class TestSseMessageHandler : HttpMessageHandler
                 .CreateLogger<TestSseMessageHandler>(),
             null,
             null
-        ) { }
+        )
+    { }
 
     /// <summary>
     /// Initializes a new instance with dependency injection.
@@ -98,7 +99,7 @@ public sealed class TestSseMessageHandler : HttpMessageHandler
         }
         _logger.LogTrace("Processing chat completions request");
 
-        string body =
+        var body =
             request.Content == null
                 ? string.Empty
                 : await request.Content.ReadAsStringAsync(cancellationToken);
@@ -126,7 +127,7 @@ public sealed class TestSseMessageHandler : HttpMessageHandler
         {
             var root = doc.RootElement;
 
-            bool stream =
+            var stream =
                 root.TryGetProperty("stream", out var streamProp)
                 && streamProp.ValueKind == JsonValueKind.True;
             if (!stream)
@@ -134,7 +135,7 @@ public sealed class TestSseMessageHandler : HttpMessageHandler
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             }
 
-            string? model =
+            var model =
                 root.TryGetProperty("model", out var modelProp)
                 && modelProp.ValueKind == JsonValueKind.String
                     ? modelProp.GetString()
@@ -206,7 +207,7 @@ public sealed class TestSseMessageHandler : HttpMessageHandler
                     else
                     {
                         // Generate simple response based on user message
-                        bool reasoningFirst = fallbackMessage.Contains(
+                        var reasoningFirst = fallbackMessage.Contains(
                             "\nReason:",
                             StringComparison.Ordinal
                         );

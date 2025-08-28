@@ -35,9 +35,10 @@ public class SqliteChatStorageTests
         var factory = CreateFactory();
         await TestDatabaseInitializer.InitializeAsync(factory);
         var storage = new SqliteChatStorage(factory);
+        var userId = TestHelpers.GenerateUniqueUserId("chat-crud-test");
 
         var (ok, _, chat) = await storage.CreateChatAsync(
-            "user-123",
+            userId,
             "t",
             DateTime.UtcNow,
             DateTime.UtcNow,
@@ -123,8 +124,9 @@ public class SqliteChatStorageTests
         var factory = CreateFactory();
         await TestDatabaseInitializer.InitializeAsync(factory);
         var storage = new SqliteChatStorage(factory);
+        var userId = TestHelpers.GenerateUniqueUserId("sequence-test");
         var (ok, _, chat) = await storage.CreateChatAsync(
-            "user-123",
+            userId,
             "t",
             DateTime.UtcNow,
             DateTime.UtcNow,
@@ -183,8 +185,9 @@ public class SqliteChatStorageTests
         var factory = CreateFactory();
         await TestDatabaseInitializer.InitializeAsync(factory);
         var storage = new SqliteChatStorage(factory);
+        var userId = TestHelpers.GenerateUniqueUserId("message-content-test");
         var (ok, _, chat) = await storage.CreateChatAsync(
-            "user-123",
+            userId,
             "t",
             DateTime.UtcNow,
             DateTime.UtcNow,
