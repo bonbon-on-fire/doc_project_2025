@@ -185,3 +185,6 @@ server/llm-cache/*.json
 
 # MCP configuration (contains sensitive data)
 .mcp.json
+.playwright-mcp
+.husky
+
