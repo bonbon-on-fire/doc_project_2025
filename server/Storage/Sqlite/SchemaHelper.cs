@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS chat_tasks (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_tasks_chat_id ON chat_tasks (ChatId);
 
 CREATE TABLE IF NOT EXISTS user_modes (
-  Id TEXT PRIMARY KEY,
+  Id TEXT NOT NULL,
   UserId TEXT NOT NULL,
   Name TEXT NOT NULL,
   Description TEXT NOT NULL,
@@ -92,6 +92,7 @@ CREATE TABLE IF NOT EXISTS user_modes (
   Category TEXT DEFAULT 'custom',
   CreatedAtUtc TEXT NOT NULL,
   UpdatedAtUtc TEXT NOT NULL,
+  PRIMARY KEY (Id, UserId),
   FOREIGN KEY (UserId) REFERENCES users (Id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_user_modes_user ON user_modes (UserId);";

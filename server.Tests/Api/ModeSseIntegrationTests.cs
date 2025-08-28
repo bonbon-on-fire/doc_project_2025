@@ -15,6 +15,7 @@ namespace AIChat.Server.Tests.Api;
 /// Integration tests for Mode-related SSE (Server-Sent Events) streaming.
 /// Tests mode information in SSE streams, tool filtering, and mode switching during streaming.
 /// </summary>
+[Collection("ModeTests")] // Prevent parallel execution with other mode tests
 public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly WebApplicationFactory<Program> _factory;
@@ -96,78 +97,108 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = TestHelpers.GenerateUniqueUserId();
+        // Use seeded demo user for mode tests to ensure user exists in database
+        var userId = "user-123"; // TestHelpers.GenerateUniqueUserId("sse-custom-mode-filter");
+        ModeDto? createdMode = null;
 
-        // First create a custom mode with limited tools
-        var customMode = new CreateModeRequest
+        try
         {
-            Name = $"Limited Tools Mode {Guid.NewGuid()}",
-            Description = "Mode with limited tools for SSE testing",
-            Prompt = "You are a helpful assistant with limited tools",
-            Tools = new[] { "search" }, // Only search tool
-            DefaultModel = null,
-            Category = "custom",
-        };
-
-        var createModeResponse = await client.PostAsJsonAsync(
-            "/api/mode",
-            new
+            // First create a custom mode with limited tools
+            var customMode = new CreateModeRequest
             {
-                userId,
-                name = customMode.Name,
-                description = customMode.Description,
-                prompt = customMode.Prompt,
-                tools = customMode.Tools,
-                defaultModel = customMode.DefaultModel,
-                category = customMode.Category,
-            },
-            _jsonOptions
-        );
-        _ = createModeResponse.EnsureSuccessStatusCode();
-        var createdMode = await createModeResponse.Content.ReadFromJsonAsync<ModeDto>(_jsonOptions);
+                Name = $"Limited Tools Mode {Guid.NewGuid()}",
+                Description = "Mode with limited tools for SSE testing",
+                Prompt = "You are a helpful assistant with limited tools",
+                Tools = new[] { "search" }, // Only search tool
+                DefaultModel = null,
+                Category = "custom",
+            };
 
-        // Stream SSE with the custom mode
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");
-        var createRequest = new CreateChatRequest(
-            ChatId: null,
-            UserId: userId,
-            Message: "Search for information about AI",
-            SystemPrompt: null,
-            ModeId: createdMode!.Id
-        );
-        request.Content = JsonContent.Create(createRequest, options: _jsonOptions);
-
-        // Act
-        using var response = await client.SendAsync(
-            request,
-            HttpCompletionOption.ResponseHeadersRead
-        );
-        _ = response.EnsureSuccessStatusCode();
-
-        var sseContent = await response.Content.ReadAsStringAsync();
-
-        // Clean up
-        _ = await client.DeleteAsync($"/api/modes/{createdMode.Id}?userId={userId}");
-
-        // Assert
-        var events = ParseSseEvents(sseContent);
-        _ = events.Should().NotBeEmpty();
-
-        // Verify that tool calls (if any) are limited to the mode's tools
-        var toolEvents = events.Where(e => e.EventType == "toolcall").ToList();
-        foreach (var toolEvent in toolEvents)
-        {
-            if (!string.IsNullOrEmpty(toolEvent.Data))
+            var createModeResponse = await client.PostAsJsonAsync(
+                "/api/mode",
+                new
+                {
+                    userId,
+                    name = customMode.Name,
+                    description = customMode.Description,
+                    prompt = customMode.Prompt,
+                    tools = customMode.Tools,
+                    defaultModel = customMode.DefaultModel,
+                    category = customMode.Category,
+                },
+                _jsonOptions
+            );
+            
+            // If conflict, retry with a different name
+            if (createModeResponse.StatusCode == System.Net.HttpStatusCode.Conflict)
             {
-                var toolData = JsonSerializer.Deserialize<JsonElement>(
-                    toolEvent.Data,
+                createModeResponse = await client.PostAsJsonAsync(
+                    "/api/mode",
+                    new
+                    {
+                        userId,
+                        name = $"Limited Tools Mode Retry {Guid.NewGuid()}",
+                        description = customMode.Description,
+                        prompt = customMode.Prompt,
+                        tools = customMode.Tools,
+                        defaultModel = customMode.DefaultModel,
+                        category = customMode.Category,
+                    },
                     _jsonOptions
                 );
-                if (toolData.TryGetProperty("toolName", out var toolName))
+            }
+            
+            _ = createModeResponse.EnsureSuccessStatusCode();
+            createdMode = await createModeResponse.Content.ReadFromJsonAsync<ModeDto>(_jsonOptions);
+
+            // Stream SSE with the custom mode
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");
+            var createRequest = new CreateChatRequest(
+                ChatId: null,
+                UserId: userId,
+                Message: "Search for information about AI",
+                SystemPrompt: null,
+                ModeId: createdMode!.Id
+            );
+            request.Content = JsonContent.Create(createRequest, options: _jsonOptions);
+
+            // Act
+            using var response = await client.SendAsync(
+                request,
+                HttpCompletionOption.ResponseHeadersRead
+            );
+            _ = response.EnsureSuccessStatusCode();
+
+            var sseContent = await response.Content.ReadAsStringAsync();
+
+            // Assert
+            var events = ParseSseEvents(sseContent);
+            _ = events.Should().NotBeEmpty();
+
+            // Verify that tool calls (if any) are limited to the mode's tools
+            var toolEvents = events.Where(e => e.EventType == "toolcall").ToList();
+            foreach (var toolEvent in toolEvents)
+            {
+                if (!string.IsNullOrEmpty(toolEvent.Data))
                 {
-                    // Should only use tools allowed by the mode
-                    _ = toolName.GetString().Should().BeOneOf("search");
+                    var toolData = JsonSerializer.Deserialize<JsonElement>(
+                        toolEvent.Data,
+                        _jsonOptions
+                    );
+                    if (toolData.TryGetProperty("toolName", out var toolName))
+                    {
+                        // Should only use tools allowed by the mode
+                        _ = toolName.GetString().Should().BeOneOf("search");
+                    }
                 }
+            }
+        }
+        finally
+        {
+            // Always clean up
+            if (createdMode != null)
+            {
+                _ = await client.DeleteAsync($"/api/mode/{createdMode.Id}?userId={userId}");
             }
         }
     }
@@ -177,7 +208,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var client = _factory.CreateClient();
-        var userId = TestHelpers.GenerateUniqueUserId();
+        var userId = TestHelpers.GenerateUniqueUserId("sse-mode-switching");
 
         // Create initial chat with general mode
         using var request1 = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");

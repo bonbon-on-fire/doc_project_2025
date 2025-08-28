@@ -45,7 +45,13 @@ VALUES ($id, $userId, $name, $description, $prompt, $tools, $defaultModel, $cate
         }
         catch (SqliteException ex) when (ex.SqliteErrorCode == 19) // SQLITE_CONSTRAINT
         {
-            return (false, "Mode with this ID already exists", null);
+            // Check if it's a foreign key violation (user doesn't exist) or unique constraint (duplicate mode)
+            if (ex.Message.Contains("FOREIGN KEY", StringComparison.OrdinalIgnoreCase))
+            {
+                return (false, $"User '{mode.UserId}' does not exist", null);
+            }
+            // With composite key (Id, UserId), constraint violation means this user already has a mode with this ID
+            return (false, $"Mode with this ID already exists for user {mode.UserId}", null);
         }
         catch (Exception ex)
         {
