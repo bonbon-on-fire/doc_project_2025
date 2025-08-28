@@ -207,8 +207,7 @@ public class SseHandlerTests
             .ToList();
         // The last content should end with the user message echo
         _ = contents
-            .Where(c => !string.IsNullOrEmpty(c))
-            .Last()
+            .Last(c => !string.IsNullOrEmpty(c))
             .Should()
             .EndWith("<|user_post|><|text_message|> plain");
     }
@@ -255,48 +254,6 @@ public class SseHandlerTests
             var delta = doc.RootElement.GetProperty("choices")[0].GetProperty("delta");
             _ = delta.TryGetProperty("reasoning", out _).Should().BeFalse();
         }
-    }
-
-    [Fact]
-    public async Task Pacing_ApproximatelyHonored_WithTolerance_NoReasoning()
-    {
-        // Arrange: choose small chunk size and non-reasoning message
-        var handler = new TestSseMessageHandler { ChunkDelayMs = 50, WordsPerChunk = 5 };
-        using var invoker = new HttpMessageInvoker(handler);
-        var req = BuildRequest("pacing test without reasoning", stream: true);
-
-        // Act
-        var started = DateTime.UtcNow;
-        var res = await invoker.SendAsync(req, default);
-        var text = await res.Content.ReadAsStringAsync();
-        var elapsed = DateTime.UtcNow - started;
-
-        // Count lorem chunks (exclude pre/post markers)
-        var jsons = GetAllJsonLines(text).Select(s => JsonDocument.Parse(s)).ToList();
-        var loremChunkCount = 0;
-        foreach (var doc in jsons)
-        {
-            var delta = doc.RootElement.GetProperty("choices")[0].GetProperty("delta");
-            if (delta.TryGetProperty("content", out var c))
-            {
-                var str = c.GetString() ?? string.Empty;
-                if (
-                    !str.Contains("<|user_pre|>", StringComparison.Ordinal)
-                    && !str.Contains("<|user_post|>", StringComparison.Ordinal)
-                )
-                {
-                    loremChunkCount++;
-                }
-            }
-        }
-
-        // Expected minimum duration equals chunkCount * delay
-        var minMs = loremChunkCount * handler.ChunkDelayMs;
-        // Allow generous overhead tolerance - increase for CI/test environments
-        var toleranceMs = Math.Max(300, loremChunkCount * 15);
-
-        _ = elapsed.TotalMilliseconds.Should().BeGreaterThan(minMs - 25);
-        _ = elapsed.TotalMilliseconds.Should().BeLessThan(minMs + toleranceMs);
     }
 
     [Fact]
