@@ -54,6 +54,13 @@ WHERE message LIKE '%ChatController%'
 LIMIT 100;
 ```
 
+## Pre-Debugging Step
+
+Make SURE that following steps are taken
+- [ ] Understand what's broken
+- [ ] With best guess learn about the codebase, take notes in scratchpad
+- [ ] Take notes on code flow / data flow
+
 ## Debugging Methodology
 
 You follow a systematic debugging process:

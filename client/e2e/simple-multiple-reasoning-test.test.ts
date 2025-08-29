@@ -27,15 +27,28 @@ test('Simple multiple reasoning messages test', async ({ page }) => {
 	await expect(page.locator('span.animate-pulse')).toBeHidden({ timeout: 20000 });
 	console.log('✅ First message streaming completed');
 
-	// Check if message input is available
-	const messageInput = page.getByRole('textbox', { name: 'Type your message...' });
+	// Wait a bit more to ensure streaming is fully complete and input is re-enabled
+	await page.waitForTimeout(1000);
+
+	// Check if message input is available - use a more robust selector
+	// The placeholder text changes during streaming, so we need to wait for it to change back
+	// or select the right textarea (not the "Start a new conversation" one)
+	const messageInput = page.locator(
+		'textarea[placeholder]:not([placeholder="Start a new conversation..."])'
+	);
 	await expect(messageInput).toBeVisible({ timeout: 5000 });
-	console.log('✅ Message input is visible');
+	// Wait for the placeholder to change from "AI is thinking..." to "Type your message..."
+	await expect(messageInput).toHaveAttribute('placeholder', 'Type your message...', {
+		timeout: 10000
+	});
+	await expect(messageInput).toBeEnabled({ timeout: 5000 });
+	console.log('✅ Message input is visible and enabled');
 
 	// Send second reasoning message
 	const secondMessage = 'Second reasoning\nReason: Second step of thinking';
 	console.log('📝 Sending second message:', secondMessage);
 
+	await messageInput.clear();
 	await messageInput.fill(secondMessage);
 	await page.getByRole('button', { name: 'Send message (Enter)' }).click();
 

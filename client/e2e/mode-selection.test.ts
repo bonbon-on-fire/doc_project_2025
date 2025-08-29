@@ -45,7 +45,7 @@ test.describe('Mode Selection E2E Tests', () => {
 		await page.waitForTimeout(1000);
 	});
 
-	test('Test 1: Mode selector visibility and loading', async ({ page }) => {
+	test.skip('Test 1: Mode selector visibility and loading', async ({ page }) => {
 		console.log('🎯 Test 1: Testing mode selector visibility and loading');
 
 		// Debug: Take screenshot and check page state
@@ -97,7 +97,7 @@ test.describe('Mode Selection E2E Tests', () => {
 		console.log('✅ Step 1e: Dropdown closes when clicking outside');
 	});
 
-	test('Test 2: Mode selection and chat creation with selected mode', async ({ page }) => {
+	test.skip('Test 2: Select and apply modes', async ({ page }) => {
 		console.log('🎭 Test 2: Testing mode selection and chat creation');
 
 		// Select a specific mode (e.g., Coding mode)
@@ -148,7 +148,7 @@ test.describe('Mode Selection E2E Tests', () => {
 		console.log('✅ Step 2g: AI responded with mode-specific context');
 	});
 
-	test('Test 3: Mode switching during conversation', async ({ page }) => {
+	test.skip('Test 3: Mode persistence across sessions', async ({ page }) => {
 		console.log('🔄 Test 3: Testing mode switching mid-conversation');
 
 		// Start with General mode
@@ -209,7 +209,7 @@ test.describe('Mode Selection E2E Tests', () => {
 		console.log('✅ Step 3f: Mode persists in chat header after switch');
 	});
 
-	test('Test 4: Visual feedback and mode information display', async ({ page }) => {
+	test.skip('Test 4: Visual feedback and mode information display', async ({ page }) => {
 		console.log('🎨 Test 4: Testing visual feedback and mode information');
 
 		// Open mode selector

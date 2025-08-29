@@ -49,7 +49,7 @@ test.describe('Comprehensive Reasoning Tests', () => {
 			console.log('✅ Reasoning streaming test completed');
 		});
 
-		test('should handle rapid reasoning chunks with controlled timing', async ({ page }) => {
+		test('should handle reasoning streaming timing control', async ({ page }) => {
 			console.log('🕰️ Testing reasoning streaming timing control');
 
 			// Test with instruction plan for controlled streaming

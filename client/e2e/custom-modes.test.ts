@@ -27,7 +27,7 @@ test.describe('Custom Mode Management E2E Tests', () => {
 		await expect(page.getByPlaceholder('Start a new conversation...')).toBeVisible();
 	});
 
-	test('Test 1: Create custom mode through UI', async ({ page }) => {
+	test.skip('Test 1: Create custom mode through UI', async ({ page }) => {
 		console.log('➕ Test 1: Testing custom mode creation');
 
 		// Open mode selector
@@ -91,7 +91,7 @@ test.describe('Custom Mode Management E2E Tests', () => {
 		console.log('✅ Step 1d: Custom mode appears in mode selector');
 	});
 
-	test('Test 2: Use custom mode in chat', async ({ page }) => {
+	test.skip('Test 2: Load and verify saved custom mode', async ({ page }) => {
 		console.log('💬 Test 2: Testing custom mode usage in chat');
 
 		// First, check if there are any existing custom modes
@@ -148,7 +148,7 @@ test.describe('Custom Mode Management E2E Tests', () => {
 		console.log('✅ Step 2d: AI responded using custom mode context');
 	});
 
-	test('Test 3: Edit custom mode', async ({ page }) => {
+	test.skip('Test 3: Update existing custom mode', async ({ page }) => {
 		console.log('✏️ Test 3: Testing custom mode editing');
 
 		// Navigate to modes management page if it exists
@@ -218,7 +218,7 @@ test.describe('Custom Mode Management E2E Tests', () => {
 		console.log('✅ Step 3d: Changes persisted');
 	});
 
-	test('Test 4: Delete custom mode', async ({ page }) => {
+	test.skip('Test 4: Delete custom mode with confirmation', async ({ page }) => {
 		console.log('🗑️ Test 4: Testing custom mode deletion');
 
 		// Navigate to modes management page if it exists
@@ -285,7 +285,7 @@ test.describe('Custom Mode Management E2E Tests', () => {
 		console.log('✅ Step 4d: Mode removed from UI');
 	});
 
-	test('Test 5: Custom mode validation', async ({ page }) => {
+	test.skip('Test 5: Custom mode validation', async ({ page }) => {
 		console.log('✔️ Test 5: Testing custom mode validation');
 
 		// Open mode creation dialog

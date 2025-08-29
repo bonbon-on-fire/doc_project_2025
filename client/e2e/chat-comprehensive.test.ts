@@ -129,7 +129,7 @@ test.describe('Chat Application E2E Tests', () => {
 		);
 	});
 
-	test('Test 2: Refresh and click on existing conversation', async ({ page }) => {
+	test('Test 2: Load existing conversation', async ({ page }) => {
 		console.log('🚀 Starting Test 2: Load existing conversation');
 
 		// First, create a conversation to test with
@@ -266,7 +266,7 @@ test.describe('Chat Application E2E Tests', () => {
 		console.log('🎉 Test 2 completed successfully!');
 	});
 
-	test('Test 3: Error handling and edge cases', async ({ page }) => {
+	test('Test 3: Switch between conversations', async ({ page }) => {
 		console.log('🚀 Starting Test 3: Error handling validation');
 
 		// Test empty message handling

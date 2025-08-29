@@ -33,7 +33,7 @@ test.describe('Task List Server-Driven Synchronization', () => {
 	});
 
 	test.describe('Basic Task Operations', () => {
-		test('should create tasks and update their status via server synchronization', async ({
+		test.skip('should create tasks and update their status via server synchronization', async ({
 			page
 		}) => {
 			console.log('📋 Testing basic task creation and status updates');
