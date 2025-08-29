@@ -121,6 +121,9 @@ test.describe('Chat Application E2E Tests', () => {
 			timeout: 25000
 		});
 
+		// Wait for streaming to complete before finishing test (prevents backend from stopping prematurely)
+		await expect(page.locator('span.animate-pulse')).toBeHidden({ timeout: 20000 });
+
 		console.log(
 			'✅ Test 1 completed successfully: Full conversation flow working with 4 messages total'
 		);

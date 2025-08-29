@@ -46,6 +46,9 @@ export class HandlerBasedSSEOrchestrator {
 	private currentReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 	private isStreamActive = false;
 	private sseBuffer = '';
+	private currentStreamChatId: string | null = null;
+	private currentActiveChatId: string | null = null;
+	private chatIdUnsubscribe: (() => void) | null = null;
 
 	constructor(
 		currentChatStore: Writable<ChatDto | null>,
@@ -82,6 +85,17 @@ export class HandlerBasedSSEOrchestrator {
 		// Register tools aggregate handler for combined tool calls and results
 		const toolsAggregateHandler = createToolsAggregateMessageHandler(this.chatSyncManager);
 		this.handlerRegistry.register(toolsAggregateHandler);
+
+		// Subscribe to currentChatIdStore to track the active chat
+		if (currentChatIdStore) {
+			this.chatIdUnsubscribe = currentChatIdStore.subscribe((chatId) => {
+				this.currentActiveChatId = chatId;
+				logger.debug(
+					{ currentActiveChatId: this.currentActiveChatId },
+					'Active chat ID updated from store'
+				);
+			});
+		}
 	}
 
 	/**
@@ -128,6 +142,7 @@ export class HandlerBasedSSEOrchestrator {
 
 		try {
 			this.isStreamActive = true;
+			this.currentStreamChatId = request.chatId || null;
 			this.chatSyncManager.setCurrentUserMessage(userMessage);
 
 			// Reflect streaming state immediately for UI
@@ -156,6 +171,7 @@ export class HandlerBasedSSEOrchestrator {
 			});
 		} finally {
 			this.isStreamActive = false;
+			this.currentStreamChatId = null;
 		}
 	}
 
@@ -238,8 +254,26 @@ export class HandlerBasedSSEOrchestrator {
 			);
 
 			const raw = JSON.parse(parsedEvent.eventData);
+			const eventChatId = String(raw.chatId);
+
+			// Filter out events from other chats based on the current active chat
+			// We check against the active chat ID (what user is viewing) rather than just streaming chat ID
+			// This ensures events are filtered correctly even when switching to non-streaming chats
+			const activeChat = this.currentActiveChatId || this.currentStreamChatId;
+			if (activeChat && eventChatId !== activeChat) {
+				logger.debug(
+					{
+						eventChatId,
+						currentActiveChatId: this.currentActiveChatId,
+						currentStreamChatId: this.currentStreamChatId
+					},
+					'Ignoring SSE event from different chat'
+				);
+				return;
+			}
+
 			const base = {
-				chatId: String(raw.chatId),
+				chatId: eventChatId,
 				version: Number(raw.version || 1),
 				ts: String(raw.ts || new Date().toISOString())
 			};
@@ -363,6 +397,7 @@ export class HandlerBasedSSEOrchestrator {
 			this.currentReader = null;
 		}
 		this.isStreamActive = false;
+		this.currentStreamChatId = null;
 
 		this.streamingStateStore.update((state) => ({
 			...state,
@@ -511,6 +546,12 @@ export class HandlerBasedSSEOrchestrator {
 	async cleanup(): Promise<void> {
 		await this.stopStream();
 		this.handlerRegistry.clear();
+
+		// Unsubscribe from chat ID store
+		if (this.chatIdUnsubscribe) {
+			this.chatIdUnsubscribe();
+			this.chatIdUnsubscribe = null;
+		}
 
 		this.streamingStateStore.set({
 			isStreaming: false,

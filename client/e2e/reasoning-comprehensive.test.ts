@@ -185,7 +185,7 @@ Test controlled reasoning timing
 
 	test.describe('Multiple Reasoning Messages', () => {
 		test('should handle multiple reasoning messages in conversation', async ({ page }) => {
-			console.log('📚 Testing multiple reasoning messages');
+			console.log('📚 Testing multiple reasoning messages with auto-collapse behavior');
 
 			// First reasoning message
 			const firstMessage = 'First reasoning\nReason: First step of thinking';
@@ -197,9 +197,13 @@ Test controlled reasoning timing
 			await page.waitForURL('**/chat', { timeout: 10000 });
 			await expect(page.getByTestId('message-list')).toBeVisible({ timeout: 20000 });
 
-			// Wait for first reasoning to appear
+			// Wait for first reasoning to appear and complete streaming
 			const firstReasoningContent = page.getByTestId('reasoning-content').first();
 			await expect(firstReasoningContent).toBeVisible({ timeout: 15000 });
+			await expect(firstReasoningContent).toContainText('First step', { timeout: 10000 });
+
+			// Wait for first reasoning to complete streaming
+			await expect(page.locator('span.animate-pulse').first()).toBeHidden({ timeout: 20000 });
 
 			// Send second reasoning message
 			const secondMessage = 'Second reasoning\nReason: Second step of thinking';
@@ -210,20 +214,44 @@ Test controlled reasoning timing
 			// Wait for second reasoning to appear
 			const secondReasoningContent = page.getByTestId('reasoning-content').last();
 			await expect(secondReasoningContent).toBeVisible({ timeout: 15000 });
+			await expect(secondReasoningContent).toContainText('Second step', { timeout: 10000 });
 
-			// Should have multiple reasoning renderers
+			// After second message starts, first reasoning should be collapsed
+			// Check specifically for collapsed reasoning toggle buttons
+			const collapsedReasoningButtons = page.locator(
+				'[data-testid="reasoning-toggle-button"][aria-expanded="false"]'
+			);
+			await expect(collapsedReasoningButtons).toHaveCount(1, { timeout: 10000 });
+
+			// Verify collapsed reasoning shows preview text in the collapsed container
+			const firstCollapsedContainer = page
+				.locator('[role="button"][aria-expanded="false"][aria-label="Expand Reasoning"]')
+				.first();
+			await expect(firstCollapsedContainer).toBeVisible();
+			await expect(firstCollapsedContainer).toContainText('Reasoning'); // Message type label
+			await expect(firstCollapsedContainer).toContainText('First'); // Part of preview text
+
+			// Should have multiple reasoning renderers (both collapsed and expanded)
 			const reasoningRenderers = page.getByTestId('reasoning-renderer');
-			await expect(reasoningRenderers).toHaveCount(2, { timeout: 5000 });
+			await expect(reasoningRenderers).toHaveCount(4, { timeout: 15000 }); // 2 visible 2 hidden for encrypted reasoning
 
 			// Should have multiple toggle buttons
 			const reasoningToggles = page.getByTestId('reasoning-toggle-button');
 			await expect(reasoningToggles).toHaveCount(2, { timeout: 5000 });
 
-			// Both reasoning contents should contain expected text
+			// Test toggle functionality - expand the first collapsed reasoning
+			console.log('🔄 Testing toggle functionality for collapsed reasoning');
+			const firstToggleButton = page.getByTestId('reasoning-toggle-button').first();
+			await firstToggleButton.click();
+
+			// After clicking, first reasoning should be expanded again
+			await expect(firstReasoningContent).toBeVisible({ timeout: 5000 });
 			await expect(firstReasoningContent).toContainText('First step');
+
+			// Both reasoning contents should now be visible and contain expected text
 			await expect(secondReasoningContent).toContainText('Second step');
 
-			console.log('✅ Multiple reasoning messages handling verified');
+			console.log('✅ Multiple reasoning messages with auto-collapse handling verified');
 		});
 	});
 });
