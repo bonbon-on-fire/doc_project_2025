@@ -256,20 +256,38 @@ export class HandlerBasedSSEOrchestrator {
 			const raw = JSON.parse(parsedEvent.eventData);
 			const eventChatId = String(raw.chatId);
 
-			// Filter out events from other chats based on the current active chat
-			// We check against the active chat ID (what user is viewing) rather than just streaming chat ID
-			// This ensures events are filtered correctly even when switching to non-streaming chats
-			const activeChat = this.currentActiveChatId || this.currentStreamChatId;
-			if (activeChat && eventChatId !== activeChat) {
+			// Special handling for init events when creating new chats
+			// When creating a new chat, currentStreamChatId is null and the init event
+			// brings the new chatId. We need to accept this event and update our state.
+			if (parsedEvent.eventType === 'init' && !this.currentStreamChatId) {
+				// This is a new chat being created, update our stream chat ID
+				this.currentStreamChatId = eventChatId;
 				logger.debug(
 					{
 						eventChatId,
+						eventType: 'init',
 						currentActiveChatId: this.currentActiveChatId,
 						currentStreamChatId: this.currentStreamChatId
 					},
-					'Ignoring SSE event from different chat'
+					'New chat init event - updating currentStreamChatId'
 				);
-				return;
+				// Don't filter this event - let it through to establish the new chat
+			} else {
+				// Filter out events from other chats based on the current active chat
+				// We check against the active chat ID (what user is viewing) OR the streaming chat ID
+				// This ensures events are filtered correctly even when switching to non-streaming chats
+				const activeChat = this.currentActiveChatId || this.currentStreamChatId;
+				if (activeChat && eventChatId !== activeChat) {
+					logger.debug(
+						{
+							eventChatId,
+							currentActiveChatId: this.currentActiveChatId,
+							currentStreamChatId: this.currentStreamChatId
+						},
+						'Ignoring SSE event from different chat'
+					);
+					return;
+				}
 			}
 
 			const base = {
