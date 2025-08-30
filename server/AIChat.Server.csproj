@@ -25,6 +25,16 @@
     <PackageReference Include="Serilog.Formatting.Compact" Version="3.0.0" />
     <PackageReference Include="YamlDotNet" Version="16.3.0" />
   </ItemGroup>
+
+  <!-- Orleans client integration -->
+  <ItemGroup>
+    <ProjectReference Include="..\AIChat.Orleans.Client\AIChat.Orleans.Client.csproj" />
+  </ItemGroup>
+
+  <!-- Feature Management for Orleans integration -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.FeatureManagement.AspNetCore" Version="3.0.0" />
+  </ItemGroup>
   <!-- Conditional references for LmDotnetTools: use local projects if available, otherwise NuGet packages -->
   <ItemGroup Condition="Exists('../submodules/LmDotnetTools/src/LmCore/AchieveAi.LmDotnetTools.LmCore.csproj')">
     <ProjectReference Include="../submodules/LmDotnetTools/src/LmCore/AchieveAi.LmDotnetTools.LmCore.csproj" />

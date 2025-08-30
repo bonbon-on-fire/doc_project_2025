@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+    <WarningsNotAsErrors>CS1591</WarningsNotAsErrors>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <AssemblyTitle>AIChat Orleans Silo Host</AssemblyTitle>
+    <AssemblyDescription>Orleans silo host for AIChat application</AssemblyDescription>
+    <AssemblyCompany>AIChat</AssemblyCompany>
+    <AssemblyProduct>AIChat Orleans Host</AssemblyProduct>
+    <Copyright>© 2024 AIChat</Copyright>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Orleans.Server" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Orleans.Hosting" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Orleans.Persistence.Memory" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Orleans.Persistence.AzureStorage" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Orleans.Clustering.AzureStorage" Version="8.0.0" />
+    <PackageReference Include="OrleansDashboard" Version="8.0.0" />
+    <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.22.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.AzureKeyVault" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+    <PackageReference Include="Serilog.AspNetCore" Version="8.0.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="5.0.0" />
+    <PackageReference Include="Serilog.Sinks.ApplicationInsights" Version="4.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AIChat.Orleans\AIChat.Orleans.csproj" />
+  </ItemGroup>
+
+</Project>

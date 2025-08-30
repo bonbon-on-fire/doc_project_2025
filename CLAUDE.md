@@ -154,3 +154,4 @@ WHERE level = 'Error' ORDER BY timestamp DESC;
 - Test thoroughly before committing changes
 
 For any specific topic, refer to the appropriate file in `.repo-instructions/` for detailed guidance.
+- Uuse `format-code.ps1` for making sure the code styles is good and fix any build errors post re-formatting.

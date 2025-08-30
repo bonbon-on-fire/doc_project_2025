@@ -23,6 +23,8 @@ You MUST add reminder on top of checklist to update the tasks (check the checkli
 
 You SHOULD use `ask_human` tool to connect with user in case you have any **doubts** or **confusion** on any task. Continuing with a task without extreme clarity is inviting substandard codebase. A good developer always work with crystal clear clarity.
 
+The best code is the one that starts with ultrathinking, to understand what needs to be built and them build it surgical precision. To honor this tradition ULTRATHINK before any major step.
+
 ## Task
 
 Being senior developer, you are expected to both complete the task but also uphold the coding standards. The coding standards include
@@ -52,6 +54,8 @@ Before you coplete the task, you need to make sure that you have completed the f
 ## Important Notes
 
 Always be aware of blocking commands. E.g. `vite tests` are blocking. Work to make sure you command execution doesn't block your progress. If you need to run a command that blocks, make sure you have a plan to continue working on other tasks while the command is running.
+
+Make sure that there are no regression in existing tests.
 
 ## Appendix
 

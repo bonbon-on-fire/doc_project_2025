@@ -5,6 +5,8 @@ using System.Text.Json;
 using AchieveAi.LmDotnetTools.LmCore.Agents;
 using AchieveAi.LmDotnetTools.LmCore.Messages;
 using AchieveAi.LmDotnetTools.LmCore.Middleware;
+using AIChat.Orleans.Client.Services;
+using AIChat.Orleans.Contracts;
 using AIChat.Server.Models;
 using AIChat.Server.Storage;
 using Microsoft.Extensions.Options;
@@ -19,7 +21,8 @@ public class ChatService(
     IOptions<AiOptions> aiOptions,
     ITaskManagerService taskManagerService,
     IToolingService toolingService,
-    IModeService modeService
+    IModeService modeService,
+    IOrleansIntegrationService? orleansService = null
 ) : IChatService, IToolResultCallback
 {
     private readonly AiOptions _aiOptions = aiOptions.Value;
@@ -404,6 +407,21 @@ public class ChatService(
                 return new MessageResult { Success = false, Error = insUser.Error };
             }
 
+            // Phase 1: Orleans shadow mode - record user message activity
+            if (orleansService != null && !string.IsNullOrEmpty(request.UserId))
+            {
+                _ = orleansService.RecordUserActivityAsync(
+                    request.UserId,
+                    ActivityType.MessageSent,
+                    new { 
+                        ChatId = request.ChatId,
+                        MessageId = userDto.Id,
+                        MessageLength = request.Message.Length,
+                        SequenceNumber = userDto.SequenceNumber,
+                        ModeId = request.ModeId
+                    });
+            }
+
             if (MessageCreated != null)
             {
                 await MessageCreated(
@@ -452,6 +470,22 @@ public class ChatService(
             }
 
             _ = await storage.UpdateChatUpdatedAtAsync(request.ChatId, DateTime.UtcNow);
+
+            // Phase 1: Orleans shadow mode - record message completion
+            if (orleansService != null && !string.IsNullOrEmpty(request.UserId))
+            {
+                _ = orleansService.RecordUserActivityAsync(
+                    request.UserId,
+                    ActivityType.MessageCompleted,
+                    new { 
+                        ChatId = request.ChatId,
+                        UserMessageId = userDto.Id,
+                        AssistantMessageId = assistantDto.Id,
+                        ResponseLength = aiResponse.Length,
+                        ProcessingTime = DateTime.UtcNow.Subtract(userDto.Timestamp).TotalMilliseconds,
+                        SequenceNumbers = new { User = userDto.SequenceNumber, Assistant = assistantDto.SequenceNumber }
+                    });
+            }
 
             if (MessageCreated != null)
             {

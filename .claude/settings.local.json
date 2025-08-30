@@ -30,7 +30,7 @@
       "Bash(dotnet user-secrets:*)",
       "Bash(duckdb:*)",
       "Bash(find:*)",
-      "Bash(for file in *.json)",
+      "Bash(for file in :*.json :*)",
       "Bash(git add:*)",
       "Bash(git checkout:*)",
       "Bash(git commit:*)",
@@ -121,7 +121,7 @@
   "enabledMcpjsonServers": [
     "sequential-thinking-tools",
     "playwright",
-    "memroy_db",
-    "azure-devops-mcp"
+    "azure-devops-mcp",
+    "mcp-ask-human"
   ]
 }

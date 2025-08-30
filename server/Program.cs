@@ -4,6 +4,8 @@ using AchieveAi.LmDotnetTools.Misc.Configuration;
 using AchieveAi.LmDotnetTools.Misc.Http;
 using AchieveAi.LmDotnetTools.Misc.Storage;
 using AchieveAi.LmDotnetTools.OpenAIProvider.Agents;
+using AIChat.Orleans.Client.Configuration;
+using AIChat.Orleans.Client.Services;
 using AIChat.Server.Hubs;
 using AIChat.Server.Logging;
 using AIChat.Server.Models;
@@ -12,6 +14,7 @@ using AIChat.Server.Services.TestMode;
 using AIChat.Server.Storage;
 using AIChat.Server.Storage.Sqlite;
 using Lib.AspNetCore.ServerSentEvents;
+using Microsoft.FeatureManagement;
 using Serilog;
 using Serilog.Formatting.Compact;
 
@@ -118,6 +121,26 @@ builder.Services.AddSignalR(hubOptions =>
     // Set keep alive interval to 2 minutes (how often the server sends a ping message)
     hubOptions.KeepAliveInterval = TimeSpan.FromMinutes(4);
 });
+
+// Add Feature Management for controlled Orleans rollout
+builder.Services.AddFeatureManagement(builder.Configuration.GetSection("FeatureManagement"));
+
+// Add Orleans Client for Phase 1 shadow mode integration
+// Only adds client dependency - Orleans silo runs separately
+try
+{
+    builder.Services.AddOrleansClient(builder.Configuration, builder.Environment);
+    Log.Information("Orleans client configured successfully");
+}
+catch (Exception ex)
+{
+    // Log warning but don't fail startup - Orleans is optional in Phase 1
+    Log.Warning(ex, "Failed to configure Orleans client - Orleans integration will be disabled");
+}
+
+// Add health checks including Orleans client
+builder.Services.AddHealthChecks()
+    .AddCheck<OrleansClientHealthCheck>("orleans-client");
 
 // Add LmConfig services
 builder.Services.AddLmConfig(builder.Configuration.GetSection("LmConfig"));
@@ -336,11 +359,27 @@ app.MapHub<ChatHub>("/api/chat-hub");
 // Add Server-Sent Events endpoint
 app.MapServerSentEvents("/api/chat-sse");
 
-// Health check endpoint
-app.MapGet(
-    "/api/health",
-    () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow })
-);
+// Health check endpoints
+app.MapHealthChecks("/api/health");
+app.MapGet("/api/health/detailed", async (IServiceProvider services) =>
+{
+    var healthCheckService = services.GetRequiredService<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckService>();
+    var result = await healthCheckService.CheckHealthAsync();
+    
+    return Results.Ok(new 
+    { 
+        Status = result.Status.ToString(), 
+        Timestamp = DateTime.UtcNow,
+        Checks = result.Entries.ToDictionary(
+            kvp => kvp.Key,
+            kvp => new 
+            {
+                Status = kvp.Value.Status.ToString(),
+                Description = kvp.Value.Description,
+                Data = kvp.Value.Data
+            })
+    });
+});
 
 app.Run();
 
