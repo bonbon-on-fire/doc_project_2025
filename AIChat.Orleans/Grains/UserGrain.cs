@@ -44,16 +44,14 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
         }
 
         // Setup periodic cleanup timer (every 5 minutes)
-        _cleanupTimer = RegisterTimer(
-            CleanupStateAsync,
-            null!,
+        _cleanupTimer = this.RegisterGrainTimer(
+            (_) => CleanupStateAsync(null),
             TimeSpan.FromMinutes(5),
             TimeSpan.FromMinutes(5));
 
         // Setup metrics timer (every minute)
-        _metricsTimer = RegisterTimer(
-            UpdateMetricsAsync,
-            null!,
+        _metricsTimer = this.RegisterGrainTimer(
+            (_) => UpdateMetricsAsync(null),
             TimeSpan.FromMinutes(1),
             TimeSpan.FromMinutes(1));
 
@@ -317,7 +315,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
     /// <summary>
     /// Periodic cleanup of old data to prevent memory leaks.
     /// </summary>
-    private async Task CleanupStateAsync(object state)
+    private async Task CleanupStateAsync(object? state)
     {
         try
         {
@@ -382,7 +380,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
     /// <summary>
     /// Updates metrics periodically.
     /// </summary>
-    private async Task UpdateMetricsAsync(object state)
+    private async Task UpdateMetricsAsync(object? state)
     {
         try
         {

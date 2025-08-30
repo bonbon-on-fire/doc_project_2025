@@ -107,7 +107,7 @@ public static class OrleansClientExtensions
         {
             clientBuilder.UseAzureStorageClustering(options =>
             {
-                options.ConfigureTableServiceClient(clusteringConnection);
+                options.TableServiceClient = new Azure.Data.Tables.TableServiceClient(clusteringConnection);
                 options.TableName = "OrleansCluster";
             });
         }
