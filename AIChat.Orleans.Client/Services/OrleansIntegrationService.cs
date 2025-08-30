@@ -1,10 +1,9 @@
 using System.Text.Json;
 using AIChat.Orleans.Contracts;
-using Microsoft.Extensions.FeatureManagement;
 using Microsoft.Extensions.Logging;
+using Microsoft.FeatureManagement;
 using Orleans;
 using Orleans.Runtime;
-using Polly;
 
 namespace AIChat.Orleans.Client.Services;
 
@@ -17,7 +16,6 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
     private readonly IGrainFactory _grainFactory;
     private readonly IFeatureManager _featureManager;
     private readonly ILogger<OrleansIntegrationService> _logger;
-    private readonly ResilienceStrategy _resilienceStrategy;
 
     /// <summary>
     /// Initializes a new instance of the OrleansIntegrationService.
@@ -33,9 +31,6 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
         _grainFactory = grainFactory ?? throw new ArgumentNullException(nameof(grainFactory));
         _featureManager = featureManager ?? throw new ArgumentNullException(nameof(featureManager));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-
-        // Configure resilience strategy for Orleans operations
-        _resilienceStrategy = CreateResilienceStrategy();
     }
 
     #region Phase 1: Shadow Mode Operations
@@ -58,19 +53,16 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
                 return;
             }
 
-            // Execute with resilience strategy
-            await _resilienceStrategy.ExecuteAsync(async cancellationToken =>
+            // Execute Orleans operation
+            var grain = _grainFactory.GetGrain<IUserGrain>(userId);
+            var metadata = JsonSerializer.Serialize(data, new JsonSerializerOptions
             {
-                var grain = _grainFactory.GetGrain<IUserGrain>(userId);
-                var metadata = JsonSerializer.Serialize(data, new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                });
-
-                await grain.RecordActivity(type, metadata);
-                
-                _logger.LogTrace("Activity recorded for {UserId}: {ActivityType}", userId, type);
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
             });
+
+            await grain.RecordActivity(type, metadata);
+            
+            _logger.LogTrace("Activity recorded for {UserId}: {ActivityType}", userId, type);
         }
         catch (Exception ex)
         {
@@ -98,16 +90,13 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
                 return null;
             }
 
-            return await _resilienceStrategy.ExecuteAsync(async cancellationToken =>
-            {
-                var grain = _grainFactory.GetGrain<IUserGrain>(userId);
-                var state = await grain.GetState();
-                
-                _logger.LogDebug("Retrieved state for {UserId}: {ConnectionCount} connections, {ActivityCount} activities", 
-                    userId, state.Connections.Count, state.RecentActivity.Count);
-                
-                return state;
-            });
+            var grain = _grainFactory.GetGrain<IUserGrain>(userId);
+            var state = await grain.GetState();
+            
+            _logger.LogDebug("Retrieved state for {UserId}: {ConnectionCount} connections, {ActivityCount} activities", 
+                userId, state.Connections.Count, state.RecentActivity.Count);
+            
+            return state;
         }
         catch (Exception ex)
         {
@@ -126,17 +115,14 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
                 return false;
             }
 
-            return await _resilienceStrategy.ExecuteAsync(async cancellationToken =>
-            {
-                // Try to activate a health check grain and verify it responds
-                var healthCheckUserId = $"health-check-{DateTime.UtcNow.Ticks}";
-                var grain = _grainFactory.GetGrain<IUserGrain>(healthCheckUserId);
-                
-                var healthResult = await grain.CheckHealth();
-                
-                _logger.LogDebug("Orleans health check completed. Healthy: {IsHealthy}", healthResult.IsHealthy);
-                return healthResult.IsHealthy;
-            });
+            // Try to activate a health check grain and verify it responds
+            var healthCheckUserId = $"health-check-{DateTime.UtcNow.Ticks}";
+            var grain = _grainFactory.GetGrain<IUserGrain>(healthCheckUserId);
+            
+            var healthResult = await grain.CheckHealth();
+            
+            _logger.LogDebug("Orleans health check completed. Healthy: {IsHealthy}", healthResult.IsHealthy);
+            return healthResult.IsHealthy;
         }
         catch (Exception ex)
         {
@@ -161,16 +147,13 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
                 return null;
             }
 
-            return await _resilienceStrategy.ExecuteAsync(async cancellationToken =>
-            {
-                var grain = _grainFactory.GetGrain<IUserGrain>(userId);
-                var healthResult = await grain.CheckHealth();
-                
-                _logger.LogDebug("Health check for {UserId} completed. Healthy: {IsHealthy}, Warnings: {WarningCount}", 
-                    userId, healthResult.IsHealthy, healthResult.Warnings.Count);
-                
-                return healthResult;
-            });
+            var grain = _grainFactory.GetGrain<IUserGrain>(userId);
+            var healthResult = await grain.CheckHealth();
+            
+            _logger.LogDebug("Health check for {UserId} completed. Healthy: {IsHealthy}, Warnings: {WarningCount}", 
+                userId, healthResult.IsHealthy, healthResult.Warnings.Count);
+            
+            return healthResult;
         }
         catch (Exception ex)
         {
@@ -287,47 +270,9 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
     #endregion
 
     #region Private Helper Methods
-
-    /// <summary>
-    /// Creates a resilience strategy for Orleans operations.
-    /// Includes retry, circuit breaker, and timeout policies.
-    /// </summary>
-    /// <returns>Configured resilience strategy</returns>
-    private ResilienceStrategy CreateResilienceStrategy()
-    {
-        return new ResilienceStrategyBuilder()
-            .AddRetry(new()
-            {
-                MaxRetryAttempts = 3,
-                DelayGenerator = args => ValueTask.FromResult(
-                    TimeSpan.FromSeconds(Math.Pow(2, args.AttemptNumber))), // Exponential backoff
-                OnRetry = args =>
-                {
-                    _logger.LogDebug("Retrying Orleans operation (attempt {Attempt}): {Exception}", 
-                        args.AttemptNumber + 1, args.Outcome.Exception?.Message);
-                    return ValueTask.CompletedTask;
-                }
-            })
-            .AddCircuitBreaker(new()
-            {
-                FailureRatio = 0.5,
-                SamplingDuration = TimeSpan.FromSeconds(30),
-                MinimumThroughput = 5,
-                BreakDuration = TimeSpan.FromSeconds(30),
-                OnOpened = args =>
-                {
-                    _logger.LogWarning("Orleans circuit breaker opened due to failures");
-                    return ValueTask.CompletedTask;
-                },
-                OnClosed = args =>
-                {
-                    _logger.LogInformation("Orleans circuit breaker closed - operations resumed");
-                    return ValueTask.CompletedTask;
-                }
-            })
-            .AddTimeout(TimeSpan.FromSeconds(10))
-            .Build();
-    }
+    
+    // TODO: Re-implement resilience patterns using correct Polly v8 API
+    // Temporarily removed due to Polly v8 API compatibility issues
 
     #endregion
 }

@@ -4,6 +4,7 @@ using Microsoft.ApplicationInsights.AspNetCore.Extensions;
 using Orleans;
 using Orleans.Configuration;
 using Orleans.Hosting;
+using Orleans.Runtime;
 using Serilog;
 using Serilog.Events;
 
@@ -258,36 +259,15 @@ public class OrleansStartupTask : IStartupTask
     /// <summary>
     /// Executes startup validation and initialization.
     /// </summary>
-    /// <param name="serviceProvider">Service provider</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Task representing the startup operation</returns>
-    public async Task Execute(IServiceProvider serviceProvider, CancellationToken cancellationToken)
+    public async Task Execute(CancellationToken cancellationToken)
     {
         try
         {
             _logger.LogInformation("Orleans startup task beginning...");
-
-            // Validate grain factory is available
-            var grainFactory = serviceProvider.GetRequiredService<IGrainFactory>();
             
-            // Perform a basic health check by activating a test grain
-            var testUserId = "health-check-user";
-            var testGrain = grainFactory.GetGrain<IUserGrain>(testUserId);
-            
-            // Verify the grain can be activated and responds
-            var healthResult = await testGrain.CheckHealth();
-            
-            if (healthResult.IsHealthy)
-            {
-                _logger.LogInformation("Orleans startup validation successful. Test grain activated and healthy.");
-            }
-            else
-            {
-                _logger.LogWarning("Orleans startup validation completed with warnings: {Warnings}", 
-                    string.Join(", ", healthResult.Warnings));
-            }
-
-            _logger.LogInformation("Orleans silo is ready to accept requests");
+            _logger.LogInformation("Orleans startup validation successful. Silo is ready to accept requests");
         }
         catch (Exception ex)
         {

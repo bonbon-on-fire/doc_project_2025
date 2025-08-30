@@ -1,7 +1,9 @@
 using System.Text.Json;
+using AIChat.Orleans.Contracts;
 using Microsoft.Extensions.Logging;
 using Orleans;
 using Orleans.Runtime;
+using Orleans.Serialization;
 
 namespace AIChat.Orleans.Grains;
 
@@ -9,7 +11,6 @@ namespace AIChat.Orleans.Grains;
 /// User grain implementation providing user-centric operations.
 /// Maintains user state, connections, and handles message routing.
 /// </summary>
-[GenerateSerializer]
 public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
 {
     private readonly ILogger<UserGrain> _logger;
@@ -45,14 +46,14 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
         // Setup periodic cleanup timer (every 5 minutes)
         _cleanupTimer = RegisterTimer(
             CleanupStateAsync,
-            null,
+            null!,
             TimeSpan.FromMinutes(5),
             TimeSpan.FromMinutes(5));
 
         // Setup metrics timer (every minute)
         _metricsTimer = RegisterTimer(
             UpdateMetricsAsync,
-            null,
+            null!,
             TimeSpan.FromMinutes(1),
             TimeSpan.FromMinutes(1));
 

@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Orleans;
 using Orleans.Configuration;
 using Orleans.Hosting;
+using Orleans.Runtime;
 
 namespace AIChat.Orleans.Client.Configuration;
 
@@ -68,23 +69,10 @@ public static class OrleansClientExtensions
             ConfigureProductionClient(clientBuilder, configuration);
         }
 
-        // Add application parts (grain interfaces)
-        clientBuilder.ConfigureApplicationParts(parts =>
-        {
-            parts.AddApplicationPart(typeof(IUserGrain).Assembly).WithReferences();
-        });
-
         // Configure client connection
         clientBuilder.Configure<GatewayOptions>(options =>
         {
             options.GatewayListRefreshPeriod = TimeSpan.FromMinutes(5);
-        });
-
-        // Configure logging
-        clientBuilder.ConfigureLogging(logging =>
-        {
-            logging.AddFilter("Orleans", LogLevel.Warning);
-            logging.AddFilter("Orleans.Runtime", LogLevel.Warning);
         });
     }
 
