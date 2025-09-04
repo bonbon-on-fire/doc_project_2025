@@ -112,7 +112,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
     /// 3. Nullifies timer references to allow GC collection
     /// 4. Waits briefly to allow any in-flight callbacks to complete
     /// </summary>
-    private async Task DisposeTimersAsync()
+    private Task DisposeTimersAsync()
     {
         // Set disposal flag first to signal timer callbacks to exit early
         _disposed = true;
@@ -130,6 +130,8 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
             _metricsTimer.Dispose();
             _metricsTimer = null;
         }
+
+        return Task.CompletedTask;
     }
 
     /// <summary>

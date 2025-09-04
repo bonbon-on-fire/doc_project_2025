@@ -1547,6 +1547,77 @@ public class Phase2SignalRIntegrationTests
 
 Move ChatService to background execution with full grain coordination, completing the migration.
 
+The key architectural principle is that **BackgroundChatService uses the existing ChatService internally** to leverage all the existing agentic loop functionality, tool integrations, and LLM processing logic.
+
+### 3.0 ChatService Refactoring Prerequisites
+
+Before implementing BackgroundChatService, the existing ChatService must be refactored to support both controller-based and background execution contexts.
+
+#### Current ChatService Limitations
+- Request-scoped dependencies (IHttpContextAccessor)
+- Tool callbacks tied to streaming context
+- State management coupled to HTTP request lifecycle
+- Direct dependency on controller-specific services
+
+#### Refactoring Requirements
+
+**1. Extract Core Processing Interface**
+```csharp
+// Services/IChatService.cs
+public interface IChatService
+{
+    Task<string> GenerateAIResponseAsync(string chatId, string? modeId = null, string? userId = null);
+    Task<MessageResult> SendMessageAsync(SendMessageRequest request);
+    IAsyncEnumerable<StreamChunkEvent> ProcessMessageStreamAsync(ProcessMessageRequest request);
+}
+
+// For background processing compatibility
+public interface IChatServiceStreaming
+{
+    Task ProcessMessageWithCallbackAsync(ProcessMessageRequest request, Func<StreamChunkEvent, Task> chunkCallback);
+}
+```
+
+**2. Stateless ChatService Implementation**
+```csharp
+// Services/ChatService.cs - Refactored
+public class ChatService : IChatService, IChatServiceStreaming
+{
+    // Remove: IHttpContextAccessor (request-scoped)
+    // Add: User context as parameters
+    // Make: Tool callbacks configurable per operation
+    
+    public async Task ProcessMessageWithCallbackAsync(
+        ProcessMessageRequest request, 
+        Func<StreamChunkEvent, Task> chunkCallback)
+    {
+        // Existing GenerateAIResponseAsync logic
+        // Stream chunks through provided callback instead of events
+        // Preserve all agentic loop functionality
+        // Maintain tool middleware and integrations
+    }
+}
+```
+
+**3. Request-Scoped Wrapper for Controllers**
+```csharp
+// Services/ChatServiceFacade.cs
+public class ChatServiceFacade
+{
+    private readonly IChatService _chatService;
+    private readonly IHttpContextAccessor _httpContext;
+    
+    // Wraps ChatService calls with request-scoped context
+    // Maintains existing controller compatibility
+}
+```
+
+**4. Migration Strategy**
+- Phase 3.0: Refactor ChatService (no breaking changes to controllers)
+- Phase 3.1: Implement BackgroundChatService using refactored ChatService
+- Phase 3.2: Route messages through background processing
+- Phase 3.3: Deprecate direct controller usage (optional)
+
 ### Architecture Changes
 
 ```mermaid
@@ -1562,10 +1633,12 @@ graph TB
             subgraph "Orleans Cluster"
                 UG[UserGrain]
                 
-                subgraph "Background Services"
-                    CS[ChatService]
-                    Queue[Task Queue]
-                    Worker[Worker Pool]
+                subgraph "Background Processing"
+                    BGS[BackgroundChatService<br/>Queue + Workers]
+                    
+                    subgraph "Core Services"
+                        CS[ChatService<br/>Agentic Loop + Tools]
+                    end
                 end
             end
         end
@@ -1577,16 +1650,16 @@ graph TB
         Client2 <--> Hub
         
         Hub <--> UG
-        UG --> Queue
-        Queue --> Worker
-        Worker --> CS
+        UG --> BGS
+        BGS --> CS
         CS --> LLM
         CS --> DB
-        CS --> UG
+        CS -.-> UG
+        BGS -.-> UG
         
-        style CS fill:#ccffcc
-        style UG fill:#ccffcc
-        style Worker fill:#ccffcc
+        style CS fill:#ffcccc
+        style BGS fill:#ccffcc
+        style UG fill:#ccccff
     end
 ```
 
@@ -1603,6 +1676,29 @@ public interface IBackgroundChatService
     Task<OperationStatus> GetOperationStatus(string operationId);
 }
 
+/// <summary>
+/// Background service that processes chat operations asynchronously.
+/// 
+/// KEY ARCHITECTURAL DECISION: This service uses the existing ChatService internally
+/// to leverage all existing functionality:
+/// - Agentic loop and LLM processing (GenerateAIResponseAsync)
+/// - Tool middleware and integrations
+/// - Mode-based system prompts
+/// - Message persistence and validation
+/// - Stream processing capabilities
+/// 
+/// BackgroundChatService handles:
+/// - Queueing and worker pool management
+/// - Operation lifecycle tracking
+/// - Cancellation support
+/// - Grain coordination
+/// 
+/// ChatService handles:
+/// - All LLM interaction and processing logic
+/// - Tool execution and middleware
+/// - Database operations
+/// - Response streaming
+/// </summary>
 public class BackgroundChatService : BackgroundService, IBackgroundChatService
 {
     private readonly IServiceProvider _serviceProvider;
@@ -1651,8 +1747,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
         {
             using var scope = _serviceProvider.CreateScope();
             var grainFactory = scope.ServiceProvider.GetRequiredService<IGrainFactory>();
-            var llmService = scope.ServiceProvider.GetRequiredService<ILlmService>();
-            var dbContext = scope.ServiceProvider.GetRequiredService<ChatDbContext>();
+            var chatService = scope.ServiceProvider.GetRequiredService<IChatServiceStreaming>();
             
             var cts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
             _activeOperations[operation.Id] = cts;
@@ -1668,11 +1763,11 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
                 switch (operation.Type)
                 {
                     case OperationType.SendMessage:
-                        await ProcessMessage(operation, userGrain, llmService, dbContext, cts.Token);
+                        await ProcessMessage(operation, userGrain, chatService, cts.Token);
                         break;
                     
                     case OperationType.RegenerateResponse:
-                        await RegenerateResponse(operation, userGrain, llmService, dbContext, cts.Token);
+                        await RegenerateResponse(operation, userGrain, chatService, cts.Token);
                         break;
                     
                     default:
@@ -1706,66 +1801,41 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
     private async Task ProcessMessage(
         ChatOperation operation,
         IUserGrain userGrain,
-        ILlmService llmService,
-        ChatDbContext dbContext,
+        IChatServiceStreaming chatService,
         CancellationToken cancellationToken)
     {
         var message = operation.Payload as ChatMessage;
         
-        // Save user message
-        var userMsg = new MessageEntity
+        // Create request for ChatService
+        var request = new ProcessMessageRequest
         {
             ChatId = message.ChatId,
-            Role = "user",
-            Content = message.Content,
-            CreatedAt = DateTime.UtcNow
+            UserId = operation.UserId,
+            Message = message.Content,
+            ModeId = message.ModeId, // From operation context
+            OperationId = operation.Id
         };
-        dbContext.Messages.Add(userMsg);
-        await dbContext.SaveChangesAsync(cancellationToken);
         
-        // Create assistant message placeholder
-        var assistantMsg = new MessageEntity
+        // Process through ChatService with streaming callback
+        // This leverages all existing agentic loop functionality, tools, and LLM integration
+        await chatService.ProcessMessageWithCallbackAsync(request, async (chunkEvent) =>
         {
-            ChatId = message.ChatId,
-            Role = "assistant",
-            Content = "",
-            CreatedAt = DateTime.UtcNow
-        };
-        dbContext.Messages.Add(assistantMsg);
-        await dbContext.SaveChangesAsync(cancellationToken);
-        
-        // Stream response from LLM
-        var fullResponse = new StringBuilder();
-        await foreach (var chunk in llmService.StreamCompletionAsync(
-            message.Content, 
-            cancellationToken))
-        {
-            fullResponse.Append(chunk.Content);
-            
-            // Relay chunk through grain
-            await userGrain.RelayStreamChunk(new StreamChunk
+            // Convert ChatService chunk to grain stream chunk format
+            var streamChunk = new StreamChunk
             {
                 OperationId = operation.Id,
                 ChatId = message.ChatId,
-                Content = chunk.Content,
-                ChunkIndex = chunk.Index,
-                IsComplete = chunk.IsComplete
-            });
+                Content = chunkEvent.Content,
+                ChunkIndex = chunkEvent.ChunkIndex,
+                IsComplete = chunkEvent.IsComplete,
+                MessageId = chunkEvent.MessageId
+            };
             
-            // Periodic database update
-            if (chunk.Index % 10 == 0 || chunk.IsComplete)
-            {
-                assistantMsg.Content = fullResponse.ToString();
-                dbContext.Messages.Update(assistantMsg);
-                await dbContext.SaveChangesAsync(cancellationToken);
-            }
-        }
+            // Relay through UserGrain to connected clients
+            await userGrain.RelayStreamChunk(streamChunk);
+        });
         
-        // Final save
-        assistantMsg.Content = fullResponse.ToString();
-        assistantMsg.UpdatedAt = DateTime.UtcNow;
-        dbContext.Messages.Update(assistantMsg);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("Message processing completed for operation {OperationId}", operation.Id);
     }
     
     public async Task CancelOperation(string operationId)

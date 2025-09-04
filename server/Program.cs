@@ -8,6 +8,7 @@ using AIChat.Orleans.Client.Configuration;
 using AIChat.Orleans.Client.Services;
 using AIChat.Server.Hubs;
 using AIChat.Server.Logging;
+using AIChat.Server.Middleware;
 using AIChat.Server.Models;
 using AIChat.Server.Services;
 using AIChat.Server.Services.TestMode;
@@ -381,6 +382,9 @@ _ = Task.Run(async () =>
 });
 
 app.UseCors("AllowSvelteApp");
+
+// Add Protocol Negotiation Middleware for SignalR/SSE selection
+app.UseProtocolNegotiation();
 
 // Skip HTTPS redirection in Test (HTTP-only)
 if (!app.Environment.IsEnvironment("Test"))

@@ -5,11 +5,11 @@
 | Phase | Total | ✅ Done | 🟡 Active | 🔴 Todo | Progress |
 |-------|-------|---------|-----------|---------|----------|
 | **P1** | 10 | 7 | 0 | 3 | **70%** |
-| **P2** | 10 | 2 | 0 | 8 | **20%** |
-| **P3** | 10 | 0 | 0 | 10 | **0%** |
-| **Total** | **30** | **9** | **0** | **21** | **30%** |
+| **P2** | 10 | 4 | 0 | 6 | **40%** |
+| **P3** | 11 | 0 | 0 | 11 | **0%** |
+| **Total** | **31** | **11** | **0** | **20** | **35%** |
 
-**Overall Progress**: 30% Complete (9/30 tasks)
+**Overall Progress**: 35% Complete (11/31 tasks)
 
 ## 🚀 Active Sprint
 
@@ -177,75 +177,75 @@ See [Validation Gates Documentation](./validation-gates.md) for complete details
 **Validation**: Level 2 before completion, Level 3 before commit
 **Reference**: [Design - Enhanced UserGrain](design.md#22-enhanced-usergrain-active-mode)
 
-### ORL-P2-004: Implement Client-Side SignalR Service 🔴
+### ORL-P2-004: Implement Client-Side SignalR Service ✅
 **Points**: 8 | **Priority**: Critical | **Depends**: ORL-P2-002
-**Assignee**: `Senior Developer` | **Updated**: -
+**Assignee**: `Senior Developer` | **Updated**: 2025-09-04
 
 **Requirements**:
-- [ ] Create SignalR service class in TypeScript
-- [ ] Implement connection management
-  - [ ] Connection establishment
-  - [ ] Automatic reconnection
-  - [ ] Connection state tracking
-- [ ] Implement message handlers
-  - [ ] ReceiveMessage
-  - [ ] ReceiveStreamChunk
-  - [ ] Operation status handlers
-- [ ] Add client-side message buffering
-- [ ] Implement subscription management
-- [ ] Create Svelte stores for state management
+- [x] Create SignalR service class in TypeScript
+- [x] Implement connection management
+  - [x] Connection establishment
+  - [x] Automatic reconnection
+  - [x] Connection state tracking
+- [x] Implement message handlers
+  - [x] ReceiveMessage
+  - [x] ReceiveStreamChunk
+  - [x] Operation status handlers
+- [x] Add client-side message buffering
+- [x] Implement subscription management
+- [x] Create Svelte stores for state management
 
 **Acceptance Criteria**:
-- [ ] Connection establishes successfully
-- [ ] Auto-reconnection works
-- [ ] Messages are received and displayed
-- [ ] Buffered messages are delivered
-- [ ] UI updates correctly
+- [x] Connection establishes successfully
+- [x] Auto-reconnection works
+- [x] Messages are received and displayed
+- [x] Buffered messages are delivered
+- [x] UI updates correctly
 
 **Validation**: Level 2 before completion, Level 3 before commit
 **Reference**: [Design - Client-Side SignalR](design.md#23-client-side-signalr-integration)
 
-### ORL-P2-005: Implement Protocol Negotiation Middleware 🔴
+### ORL-P2-005: Implement Protocol Negotiation Middleware ✅
 **Points**: 5 | **Priority**: High | **Depends**: ORL-P2-004
-**Assignee**: `Senior Developer` | **Updated**: -
+**Assignee**: `Senior Developer` | **Updated**: 2025-09-04
 
 **Requirements**:
-- [ ] Create ProtocolNegotiationMiddleware class
-- [ ] Implement protocol detection logic
-  - [ ] Check client capabilities
-  - [ ] Check feature flags
-  - [ ] Check user preferences
-- [ ] Add protocol selection headers
-- [ ] Implement fallback logic
-- [ ] Configure middleware in pipeline
+- [x] Create ProtocolNegotiationMiddleware class
+- [x] Implement protocol detection logic
+  - [x] Check client capabilities
+  - [x] Check feature flags
+  - [x] Check user preferences
+- [x] Add protocol selection headers
+- [x] Implement fallback logic
+- [x] Configure middleware in pipeline
 
 **Acceptance Criteria**:
-- [ ] Modern browsers use SignalR
-- [ ] Legacy browsers fall back to SSE
-- [ ] Feature flag controls protocol
-- [ ] Headers indicate selected protocol
-- [ ] Fallback works seamlessly
+- [x] Modern browsers use SignalR
+- [x] Legacy browsers fall back to SSE
+- [x] Feature flag controls protocol
+- [x] Headers indicate selected protocol
+- [x] Fallback works seamlessly
 
 **Validation**: Level 2 before completion, Level 3 before commit
 **Reference**: [Design - Protocol Negotiation](design.md#24-protocol-negotiation)
 
-### ORL-P2-006: Implement Dual-Mode Message Delivery 🔴
+### ORL-P2-006: Implement Dual-Mode Message Delivery 🟢
 **Points**: 5 | **Priority**: High | **Depends**: ORL-P2-005
-**Assignee**: `Senior Developer` | **Updated**: -
+**Assignee**: `Senior Developer` | **Updated**: 2025-09-04
 
 **Requirements**:
-- [ ] Modify ChatController for dual-mode support
-- [ ] Implement operation ID generation
-- [ ] Add SignalR message publishing
-- [ ] Maintain SSE compatibility
-- [ ] Add protocol-specific response formatting
+- [x] Modify ChatController for dual-mode support
+- [x] Implement operation ID generation
+- [x] Add SignalR message publishing
+- [x] Maintain SSE compatibility
+- [x] Add protocol-specific response formatting
 
 **Acceptance Criteria**:
-- [ ] SSE clients receive streaming responses
-- [ ] SignalR clients receive operation IDs
-- [ ] No breaking changes to API contracts
-- [ ] Same message reaches both protocols
-- [ ] Performance is acceptable
+- [x] SSE clients receive streaming responses
+- [x] SignalR clients receive operation IDs
+- [x] No breaking changes to API contracts
+- [x] Same message reaches both protocols
+- [x] Performance is acceptable
 
 **Validation**: Level 2 before completion, Level 3 before commit
 
@@ -331,8 +331,35 @@ See [Validation Gates Documentation](./validation-gates.md) for complete details
 
 ## Phase 3: Background ChatService (Weeks 6-8)
 
-### ORL-P3-001: Create Background Service Infrastructure 🔴
+### ORL-P3-000: Refactor ChatService for Background Processing 🔴
 **Points**: 5 | **Priority**: Critical | **Depends**: Phase 2 Complete
+**Assignee**: `Senior Developer` | **Updated**: -
+
+**Requirements**:
+- [ ] Extract IChatService and IChatServiceStreaming interfaces
+- [ ] Remove request-scoped dependencies from ChatService
+  - [ ] Remove IHttpContextAccessor usage
+  - [ ] Make user context parameter-based
+- [ ] Create stateless ChatService implementation
+- [ ] Add ProcessMessageWithCallbackAsync method for streaming
+- [ ] Create ChatServiceFacade for controller compatibility
+- [ ] Update dependency injection configuration
+- [ ] Maintain backward compatibility with existing controllers
+
+**Acceptance Criteria**:
+- [ ] ChatService is stateless and thread-safe
+- [ ] Can be injected as Singleton for background services
+- [ ] Existing controller functionality unchanged
+- [ ] All agentic loop functionality preserved
+- [ ] Tool middleware still works correctly
+- [ ] Mode-based prompts still function
+- [ ] Streaming works in both contexts
+
+**Validation**: Level 2 before completion, Level 3 before commit
+**Reference**: [Design - ChatService Refactoring Prerequisites](design.md#30-chatservice-refactoring-prerequisites)
+
+### ORL-P3-001: Create Background Service Infrastructure 🔴
+**Points**: 5 | **Priority**: Critical | **Depends**: ORL-P3-000
 **Assignee**: `Senior Developer` | **Updated**: -
 
 **Requirements**:
@@ -341,12 +368,14 @@ See [Validation Gates Documentation](./validation-gates.md) for complete details
 - [ ] Create operation queue using Channels
 - [ ] Implement worker pool with semaphore
 - [ ] Add operation tracking dictionary
+- [ ] Integrate with refactored IChatServiceStreaming
 - [ ] Configure service registration
 
 **Acceptance Criteria**:
 - [ ] Service starts and stops correctly
 - [ ] Operations are queued properly
 - [ ] Concurrency limits are respected
+- [ ] Uses ChatService for all LLM processing
 - [ ] Graceful shutdown works
 
 **Validation**: Level 2 before completion, Level 3 before commit
@@ -358,19 +387,21 @@ See [Validation Gates Documentation](./validation-gates.md) for complete details
 
 **Requirements**:
 - [ ] Create ChatOperation model
-- [ ] Implement operation processing logic
-  - [ ] Message processing
-  - [ ] Response regeneration
-  - [ ] Message editing
-- [ ] Add LLM integration for background
-- [ ] Implement database updates
+- [ ] Implement operation processing logic using ChatService
+  - [ ] Message processing via ChatService.ProcessMessageWithCallbackAsync
+  - [ ] Response regeneration through existing ChatService methods
+  - [ ] Message editing using ChatService functionality
+- [ ] Add streaming callback integration
+- [ ] Implement UserGrain coordination
 - [ ] Add operation status tracking
 
 **Acceptance Criteria**:
-- [ ] Messages process successfully
+- [ ] Messages process successfully through ChatService
+- [ ] All agentic loop functionality works
+- [ ] Tool execution works in background context
+- [ ] Streaming chunks relay through UserGrain
 - [ ] Cancellation stops processing
-- [ ] Database updates correctly
-- [ ] Grain receives updates
+- [ ] Grain receives all status updates
 - [ ] Errors are handled properly
 
 **Validation**: Level 2 before completion, Level 3 before commit
@@ -399,23 +430,24 @@ See [Validation Gates Documentation](./validation-gates.md) for complete details
 **Validation**: Level 2 before completion, Level 3 before commit
 **Reference**: [Design - Enhanced UserGrain for Background](design.md#32-enhanced-usergrain-for-background-processing)
 
-### ORL-P3-004: Migrate ChatService to Background 🔴
-**Points**: 8 | **Priority**: Critical | **Depends**: ORL-P3-003
+### ORL-P3-004: Integrate Background Processing with Controllers 🔴
+**Points**: 5 | **Priority**: Critical | **Depends**: ORL-P3-003
 **Assignee**: `Senior Developer` | **Updated**: -
 
 **Requirements**:
-- [ ] Refactor ChatService to stateless design
-- [ ] Remove request-scoped dependencies
-- [ ] Implement operation context passing
-- [ ] Add grain-based state management
-- [ ] Update all chat operations
+- [ ] Add feature flag for background processing mode
+- [ ] Update ChatController to route through UserGrain when enabled
+- [ ] Implement dual-mode support (direct vs background)
+- [ ] Add background processing configuration options
+- [ ] Update API responses for async operations
 
 **Acceptance Criteria**:
-- [ ] ChatService is stateless
-- [ ] All state in grains or database
-- [ ] Concurrent operations supported
-- [ ] No request scope issues
-- [ ] Performance acceptable
+- [ ] Feature flag controls processing mode
+- [ ] Controllers route through Orleans when enabled
+- [ ] Fallback to direct processing works
+- [ ] API maintains compatibility
+- [ ] Performance monitoring works
+- [ ] Background mode functions correctly
 
 **Validation**: Level 2 before completion, Level 3 before commit
 
@@ -546,7 +578,7 @@ See [Validation Gates Documentation](./validation-gates.md) for complete details
 
 ### Tasks by Phase
 - **Phase 1**: 10 tasks (38 story points) - 70% complete
-- **Phase 2**: 10 tasks (51 story points) - 0% complete
+- **Phase 2**: 10 tasks (51 story points) - 10% complete
 - **Phase 3**: 10 tasks (52 story points) - 0% complete
 - **Total**: 30 tasks (141 story points)
 

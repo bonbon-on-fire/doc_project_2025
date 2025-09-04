@@ -3,8 +3,13 @@ import { writable, derived, get } from 'svelte/store';
 import type { ChatDto, CreateChatRequest } from '$lib/types/chat';
 import type { StreamingUIState } from '$lib/chat/types';
 import { HandlerBasedSSEOrchestrator } from '$lib/chat/handlerBasedOrchestrator';
+import { SignalROrchestrator } from '$lib/chat/signalrOrchestrator';
 import { apiClient } from '$lib/api/client';
 import { logger } from '$lib/utils/logger';
+
+// Communication mode configuration
+export type CommunicationMode = 'sse' | 'signalr';
+const COMM_MODE: CommunicationMode = (import.meta.env.VITE_COMM_MODE as CommunicationMode) || 'sse';
 
 // Chat state stores
 export const currentChatId = writable<string | null>(null);
@@ -49,20 +54,40 @@ export const currentUser = writable({
 	email: 'demo@example.com'
 });
 
-// Handler-Based SSE Orchestrator - implements new handler architecture
-let sseOrchestrator: HandlerBasedSSEOrchestrator | null = null;
+// Handler-Based Orchestrator - supports both SSE and SignalR
+let orchestrator: HandlerBasedSSEOrchestrator | SignalROrchestrator | null = null;
 
-function getOrchestrator(): HandlerBasedSSEOrchestrator {
-	if (!sseOrchestrator) {
-		sseOrchestrator = new HandlerBasedSSEOrchestrator(
-			currentChat,
-			chats,
-			streamingState,
-			() => get(currentUser).id,
-			currentChatId
-		);
+function getOrchestrator(): HandlerBasedSSEOrchestrator | SignalROrchestrator {
+	if (!orchestrator) {
+		if (COMM_MODE === 'signalr') {
+			orchestrator = new SignalROrchestrator(
+				currentChat,
+				chats,
+				streamingState,
+				() => get(currentUser).id,
+				currentChatId
+			);
+
+			// Auto-connect SignalR
+			const userId = get(currentUser).id;
+			import('./signalr').then(({ signalRActions }) => {
+				signalRActions.connect(userId).catch((error) => {
+					logger.error({ error }, 'Failed to connect SignalR');
+				});
+			});
+		} else {
+			orchestrator = new HandlerBasedSSEOrchestrator(
+				currentChat,
+				chats,
+				streamingState,
+				() => get(currentUser).id,
+				currentChatId
+			);
+		}
+
+		logger.info({ mode: COMM_MODE }, 'Orchestrator initialized');
 	}
-	return sseOrchestrator;
+	return orchestrator;
 }
 
 // Derived store for current chat messages
@@ -337,9 +362,15 @@ export const chatActions = {
 	// Cleanup
 	async cleanup(): Promise<void> {
 		// Cleanup orchestrator
-		if (sseOrchestrator) {
-			await sseOrchestrator.cleanup();
-			sseOrchestrator = null; // Reset so next getOrchestrator() creates fresh instance
+		if (orchestrator) {
+			await orchestrator.cleanup();
+			orchestrator = null; // Reset so next getOrchestrator() creates fresh instance
+		}
+
+		// Disconnect SignalR if in SignalR mode
+		if (COMM_MODE === 'signalr') {
+			const { signalRActions } = await import('./signalr');
+			await signalRActions.disconnect();
 		}
 
 		// Reset state
