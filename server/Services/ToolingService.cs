@@ -58,7 +58,7 @@ public class ToolingService(
                     UsePrefixOnlyForCollisions = mcpConfig
                         .FunctionFiltering
                         .UsePrefixOnlyForCollisions,
-                    ProviderConfigs = new Dictionary<string, LmCoreProviderFilterConfig>(),
+                    ProviderConfigs = [],
                 };
 
                 // Map provider configs
@@ -92,7 +92,7 @@ public class ToolingService(
                     GlobalBlockedFunctions = mcpConfig.ToolFiltering.GlobalBlockedTools,
                     UsePrefixOnlyForCollisions = mcpConfig.ToolFiltering.UsePrefixOnlyForCollisions,
 #pragma warning restore CS0618 // Type or member is obsolete
-                    ProviderConfigs = new Dictionary<string, LmCoreProviderFilterConfig>(),
+                    ProviderConfigs = [],
                 };
 
                 // Map MCP server configs to provider configs

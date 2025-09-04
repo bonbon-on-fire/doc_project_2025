@@ -17,7 +17,7 @@ public class ImprovedTaskManagerService(
 ) : ITaskManagerService
 {
     private readonly ConcurrentDictionary<string, CachedTaskManager> _taskManagers =
-        new ConcurrentDictionary<string, CachedTaskManager>();
+        new();
     private readonly SemaphoreSlim _saveLock = new(1, 1);
 
     /// <summary>

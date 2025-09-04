@@ -2,7 +2,7 @@ namespace AIChat.Server.Models;
 
 public class McpConfiguration
 {
-    public Dictionary<string, McpServerConfig> McpServers { get; set; } = new();
+    public Dictionary<string, McpServerConfig> McpServers { get; set; } = [];
     public List<McpInputConfig>? Inputs { get; set; }
 
     /// <summary>

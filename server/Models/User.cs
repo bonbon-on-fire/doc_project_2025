@@ -30,5 +30,5 @@ public class User
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
-    public virtual ICollection<Chat> Chats { get; set; } = new List<Chat>();
+    public virtual ICollection<Chat> Chats { get; set; } = [];
 }

@@ -175,7 +175,7 @@ public sealed class TestSseMessageHandler : HttpMessageHandler
                     var completion = new InstructionPlan(
                         "completion",
                         null,
-                        new List<InstructionMessage> { InstructionMessage.ForText(5) } // "Task completed successfully"
+                        [InstructionMessage.ForText(5)] // "Task completed successfully"
                     );
 
                     content = new SseStreamHttpContent(

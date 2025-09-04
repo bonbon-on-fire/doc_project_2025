@@ -21,8 +21,8 @@ public class WeatherFunction(ILogger<WeatherFunction> logger) : IFunctionProvide
             {
                 Name = "get_weather",
                 Description = "Get the current weather for a city",
-                Parameters = new[]
-                {
+                Parameters =
+                [
                     new FunctionParameterContract
                     {
                         Name = "city",
@@ -30,7 +30,7 @@ public class WeatherFunction(ILogger<WeatherFunction> logger) : IFunctionProvide
                         Description = "The city to get weather for",
                         IsRequired = true,
                     },
-                },
+                ],
             },
             Handler = GetWeatherAsync,
             ProviderName = "WeatherAPI",
@@ -42,8 +42,8 @@ public class WeatherFunction(ILogger<WeatherFunction> logger) : IFunctionProvide
             {
                 Name = "calculate",
                 Description = "Perform a mathematical calculation",
-                Parameters = new[]
-                {
+                Parameters =
+                [
                     new FunctionParameterContract
                     {
                         Name = "expression",
@@ -53,7 +53,7 @@ public class WeatherFunction(ILogger<WeatherFunction> logger) : IFunctionProvide
                         Description = "Mathematical expression to evaluate (e.g., '2+2', '10*5')",
                         IsRequired = true,
                     },
-                },
+                ],
             },
             Handler = CalculateAsync,
             ProviderName = "Calculator",
@@ -75,7 +75,7 @@ public class WeatherFunction(ILogger<WeatherFunction> logger) : IFunctionProvide
             // Return mock weather data
             var weather = new
             {
-                city = city,
+                city,
                 temperature = Random.Shared.Next(10, 35),
                 condition = new[] { "Sunny", "Cloudy", "Rainy", "Partly Cloudy" }[
                     Random.Shared.Next(0, 4)
@@ -114,7 +114,7 @@ public class WeatherFunction(ILogger<WeatherFunction> logger) : IFunctionProvide
 
             await Task.Delay(200); // Simulate processing
 
-            return JsonSerializer.Serialize(new { result = result, expression = expression });
+            return JsonSerializer.Serialize(new { result, expression });
         }
         catch (Exception ex)
         {

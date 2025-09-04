@@ -266,7 +266,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             Name = "", // Invalid: empty name
             Description = "Test description",
             Prompt = "Test prompt",
-            Tools = new[] { "tool1" },
+            Tools = ["tool1"],
             DefaultModel = null,
             Category = "custom",
         };
@@ -294,7 +294,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             Name = "Hacked System Mode",
             Description = "Should not work",
             Prompt = "Malicious prompt",
-            Tools = new[] { "malicious-tool" },
+            Tools = ["malicious-tool"],
             DefaultModel = null,
             Category = "hacked",
         };

@@ -104,12 +104,12 @@ public class ChatHub : Hub
                 "ReceiveMessage",
                 new
                 {
-                    Id = messageEvent.Message.Id,
-                    ChatId = messageEvent.Message.ChatId,
-                    Role = messageEvent.Message.Role,
+                    messageEvent.Message.Id,
+                    messageEvent.Message.ChatId,
+                    messageEvent.Message.Role,
                     Content = (messageEvent.Message as TextMessageDto)?.Text ?? string.Empty,
-                    Timestamp = messageEvent.Message.Timestamp,
-                    SequenceNumber = messageEvent.Message.SequenceNumber,
+                    messageEvent.Message.Timestamp,
+                    messageEvent.Message.SequenceNumber,
                 }
             );
     }
@@ -130,11 +130,11 @@ public class ChatHub : Hub
                 "ReceiveStreamChunk",
                 new
                 {
-                    MessageId = chunkEvent.MessageId,
-                    ChatId = chunkEvent.ChatId,
+                    chunkEvent.MessageId,
+                    chunkEvent.ChatId,
                     Delta = delta,
-                    Done = chunkEvent.Done,
-                    Kind = chunkEvent.Kind,
+                    chunkEvent.Done,
+                    chunkEvent.Kind,
                 }
             );
     }
@@ -146,33 +146,33 @@ public class ChatHub : Hub
         {
             ReasoningEvent reasoningEvent => new
             {
-                MessageId = messageEvent.MessageId,
-                ChatId = messageEvent.ChatId,
-                Kind = messageEvent.Kind,
+                messageEvent.MessageId,
+                messageEvent.ChatId,
+                messageEvent.Kind,
                 Content = reasoningEvent.Reasoning,
                 Visibility = reasoningEvent.Visibility?.ToString(),
             },
             TextEvent textEvent => new
             {
-                MessageId = messageEvent.MessageId,
-                ChatId = messageEvent.ChatId,
-                Kind = messageEvent.Kind,
+                messageEvent.MessageId,
+                messageEvent.ChatId,
+                messageEvent.Kind,
                 Content = textEvent.Text,
                 Visibility = (string?)null,
             },
             UsageEvent usageEvent => new
             {
-                MessageId = messageEvent.MessageId,
-                ChatId = messageEvent.ChatId,
-                Kind = messageEvent.Kind,
+                messageEvent.MessageId,
+                messageEvent.ChatId,
+                messageEvent.Kind,
                 Content = System.Text.Json.JsonSerializer.Serialize(usageEvent.Usage),
                 Visibility = (string?)null,
             },
             _ => new
             {
-                MessageId = messageEvent.MessageId,
-                ChatId = messageEvent.ChatId,
-                Kind = messageEvent.Kind,
+                messageEvent.MessageId,
+                messageEvent.ChatId,
+                messageEvent.Kind,
                 Content = "",
                 Visibility = (string?)null,
             },

@@ -8,7 +8,8 @@ namespace AIChat.Server.Controllers;
 public class LogsController(ILogger<LogsController> logger) : ControllerBase
 {
     private static readonly JsonSerializerOptions S_JsonSerializerOptions =
-        new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+        new()
+        { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
     private readonly ILogger<LogsController> _logger = logger;
 
@@ -19,7 +20,7 @@ public class LogsController(ILogger<LogsController> logger) : ControllerBase
 
     // Static semaphore to ensure thread-safe writes to the client log file
     // Acts as a mutex (1,1) to prevent concurrent writes that could corrupt the file
-    private static readonly SemaphoreSlim FileWriteLock = new SemaphoreSlim(1, 1);
+    private static readonly SemaphoreSlim FileWriteLock = new(1, 1);
 
     private static string GetClientLogFilePath()
     {

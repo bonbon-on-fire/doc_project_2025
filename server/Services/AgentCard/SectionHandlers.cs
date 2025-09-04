@@ -96,7 +96,7 @@ public sealed partial class WorkflowSectionHandler : BaseSectionHandler
     {
         if (string.IsNullOrWhiteSpace(content))
         {
-            card.Workflow = new List<string>();
+            card.Workflow = [];
             return Result.Success();
         }
 

@@ -22,8 +22,8 @@ public class McpClientManager(
 ) : IMcpClientManager, IAsyncDisposable
 {
     private readonly McpConfiguration _configuration = configuration.Value;
-    private readonly Dictionary<string, IMcpClient> _clients = new();
-    private readonly Dictionary<string, IClientTransport> _transports = new();
+    private readonly Dictionary<string, IMcpClient> _clients = [];
+    private readonly Dictionary<string, IClientTransport> _transports = [];
     private readonly SemaphoreSlim _initializationLock = new(1, 1);
     private bool _isInitialized;
     private bool _disposed;

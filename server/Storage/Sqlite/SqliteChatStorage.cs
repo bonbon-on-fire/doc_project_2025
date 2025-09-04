@@ -324,15 +324,15 @@ VALUES ($id, $chatId, $role, $kind, $timestampUtc, $seq, $json)";
         }
         try
         {
-            var dto = JsonSerializer.Deserialize<AIChat.Server.Services.MessageDto>(
+            var dto = JsonSerializer.Deserialize<MessageDto>(
                 Message.MessageJson,
                 JsonOptions
             );
-            if (dto is AIChat.Server.Services.TextMessageDto text)
+            if (dto is TextMessageDto text)
             {
                 return (true, null, text.Text);
             }
-            if (dto is AIChat.Server.Services.ReasoningMessageDto reasoning)
+            if (dto is ReasoningMessageDto reasoning)
             {
                 return (true, null, reasoning.GetText());
             }

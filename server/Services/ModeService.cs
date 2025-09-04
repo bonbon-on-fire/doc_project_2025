@@ -70,7 +70,7 @@ public sealed class ModeService : IModeService
                         Name = systemMode.Name,
                         Description = systemMode.Description,
                         Prompt = systemMode.Prompt,
-                        Tools = systemMode.Tools ?? new List<string>(),
+                        Tools = systemMode.Tools ?? [],
                         DefaultModel = systemMode.DefaultModel,
                         IsSystem = true,
                         Category = systemMode.Category,
@@ -82,9 +82,9 @@ public sealed class ModeService : IModeService
             foreach (var userMode in Modes)
             {
                 var tools = string.IsNullOrEmpty(userMode.Tools)
-                    ? new List<string>()
+                    ? []
                     : JsonSerializer.Deserialize<List<string>>(userMode.Tools, _jsonOptions)
-                        ?? new List<string>();
+                        ?? [];
 
                 allModes.Add(
                     new ModeDto
@@ -140,7 +140,7 @@ public sealed class ModeService : IModeService
                     Name = systemMode.Name,
                     Description = systemMode.Description,
                     Prompt = systemMode.Prompt,
-                    Tools = systemMode.Tools ?? new List<string>(),
+                    Tools = systemMode.Tools ?? [],
                     DefaultModel = systemMode.DefaultModel,
                     IsSystem = true,
                     Category = systemMode.Category,
@@ -158,9 +158,9 @@ public sealed class ModeService : IModeService
             if (Mode != null)
             {
                 var tools = string.IsNullOrEmpty(Mode.Tools)
-                    ? new List<string>()
+                    ? []
                     : JsonSerializer.Deserialize<List<string>>(Mode.Tools, _jsonOptions)
-                        ?? new List<string>();
+                        ?? [];
 
                 var dto = new ModeDto
                 {

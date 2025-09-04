@@ -32,15 +32,15 @@ public class McpConfigurationTests
         var config = new FunctionFilterConfig
         {
             EnableFiltering = true,
-            GlobalAllowedFunctions = new List<string> { "search*", "read*" },
-            GlobalBlockedFunctions = new List<string> { "delete*" },
+            GlobalAllowedFunctions = ["search*", "read*"],
+            GlobalBlockedFunctions = ["delete*"],
             UsePrefixOnlyForCollisions = false,
             ProviderConfigs = new Dictionary<string, ProviderFilterConfig>
             {
                 ["MCP_github"] = new ProviderFilterConfig
                 {
-                    AllowedFunctions = new List<string> { "create_issue" },
-                    BlockedFunctions = new List<string> { "delete_repo" },
+                    AllowedFunctions = ["create_issue"],
+                    BlockedFunctions = ["delete_repo"],
                     CustomPrefix = "gh_",
                 },
             },
@@ -83,8 +83,8 @@ public class McpConfigurationTests
         // Arrange
         var config = new ProviderFilterConfig
         {
-            AllowedFunctions = new List<string> { "*_create", "list_*", "*search*" },
-            BlockedFunctions = new List<string> { "admin_*" },
+            AllowedFunctions = ["*_create", "list_*", "*search*"],
+            BlockedFunctions = ["admin_*"],
             CustomPrefix = "test_",
         };
 
@@ -115,7 +115,7 @@ public class McpConfigurationTests
             FunctionFiltering = new FunctionFilterConfig
             {
                 EnableFiltering = true,
-                GlobalAllowedFunctions = new List<string> { "*" },
+                GlobalAllowedFunctions = ["*"],
             },
             McpServers = new Dictionary<string, McpServerConfig>
             {
@@ -145,8 +145,8 @@ public class McpConfigurationTests
             ToolFiltering = new McpToolFilterConfig
             {
                 EnableFiltering = true,
-                GlobalAllowedTools = new List<string> { "search*" },
-                GlobalBlockedTools = new List<string> { "delete*" },
+                GlobalAllowedTools = ["search*"],
+                GlobalBlockedTools = ["delete*"],
             },
         };
 
@@ -173,12 +173,12 @@ public class McpConfigurationTests
             FunctionFiltering = new FunctionFilterConfig
             {
                 EnableFiltering = true,
-                GlobalAllowedFunctions = new List<string> { "new_function" },
+                GlobalAllowedFunctions = ["new_function"],
             },
             ToolFiltering = new McpToolFilterConfig
             {
                 EnableFiltering = false,
-                GlobalAllowedTools = new List<string> { "old_tool" },
+                GlobalAllowedTools = ["old_tool"],
             },
         };
 #pragma warning restore CS0618 // Type or member is obsolete
@@ -205,8 +205,8 @@ public class McpConfigurationTests
         {
             Type = "stdio",
             Command = "test-server",
-            AllowedTools = new List<string> { "tool1", "tool2*" },
-            BlockedTools = new List<string> { "dangerous_*" },
+            AllowedTools = ["tool1", "tool2*"],
+            BlockedTools = ["dangerous_*"],
         };
 
         // Act

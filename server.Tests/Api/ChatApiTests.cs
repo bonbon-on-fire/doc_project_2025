@@ -21,13 +21,13 @@ public class ChatApiTests(WebApplicationFactory<Program> factory)
         var create = new CreateChatRequest(null, userId, "hello world", null, null);
         var res = await client.PostAsJsonAsync("/api/chat", create);
         _ = res.EnsureSuccessStatusCode();
-        var chat = await res.Content.ReadFromJsonAsync<AIChat.Server.Services.ChatDto>();
+        var chat = await res.Content.ReadFromJsonAsync<Server.Services.ChatDto>();
         _ = chat!.Id.Should().NotBeNullOrEmpty();
         _ = chat.Messages.Should().NotBeEmpty();
 
         var get = await client.GetAsync($"/api/chat/{chat.Id}");
         _ = get.EnsureSuccessStatusCode();
-        var chat2 = await get.Content.ReadFromJsonAsync<AIChat.Server.Services.ChatDto>();
+        var chat2 = await get.Content.ReadFromJsonAsync<Server.Services.ChatDto>();
         _ = chat2!.Id.Should().Be(chat.Id);
         _ = chat2.Messages.Should().NotBeEmpty();
     }
