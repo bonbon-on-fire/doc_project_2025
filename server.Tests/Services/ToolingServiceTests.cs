@@ -4,7 +4,6 @@ using AchieveAi.LmDotnetTools.Misc.Utils;
 using AIChat.Server.Functions;
 using AIChat.Server.Models;
 using AIChat.Server.Services;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ModelContextProtocol.Client;
@@ -53,7 +52,7 @@ public class ToolingServiceTests
             .Returns(mockMcpClientLogger.Object);
 
         // Setup TaskManagerService to return a valid TaskManager
-        var taskManager = new AchieveAi.LmDotnetTools.Misc.Utils.TaskManager();
+        var taskManager = new TaskManager();
         _ = _mockTaskManagerService
             .Setup(x => x.GetTaskManagerAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(taskManager);
@@ -70,15 +69,15 @@ public class ToolingServiceTests
             FunctionFiltering = new FunctionFilterConfig
             {
                 EnableFiltering = true,
-                GlobalAllowedFunctions = new List<string> { "search*", "read*" },
-                GlobalBlockedFunctions = new List<string> { "delete*" },
+                GlobalAllowedFunctions = ["search*", "read*"],
+                GlobalBlockedFunctions = ["delete*"],
                 UsePrefixOnlyForCollisions = true,
                 ProviderConfigs = new Dictionary<string, ProviderFilterConfig>
                 {
                     ["MCP_github"] = new ProviderFilterConfig
                     {
-                        AllowedFunctions = new List<string> { "create_issue", "list_*" },
-                        BlockedFunctions = new List<string> { "delete_repo" },
+                        AllowedFunctions = ["create_issue", "list_*"],
+                        BlockedFunctions = ["delete_repo"],
                         CustomPrefix = "gh_",
                     },
                 },
@@ -140,11 +139,11 @@ public class ToolingServiceTests
 #pragma warning disable CS0618 // Type or member is obsolete
         var config = new McpConfiguration
         {
-            ToolFiltering = new AIChat.Server.Models.McpToolFilterConfig
+            ToolFiltering = new Server.Models.McpToolFilterConfig
             {
                 EnableFiltering = true,
-                GlobalAllowedTools = new List<string> { "search*" },
-                GlobalBlockedTools = new List<string> { "delete*" },
+                GlobalAllowedTools = ["search*"],
+                GlobalBlockedTools = ["delete*"],
                 UsePrefixOnlyForCollisions = true,
             },
             McpServers = new Dictionary<string, McpServerConfig>
@@ -153,7 +152,7 @@ public class ToolingServiceTests
                 {
                     Type = "stdio",
                     Command = "mcp-server-github",
-                    AllowedTools = new List<string> { "create_issue" },
+                    AllowedTools = ["create_issue"],
                 },
             },
         };
@@ -264,18 +263,18 @@ public class ToolingServiceTests
             FunctionFiltering = new FunctionFilterConfig
             {
                 EnableFiltering = true,
-                GlobalAllowedFunctions = new List<string> { "*" },
+                GlobalAllowedFunctions = ["*"],
                 UsePrefixOnlyForCollisions = false,
                 ProviderConfigs = new Dictionary<string, ProviderFilterConfig>
                 {
                     ["MCP_github"] = new ProviderFilterConfig
                     {
-                        AllowedFunctions = new List<string> { "create_*", "list_*" },
+                        AllowedFunctions = ["create_*", "list_*"],
                         CustomPrefix = "gh_",
                     },
                     ["MCP_gitlab"] = new ProviderFilterConfig
                     {
-                        AllowedFunctions = new List<string> { "merge_*", "push_*" },
+                        AllowedFunctions = ["merge_*", "push_*"],
                         CustomPrefix = "gl_",
                     },
                 },
@@ -347,7 +346,7 @@ public class ToolingServiceTests
             FunctionFiltering = new FunctionFilterConfig
             {
                 EnableFiltering = true,
-                GlobalAllowedFunctions = new List<string> { "*" },
+                GlobalAllowedFunctions = ["*"],
             },
         };
 
@@ -389,7 +388,7 @@ public class ToolingServiceTests
             FunctionFiltering = new FunctionFilterConfig
             {
                 EnableFiltering = true,
-                GlobalAllowedFunctions = new List<string> { "*" },
+                GlobalAllowedFunctions = ["*"],
             },
         };
 

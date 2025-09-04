@@ -109,7 +109,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
                 Name = $"Limited Tools Mode {Guid.NewGuid()}",
                 Description = "Mode with limited tools for SSE testing",
                 Prompt = "You are a helpful assistant with limited tools",
-                Tools = new[] { "search" }, // Only search tool
+                Tools = ["search"], // Only search tool
                 DefaultModel = null,
                 Category = "custom",
             };
@@ -128,7 +128,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
                 },
                 _jsonOptions
             );
-            
+
             // If conflict, retry with a different name
             if (createModeResponse.StatusCode == System.Net.HttpStatusCode.Conflict)
             {
@@ -147,7 +147,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
                     _jsonOptions
                 );
             }
-            
+
             _ = createModeResponse.EnsureSuccessStatusCode();
             createdMode = await createModeResponse.Content.ReadFromJsonAsync<ModeDto>(_jsonOptions);
 
@@ -409,7 +409,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
                 _ = response.EnsureSuccessStatusCode();
 
                 var content = await response.Content.ReadAsStringAsync();
-                return (mode: mode, content: content);
+                return (mode, content);
             })
             .ToList();
 

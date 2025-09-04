@@ -49,26 +49,52 @@ Get-ChildItem -Path $logsDir -Filter "*.jsonl" -ErrorAction SilentlyContinue | R
 
 $fail = $false
 
-# 2. Install dependencies and build the client project
-Write-Host "Installing client dependencies..." -ForegroundColor Yellow
+# 2. Pre-flight validation
+Write-Host "Running pre-flight validation..." -ForegroundColor Yellow
 try {
-    # Install npm dependencies and log output to build.log
-    Set-Location client
-    npm install 2>&1 | Tee-Object -FilePath "../$logsDir/build.log"
-    if ($LASTEXITCODE -ne 0) {
-        throw "npm install failed with exit code $LASTEXITCODE"
+    $validationScript = "scripts/validate-implementation-step.ps1"
+    if (Test-Path $validationScript) {
+        & $validationScript
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "❌ Pre-flight validation failed - cannot start client" -ForegroundColor Red
+            Write-Host "Fix all validation issues before starting client" -ForegroundColor Yellow
+            $fail = $true
+        }
+        else {
+            Write-Host "✅ Pre-flight validation passed" -ForegroundColor Green
+        }
     }
-
-    Write-Host "Client dependencies installed successfully" -ForegroundColor Green
+    else {
+        Write-Host "⚠️ Validation script not found, skipping pre-flight validation" -ForegroundColor Yellow
+    }
 }
 catch {
-    Write-Error "Failed to install client dependencies: $($_.Exception.Message)"
-    Set-Location ..
+    Write-Host "❌ Pre-flight validation error: $($_.Exception.Message)" -ForegroundColor Red
     $fail = $true
 }
 
 if (!$fail) {
-    # 3. Start the client
+    # 3. Install dependencies and build the client project
+    Write-Host "Installing client dependencies..." -ForegroundColor Yellow
+    try {
+        # Install npm dependencies and log output to build.log
+        Set-Location client
+        npm install 2>&1 | Tee-Object -FilePath "../$logsDir/build.log"
+        if ($LASTEXITCODE -ne 0) {
+            throw "npm install failed with exit code $LASTEXITCODE"
+        }
+
+        Write-Host "Client dependencies installed successfully" -ForegroundColor Green
+    }
+    catch {
+        Write-Error "Failed to install client dependencies: $($_.Exception.Message)"
+        Set-Location ..
+        $fail = $true
+    }
+}
+
+if (!$fail) {
+    # 4. Start the client
     Write-Host "Starting client on http://localhost:$Port..." -ForegroundColor Yellow
 
     # Determine which npm script to run based on environment

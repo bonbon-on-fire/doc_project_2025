@@ -192,13 +192,15 @@ public class ChatService(
 
             var messages =
                 Success && Messages != null
-                    ? [.. Messages
-                        .Select(m =>
+                    ?
+                    [
+                        .. Messages.Select(m =>
                             JsonSerializer.Deserialize<MessageDto>(
                                 m.MessageJson,
                                 MessageSerializationOptions.Default
                             )!
-                        )]
+                        ),
+                    ]
                     : new List<MessageDto> { userDto };
 
             return new ChatResult
@@ -413,13 +415,15 @@ public class ChatService(
                 _ = orleansService.RecordUserActivityAsync(
                     request.UserId,
                     ActivityType.MessageSent,
-                    new { 
+                    new
+                    {
                         ChatId = request.ChatId,
                         MessageId = userDto.Id,
                         MessageLength = request.Message.Length,
                         SequenceNumber = userDto.SequenceNumber,
-                        ModeId = request.ModeId
-                    });
+                        ModeId = request.ModeId,
+                    }
+                );
             }
 
             if (MessageCreated != null)
@@ -477,14 +481,22 @@ public class ChatService(
                 _ = orleansService.RecordUserActivityAsync(
                     request.UserId,
                     ActivityType.MessageCompleted,
-                    new { 
+                    new
+                    {
                         ChatId = request.ChatId,
                         UserMessageId = userDto.Id,
                         AssistantMessageId = assistantDto.Id,
                         ResponseLength = aiResponse.Length,
-                        ProcessingTime = DateTime.UtcNow.Subtract(userDto.Timestamp).TotalMilliseconds,
-                        SequenceNumbers = new { User = userDto.SequenceNumber, Assistant = assistantDto.SequenceNumber }
-                    });
+                        ProcessingTime = DateTime
+                            .UtcNow.Subtract(userDto.Timestamp)
+                            .TotalMilliseconds,
+                        SequenceNumbers = new
+                        {
+                            User = userDto.SequenceNumber,
+                            Assistant = assistantDto.SequenceNumber,
+                        },
+                    }
+                );
             }
 
             if (MessageCreated != null)
@@ -748,11 +760,8 @@ public class ChatService(
         var agent = streamingAgent
             .WithMiddleware(new JsonFragmentUpdateMiddleware())
             .WithMiddleware(
-                (context, agent, cancellationToken) => agent.GenerateReplyAsync(
-                        context.Messages,
-                        context.Options,
-                        cancellationToken
-                    ),
+                (context, agent, cancellationToken) =>
+                    agent.GenerateReplyAsync(context.Messages, context.Options, cancellationToken),
                 async (context, agent, cancellationToken) =>
                 {
                     var stream = await agent.GenerateReplyStreamingAsync(
@@ -932,11 +941,7 @@ public class ChatService(
             lmMessages.Add(
                 replies.Count == 1
                     ? replies[0]
-                    : new CompositeMessage
-                    {
-                        Messages = [.. replies],
-                        Role = Role.Assistant,
-                    }
+                    : new CompositeMessage { Messages = [.. replies], Role = Role.Assistant }
             );
         } while (loop);
     }
@@ -1641,19 +1646,19 @@ public class ChatService(
         };
 
         return message is TextMessageDto t
-            ? new TextMessage
-            {
-                Role = role,
-                Text = t.Text ?? string.Empty,
-                Metadata = ImmutableDictionary<string, object>.Empty,
-            }
+                ? new TextMessage
+                {
+                    Role = role,
+                    Text = t.Text ?? string.Empty,
+                    Metadata = ImmutableDictionary<string, object>.Empty,
+                }
             : message is ReasoningMessageDto r
-            ? new TextMessage
-            {
-                Role = role,
-                Text = r.GetText() ?? string.Empty,
-                Metadata = ImmutableDictionary<string, object>.Empty,
-            }
+                ? new TextMessage
+                {
+                    Role = role,
+                    Text = r.GetText() ?? string.Empty,
+                    Metadata = ImmutableDictionary<string, object>.Empty,
+                }
             : new TextMessage
             {
                 Role = role,
@@ -1900,7 +1905,7 @@ public class ChatService(
             var timestamp = DateTimeOffset.UtcNow;
             var microseconds = timestamp.Ticks / 10; // Convert ticks to microseconds
             return $"gen-{timestamp.ToUnixTimeSeconds()}-{microseconds % 1000000:D6}-{Guid.NewGuid():N}"[
-..32
+                ..32
             ];
         }
 
@@ -1919,9 +1924,7 @@ public class ChatService(
         if (saltedId.Length > 32)
         {
             // Take first 16 chars of original and add time-based suffix
-            var truncated = providedGenerationId[
-..Math.Min(16, providedGenerationId.Length)
-            ];
+            var truncated = providedGenerationId[..Math.Min(16, providedGenerationId.Length)];
             return $"{truncated}-{DateTimeOffset.UtcNow.Ticks:X}"[..32];
         }
 

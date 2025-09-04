@@ -1,5 +1,6 @@
-# quality-check.ps1 - Complete quality validation script for Orleans migration
-# This script runs all quality gates mentioned in tasks.md
+# quality-check.ps1 - Level 2 comprehensive quality validation script
+# This script runs all quality gates for task completion validation
+# Part of the 4-level continuous validation system
 # Usage: pwsh ./scripts/quality-check.ps1
 
 param(
@@ -9,8 +10,8 @@ param(
 # Set error action preference
 $ErrorActionPreference = "Continue"
 
-Write-Host "🔍 Orleans Migration Quality Check" -ForegroundColor Blue
-Write-Host "==================================" -ForegroundColor Blue
+Write-Host "🛡️  Level 2: Comprehensive Quality Validation" -ForegroundColor Cyan
+Write-Host "=============================================" -ForegroundColor Cyan
 Write-Host ""
 
 # Track overall status
@@ -54,7 +55,17 @@ function Invoke-Command {
         if ($ShowOutput -or $Verbose) {
             $process = Start-Process -FilePath $Command -ArgumentList $Arguments -Wait -PassThru -NoNewWindow
         } else {
-            $process = Start-Process -FilePath $Command -ArgumentList $Arguments -Wait -PassThru -NoNewWindow -RedirectStandardOutput "NUL" -RedirectStandardError "NUL"
+            # Create temporary files for output redirection to avoid PowerShell issues
+            $tempOut = [System.IO.Path]::GetTempFileName()
+            $tempErr = [System.IO.Path]::GetTempFileName()
+            try {
+                $process = Start-Process -FilePath $Command -ArgumentList $Arguments -Wait -PassThru -NoNewWindow -RedirectStandardOutput $tempOut -RedirectStandardError $tempErr
+            }
+            finally {
+                # Clean up temporary files
+                if (Test-Path $tempOut) { Remove-Item $tempOut -Force -ErrorAction SilentlyContinue }
+                if (Test-Path $tempErr) { Remove-Item $tempErr -Force -ErrorAction SilentlyContinue }
+            }
         }
         return $process.ExitCode -eq 0
     } catch {
@@ -102,11 +113,11 @@ if (-not $testSuccess) {
 Write-Section "Code Quality"
 
 Write-Host "Checking code formatting..."
-$formatSuccess = Invoke-Command "dotnet" "format --verify-no-changes --verbosity quiet"
+$formatSuccess = Invoke-Command "pwsh" "format-code.ps1 -CheckOnly"
 Write-Status $formatSuccess "Code formatting"
 
 if (-not $formatSuccess) {
-    Write-Host "Code formatting issues found. Run 'dotnet format' to fix." -ForegroundColor Yellow
+    Write-Host "Code formatting issues found. Run 'pwsh format-code.ps1' to fix." -ForegroundColor Yellow
 }
 
 Write-Host "Running static analysis..."
@@ -175,19 +186,30 @@ if (Test-Path "AIChat.Orleans.Host") {
 Write-Section "Quality Check Summary"
 
 if ($script:OverallSuccess -and $testSuccess -and $securitySuccess) {
-    Write-Host "🎉 ALL QUALITY GATES PASSED!" -ForegroundColor Green
-    Write-Host "✅ Ready for task completion or commit" -ForegroundColor Green
+    Write-Host "🎉 LEVEL 2 QUALITY GATES PASSED!" -ForegroundColor Green
+    Write-Host "✅ Ready for task completion or Level 3 validation" -ForegroundColor Green
+    Write-Host "   🏗️  All builds successful" -ForegroundColor Green
+    Write-Host "   🧪 All tests pass" -ForegroundColor Green
+    Write-Host "   ✨ Code quality validated" -ForegroundColor Green
+    Write-Host "   🔒 Security checks passed" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "🎯 Task ready for completion - all quality gates satisfied" -ForegroundColor Green
     exit 0
 } else {
-    Write-Host "❌ QUALITY GATES FAILED" -ForegroundColor Red
+    Write-Host "❌ LEVEL 2 QUALITY GATES FAILED" -ForegroundColor Red
+    Write-Host "=================================" -ForegroundColor Red
     Write-Host ""
-    Write-Host "Failed checks:" -ForegroundColor Yellow
+    Write-Host "🚨 BLOCKING FAILURES - Must fix before proceeding:" -ForegroundColor Yellow
     
     foreach ($check in $script:FailedChecks) {
-        Write-Host "• $check" -ForegroundColor Red
+        Write-Host "   • $check" -ForegroundColor Red
     }
     
     Write-Host ""
-    Write-Host "Fix the issues above before marking task complete or committing." -ForegroundColor Yellow
+    Write-Host "🔧 REQUIRED ACTION:" -ForegroundColor Yellow
+    Write-Host "   Fix ALL issues above before marking task complete" -ForegroundColor Yellow
+    Write-Host "   Re-run this script until all quality gates pass" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "🚫 TASK COMPLETION BLOCKED - Quality gates must pass" -ForegroundColor Red
     exit 1
 }

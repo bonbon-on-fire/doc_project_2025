@@ -25,7 +25,7 @@ public partial class AgentCardParser(ILogger<AgentCardParser>? logger = null)
         .WithNamingConvention(UnderscoredNamingConvention.Instance)
         .IgnoreUnmatchedProperties()
         .Build();
-    private readonly SectionHandlerRegistry _sectionRegistry = new SectionHandlerRegistry();
+    private readonly SectionHandlerRegistry _sectionRegistry = new();
 
     /// <summary>
     /// Parses an agent card from the provided content string.
@@ -81,9 +81,9 @@ public partial class AgentCardParser(ILogger<AgentCardParser>? logger = null)
     private static Result ValidateContent(string content)
     {
         return string.IsNullOrWhiteSpace(content)
-            ? Result.Failure("Agent card content cannot be empty")
+                ? Result.Failure("Agent card content cannot be empty")
             : !FrontMatterRegex.IsMatch(content)
-            ? Result.Failure("Agent card must have YAML front matter")
+                ? Result.Failure("Agent card must have YAML front matter")
             : Result.Success();
     }
 
@@ -161,7 +161,7 @@ public partial class AgentCardParser(ILogger<AgentCardParser>? logger = null)
                 yamlMetadata.Capabilities != null
                     ? new AgentCapabilities
                     {
-                        Tools = yamlMetadata.Capabilities.Tools ?? new List<string>(),
+                        Tools = yamlMetadata.Capabilities.Tools ?? [],
                         Memory = yamlMetadata.Capabilities.Memory,
                         MaxTokens = yamlMetadata.Capabilities.MaxTokens,
                     }
@@ -257,10 +257,7 @@ public partial class AgentCardParser(ILogger<AgentCardParser>? logger = null)
         }
     }
 
-    [GeneratedRegex(
-        @"^---\s*\n(.*?)\n---\s*\n",
-        RegexOptions.Compiled | RegexOptions.Singleline
-    )]
+    [GeneratedRegex(@"^---\s*\n(.*?)\n---\s*\n", RegexOptions.Compiled | RegexOptions.Singleline)]
     private static partial Regex MyRegex();
 
     [GeneratedRegex(
@@ -283,7 +280,7 @@ public class AgentCard
     /// <summary>
     /// Gets or sets the raw content of all sections.
     /// </summary>
-    public Dictionary<string, string> Sections { get; set; } = new();
+    public Dictionary<string, string> Sections { get; set; } = [];
 
     /// <summary>
     /// Gets or sets the parsed ROLE section content.
@@ -305,12 +302,7 @@ public class AgentCard
     /// </summary>
     public JsonDocument? OutputSchema { get; set; }
 
-    private static readonly string[] sourceArray =
-    [
-        "ROLE",
-        "OBJECTIVE",
-        "OUTPUT SCHEMA",
-    ];
+    private static readonly string[] sourceArray = ["ROLE", "OBJECTIVE", "OUTPUT SCHEMA"];
 
     /// <summary>
     /// Converts the agent card to a ModeDto object for compatibility with the mode system.
@@ -326,7 +318,7 @@ public class AgentCard
             Description = Objective ?? "Agent mode",
             Category = Metadata.Category,
             Prompt = prompt,
-            Tools = Metadata.Capabilities?.Tools ?? new List<string>(),
+            Tools = Metadata.Capabilities?.Tools ?? [],
             DefaultModel = Metadata.ModelHints?.FirstOrDefault(),
             IsSystem = false,
             UserId = null,
@@ -387,7 +379,7 @@ public class AgentMetadata
 /// </summary>
 public class AgentCapabilities
 {
-    public List<string> Tools { get; set; } = new();
+    public List<string> Tools { get; set; } = [];
     public string? Memory { get; set; }
     public int? MaxTokens { get; set; }
 }

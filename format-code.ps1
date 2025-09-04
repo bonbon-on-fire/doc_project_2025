@@ -207,6 +207,25 @@ if ($success) {
     else {
         Write-Host "✓ Code formatting completed successfully!" -ForegroundColor Green
         Write-Host "Tip: Run 'git diff' to see what was changed." -ForegroundColor Gray
+        
+        # Post-formatting validation to ensure formatting didn't break anything
+        Write-Host ""
+        Write-Host "Running post-formatting validation..." -ForegroundColor Yellow
+        $validationScript = "scripts/validate-file-change.ps1"
+        if (Test-Path $validationScript) {
+            & $validationScript
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "❌ Post-formatting validation failed - formatting may have introduced issues" -ForegroundColor Red
+                Write-Host "Please review changes and fix any compilation errors" -ForegroundColor Yellow
+                exit 1
+            }
+            else {
+                Write-Host "✅ Post-formatting validation passed - code still builds correctly" -ForegroundColor Green
+            }
+        }
+        else {
+            Write-Host "⚠️ Validation script not found, skipping post-formatting validation" -ForegroundColor Yellow
+        }
     }
     exit 0
 }

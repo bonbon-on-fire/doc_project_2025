@@ -1,6 +1,6 @@
 using AIChat.Orleans.Client.Services;
 using AIChat.Orleans.Contracts;
-using Microsoft.Extensions.FeatureManagement;
+using Microsoft.FeatureManagement;
 using Microsoft.Extensions.Logging;
 using Moq;
 using NUnit.Framework;

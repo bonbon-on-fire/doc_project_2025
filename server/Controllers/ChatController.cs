@@ -11,28 +11,19 @@ namespace AIChat.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class ChatController : ControllerBase
+public class ChatController(
+    IChatService chatService,
+    ILogger<ChatController> logger,
+    IServerSentEventsService serverSentEventsService,
+    ITaskStorage taskStorage,
+    IChatStorage chatStorage
+    ) : ControllerBase
 {
-    private readonly IChatService _chatService;
-    private readonly ILogger<ChatController> _logger;
-    private readonly IServerSentEventsService _serverSentEventsService;
-    private readonly ITaskStorage _taskStorage;
-    private readonly IChatStorage _chatStorage;
-
-    public ChatController(
-        IChatService chatService,
-        ILogger<ChatController> logger,
-        IServerSentEventsService serverSentEventsService,
-        ITaskStorage taskStorage,
-        IChatStorage chatStorage
-    )
-    {
-        _chatService = chatService;
-        _logger = logger;
-        _serverSentEventsService = serverSentEventsService;
-        _taskStorage = taskStorage;
-        _chatStorage = chatStorage;
-    }
+    private readonly IChatService _chatService = chatService;
+    private readonly ILogger<ChatController> _logger = logger;
+    private readonly IServerSentEventsService _serverSentEventsService = serverSentEventsService;
+    private readonly ITaskStorage _taskStorage = taskStorage;
+    private readonly IChatStorage _chatStorage = chatStorage;
 
     // GET: api/chat/history?userId={userId}&page={page}&pageSize={pageSize}
     [HttpGet("history")]
@@ -189,7 +180,7 @@ public class ChatController : ControllerBase
                 new GetTasksResponse
                 {
                     ChatId = chatId,
-                    Tasks = new List<TaskManager.TaskItem>(),
+                    Tasks = [],
                     Version = 0,
                 }
             );
@@ -242,7 +233,7 @@ public class ChatController : ControllerBase
         try
         {
             // Use unified service method for both new and existing chats
-            var streamRequest = new Services.StreamChatRequest
+            var streamRequest = new StreamChatRequest
             {
                 ChatId = request.ChatId, // null for new chats, populated for existing
                 UserId = request.UserId,
@@ -313,7 +304,7 @@ public class ChatController : ControllerBase
         // Always stream to the current HTTP response (client fetch())
         var json = System.Text.Json.JsonSerializer.Serialize(
             data,
-            Services.MessageSerializationOptions.Default
+            MessageSerializationOptions.Default
         );
         if (!string.IsNullOrEmpty(id))
         {
@@ -331,7 +322,7 @@ public class ChatController : ControllerBase
             var sse = new ServerSentEvent
             {
                 Type = eventType,
-                Data = new List<string> { json },
+                Data = [json],
             };
             if (!string.IsNullOrEmpty(id))
             {
@@ -362,7 +353,7 @@ public class SendMessageRequest
 
 public class ChatHistoryResponse
 {
-    public List<Services.ChatDto> Chats { get; set; } = new();
+    public List<ChatDto> Chats { get; set; } = [];
     public int TotalCount { get; set; }
     public int Page { get; set; }
     public int PageSize { get; set; }
@@ -373,7 +364,7 @@ public class GetTasksResponse
 {
     public required string ChatId { get; set; }
     public required IList<TaskManager.TaskItem> Tasks { get; set; } =
-        new List<TaskManager.TaskItem>();
+        [];
     public required int Version { get; set; }
 }
 

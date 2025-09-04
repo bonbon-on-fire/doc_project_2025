@@ -147,7 +147,7 @@ public class ModeControllerTests
             Name = "Test Mode",
             Description = "A test mode",
             Prompt = "Test prompt",
-            Tools = new[] { "tool1" },
+            Tools = ["tool1"],
             DefaultModel = "gpt-4",
             Category = "custom",
             IsSystem = false,
@@ -179,7 +179,7 @@ public class ModeControllerTests
 
         _ = _modeServiceMock
             .Setup(s => s.GetModeByIdAsync(modeId, userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((false, "NotFound", (ModeDto?)null));
+            .ReturnsAsync((false, "NotFound", null));
 
         // Act
         var result = await _controller.GetMode(modeId, userId);
@@ -218,7 +218,7 @@ public class ModeControllerTests
             Name = "New Mode",
             Description = "A new custom mode",
             Prompt = "You are a helpful assistant",
-            Tools = new[] { "tool1", "tool2" },
+            Tools = ["tool1", "tool2"],
             DefaultModel = "gpt-4",
             Category = "custom",
         };
@@ -229,7 +229,7 @@ public class ModeControllerTests
             Name = request.Name,
             Description = request.Description,
             Prompt = request.Prompt,
-            Tools = request.Tools.ToArray(),
+            Tools = [.. request.Tools],
             DefaultModel = request.DefaultModel,
             Category = request.Category,
             IsSystem = false,
@@ -271,7 +271,7 @@ public class ModeControllerTests
             Name = "New Mode",
             Description = "Description",
             Prompt = "Prompt",
-            Tools = new[] { "tool1" },
+            Tools = ["tool1"],
             DefaultModel = null,
             Category = "custom",
         };
@@ -294,7 +294,7 @@ public class ModeControllerTests
             Name = "Mode<script>alert('xss')</script>",
             Description = "Description",
             Prompt = "Prompt",
-            Tools = new[] { "tool1" },
+            Tools = ["tool1"],
             DefaultModel = null,
             Category = "custom",
         };
@@ -320,7 +320,7 @@ public class ModeControllerTests
             Name = "Valid Name",
             Description = "Description with <script>malicious code</script>",
             Prompt = "Normal prompt",
-            Tools = new[] { "tool1" },
+            Tools = ["tool1"],
             DefaultModel = null,
             Category = "custom",
         };
@@ -346,7 +346,7 @@ public class ModeControllerTests
             Name = "Valid Name",
             Description = "Valid description",
             Prompt = "Valid prompt",
-            Tools = new[] { "tool1", "", "tool3" }, // Empty tool name
+            Tools = ["tool1", "", "tool3"], // Empty tool name
             DefaultModel = null,
             Category = "custom",
         };
@@ -372,7 +372,7 @@ public class ModeControllerTests
             Name = "Valid Name",
             Description = "Valid description",
             Prompt = "Valid prompt",
-            Tools = new[] { new string('a', 101) }, // 101 characters
+            Tools = [new string('a', 101)], // 101 characters
             DefaultModel = null,
             Category = "custom",
         };
@@ -398,7 +398,7 @@ public class ModeControllerTests
             Name = "Duplicate Mode",
             Description = "Description",
             Prompt = "Prompt",
-            Tools = new[] { "tool1" },
+            Tools = ["tool1"],
             DefaultModel = null,
             Category = "custom",
         };
@@ -411,7 +411,7 @@ public class ModeControllerTests
                     It.IsAny<CancellationToken>()
                 )
             )
-            .ReturnsAsync((false, "Mode with this name already exists", (ModeDto?)null));
+            .ReturnsAsync((false, "Mode with this name already exists", null));
 
         // Act
         var result = await _controller.CreateMode(request);
@@ -433,7 +433,7 @@ public class ModeControllerTests
             Name = invalidName!,
             Description = "Description",
             Prompt = "Prompt",
-            Tools = new[] { "tool1" },
+            Tools = ["tool1"],
             DefaultModel = null,
             Category = "custom",
         };
@@ -468,7 +468,7 @@ public class ModeControllerTests
             Name = "Updated Mode",
             Description = "Updated description",
             Prompt = "Updated prompt",
-            Tools = new[] { "tool3", "tool4" },
+            Tools = ["tool3", "tool4"],
             DefaultModel = "gpt-4",
             Category = "role",
         };
@@ -479,7 +479,7 @@ public class ModeControllerTests
             Name = request.Name,
             Description = request.Description,
             Prompt = request.Prompt,
-            Tools = request.Tools.ToArray(),
+            Tools = [.. request.Tools],
             DefaultModel = request.DefaultModel,
             Category = request.Category,
             IsSystem = false,
@@ -520,7 +520,7 @@ public class ModeControllerTests
             Name = "Updated Mode",
             Description = "Description",
             Prompt = "Prompt",
-            Tools = new[] { "tool1" },
+            Tools = ["tool1"],
             DefaultModel = null,
             Category = "custom",
         };
@@ -534,7 +534,7 @@ public class ModeControllerTests
                     It.IsAny<CancellationToken>()
                 )
             )
-            .ReturnsAsync((false, "NotFound", (ModeDto?)null));
+            .ReturnsAsync((false, "NotFound", null));
 
         // Act
         var result = await _controller.UpdateMode(modeId, request);
@@ -555,7 +555,7 @@ public class ModeControllerTests
             Name = "Name&<>", // Contains HTML special characters
             Description = "Description",
             Prompt = "Prompt",
-            Tools = new[] { "tool1" },
+            Tools = ["tool1"],
             DefaultModel = null,
             Category = "custom",
         };
@@ -708,7 +708,7 @@ public class ModeControllerTests
             Name = "Mode",
             Description = "Description",
             Prompt = "Prompt",
-            Tools = new[] { "tool1" },
+            Tools = ["tool1"],
             DefaultModel = null,
             Category = "custom",
         };
@@ -721,7 +721,7 @@ public class ModeControllerTests
                     It.IsAny<CancellationToken>()
                 )
             )
-            .ReturnsAsync((false, "Creation failed", (ModeDto?)null));
+            .ReturnsAsync((false, "Creation failed", null));
 
         // Act
         _ = await _controller.CreateMode(request);

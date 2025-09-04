@@ -75,7 +75,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // Configure storage (replace EF)
-builder.Services.AddSingleton<SqliteConnectionFactory>(sp =>
+builder.Services.AddSingleton(sp =>
 {
     var env = sp.GetRequiredService<IHostEnvironment>();
     var config = sp.GetRequiredService<IConfiguration>();
@@ -113,13 +113,23 @@ builder.Services.AddScoped<IModeStorage, SqliteModeStorage>();
 // Register TaskManagerService (using improved version)
 builder.Services.AddScoped<ITaskManagerService, ImprovedTaskManagerService>();
 
-// Add SignalR with increased timeout values
+// Add SignalR with configuration-based settings
 builder.Services.AddSignalR(hubOptions =>
 {
-    // Set client timeout interval to 5 minutes (time window clients have to send a message)
-    hubOptions.ClientTimeoutInterval = TimeSpan.FromMinutes(10);
-    // Set keep alive interval to 2 minutes (how often the server sends a ping message)
-    hubOptions.KeepAliveInterval = TimeSpan.FromMinutes(4);
+    var signalRConfig = builder.Configuration.GetSection("SignalR:HubOptions");
+    
+    // Configure hub options from appsettings or use defaults
+    hubOptions.ClientTimeoutInterval = signalRConfig.GetValue<TimeSpan?>("ClientTimeoutInterval") ?? TimeSpan.FromMinutes(10);
+    hubOptions.KeepAliveInterval = signalRConfig.GetValue<TimeSpan?>("KeepAliveInterval") ?? TimeSpan.FromMinutes(4);
+    hubOptions.EnableDetailedErrors = signalRConfig.GetValue("EnableDetailedErrors", builder.Environment.IsDevelopment());
+    hubOptions.MaximumReceiveMessageSize = signalRConfig.GetValue<long?>("MaximumReceiveMessageSize") ?? 32 * 1024; // 32KB default
+    hubOptions.StreamBufferCapacity = signalRConfig.GetValue("StreamBufferCapacity", 10);
+    
+    // Configure for sticky sessions if needed
+    if (builder.Configuration.GetValue("SignalR:StickySessions:Enabled", false))
+    {
+        hubOptions.SupportedProtocols = new List<string> { "json" }; // JSON protocol for better debugging
+    }
 });
 
 // Add Feature Management for controlled Orleans rollout
@@ -127,20 +137,41 @@ builder.Services.AddFeatureManagement(builder.Configuration.GetSection("FeatureM
 
 // Add Orleans Client for Phase 1 shadow mode integration
 // Only adds client dependency - Orleans silo runs separately
-try
-{
-    builder.Services.AddOrleansClient(builder.Configuration, builder.Environment);
-    Log.Information("Orleans client configured successfully");
-}
-catch (Exception ex)
-{
-    // Log warning but don't fail startup - Orleans is optional in Phase 1
-    Log.Warning(ex, "Failed to configure Orleans client - Orleans integration will be disabled");
-}
+// Check if we're in test environment or Orleans is explicitly disabled
+var isTestEnvironment = builder.Environment.IsEnvironment("Test");
+var orleansDisabled = builder.Configuration.GetValue("Orleans:DisableInTests", false);
 
-// Add health checks including Orleans client
-builder.Services.AddHealthChecks()
-    .AddCheck<OrleansClientHealthCheck>("orleans-client");
+if (!isTestEnvironment && !orleansDisabled)
+{
+    try
+    {
+        _ = builder.Services.AddOrleansClient(builder.Configuration, builder.Environment);
+        Log.Information("Orleans client configured successfully");
+
+        // Add health checks including Orleans client
+        _ = builder.Services.AddHealthChecks()
+            .AddCheck<OrleansClientHealthCheck>("orleans-client")
+            .AddCheck<OrleansHealthCheck>("orleans");
+    }
+    catch (Exception ex)
+    {
+        // Log warning but don't fail startup - Orleans is optional in Phase 1
+        Log.Warning(
+            ex,
+            "Failed to configure Orleans client - Orleans integration will be disabled"
+        );
+
+        // Add basic health checks without Orleans
+        _ = builder.Services.AddHealthChecks();
+    }
+}
+else
+{
+    Log.Information("Orleans integration disabled for test environment");
+
+    // Add basic health checks without Orleans
+    _ = builder.Services.AddHealthChecks();
+}
 
 // Add LmConfig services
 builder.Services.AddLmConfig(builder.Configuration.GetSection("LmConfig"));
@@ -204,7 +235,7 @@ builder.Services.AddTransient<IStreamingAgent>(provider =>
     // Configure cache options
     var cacheOptions = new LlmCacheOptions
     {
-        EnableCaching = configuration.GetValue<bool>("LlmCache:EnableCaching", true),
+        EnableCaching = configuration.GetValue("LlmCache:EnableCaching", true),
         CacheExpiration = configuration.GetValue<TimeSpan?>(
             "LlmCache:CacheExpiration",
             TimeSpan.FromHours(24)
@@ -235,9 +266,11 @@ builder.Services.AddTransient<IStreamingAgent>(provider =>
 });
 
 // Add CORS for development and test
-builder.Services.AddCors(options => options.AddPolicy(
+builder.Services.AddCors(options =>
+    options.AddPolicy(
         "AllowSvelteApp",
-        policy => _ = policy
+        policy =>
+            _ = policy
                 .WithOrigins(
                     "http://localhost:5173",
                     "http://localhost:5174",
@@ -255,7 +288,9 @@ builder.Services.AddCors(options => options.AddPolicy(
                 )
                 .AllowAnyHeader()
                 .AllowAnyMethod()
-                .AllowCredentials()));
+                .AllowCredentials()
+    )
+);
 
 // Add timestamped Debug logger for Dev/Test so VS Output shows timestamps
 builder.Services.AddLogging(logging =>
@@ -361,25 +396,32 @@ app.MapServerSentEvents("/api/chat-sse");
 
 // Health check endpoints
 app.MapHealthChecks("/api/health");
-app.MapGet("/api/health/detailed", async (IServiceProvider services) =>
-{
-    var healthCheckService = services.GetRequiredService<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckService>();
-    var result = await healthCheckService.CheckHealthAsync();
-    
-    return Results.Ok(new 
-    { 
-        Status = result.Status.ToString(), 
-        Timestamp = DateTime.UtcNow,
-        Checks = result.Entries.ToDictionary(
-            kvp => kvp.Key,
-            kvp => new 
+app.MapGet(
+    "/api/health/detailed",
+    async (IServiceProvider services) =>
+    {
+        var healthCheckService =
+            services.GetRequiredService<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckService>();
+        var result = await healthCheckService.CheckHealthAsync();
+
+        return Results.Ok(
+            new
             {
-                Status = kvp.Value.Status.ToString(),
-                Description = kvp.Value.Description,
-                Data = kvp.Value.Data
-            })
-    });
-});
+                Status = result.Status.ToString(),
+                Timestamp = DateTime.UtcNow,
+                Checks = result.Entries.ToDictionary(
+                    kvp => kvp.Key,
+                    kvp => new
+                    {
+                        Status = kvp.Value.Status.ToString(),
+                        Description = kvp.Value.Description,
+                        Data = kvp.Value.Data,
+                    }
+                ),
+            }
+        );
+    }
+);
 
 app.Run();
 

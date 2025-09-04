@@ -24,7 +24,7 @@ public class McpConfigurationValidator(
 
     public bool Validate(out List<string> errors)
     {
-        errors = new List<string>();
+        errors = [];
 
         if (_configuration == null)
         {
@@ -113,7 +113,7 @@ public class McpConfigurationValidator(
         }
 
         // Validate SSE/HTTP-specific requirements (for future use)
-        if (config.Type?.ToLowerInvariant() == "sse" || config.Type?.ToLowerInvariant() == "http")
+        if (config.Type?.ToLowerInvariant() is "sse" or "http")
         {
             // Currently not supported, will be validated when implemented
             logger.LogWarning(

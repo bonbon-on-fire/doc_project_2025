@@ -84,7 +84,7 @@ public static class OrleansClientExtensions
     private static void ConfigureDevelopmentClient(IClientBuilder clientBuilder, IConfiguration configuration)
     {
         var gatewayPort = configuration.GetValue<int>("Orleans:GatewayPort", 30000);
-        
+
         clientBuilder.UseLocalhostClustering(gatewayPort);
     }
 
@@ -176,14 +176,14 @@ public class OrleansClientHealthCheck : Microsoft.Extensions.Diagnostics.HealthC
             else
             {
                 return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Unhealthy(
-                    $"Orleans client is not healthy: {connectionStatus.ConnectionState}", 
+                    $"Orleans client is not healthy: {connectionStatus.ConnectionState}",
                     data: data);
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Orleans client health check failed");
-            
+
             return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Unhealthy(
                 "Orleans client health check threw an exception",
                 exception: ex,

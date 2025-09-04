@@ -6,6 +6,7 @@ namespace AIChat.Orleans.Contracts;
 /// Grain interface representing a user in the chat system.
 /// Provides methods for user activity tracking, connection management, and message processing.
 /// </summary>
+[Alias("AIChat.Orleans.Contracts.IUserGrain")]
 public interface IUserGrain : IGrainWithStringKey
 {
     /// <summary>
@@ -14,18 +15,21 @@ public interface IUserGrain : IGrainWithStringKey
     /// <param name="type">Type of activity performed</param>
     /// <param name="metadata">JSON metadata about the activity</param>
     /// <returns>Task representing the async operation</returns>
+    [Alias("RecordActivity")]
     Task RecordActivity(ActivityType type, string metadata);
 
     /// <summary>
     /// Gets the current state of the user grain.
     /// </summary>
     /// <returns>Current user grain state</returns>
+    [Alias("GetState")]
     Task<UserGrainState> GetState();
 
     /// <summary>
     /// Performs a health check on the grain.
     /// </summary>
     /// <returns>Health check result with grain status</returns>
+    [Alias("CheckHealth")]
     Task<HealthCheckResult> CheckHealth();
 
     /// <summary>
@@ -35,6 +39,7 @@ public interface IUserGrain : IGrainWithStringKey
     /// <param name="connectionId">SignalR connection identifier</param>
     /// <param name="clientId">Client tab/browser identifier</param>
     /// <returns>Task representing the async operation</returns>
+    [Alias("RegisterConnection")]
     Task RegisterConnection(string connectionId, string clientId);
 
     /// <summary>
@@ -42,6 +47,7 @@ public interface IUserGrain : IGrainWithStringKey
     /// </summary>
     /// <param name="connectionId">SignalR connection identifier</param>
     /// <returns>Task representing the async operation</returns>
+    [Alias("UnregisterConnection")]
     Task UnregisterConnection(string connectionId);
 
     /// <summary>
@@ -50,6 +56,7 @@ public interface IUserGrain : IGrainWithStringKey
     /// <param name="connectionId">SignalR connection identifier</param>
     /// <param name="chatId">Chat room identifier</param>
     /// <returns>Task representing the async operation</returns>
+    [Alias("SubscribeToChat")]
     Task SubscribeToChat(string connectionId, string chatId);
 
     /// <summary>
@@ -58,6 +65,7 @@ public interface IUserGrain : IGrainWithStringKey
     /// <param name="connectionId">SignalR connection identifier</param>
     /// <param name="chatId">Chat room identifier</param>
     /// <returns>Task representing the async operation</returns>
+    [Alias("UnsubscribeFromChat")]
     Task UnsubscribeFromChat(string connectionId, string chatId);
 
     /// <summary>
@@ -66,6 +74,7 @@ public interface IUserGrain : IGrainWithStringKey
     /// </summary>
     /// <param name="message">Message to relay</param>
     /// <returns>Task representing the async operation</returns>
+    [Alias("RelayMessage")]
     Task RelayMessage(ChatMessage message);
 
     /// <summary>
@@ -73,6 +82,7 @@ public interface IUserGrain : IGrainWithStringKey
     /// </summary>
     /// <param name="chunk">Stream chunk to relay</param>
     /// <returns>Task representing the async operation</returns>
+    [Alias("RelayStreamChunk")]
     Task RelayStreamChunk(StreamChunk chunk);
 
     /// <summary>
@@ -80,6 +90,7 @@ public interface IUserGrain : IGrainWithStringKey
     /// </summary>
     /// <param name="message">Message to process</param>
     /// <returns>Operation ID for tracking</returns>
+    [Alias("ProcessMessageWithBackground")]
     Task<string> ProcessMessageWithBackground(ChatMessage message);
 
     /// <summary>
@@ -88,6 +99,7 @@ public interface IUserGrain : IGrainWithStringKey
     /// <param name="operationId">Unique operation identifier</param>
     /// <param name="chatId">Chat where operation is occurring</param>
     /// <returns>Task representing the async operation</returns>
+    [Alias("NotifyOperationStarted")]
     Task NotifyOperationStarted(string operationId, string chatId);
 
     /// <summary>
@@ -97,5 +109,6 @@ public interface IUserGrain : IGrainWithStringKey
     /// <param name="success">Whether operation completed successfully</param>
     /// <param name="error">Error message if operation failed</param>
     /// <returns>Task representing the async operation</returns>
+    [Alias("NotifyOperationCompleted")]
     Task NotifyOperationCompleted(string operationId, bool success, string? error = null);
 }

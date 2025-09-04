@@ -48,16 +48,16 @@ public class InstructionChainParserTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Single(result);
+        _ = Assert.Single(result);
 
         var instruction = result[0];
         Assert.Equal("test-task-create", instruction.IdMessage);
         Assert.NotNull(instruction.Messages);
-        Assert.Single(instruction.Messages);
+        _ = Assert.Single(instruction.Messages);
 
         var toolCallMessage = instruction.Messages[0];
         Assert.NotNull(toolCallMessage.ToolCalls);
-        Assert.Single(toolCallMessage.ToolCalls);
+        _ = Assert.Single(toolCallMessage.ToolCalls);
 
         var toolCall = toolCallMessage.ToolCalls[0];
         Assert.Equal("TaskManager_add_task", toolCall.Name);
@@ -95,11 +95,11 @@ public class InstructionChainParserTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Single(result);
+        _ = Assert.Single(result);
 
         var instruction = result[0];
         Assert.Equal("multi-tool-test", instruction.IdMessage);
-        Assert.Single(instruction.Messages);
+        _ = Assert.Single(instruction.Messages);
 
         var toolCallMessage = instruction.Messages[0];
         Assert.NotNull(toolCallMessage.ToolCalls);
@@ -144,7 +144,7 @@ public class InstructionChainParserTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Single(result);
+        _ = Assert.Single(result);
 
         var instruction = result[0];
         Assert.Equal(2, instruction.Messages.Count);
@@ -158,7 +158,7 @@ public class InstructionChainParserTests
         var toolMessage = instruction.Messages[1];
         Assert.Null(toolMessage.TextLength);
         Assert.NotNull(toolMessage.ToolCalls);
-        Assert.Single(toolMessage.ToolCalls);
+        _ = Assert.Single(toolMessage.ToolCalls);
         Assert.Equal("some_tool", toolMessage.ToolCalls[0].Name);
     }
 
@@ -206,11 +206,11 @@ public class InstructionChainParserTests
         Assert.Equal(2, result.Length);
 
         Assert.Equal("first", result[0].IdMessage);
-        Assert.Single(result[0].Messages);
+        _ = Assert.Single(result[0].Messages);
         Assert.Equal(50, result[0].Messages[0].TextLength);
 
         Assert.Equal("second", result[1].IdMessage);
-        Assert.Single(result[1].Messages);
+        _ = Assert.Single(result[1].Messages);
         Assert.Equal("tool1", result[1].Messages[0].ToolCalls![0].Name);
     }
 
@@ -241,7 +241,7 @@ public class InstructionChainParserTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Single(result);
+        _ = Assert.Single(result);
         Assert.Equal(500, result[0].ReasoningLength);
     }
 
@@ -269,7 +269,7 @@ public class InstructionChainParserTests
     public void ExtractInstructionChain_WithMissingTags_ReturnsNull()
     {
         // Arrange
-        var input = """
+        var input = /*lang=json,strict*/ """
             {
                 "id_message": "test",
                 "messages": []
@@ -347,7 +347,7 @@ public class InstructionChainParserTests
         // Assert
         Assert.NotNull(result);
         Assert.Equal("test", result.IdMessage);
-        Assert.Single(result.Messages);
+        _ = Assert.Single(result.Messages);
         Assert.Equal("test_tool", result.Messages[0].ToolCalls![0].Name);
     }
 
@@ -387,7 +387,7 @@ public class InstructionChainParserTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Single(result);
+        _ = Assert.Single(result);
 
         var toolCall = result[0].Messages[0].ToolCalls![0];
         Assert.Equal("ComplexTool", toolCall.Name);
@@ -446,7 +446,7 @@ public class InstructionChainParserTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Single(result);
+        _ = Assert.Single(result);
 
         // Should only parse tool_call and text_message, skipping unsupported types
         Assert.Equal(2, result[0].Messages.Count);

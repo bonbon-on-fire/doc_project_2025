@@ -83,8 +83,9 @@ See [build-and-test.md](.repo-instructions/build-and-test.md) for detailed instr
 1. **Use Scratchpad**: Create session directories in `scratchpad/` for ALL work
 2. **Sequential Thinking**: Break complex problems into documented steps
 3. **Use Checklists**: Track progress systematically
-4. **Test Before Commit**: Run tests before any commits
-5. **Follow Standards**: Reference instruction files for code standards
+4. **EXECUTE VALIDATION SCRIPTS**: Run appropriate validation level after each change
+5. **Never Bypass Validation**: Fix failures immediately - progression is blocked otherwise
+6. **Follow Standards**: Reference instruction files for code standards
 
 ### Key Patterns
 
@@ -130,6 +131,68 @@ Bash:
   MUST use `bash build-and-start-server.sh` for starting / restarting server
   MUST use `bash build-and-start-client.sh` for starting / restarting client
 
+## 🚨 Continuous Validation Commands
+
+### 4-Level Validation System (MANDATORY)
+
+**CRITICAL**: These scripts control development progression and are BLOCKING - exit codes determine whether work can continue.
+
+#### Level 0: After Every File Save (< 30 seconds)
+
+```powershell
+pwsh scripts/validate-file-change.ps1
+```
+- **Purpose**: Quick build check  
+- **When**: After any code file save
+- **Exit 0**: Continue | **Exit 1**: Fix compilation errors immediately
+
+#### Level 1: After Implementation Steps (< 5 minutes)  
+
+```powershell
+pwsh scripts/validate-implementation-step.ps1
+```
+- **Purpose**: Build + test validation
+- **When**: After completing any implementation work
+- **Exit 0**: Continue to next step | **Exit 1**: Fix build/test failures
+
+#### Level 2: Before Task Completion (< 15 minutes)
+
+```powershell
+pwsh scripts/quality-check.ps1
+```
+- **Purpose**: Comprehensive quality gates
+- **When**: Before marking any task complete
+- **Exit 0**: Task can be completed | **Exit 1**: Task BLOCKED until fixed
+
+#### Level 3: Before Git Commits (Full validation)
+
+```powershell
+pwsh scripts/validate-pre-commit.ps1
+```
+- **Purpose**: Complete system validation
+- **When**: Before any git commit  
+- **Exit 0**: Commit approved | **Exit 1**: Commit BLOCKED
+
+### Validation Enforcement Rules
+
+1. **Never bypass validation failures** - system integrity depends on adherence
+2. **Always fix issues immediately** - don't accumulate validation debt
+3. **Use rollback procedures** if validation cannot be fixed quickly:
+
+```powershell
+# Quick rollback options
+git stash push -m "WIP: validation failure"  # Save work
+git reset --hard HEAD                        # Nuclear option  
+git checkout -- <specific-files>             # Selective revert
+```
+
+### Enhanced Build Scripts
+
+**build-and-start-server.ps1** and **build-and-start-client.ps1** now include pre-flight validation:
+- Automatically run Level 1 validation before starting
+- Block startup if validation fails  
+- Seamless integration with existing workflow
+
 ## 📊 Logging & Debugging
 
 ### Log Locations
@@ -154,4 +217,4 @@ WHERE level = 'Error' ORDER BY timestamp DESC;
 - Test thoroughly before committing changes
 
 For any specific topic, refer to the appropriate file in `.repo-instructions/` for detailed guidance.
-- Uuse `format-code.ps1` for making sure the code styles is good and fix any build errors post re-formatting.
+- Use `format-code.ps1` for making sure the code styles is good and fix any build errors post re-formatting. You MUST prefer `format-code.ps1` over `dotnet format`.

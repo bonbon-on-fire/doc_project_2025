@@ -1,5 +1,3 @@
-using Microsoft.Data.Sqlite;
-
 namespace AIChat.Server.Storage.Sqlite;
 
 public static class TestDatabaseInitializer
@@ -18,7 +16,7 @@ public static class TestDatabaseInitializer
             _ = await dropCmd.ExecuteNonQueryAsync(ct);
         }
 
-        await SchemaHelper.EnsureSchemaAsync((SqliteConnection)root, ct);
-        await SchemaHelper.SeedUsersAsync((SqliteConnection)root, ct);
+        await SchemaHelper.EnsureSchemaAsync(root, ct);
+        await SchemaHelper.SeedUsersAsync(root, ct);
     }
 }

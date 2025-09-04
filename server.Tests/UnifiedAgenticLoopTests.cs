@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using System.Net;
 using System.Text;
 using System.Text.Json;
@@ -223,7 +222,7 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
                 finalMessages.Add(
                     new ToolsCallMessage
                     {
-                        ToolCalls = allToolCalls.ToImmutableList(),
+                        ToolCalls = [.. allToolCalls],
                         Role = Role.Assistant,
                         FromAgent = fromAgent,
                         GenerationId = toolUpdates.FirstOrDefault()?.GenerationId,
@@ -241,7 +240,7 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
                 FromAgent = fromAgent,
                 GenerationId = finalMessages.FirstOrDefault()?.GenerationId,
                 Role = Role.Assistant,
-                Messages = finalMessages.ToImmutableList(),
+                Messages = [.. finalMessages],
             };
         }
         else if (finalMessages.Count == 1)
@@ -271,7 +270,7 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
         using var invoker = new HttpMessageInvoker(handler);
 
-        var chainJson = """
+        var chainJson = /*lang=json,strict*/ """
             {
               "instruction_chain": [
                 {
@@ -316,7 +315,7 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
         using var invoker = new HttpMessageInvoker(handler);
 
-        var chainJson = """
+        var chainJson = /*lang=json,strict*/ """
             {
               "instruction_chain": [
                 {
@@ -356,7 +355,7 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
         using var invoker = new HttpMessageInvoker(handler);
 
-        var chainJson = """
+        var chainJson = /*lang=json,strict*/ """
             {
               "instruction_chain": [
                 {
@@ -392,7 +391,7 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
         using var invoker = new HttpMessageInvoker(handler);
 
-        var chainJson = """
+        var chainJson = /*lang=json,strict*/ """
             {
               "instruction_chain": [
                 { "id_message": "ONE", "messages": [{ "text_message": { "length": 1 } }] },
@@ -432,7 +431,7 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
         using var invoker = new HttpMessageInvoker(handler);
 
         // Old single instruction format (no instruction_chain array)
-        var singleInstruction = """
+        var singleInstruction = /*lang=json,strict*/ """
             {
               "id_message": "SINGLE",
               "messages": [
@@ -866,7 +865,7 @@ Get the weather for San Francisco";
                 FromAgent = "TestAgent",
                 GenerationId = replyMessages[0].GenerationId,
                 Role = Role.Assistant,
-                Messages = replyMessages.ToImmutableList(),
+                Messages = [.. replyMessages],
             };
             messages.Add(aggregatedMessage);
             output.WriteLine($"Created CompositeMessage with {replyMessages.Count} inner messages");
@@ -1037,14 +1036,14 @@ Get the weather for San Francisco";
             },
             new ToolsCallUpdateMessage
             {
-                ToolCallUpdates = new List<ToolCallUpdate>
-                {
+                ToolCallUpdates =
+                [
                     new ToolCallUpdate
                     {
                         FunctionName = "save_memory",
-                        FunctionArgs = "{\"key\":\"test\",\"value\":\"data\"}",
+                        FunctionArgs = /*lang=json,strict*/ "{\"key\":\"test\",\"value\":\"data\"}",
                     },
-                }.ToImmutableList(),
+                ],
                 Role = Role.Assistant,
                 GenerationId = "gen-2",
             },
@@ -1167,17 +1166,14 @@ Get the weather for San Francisco";
         var messages = new List<IMessage>
         {
             new TextMessage { Role = Role.User, Text = chainMessage },
-        };
-
-        // Add first assistant response (simple text from step 1)
-        messages.Add(
+            // Add first assistant response (simple text from step 1)
             new TextMessage
             {
                 Role = Role.Assistant,
                 Text = "First response from step 1",
                 GenerationId = "gen-1",
             }
-        );
+        };
 
         // Add second assistant response as CompositeMessage (simulating step 2 with multiple message types)
         var compositeMessage = new CompositeMessage
@@ -1185,8 +1181,8 @@ Get the weather for San Francisco";
             FromAgent = "ClientAgent",
             GenerationId = "gen-2",
             Role = Role.Assistant,
-            Messages = new List<IMessage>
-            {
+            Messages =
+            [
                 new ReasoningMessage
                 {
                     Role = Role.Assistant,
@@ -1202,18 +1198,18 @@ Get the weather for San Francisco";
                 new ToolsCallMessage
                 {
                     Role = Role.Assistant,
-                    ToolCalls = new List<ToolCall>
-                    {
+                    ToolCalls =
+                    [
                         new ToolCall
                         {
                             FunctionName = "analyze_data",
-                            FunctionArgs = "{\"param\": \"value\"}",
+                            FunctionArgs = /*lang=json,strict*/ "{\"param\": \"value\"}",
                             ToolCallId = "tool-1",
                         },
-                    }.ToImmutableList(),
+                    ],
                     GenerationId = "gen-2",
                 },
-            }.ToImmutableList(),
+            ],
         };
         messages.Add(compositeMessage);
 
@@ -1324,7 +1320,7 @@ Get the weather for San Francisco";
                 FromAgent = "AgentLoopDemo",
                 GenerationId = replyMessages[0].GenerationId,
                 Role = Role.Assistant,
-                Messages = replyMessages.ToImmutableList(),
+                Messages = [.. replyMessages],
             };
             output.WriteLine($"Created CompositeMessage with {replyMessages.Count} inner messages");
         }
@@ -1511,7 +1507,7 @@ Get the weather for San Francisco";
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
         using var invoker = new HttpMessageInvoker(handler);
 
-        var emptyChain = """
+        var emptyChain = /*lang=json,strict*/ """
             {
               "instruction_chain": []
             }
@@ -1542,7 +1538,7 @@ Get the weather for San Francisco";
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
         using var invoker = new HttpMessageInvoker(handler);
 
-        var chain1 = """
+        var chain1 = /*lang=json,strict*/ """
             {
               "instruction_chain": [
                 { "id_message": "CHAIN1-STEP1", "messages": [{ "text_message": { "length": 1 } }] },
@@ -1551,7 +1547,7 @@ Get the weather for San Francisco";
             }
             """;
 
-        var chain2 = """
+        var chain2 = /*lang=json,strict*/ """
             {
               "instruction_chain": [
                 { "id_message": "CHAIN2-STEP1", "messages": [{ "text_message": { "length": 1 } }] },
@@ -1610,7 +1606,7 @@ Get the weather for San Francisco";
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
         using var invoker = new HttpMessageInvoker(handler);
 
-        var chainJson = """
+        var chainJson = /*lang=json,strict*/ """
             {
               "instruction_chain": [
                 {

@@ -229,7 +229,7 @@ dotnet_diagnostic.CA1062.severity = suggestion
 dotnet_diagnostic.CA1848.severity = suggestion
 
 # CA2007: Consider calling ConfigureAwait on the awaited task
-dotnet_diagnostic.CA2007.severity = suggestion
+dotnet_diagnostic.CA2007.severity = none
 
 # Disable IDE rules that cannot be auto-fixed
 # IDE0060: Remove unused parameter

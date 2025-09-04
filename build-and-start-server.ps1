@@ -47,7 +47,29 @@ Write-Host "Cleaning existing log files..." -ForegroundColor Yellow
 Get-ChildItem -Path $logsDir -Filter "*.log" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
 Get-ChildItem -Path $logsDir -Filter "*.jsonl" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
 
-# 2. Build the server project
+# 2. Pre-flight validation
+Write-Host "Running pre-flight validation..." -ForegroundColor Yellow
+try {
+    $validationScript = "scripts/validate-implementation-step.ps1"
+    if (Test-Path $validationScript) {
+        & $validationScript
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "❌ Pre-flight validation failed - cannot start server" -ForegroundColor Red
+            Write-Host "Fix all validation issues before starting server" -ForegroundColor Yellow
+            return 1
+        }
+        Write-Host "✅ Pre-flight validation passed" -ForegroundColor Green
+    }
+    else {
+        Write-Host "⚠️ Validation script not found, skipping pre-flight validation" -ForegroundColor Yellow
+    }
+}
+catch {
+    Write-Host "❌ Pre-flight validation error: $($_.Exception.Message)" -ForegroundColor Red
+    return 1
+}
+
+# 3. Build the server project
 Write-Host "Building server project..." -ForegroundColor Yellow
 try {
     # Build and log output to build.log
@@ -62,7 +84,7 @@ catch {
     return 1
 }
 
-# 3. Start the server
+# 4. Start the server
 Write-Host "Starting server on http://localhost:$Port..." -ForegroundColor Yellow
 
 # Set environment variables for the server

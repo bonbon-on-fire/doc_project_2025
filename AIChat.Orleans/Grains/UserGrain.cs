@@ -128,11 +128,11 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, 
-                "Failed to record activity for {UserId}. Type: {ActivityType}", 
-                State.UserId, 
+            _logger.LogError(ex,
+                "Failed to record activity for {UserId}. Type: {ActivityType}",
+                State.UserId,
                 type);
-            
+
             // Don't throw in shadow mode
         }
     }
@@ -189,7 +189,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
                 Warnings = warnings
             };
 
-            _logger.LogDebug("Health check completed for {UserId}. Healthy: {IsHealthy}", 
+            _logger.LogDebug("Health check completed for {UserId}. Healthy: {IsHealthy}",
                 State.UserId, result.IsHealthy);
 
             return Task.FromResult(result);
@@ -197,7 +197,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
         catch (Exception ex)
         {
             _logger.LogError(ex, "Health check failed for {UserId}", State.UserId);
-            
+
             return Task.FromResult(new HealthCheckResult
             {
                 IsHealthy = false,
@@ -216,9 +216,9 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
     /// <inheritdoc />
     public Task RegisterConnection(string connectionId, string clientId)
     {
-        _logger.LogDebug("RegisterConnection called in Phase 1 (stubbed) for {UserId}: {ConnectionId}", 
+        _logger.LogDebug("RegisterConnection called in Phase 1 (stubbed) for {UserId}: {ConnectionId}",
             State.UserId, connectionId);
-        
+
         // Phase 2 implementation will go here
         return Task.CompletedTask;
     }
@@ -226,9 +226,9 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
     /// <inheritdoc />
     public Task UnregisterConnection(string connectionId)
     {
-        _logger.LogDebug("UnregisterConnection called in Phase 1 (stubbed) for {UserId}: {ConnectionId}", 
+        _logger.LogDebug("UnregisterConnection called in Phase 1 (stubbed) for {UserId}: {ConnectionId}",
             State.UserId, connectionId);
-        
+
         // Phase 2 implementation will go here
         return Task.CompletedTask;
     }
@@ -236,9 +236,9 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
     /// <inheritdoc />
     public Task SubscribeToChat(string connectionId, string chatId)
     {
-        _logger.LogDebug("SubscribeToChat called in Phase 1 (stubbed) for {UserId}: {ConnectionId} -> {ChatId}", 
+        _logger.LogDebug("SubscribeToChat called in Phase 1 (stubbed) for {UserId}: {ConnectionId} -> {ChatId}",
             State.UserId, connectionId, chatId);
-        
+
         // Phase 2 implementation will go here
         return Task.CompletedTask;
     }
@@ -246,9 +246,9 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
     /// <inheritdoc />
     public Task UnsubscribeFromChat(string connectionId, string chatId)
     {
-        _logger.LogDebug("UnsubscribeFromChat called in Phase 1 (stubbed) for {UserId}: {ConnectionId} -> {ChatId}", 
+        _logger.LogDebug("UnsubscribeFromChat called in Phase 1 (stubbed) for {UserId}: {ConnectionId} -> {ChatId}",
             State.UserId, connectionId, chatId);
-        
+
         // Phase 2 implementation will go here
         return Task.CompletedTask;
     }
@@ -256,9 +256,9 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
     /// <inheritdoc />
     public Task RelayMessage(ChatMessage message)
     {
-        _logger.LogDebug("RelayMessage called in Phase 1 (stubbed) for {UserId}: {MessageId}", 
+        _logger.LogDebug("RelayMessage called in Phase 1 (stubbed) for {UserId}: {MessageId}",
             State.UserId, message.Id);
-        
+
         // Phase 2 implementation will go here
         return Task.CompletedTask;
     }
@@ -266,9 +266,9 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
     /// <inheritdoc />
     public Task RelayStreamChunk(StreamChunk chunk)
     {
-        _logger.LogDebug("RelayStreamChunk called in Phase 1 (stubbed) for {UserId}: {OperationId}", 
+        _logger.LogDebug("RelayStreamChunk called in Phase 1 (stubbed) for {UserId}: {OperationId}",
             State.UserId, chunk.OperationId);
-        
+
         // Phase 2 implementation will go here
         return Task.CompletedTask;
     }
@@ -280,9 +280,9 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
     /// <inheritdoc />
     public Task<string> ProcessMessageWithBackground(ChatMessage message)
     {
-        _logger.LogDebug("ProcessMessageWithBackground called in Phase 1 (stubbed) for {UserId}: {MessageId}", 
+        _logger.LogDebug("ProcessMessageWithBackground called in Phase 1 (stubbed) for {UserId}: {MessageId}",
             State.UserId, message.Id);
-        
+
         // Phase 3 implementation will go here
         var operationId = Guid.NewGuid().ToString();
         return Task.FromResult(operationId);
@@ -291,9 +291,9 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
     /// <inheritdoc />
     public Task NotifyOperationStarted(string operationId, string chatId)
     {
-        _logger.LogDebug("NotifyOperationStarted called in Phase 1 (stubbed) for {UserId}: {OperationId}", 
+        _logger.LogDebug("NotifyOperationStarted called in Phase 1 (stubbed) for {UserId}: {OperationId}",
             State.UserId, operationId);
-        
+
         // Phase 3 implementation will go here
         return Task.CompletedTask;
     }
@@ -301,9 +301,9 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
     /// <inheritdoc />
     public Task NotifyOperationCompleted(string operationId, bool success, string? error = null)
     {
-        _logger.LogDebug("NotifyOperationCompleted called in Phase 1 (stubbed) for {UserId}: {OperationId} Success: {Success}", 
+        _logger.LogDebug("NotifyOperationCompleted called in Phase 1 (stubbed) for {UserId}: {OperationId} Success: {Success}",
             State.UserId, operationId, success);
-        
+
         // Phase 3 implementation will go here
         return Task.CompletedTask;
     }
@@ -337,17 +337,17 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
             }
 
             State.RecentActivity = tempActivity;
-            
+
             if (State.RecentActivity.Count != oldActivitiesCount)
             {
                 changed = true;
-                _logger.LogDebug("Cleaned up {Count} old activities for {UserId}", 
+                _logger.LogDebug("Cleaned up {Count} old activities for {UserId}",
                     oldActivitiesCount - State.RecentActivity.Count, State.UserId);
             }
 
             // Clean up completed operations (Phase 3 data)
             var completedOps = State.ActiveOperations
-                .Where(kvp => kvp.Value.Status == OperationStatus.Completed 
+                .Where(kvp => kvp.Value.Status == OperationStatus.Completed
                            && kvp.Value.CompletedAt.HasValue
                            && now - kvp.Value.CompletedAt.Value > TimeSpan.FromMinutes(30))
                 .Select(kvp => kvp.Key)
@@ -361,7 +361,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
 
             if (completedOps.Count > 0)
             {
-                _logger.LogDebug("Cleaned up {Count} completed operations for {UserId}", 
+                _logger.LogDebug("Cleaned up {Count} completed operations for {UserId}",
                     completedOps.Count, State.UserId);
             }
 
@@ -390,7 +390,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
             // Save metrics periodically
             await WriteStateAsync();
 
-            _logger.LogTrace("Metrics updated for {UserId}: Connections={ConnectionCount}, Activities={ActivityCount}", 
+            _logger.LogTrace("Metrics updated for {UserId}: Connections={ConnectionCount}, Activities={ActivityCount}",
                 State.UserId, State.Metrics.ActiveConnections, State.Metrics.TotalActivities);
         }
         catch (Exception ex)

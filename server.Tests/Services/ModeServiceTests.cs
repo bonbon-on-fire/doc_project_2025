@@ -91,7 +91,7 @@ capabilities:
         var agentsPath = Path.Combine(basePath, "agents");
         if (!Directory.Exists(agentsPath))
         {
-            Directory.CreateDirectory(agentsPath);
+            _ = Directory.CreateDirectory(agentsPath);
         }
 
         File.WriteAllText(Path.Combine(agentsPath, $"{agentId}.agent.md"), agentCardContent);
@@ -204,7 +204,7 @@ capabilities:
             Name = "New Custom Mode",
             Description = "A new custom mode",
             Prompt = "Custom prompt",
-            Tools = new[] { "tool1", "tool2" },
+            Tools = ["tool1", "tool2"],
             DefaultModel = "gpt-4",
             Category = "custom",
         };
@@ -258,7 +258,7 @@ capabilities:
             Name = "Updated Mode Name",
             Description = "Updated description",
             Prompt = "Updated prompt",
-            Tools = new[] { "tool3", "tool4" },
+            Tools = ["tool3", "tool4"],
             DefaultModel = "gpt-4",
             Category = "custom",
         };
@@ -475,7 +475,7 @@ capabilities:
         // Setup mock to return empty user modes list
         _ = _modeStorageMock
             .Setup(x => x.GetModesByUserAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((true, null, new List<ModeRecord>()));
+            .ReturnsAsync((true, null, []));
 
         // First call
         _ = await _service.GetAllModesAsync(userId);
@@ -532,7 +532,7 @@ capabilities:
 
         _ = _modeStorageMock
             .Setup(x => x.GetModesByUserAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((true, null, new List<ModeRecord>()));
+            .ReturnsAsync((true, null, []));
 
         // Act
         var (Success, Error, Modes) = await service.GetAllModesAsync(userId);
@@ -583,7 +583,7 @@ Test"
 
         _ = _modeStorageMock
             .Setup(x => x.GetModesByUserAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((true, null, new List<ModeRecord>()));
+            .ReturnsAsync((true, null, []));
 
         // Act
         var (Success, Error, Modes) = await service.GetAllModesAsync(userId);
@@ -648,7 +648,7 @@ Incomplete";
 
         _ = _modeStorageMock
             .Setup(x => x.GetModesByUserAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((true, null, new List<ModeRecord>()));
+            .ReturnsAsync((true, null, []));
 
         // Act
         var (Success, Error, Modes) = await service.GetAllModesAsync(userId);
@@ -693,7 +693,7 @@ Incomplete";
             _ = _modeStorageMock
                 .Setup(x => x.GetModesByUserAsync(userId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(
-                    (true, null, userId == userIds[0] ? customModes : new List<ModeRecord>())
+                    (true, null, userId == userIds[0] ? customModes : [])
                 );
         }
 
@@ -728,7 +728,7 @@ Incomplete";
             Name = "Concurrent Mode",
             Description = "Test concurrent operations",
             Prompt = "Concurrent prompt",
-            Tools = new[] { "tool1" },
+            Tools = ["tool1"],
             DefaultModel = null,
             Category = "custom",
         };
@@ -738,7 +738,7 @@ Incomplete";
             Name = "Updated Concurrent Mode",
             Description = "Updated description",
             Prompt = "Updated prompt",
-            Tools = new[] { "tool2" },
+            Tools = ["tool2"],
             DefaultModel = "gpt-4",
             Category = "custom",
         };
@@ -814,7 +814,7 @@ Incomplete";
             Name = "Hacked System Mode",
             Description = "Should not work",
             Prompt = "Should not update",
-            Tools = new[] { "malicious-tool" },
+            Tools = ["malicious-tool"],
             DefaultModel = null,
             Category = "hacked",
         };

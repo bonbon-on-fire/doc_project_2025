@@ -126,7 +126,7 @@ public class ModeController(IModeService modeService, ILogger<ModeController> lo
         {
             if (Error?.Contains("already exists") == true)
             {
-                return Conflict(new { Error = Error });
+                return Conflict(new { Error });
             }
 
             logger.LogError(
@@ -278,7 +278,7 @@ public class ModeController(IModeService modeService, ILogger<ModeController> lo
         }
 
         // Business rule: Tools list must be valid
-        if (tools.Any(tool => string.IsNullOrWhiteSpace(tool)))
+        if (tools.Any(string.IsNullOrWhiteSpace))
         {
             return "Tool names cannot be empty or whitespace";
         }

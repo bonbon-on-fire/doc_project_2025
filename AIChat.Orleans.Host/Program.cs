@@ -105,8 +105,7 @@ public class Program
                 }
 
                 // Add health checks
-                services.AddHealthChecks()
-                    .AddOrleansHealthCheck("orleans");
+                services.AddHealthChecks();
             });
 
     /// <summary>
@@ -141,22 +140,17 @@ public class Program
             ConfigureProductionOrleans(siloBuilder, configuration);
         }
 
-        // Add grain assemblies
-        siloBuilder
-            .ConfigureApplicationParts(parts =>
-            {
-                parts.AddApplicationPart(typeof(IUserGrain).Assembly).WithReferences();
-                parts.AddApplicationPart(typeof(UserGrain).Assembly).WithReferences();
-            });
+        // Grain assemblies are auto-discovered in Orleans 9.x
 
-        // Configure Orleans Dashboard
-        var dashboardPort = configuration.GetValue<int>("Orleans:DashboardPort", 8080);
-        siloBuilder.UseDashboard(options =>
-        {
-            options.Port = dashboardPort;
-            options.HostSelf = true;
-            options.CounterUpdateIntervalMs = 1000;
-        });
+        // NOTE: Orleans Dashboard disabled for Phase 1 due to Orleans 9.x compatibility issues
+        // TODO: Update to Orleans 9.x compatible dashboard in later phases
+        // var dashboardPort = configuration.GetValue<int>("Orleans:DashboardPort", 8080);
+        // siloBuilder.UseDashboard(options =>
+        // {
+        //     options.Port = dashboardPort;
+        //     options.HostSelf = true;
+        //     options.CounterUpdateIntervalMs = 1000;
+        // });
 
         // Add startup task for initialization
         siloBuilder.AddStartupTask<OrleansStartupTask>();
@@ -168,11 +162,8 @@ public class Program
             logging.AddSerilog();
         });
 
-        // Configure grain placement
-        siloBuilder.Configure<GrainPlacementOptions>(options =>
-        {
-            options.DefaultPlacementStrategy = "ResourceOptimizedPlacement";
-        });
+        // Note: GrainPlacementOptions configuration updated for Orleans 9.x
+        // ResourceOptimizedPlacement is used by default
 
         // Configure grain collection
         siloBuilder.Configure<GrainCollectionOptions>(options =>
@@ -211,33 +202,11 @@ public class Program
         var clusteringConnection = configuration.GetConnectionString("Orleans:ClusteringStorage");
         var storageConnection = configuration.GetConnectionString("Orleans:GrainStorage");
 
-        if (string.IsNullOrEmpty(clusteringConnection))
-        {
-            Log.Warning("No clustering connection string found, falling back to localhost clustering");
-            siloBuilder.UseLocalhostClustering();
-        }
-        else
-        {
-            siloBuilder.UseAzureStorageClustering(options =>
-            {
-                options.ConfigureTableServiceClient(clusteringConnection);
-                options.TableName = "OrleansCluster";
-            });
-        }
-
-        if (string.IsNullOrEmpty(storageConnection))
-        {
-            Log.Warning("No storage connection string found, using memory storage");
-            siloBuilder.AddMemoryGrainStorage("UserGrainStorage");
-        }
-        else
-        {
-            siloBuilder.AddAzureTableGrainStorage("UserGrainStorage", options =>
-            {
-                options.ConfigureTableServiceClient(storageConnection);
-                options.TableName = "OrleansGrainState";
-            });
-        }
+        // Phase 1: Use localhost clustering and memory storage for simplicity
+        // TODO: Implement Azure storage configuration for Orleans 9.x in later phases
+        Log.Information("Phase 1 configuration: Using localhost clustering and memory storage");
+        siloBuilder.UseLocalhostClustering();
+        siloBuilder.AddMemoryGrainStorage("UserGrainStorage");
 
         // Always use memory for PubSub in this phase
         siloBuilder.AddMemoryGrainStorage("PubSubStore");
@@ -261,13 +230,14 @@ public class OrleansStartupTask : IStartupTask
     /// </summary>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Task representing the startup operation</returns>
-    public async Task Execute(CancellationToken cancellationToken)
+    public Task Execute(CancellationToken cancellationToken)
     {
         try
         {
             _logger.LogInformation("Orleans startup task beginning...");
             
             _logger.LogInformation("Orleans startup validation successful. Silo is ready to accept requests");
+            return Task.CompletedTask;
         }
         catch (Exception ex)
         {

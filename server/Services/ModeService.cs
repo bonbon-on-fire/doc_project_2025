@@ -507,90 +507,96 @@ public sealed class ModeService : IModeService
     /// </summary>
     private Task LoadSystemModesAsync(CancellationToken ct = default)
     {
-        return Task.Run(() =>
-        {
-            try
+        return Task.Run(
+            () =>
             {
-                // Load from agents directory (Agent Card files)
-                // Look in solution root, not server directory
-                var solutionRoot = Path.GetDirectoryName(_hostEnvironment.ContentRootPath);
-                var agentsPath = Path.Combine(
-                    solutionRoot ?? _hostEnvironment.ContentRootPath,
-                    "agents"
-                );
-
-                if (!Directory.Exists(agentsPath))
+                try
                 {
-                    _logger.LogWarning(
-                        "Agents directory not found at {AgentsPath}, no system modes will be available",
+                    // Load from agents directory (Agent Card files)
+                    // Look in solution root, not server directory
+                    var solutionRoot = Path.GetDirectoryName(_hostEnvironment.ContentRootPath);
+                    var agentsPath = Path.Combine(
+                        solutionRoot ?? _hostEnvironment.ContentRootPath,
+                        "agents"
+                    );
+
+                    if (!Directory.Exists(agentsPath))
+                    {
+                        _logger.LogWarning(
+                            "Agents directory not found at {AgentsPath}, no system modes will be available",
+                            agentsPath
+                        );
+                        return;
+                    }
+
+                    var agentFiles = Directory
+                        .GetFiles(agentsPath, "*.agent.md", SearchOption.AllDirectories)
+                        .Where(f => !f.Contains("TEMPLATE", StringComparison.OrdinalIgnoreCase))
+                        .ToArray();
+
+                    _logger.LogInformation(
+                        "Loading {Count} agent card files from {AgentsPath}",
+                        agentFiles.Length,
                         agentsPath
                     );
-                    return;
-                }
 
-                var agentFiles = Directory
-                    .GetFiles(agentsPath, "*.agent.md", SearchOption.AllDirectories)
-                    .Where(f => !f.Contains("TEMPLATE", StringComparison.OrdinalIgnoreCase))
-                    .ToArray();
-
-                _logger.LogInformation(
-                    "Loading {Count} agent card files from {AgentsPath}",
-                    agentFiles.Length,
-                    agentsPath
-                );
-
-                foreach (var filePath in agentFiles)
-                {
-                    try
+                    foreach (var filePath in agentFiles)
                     {
-                        var agentCardResult = AgentCardParser.LoadFromFile(filePath);
-                        if (agentCardResult.IsFailure)
+                        try
                         {
-                            _logger.LogWarning(
-                                "Failed to load agent card from {FilePath}: {Error}",
-                                filePath,
-                                agentCardResult.Error
+                            var agentCardResult = AgentCardParser.LoadFromFile(filePath);
+                            if (agentCardResult.IsFailure)
+                            {
+                                _logger.LogWarning(
+                                    "Failed to load agent card from {FilePath}: {Error}",
+                                    filePath,
+                                    agentCardResult.Error
+                                );
+                                continue;
+                            }
+
+                            var mode = agentCardResult.Value.ToMode();
+
+                            var systemMode = new SystemModeConfig
+                            {
+                                Id = mode.Id,
+                                Name = mode.Name,
+                                Description = mode.Description,
+                                Category = mode.Category ?? "general",
+                                Prompt = mode.Prompt,
+                                Tools = mode.Tools?.ToList(),
+                                DefaultModel = mode.DefaultModel,
+                            };
+
+                            _ = _systemModes.TryAdd(systemMode.Id, systemMode);
+                            _logger.LogDebug(
+                                "Loaded agent card: {ModeId} from {FilePath}",
+                                systemMode.Id,
+                                filePath
                             );
-                            continue;
                         }
-
-                        var mode = agentCardResult.Value.ToMode();
-
-                        var systemMode = new SystemModeConfig
+                        catch (Exception ex)
                         {
-                            Id = mode.Id,
-                            Name = mode.Name,
-                            Description = mode.Description,
-                            Category = mode.Category ?? "general",
-                            Prompt = mode.Prompt,
-                            Tools = mode.Tools?.ToList(),
-                            DefaultModel = mode.DefaultModel,
-                        };
+                            _logger.LogError(
+                                ex,
+                                "Failed to load agent card from file {FilePath}",
+                                filePath
+                            );
+                        }
+                    }
 
-                        _ = _systemModes.TryAdd(systemMode.Id, systemMode);
-                        _logger.LogDebug(
-                            "Loaded agent card: {ModeId} from {FilePath}",
-                            systemMode.Id,
-                            filePath
-                        );
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(
-                            ex,
-                            "Failed to load agent card from file {FilePath}",
-                            filePath
-                        );
-                    }
+                    _logger.LogInformation(
+                        "Successfully loaded {Count} system modes",
+                        _systemModes.Count
+                    );
                 }
-
-                _logger.LogInformation("Successfully loaded {Count} system modes", _systemModes.Count);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error loading system modes from directory");
-            }
-        }, ct);
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error loading system modes from directory");
+                }
+            },
+            ct
+        );
     }
 }
 

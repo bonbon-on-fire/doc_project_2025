@@ -166,7 +166,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
                     defaultModel = (string?)null,
                     category = "custom",
                 };
-                
+
                 createModeResponse = await client.PostAsJsonAsync(
                     "/api/mode",
                     customMode,
@@ -490,7 +490,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
                 customMode,
                 _jsonOptions
             );
-            
+
             // If mode creation fails due to conflict, generate a new mode name and retry
             if (createModeResponse.StatusCode == System.Net.HttpStatusCode.Conflict)
             {
@@ -504,14 +504,14 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
                     defaultModel = (string?)null,
                     category = "custom",
                 };
-                
+
                 createModeResponse = await client.PostAsJsonAsync(
                     "/api/mode",
                     customMode,
                     _jsonOptions
                 );
             }
-            
+
             if (!createModeResponse.IsSuccessStatusCode)
             {
                 var errorContent = await createModeResponse.Content.ReadAsStringAsync();

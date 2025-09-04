@@ -9,12 +9,13 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningLevel>5</WarningLevel>
     <!-- Optionally suppress specific warnings that are from external dependencies -->
-    <NoWarn>CS0618</NoWarn> <!-- Suppress obsolete warnings from submodules -->
+    <NoWarn>CS0618</NoWarn>
+    <!-- Suppress obsolete warnings from submodules -->
   </PropertyGroup>
   <!-- Standard package references -->
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.6" />
-    <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.2.0" />
+    <!-- SignalR is included in ASP.NET Core 9.0 framework - no separate package needed -->
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.7" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.3" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
@@ -25,12 +26,10 @@
     <PackageReference Include="Serilog.Formatting.Compact" Version="3.0.0" />
     <PackageReference Include="YamlDotNet" Version="16.3.0" />
   </ItemGroup>
-
   <!-- Orleans client integration -->
   <ItemGroup>
     <ProjectReference Include="..\AIChat.Orleans.Client\AIChat.Orleans.Client.csproj" />
   </ItemGroup>
-
   <!-- Feature Management for Orleans integration -->
   <ItemGroup>
     <PackageReference Include="Microsoft.FeatureManagement.AspNetCore" Version="3.0.0" />

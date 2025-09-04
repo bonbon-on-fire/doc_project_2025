@@ -3,6 +3,7 @@ using AIChat.Orleans.Grains;
 using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 using Orleans.TestingHost;
+using Orleans.Hosting;
 
 namespace AIChat.Orleans.Tests.Phase1;
 
@@ -214,12 +215,7 @@ public class TestSiloConfigurator : ISiloConfigurator
     public void Configure(ISiloBuilder siloBuilder)
     {
         siloBuilder
-            .AddMemoryGrainStorage("UserGrainStorage")
-            .ConfigureApplicationParts(parts =>
-            {
-                parts.AddApplicationPart(typeof(UserGrain).Assembly).WithReferences();
-                parts.AddApplicationPart(typeof(IUserGrain).Assembly).WithReferences();
-            })
+            .AddMemoryGrainStorageAsDefault()
             .ConfigureLogging(logging =>
             {
                 logging.AddConsole();
