@@ -1,3 +1,4 @@
+using AIChat.Orleans.Configuration;
 using AIChat.Orleans.Contracts;
 using AIChat.Orleans.Grains;
 using Microsoft.ApplicationInsights.AspNetCore.Extensions;
@@ -94,6 +95,10 @@ public class Program
             .UseOrleans(ConfigureOrleans)
             .ConfigureServices((context, services) =>
             {
+                // Configure Orleans grain settings
+                services.Configure<OrleansGrainConfiguration>(
+                    context.Configuration.GetSection(OrleansGrainConfiguration.SectionName));
+
                 // Add Application Insights if configured
                 var appInsightsKey = context.Configuration.GetConnectionString("ApplicationInsights");
                 if (!string.IsNullOrEmpty(appInsightsKey))
