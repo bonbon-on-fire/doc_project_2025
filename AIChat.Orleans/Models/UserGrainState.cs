@@ -207,6 +207,42 @@ public sealed class GrainMetrics
     /// </summary>
     [Id(4)]
     public DateTime LastReset { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// Total number of background operations started.
+    /// </summary>
+    [Id(5)]
+    public long TotalOperationsStarted { get; set; } = 0;
+
+    /// <summary>
+    /// Total number of operations completed successfully.
+    /// </summary>
+    [Id(6)]
+    public long TotalOperationsCompleted { get; set; } = 0;
+
+    /// <summary>
+    /// Total number of operations that failed.
+    /// </summary>
+    [Id(7)]
+    public long TotalOperationsFailed { get; set; } = 0;
+
+    /// <summary>
+    /// Total number of operations that were cancelled.
+    /// </summary>
+    [Id(8)]
+    public long TotalOperationsCancelled { get; set; } = 0;
+
+    /// <summary>
+    /// Total operation processing time in milliseconds.
+    /// </summary>
+    [Id(9)]
+    public long TotalOperationDurationMs { get; set; } = 0;
+
+    /// <summary>
+    /// Current number of active operations.
+    /// </summary>
+    [Id(10)]
+    public int ActiveOperationsCount { get; set; } = 0;
 }
 
 /// <summary>

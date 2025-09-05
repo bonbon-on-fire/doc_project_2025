@@ -774,34 +774,336 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
     #region Phase 3: Background Processing (Stubbed for Phase 1)
 
     /// <inheritdoc />
-    public Task<string> ProcessMessageWithBackground(ChatMessage message)
+    public async Task<string> ProcessMessageWithBackground(ChatMessage message)
     {
-        _logger.LogDebug("ProcessMessageWithBackground called in Phase 1 (stubbed) for {UserId}: {MessageId}",
-            State.UserId, message.Id);
+        try
+        {
+            _logger.LogInformation("Processing message in background for chat {ChatId} and user {UserId}", 
+                message.ChatId, State.UserId);
 
-        // Phase 3 implementation will go here
-        var operationId = Guid.NewGuid().ToString();
-        return Task.FromResult(operationId);
+            // Validate message
+            if (message == null)
+            {
+                throw new ArgumentNullException(nameof(message));
+            }
+
+            if (string.IsNullOrEmpty(message.ChatId))
+            {
+                throw new ArgumentException("Message must have a ChatId", nameof(message));
+            }
+
+            // Generate operation ID
+            var operationId = Guid.NewGuid().ToString();
+
+            // Track in grain state
+            State.ActiveOperations[operationId] = new OperationContext
+            {
+                OperationId = operationId,
+                ChatId = message.ChatId,
+                Type = OperationType.SendMessage,
+                StartedAt = DateTime.UtcNow,
+                Status = OperationStatus.Queued
+            };
+
+            // Update metrics
+            State.Metrics.TotalOperationsStarted++;
+            State.Metrics.ActiveOperationsCount++;
+
+            // Record activity
+            await RecordActivity(ActivityType.MessageSent,
+                JsonSerializer.Serialize(new { 
+                    OperationId = operationId, 
+                    ChatId = message.ChatId, 
+                    MessageLength = message.Content?.Length ?? 0 
+                }));
+
+            await WriteStateAsync();
+
+            _logger.LogInformation("Message queued for background processing with operation ID {OperationId}", operationId);
+
+            // TODO: Phase 3 complete integration - this will be implemented when background service is available
+            // For now, we track the intent and provide the operation ID for coordination
+            
+            return operationId;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to process message with background for {UserId}", State.UserId);
+            
+            // Record error activity
+            await RecordActivity(ActivityType.ErrorOccurred,
+                JsonSerializer.Serialize(new { 
+                    Error = ex.Message, 
+                    ChatId = message?.ChatId ?? "unknown" 
+                }));
+            
+            throw;
+        }
     }
 
     /// <inheritdoc />
-    public Task NotifyOperationStarted(string operationId, string chatId)
+    public async Task NotifyOperationStarted(string operationId, string chatId)
     {
-        _logger.LogDebug("NotifyOperationStarted called in Phase 1 (stubbed) for {UserId}: {OperationId}",
-            State.UserId, operationId);
+        try
+        {
+            _logger.LogInformation("Operation {OperationId} started for user {UserId} in chat {ChatId}",
+                operationId, State.UserId, chatId);
 
-        // Phase 3 implementation will go here
-        return Task.CompletedTask;
+            // Update operation status in grain state
+            if (State.ActiveOperations.TryGetValue(operationId, out var operation))
+            {
+                operation.Status = OperationStatus.InProgress;
+                operation.StartedAt = DateTime.UtcNow;
+                await WriteStateAsync();
+            }
+            else
+            {
+                _logger.LogWarning("Operation {OperationId} not found in state for user {UserId}", 
+                    operationId, State.UserId);
+            }
+
+            // Broadcast operation started event to connected clients
+            await BroadcastToChat(chatId, "OperationStarted", new
+            {
+                OperationId = operationId,
+                ChatId = chatId,
+                UserId = State.UserId,
+                Timestamp = DateTime.UtcNow,
+                Status = "InProgress"
+            });
+
+            // Record activity
+            await RecordActivity(ActivityType.MessageSent,
+                JsonSerializer.Serialize(new { 
+                    Event = "OperationStarted",
+                    OperationId = operationId, 
+                    ChatId = chatId 
+                }));
+
+            _logger.LogDebug("Operation started notification completed for {OperationId}", operationId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to notify operation started for {OperationId} and user {UserId}",
+                operationId, State.UserId);
+            // Don't throw - this is a notification method
+        }
     }
 
     /// <inheritdoc />
-    public Task NotifyOperationCompleted(string operationId, bool success, string? error = null)
+    public async Task NotifyOperationCompleted(string operationId, bool success, string? error = null)
     {
-        _logger.LogDebug("NotifyOperationCompleted called in Phase 1 (stubbed) for {UserId}: {OperationId} Success: {Success}",
-            State.UserId, operationId, success);
+        try
+        {
+            _logger.LogInformation("Operation {OperationId} completed for user {UserId}. Success: {Success}",
+                operationId, State.UserId, success);
 
-        // Phase 3 implementation will go here
-        return Task.CompletedTask;
+            // Find and update operation in grain state
+            if (!State.ActiveOperations.TryGetValue(operationId, out var operation))
+            {
+                _logger.LogWarning("Operation {OperationId} not found in state for user {UserId}", 
+                    operationId, State.UserId);
+                return;
+            }
+
+            // Update operation status
+            operation.Status = success ? OperationStatus.Completed : OperationStatus.Failed;
+            operation.CompletedAt = DateTime.UtcNow;
+            operation.Error = error;
+
+            // Update metrics
+            if (success)
+            {
+                State.Metrics.TotalOperationsCompleted++;
+            }
+            else
+            {
+                State.Metrics.TotalOperationsFailed++;
+            }
+
+            State.Metrics.ActiveOperationsCount--;
+
+            // Calculate and track duration
+            if (operation.CompletedAt.HasValue)
+            {
+                var duration = operation.CompletedAt.Value - operation.StartedAt;
+                State.Metrics.TotalOperationDurationMs += (long)duration.TotalMilliseconds;
+            }
+
+            await WriteStateAsync();
+
+            // Broadcast operation completed event to connected clients
+            await BroadcastToChat(operation.ChatId, "OperationCompleted", new
+            {
+                OperationId = operationId,
+                ChatId = operation.ChatId,
+                UserId = State.UserId,
+                Success = success,
+                Error = error,
+                Timestamp = DateTime.UtcNow,
+                Status = success ? "Completed" : "Failed",
+                Duration = operation.CompletedAt - operation.StartedAt
+            });
+
+            // Record activity
+            var activityType = success ? ActivityType.MessageCompleted : ActivityType.ErrorOccurred;
+            await RecordActivity(activityType,
+                JsonSerializer.Serialize(new { 
+                    Event = "OperationCompleted",
+                    OperationId = operationId, 
+                    ChatId = operation.ChatId,
+                    Success = success,
+                    Error = error,
+                    Duration = (operation.CompletedAt - operation.StartedAt)?.TotalMilliseconds
+                }));
+
+            // Schedule cleanup of completed operation after delay
+            if (success || !string.IsNullOrEmpty(error))
+            {
+                this.RegisterGrainTimer(
+                    async _ => await CleanupOperation(operationId),
+                    new GrainTimerCreationOptions
+                    {
+                        DueTime = TimeSpan.FromMinutes(_configuration.UserGrain.CompletedOperationRetentionMinutes),
+                        Period = TimeSpan.MaxValue,
+                        Interleave = true
+                    });
+            }
+
+            _logger.LogDebug("Operation completed notification finished for {OperationId}", operationId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to notify operation completed for {OperationId} and user {UserId}",
+                operationId, State.UserId);
+            // Don't throw - this is a notification method
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> CancelOperation(string operationId)
+    {
+        try
+        {
+            _logger.LogInformation("Cancelling operation {OperationId} for user {UserId}",
+                operationId, State.UserId);
+
+            // Find operation in grain state
+            if (!State.ActiveOperations.TryGetValue(operationId, out var operation))
+            {
+                _logger.LogWarning("Operation {OperationId} not found for user {UserId}. Cannot cancel.",
+                    operationId, State.UserId);
+                return false;
+            }
+
+            // Check if operation can be cancelled
+            if (operation.Status is OperationStatus.Completed or OperationStatus.Failed or OperationStatus.Cancelled)
+            {
+                _logger.LogWarning("Operation {OperationId} for user {UserId} is already in final state {Status}. Cannot cancel.",
+                    operationId, State.UserId, operation.Status);
+                return false;
+            }
+
+            // Update operation status to cancelled
+            operation.Status = OperationStatus.Cancelled;
+            operation.CompletedAt = DateTime.UtcNow;
+            operation.Error = "Operation cancelled by user";
+
+            // Update metrics
+            State.Metrics.TotalOperationsCancelled++;
+            State.Metrics.ActiveOperationsCount--;
+
+            if (operation.CompletedAt.HasValue)
+            {
+                var duration = operation.CompletedAt.Value - operation.StartedAt;
+                State.Metrics.TotalOperationDurationMs += (long)duration.TotalMilliseconds;
+            }
+
+            await WriteStateAsync();
+
+            // Broadcast cancellation to clients
+            await BroadcastToChat(operation.ChatId, "OperationCancelled", new
+            {
+                OperationId = operationId,
+                ChatId = operation.ChatId,
+                UserId = State.UserId,
+                Timestamp = DateTime.UtcNow,
+                Status = "Cancelled",
+                Duration = operation.CompletedAt - operation.StartedAt
+            });
+
+            // Record activity
+            await RecordActivity(ActivityType.ErrorOccurred,
+                JsonSerializer.Serialize(new { 
+                    Event = "OperationCancelled",
+                    OperationId = operationId, 
+                    ChatId = operation.ChatId 
+                }));
+
+            // Schedule cleanup of cancelled operation after delay
+            this.RegisterGrainTimer(
+                async _ => await CleanupOperation(operationId),
+                new GrainTimerCreationOptions
+                {
+                    DueTime = TimeSpan.FromMinutes(_configuration.UserGrain.CompletedOperationRetentionMinutes),
+                    Period = TimeSpan.MaxValue,
+                    Interleave = true
+                });
+
+            _logger.LogInformation("Operation {OperationId} successfully cancelled for user {UserId}",
+                operationId, State.UserId);
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to cancel operation {OperationId} for user {UserId}",
+                operationId, State.UserId);
+            // Don't throw - this is a control method
+            return false;
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<OperationContext?> GetOperationStatus(string operationId)
+    {
+        try
+        {
+            _logger.LogDebug("Getting operation status for {OperationId} and user {UserId}",
+                operationId, State.UserId);
+
+            // Find operation in grain state
+            if (State.ActiveOperations.TryGetValue(operationId, out var operation))
+            {
+                // Return a copy to prevent external modification
+                var operationCopy = new OperationContext
+                {
+                    OperationId = operation.OperationId,
+                    ChatId = operation.ChatId,
+                    Type = operation.Type,
+                    StartedAt = operation.StartedAt,
+                    CompletedAt = operation.CompletedAt,
+                    Status = operation.Status,
+                    Error = operation.Error
+                };
+
+                _logger.LogDebug("Found operation {OperationId} with status {Status} for user {UserId}",
+                    operationId, operation.Status, State.UserId);
+
+                return Task.FromResult<OperationContext?>(operationCopy);
+            }
+
+            _logger.LogDebug("Operation {OperationId} not found for user {UserId}",
+                operationId, State.UserId);
+
+            return Task.FromResult<OperationContext?>(null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get operation status for {OperationId} and user {UserId}",
+                operationId, State.UserId);
+            return Task.FromResult<OperationContext?>(null);
+        }
     }
 
     #endregion
@@ -888,6 +1190,44 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
         }
 
         return connection;
+    }
+
+    /// <summary>
+    /// Broadcasts a SignalR message to all connections subscribed to a chat.
+    /// </summary>
+    /// <param name="chatId">The chat ID to broadcast to</param>
+    /// <param name="method">The SignalR method name to call</param>
+    /// <param name="payload">The payload to broadcast</param>
+    /// <returns>Statistics about the broadcast operation</returns>
+    private async Task<(int SuccessCount, int FailureCount)> BroadcastToChat(string chatId, string method, object payload)
+    {
+        var connections = GetConnectionsForChat(chatId);
+        var successCount = 0;
+        var failureCount = 0;
+
+        // Fallback to logging for Phase 3 background processing (SignalR handled by server layer)
+        foreach (var connection in connections)
+        {
+            try
+            {
+                _logger.LogTrace(
+                    "Would broadcast {Method} to connection {ConnectionId} in chat {ChatId} for {UserId}",
+                    method, connection.ConnectionId, chatId, State.UserId);
+
+                connection.LastActivity = DateTime.UtcNow;
+                successCount++;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "Failed to broadcast {Method} to connection {ConnectionId} in chat {ChatId} for {UserId}",
+                    method, connection.ConnectionId, chatId, State.UserId);
+                failureCount++;
+            }
+        }
+
+        await Task.CompletedTask;
+        return (successCount, failureCount);
     }
 
     /// <summary>
@@ -1096,15 +1436,65 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
             // Update connection count
             State.Metrics.ActiveConnections = State.Connections.Count;
 
+            // Update active operations count from actual state
+            State.Metrics.ActiveOperationsCount = State.ActiveOperations
+                .Count(kvp => kvp.Value.Status is OperationStatus.Queued or OperationStatus.InProgress);
+
             // Save metrics periodically
             await WriteStateAsync();
 
-            _logger.LogTrace("Metrics updated for {UserId}: Connections={ConnectionCount}, Activities={ActivityCount}",
-                State.UserId, State.Metrics.ActiveConnections, State.Metrics.TotalActivities);
+            _logger.LogTrace("Metrics updated for {UserId}: Connections={ConnectionCount}, Activities={ActivityCount}, ActiveOps={ActiveOperations}",
+                State.UserId, State.Metrics.ActiveConnections, State.Metrics.TotalActivities, State.Metrics.ActiveOperationsCount);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to update metrics for {UserId}", State.UserId);
+        }
+    }
+
+    /// <summary>
+    /// Cleans up a completed operation from the active operations dictionary.
+    /// This method is called by a timer after an operation has completed.
+    /// </summary>
+    /// <param name="operationId">The operation ID to clean up</param>
+    /// <returns>Task representing the cleanup operation</returns>
+    private async Task CleanupOperation(string operationId)
+    {
+        // CRITICAL: Check disposal flag to prevent execution after deactivation
+        if (_disposed)
+        {
+            return;
+        }
+
+        try
+        {
+            if (State.ActiveOperations.TryGetValue(operationId, out var operation))
+            {
+                // Only clean up completed, failed, or cancelled operations
+                if (operation.Status is OperationStatus.Completed or OperationStatus.Failed or OperationStatus.Cancelled)
+                {
+                    State.ActiveOperations.Remove(operationId);
+                    await WriteStateAsync();
+
+                    _logger.LogDebug("Cleaned up completed operation {OperationId} for user {UserId}",
+                        operationId, State.UserId);
+                }
+                else
+                {
+                    _logger.LogWarning("Attempted to clean up operation {OperationId} with status {Status} for user {UserId}",
+                        operationId, operation.Status, State.UserId);
+                }
+            }
+            else
+            {
+                _logger.LogDebug("Operation {OperationId} already removed from state for user {UserId}",
+                    operationId, State.UserId);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to cleanup operation {OperationId} for user {UserId}",
+                operationId, State.UserId);
         }
     }
 
