@@ -1,9 +1,9 @@
+using System.Security.Claims;
 using AIChat.Server.Middleware;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.FeatureManagement;
 using Moq;
-using System.Security.Claims;
 using Xunit;
 
 namespace AIChat.Server.Tests.Middleware;
@@ -37,7 +37,7 @@ public class ProtocolNegotiationMiddlewareTests
         // Arrange
         var context = new DefaultHttpContext();
         context.Request.Path = "/api/chat/send";
-        context.Request.Headers["User-Agent"] = "Mozilla/5.0 Chrome/120.0";
+        context.Request.Headers.UserAgent = "Mozilla/5.0 Chrome/120.0";
         _featureManager.Setup(x => x.IsEnabledAsync("SignalRMessaging"))
             .ReturnsAsync(true);
 
@@ -58,7 +58,7 @@ public class ProtocolNegotiationMiddlewareTests
         // Arrange
         var context = new DefaultHttpContext();
         context.Request.Path = "/api/health";
-        context.Request.Headers["User-Agent"] = "Mozilla/5.0";
+        context.Request.Headers.UserAgent = "Mozilla/5.0";
 
         // Act
         await _middleware.InvokeAsync(context);
@@ -75,7 +75,7 @@ public class ProtocolNegotiationMiddlewareTests
         // Arrange
         var context = new DefaultHttpContext();
         context.Request.Path = "/api/chat/send";
-        context.Request.Headers["User-Agent"] = "Mozilla/5.0 Chrome/120.0";
+        context.Request.Headers.UserAgent = "Mozilla/5.0 Chrome/120.0";
         _featureManager.Setup(x => x.IsEnabledAsync("SignalRMessaging"))
             .ReturnsAsync(false);
 
@@ -93,7 +93,7 @@ public class ProtocolNegotiationMiddlewareTests
         // Arrange
         var context = new DefaultHttpContext();
         context.Request.Path = "/api/chat/send";
-        context.Request.Headers["User-Agent"] = "Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; Trident/6.0)";
+        context.Request.Headers.UserAgent = "Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; Trident/6.0)";
         _featureManager.Setup(x => x.IsEnabledAsync("SignalRMessaging"))
             .ReturnsAsync(true);
 
@@ -111,7 +111,7 @@ public class ProtocolNegotiationMiddlewareTests
         // Arrange
         var context = new DefaultHttpContext();
         context.Request.Path = "/api/chat/send";
-        context.Request.Headers["User-Agent"] = "Mozilla/5.0 Chrome/120.0";
+        context.Request.Headers.UserAgent = "Mozilla/5.0 Chrome/120.0";
         context.Request.Headers["X-Requested-Protocol"] = "SSE";
         _featureManager.Setup(x => x.IsEnabledAsync("SignalRMessaging"))
             .ReturnsAsync(true);
@@ -130,7 +130,7 @@ public class ProtocolNegotiationMiddlewareTests
         // Arrange
         var context = new DefaultHttpContext();
         context.Request.Path = "/api/chat/send";
-        context.Request.Headers["User-Agent"] = "Mozilla/5.0 Chrome/120.0";
+        context.Request.Headers.UserAgent = "Mozilla/5.0 Chrome/120.0";
         context.Request.Headers["X-Requested-Protocol"] = "SignalR";
         _featureManager.Setup(x => x.IsEnabledAsync("SignalRMessaging"))
             .ReturnsAsync(true);
@@ -149,9 +149,9 @@ public class ProtocolNegotiationMiddlewareTests
         // Arrange
         var context = new DefaultHttpContext();
         context.Request.Path = "/api/chat/send";
-        context.Request.Headers["User-Agent"] = "Mozilla/5.0 Chrome/120.0";
-        context.Request.Headers["Upgrade"] = "websocket";
-        context.Request.Headers["Connection"] = "Upgrade";
+        context.Request.Headers.UserAgent = "Mozilla/5.0 Chrome/120.0";
+        context.Request.Headers.Upgrade = "websocket";
+        context.Request.Headers.Connection = "Upgrade";
         _featureManager.Setup(x => x.IsEnabledAsync("SignalRMessaging"))
             .ReturnsAsync(true);
 
@@ -169,7 +169,7 @@ public class ProtocolNegotiationMiddlewareTests
         // Arrange
         var context = new DefaultHttpContext();
         context.Request.Path = "/api/chat/send";
-        context.Request.Headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.140 Safari/537.36 Edge/18.17763";
+        context.Request.Headers.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.140 Safari/537.36 Edge/18.17763";
         _featureManager.Setup(x => x.IsEnabledAsync("SignalRMessaging"))
             .ReturnsAsync(true);
 
@@ -186,7 +186,7 @@ public class ProtocolNegotiationMiddlewareTests
         // Arrange
         var context = new DefaultHttpContext();
         context.Request.Path = "/api/chat/send";
-        context.Request.Headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0";
+        context.Request.Headers.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0";
         _featureManager.Setup(x => x.IsEnabledAsync("SignalRMessaging"))
             .ReturnsAsync(true);
 
@@ -203,7 +203,7 @@ public class ProtocolNegotiationMiddlewareTests
         // Arrange
         var context = new DefaultHttpContext();
         context.Request.Path = "/api/messages/list";
-        context.Request.Headers["User-Agent"] = "Mozilla/5.0 Chrome/120.0";
+        context.Request.Headers.UserAgent = "Mozilla/5.0 Chrome/120.0";
         _featureManager.Setup(x => x.IsEnabledAsync("SignalRMessaging"))
             .ReturnsAsync(true);
 
@@ -220,7 +220,7 @@ public class ProtocolNegotiationMiddlewareTests
         // Arrange
         var context = new DefaultHttpContext();
         context.Request.Path = "/chatHub";
-        context.Request.Headers["User-Agent"] = "Mozilla/5.0 Chrome/120.0";
+        context.Request.Headers.UserAgent = "Mozilla/5.0 Chrome/120.0";
         _featureManager.Setup(x => x.IsEnabledAsync("SignalRMessaging"))
             .ReturnsAsync(true);
 
@@ -237,7 +237,7 @@ public class ProtocolNegotiationMiddlewareTests
         // Arrange
         var context = new DefaultHttpContext();
         context.Request.Path = "/api/chat-sse";
-        context.Request.Headers["User-Agent"] = "Mozilla/5.0 Chrome/120.0";
+        context.Request.Headers.UserAgent = "Mozilla/5.0 Chrome/120.0";
         _featureManager.Setup(x => x.IsEnabledAsync("SignalRMessaging"))
             .ReturnsAsync(true);
 
@@ -254,7 +254,7 @@ public class ProtocolNegotiationMiddlewareTests
         // Arrange
         var context = new DefaultHttpContext();
         context.Request.Path = "/api/chat/send";
-        context.Request.Headers["User-Agent"] = "Mozilla/5.0 Chrome/120.0";
+        context.Request.Headers.UserAgent = "Mozilla/5.0 Chrome/120.0";
         context.User = new ClaimsPrincipal(new ClaimsIdentity(new[]
         {
             new Claim("sub", "user123")
@@ -293,7 +293,7 @@ public class ProtocolNegotiationMiddlewareTests
         // Arrange
         var context = new DefaultHttpContext();
         context.Request.Path = "/api/chat/send";
-        context.Request.Headers["User-Agent"] = "Mozilla/5.0 Chrome/120.0";
+        context.Request.Headers.UserAgent = "Mozilla/5.0 Chrome/120.0";
         context.Request.Headers["X-Requested-Protocol"] = "InvalidProtocol";
         _featureManager.Setup(x => x.IsEnabledAsync("SignalRMessaging"))
             .ReturnsAsync(true);

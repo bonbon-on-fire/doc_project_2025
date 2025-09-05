@@ -37,7 +37,7 @@ public interface IChatService
     Task<string> CreateAssistantMessageForStreamingAsync(string chatId, int sequenceNumber);
     Task<string> GetMessageContentAsync(string messageId);
 
-    // Events for real-time notifications
+    // Events for real-time notifications (implemented by ChatServiceFacade)
     event Func<MessageCreatedEvent, Task>? MessageCreated;
     event Func<StreamChunkEvent, Task>? StreamChunkReceived;
     event Func<MessageEvent, Task>? MessageReceived;

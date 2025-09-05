@@ -6,7 +6,7 @@ namespace AIChat.Server.Middleware;
 /// Middleware that negotiates the communication protocol (SignalR vs SSE) based on client capabilities,
 /// feature flags, and user preferences.
 /// </summary>
-public class ProtocolNegotiationMiddleware
+public partial class ProtocolNegotiationMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly IFeatureManager _featureManager;
@@ -41,7 +41,7 @@ public class ProtocolNegotiationMiddleware
                 "Protocol negotiation completed. Selected: {Protocol} for path: {Path}, User-Agent: {UserAgent}",
                 selectedProtocol,
                 context.Request.Path,
-                context.Request.Headers["User-Agent"].ToString());
+                context.Request.Headers.UserAgent.ToString());
         }
         
         await _next(context);
@@ -75,7 +75,7 @@ public class ProtocolNegotiationMiddleware
         }
 
         // Step 2: Check client capabilities (browser support)
-        var userAgent = context.Request.Headers["User-Agent"].ToString();
+        var userAgent = context.Request.Headers.UserAgent.ToString();
         if (IsLegacyBrowser(userAgent))
         {
             _logger.LogDebug("Legacy browser detected, falling back to SSE. User-Agent: {UserAgent}", userAgent);
@@ -111,8 +111,8 @@ public class ProtocolNegotiationMiddleware
         }
 
         // Step 5: Check for WebSocket support indication
-        var upgradeHeader = context.Request.Headers["Upgrade"].ToString();
-        var connectionHeader = context.Request.Headers["Connection"].ToString();
+        var upgradeHeader = context.Request.Headers.Upgrade.ToString();
+        var connectionHeader = context.Request.Headers.Connection.ToString();
         
         // If client explicitly requests WebSocket upgrade, prefer SignalR
         if (upgradeHeader.Contains("websocket", StringComparison.OrdinalIgnoreCase) &&
@@ -143,7 +143,7 @@ public class ProtocolNegotiationMiddleware
         if (userAgent.Contains("Edge/") && !userAgent.Contains("Edg/"))
         {
             // Extract Edge version and check if it's pre-Chromium (< 79)
-            var edgeMatch = System.Text.RegularExpressions.Regex.Match(userAgent, @"Edge/(\d+)");
+            var edgeMatch = MyRegex().Match(userAgent);
             if (edgeMatch.Success && int.TryParse(edgeMatch.Groups[1].Value, out var version))
             {
                 return version < 79;
@@ -154,7 +154,7 @@ public class ProtocolNegotiationMiddleware
         // Safari < 7, Chrome < 23, Firefox < 11
         if (userAgent.Contains("Safari/") && !userAgent.Contains("Chrome"))
         {
-            var safariMatch = System.Text.RegularExpressions.Regex.Match(userAgent, @"Version/(\d+)");
+            var safariMatch = MyRegex1().Match(userAgent);
             if (safariMatch.Success && int.TryParse(safariMatch.Groups[1].Value, out var version))
             {
                 return version < 7;
@@ -167,13 +167,18 @@ public class ProtocolNegotiationMiddleware
     /// <summary>
     /// Retrieves user's protocol preference from storage (future enhancement).
     /// </summary>
-    private Task<string?> GetUserProtocolPreferenceAsync(string userId)
+    private static Task<string?> GetUserProtocolPreferenceAsync(string userId)
     {
         // TODO: Implement user preference storage and retrieval
         // This would typically query a database or cache for user preferences
         // For now, return null to indicate no preference
         return Task.FromResult<string?>(null);
     }
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"Edge/(\d+)")]
+    private static partial System.Text.RegularExpressions.Regex MyRegex();
+    [System.Text.RegularExpressions.GeneratedRegex(@"Version/(\d+)")]
+    private static partial System.Text.RegularExpressions.Regex MyRegex1();
 }
 
 /// <summary>

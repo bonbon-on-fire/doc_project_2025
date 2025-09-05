@@ -1,10 +1,12 @@
 using System.Text.Json.Serialization;
 using AchieveAi.LmDotnetTools.Misc.Utils;
 using AIChat.Server.Extensions;
+using AIChat.Server.Hubs;
 using AIChat.Server.Services;
 using AIChat.Server.Storage;
 using Lib.AspNetCore.ServerSentEvents;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using ChatDto = AIChat.Server.Services.ChatDto;
 
 namespace AIChat.Server.Controllers;
@@ -16,7 +18,8 @@ public class ChatController(
     ILogger<ChatController> logger,
     IServerSentEventsService serverSentEventsService,
     ITaskStorage taskStorage,
-    IChatStorage chatStorage
+    IChatStorage chatStorage,
+    IHubContext<ChatHub> hubContext
     ) : ControllerBase
 {
     private readonly IChatService _chatService = chatService;
@@ -24,6 +27,7 @@ public class ChatController(
     private readonly IServerSentEventsService _serverSentEventsService = serverSentEventsService;
     private readonly ITaskStorage _taskStorage = taskStorage;
     private readonly IChatStorage _chatStorage = chatStorage;
+    private readonly IHubContext<ChatHub> _hubContext = hubContext;
 
     // GET: api/chat/history?userId={userId}&page={page}&pageSize={pageSize}
     [HttpGet("history")]
@@ -201,11 +205,21 @@ public class ChatController(
 
     // POST: api/chat/stream-sse
     [HttpPost("stream-sse")]
-    public async Task StreamChatCompletionSse(
+    public async Task<IActionResult> StreamChatCompletionSse(
         [FromBody] CreateChatRequest request,
         CancellationToken cancellationToken = default
     )
     {
+        // Check protocol preference from middleware
+        var protocol = HttpContext.Items["PreferredProtocol"] as string ?? "SSE";
+        
+        // If SignalR is selected, handle differently
+        if (protocol.Equals("SignalR", StringComparison.OrdinalIgnoreCase))
+        {
+            return await HandleSignalRStreamingAsync(request, cancellationToken);
+        }
+        
+        // Continue with existing SSE implementation
         // Set response headers for SSE
         Response.Headers.Append("Content-Type", "text/event-stream");
         Response.Headers.Append("Cache-Control", "no-cache");
@@ -297,6 +311,122 @@ public class ChatController(
             _chatService.MessageReceived -= ForwardMessage;
             _chatService.StreamChunkReceived -= ForwardSideChannel;
         }
+        
+        return new EmptyResult();
+    }
+
+    // Handle SignalR-based streaming with operation ID
+    private async Task<IActionResult> HandleSignalRStreamingAsync(
+        CreateChatRequest request,
+        CancellationToken cancellationToken = default
+    )
+    {
+        // Generate unique operation ID
+        var operationId = $"op_{Guid.NewGuid():N}";
+        string? chatId = null;
+        
+        try
+        {
+            // Prepare the chat stream (same as SSE)
+            var streamRequest = new StreamChatRequest
+            {
+                ChatId = request.ChatId,
+                UserId = request.UserId,
+                Message = request.Message,
+                SystemPrompt = request.SystemPrompt,
+                ModeId = request.ModeId,
+            };
+
+            // Get initialization metadata
+            var initResult = await _chatService.PrepareUnifiedStreamChatAsync(streamRequest);
+            chatId = initResult.ChatId;
+            
+            // Return operation ID immediately to SignalR client
+            var responseData = new
+            {
+                OperationId = operationId,
+                ChatId = chatId,
+                MessageId = initResult.UserMessageId,
+                Protocol = "SignalR",
+                Status = "Processing"
+            };
+            
+            // Process the assistant response asynchronously
+            // Note: The ChatHub is already subscribed to ChatService events
+            // and will broadcast messages to the SignalR group automatically
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    // Send init event via SignalR
+                    var initEnvelope = SSEEventExtensions.CreateInitEnvelope(
+                        initResult.ChatId,
+                        initResult.UserMessageId,
+                        initResult.UserTimestamp,
+                        initResult.UserSequenceNumber
+                    );
+                    
+                    await _hubContext.Clients
+                        .Group($"chat_{chatId}")
+                        .SendAsync("ReceiveInit", new
+                        {
+                            OperationId = operationId,
+                            Envelope = initEnvelope
+                        });
+                    
+                    // Stream the assistant response
+                    await _chatService.StreamAssistantResponseAsync(initResult.ChatId, cancellationToken);
+                    
+                    // Send completion event via SignalR
+                    var completeEnvelope = SSEEventExtensions.CreateStreamCompleteEnvelope(initResult.ChatId);
+                    await _hubContext.Clients
+                        .Group($"chat_{chatId}")
+                        .SendAsync("ReceiveComplete", new
+                        {
+                            OperationId = operationId,
+                            Envelope = completeEnvelope
+                        });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(
+                        "Error processing SignalR stream for operation {OperationId}: {Error}",
+                        operationId,
+                        ex.Message
+                    );
+                    
+                    // Send error via SignalR
+                    await _hubContext.Clients
+                        .Group($"chat_{chatId}")
+                        .SendAsync("ReceiveError", new
+                        {
+                            OperationId = operationId,
+                            ChatId = chatId,
+                            Error = ex.Message,
+                            Timestamp = DateTime.UtcNow
+                        });
+                }
+            }, cancellationToken);
+            
+            // Return the operation ID response
+            return Ok(responseData);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                "Error initiating SignalR stream for operation {OperationId}: {Error}",
+                operationId,
+                ex.Message
+            );
+            
+            // Return error response
+            return StatusCode(500, new
+            {
+                OperationId = operationId,
+                Error = ex.Message,
+                Status = "Failed"
+            });
+        }
     }
 
     private async Task SendSseEvent(string eventType, object data, string? id = null)
@@ -316,9 +446,10 @@ public class ChatController(
 
         // Additionally, broadcast via IServerSentEventsService if any listeners are connected
         var clients = _serverSentEventsService.GetClients();
-        if (clients.Count != 0)
+        var clientsList = clients?.ToList() ?? [];
+        if (clientsList.Count > 0)
         {
-            var client = clients.First();
+            var client = clientsList.First();
             var sse = new ServerSentEvent
             {
                 Type = eventType,

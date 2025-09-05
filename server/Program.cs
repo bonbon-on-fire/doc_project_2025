@@ -313,11 +313,29 @@ builder.Services.AddServerSentEvents();
 builder.Services.AddScoped<IToolingService, ToolingService>();
 
 // Add chat service with facade
-builder.Services.AddScoped<IChatService, ChatService>();
+// ChatService is singleton (stateless for background processing)
+// ChatServiceFacade is scoped (handles events for controllers)
+builder.Services.AddSingleton<ChatService>();
+builder.Services.AddScoped<IChatService, ChatServiceFacade>();
 builder.Services.AddScoped<IChatServiceFacade, ChatServiceFacade>();
+builder.Services.AddScoped<IChatServiceStreaming>(provider => provider.GetRequiredService<ChatService>());
 
 // Add mode service
 builder.Services.AddScoped<IModeService, ModeService>();
+
+// Configure Background Chat Service options
+builder.Services.Configure<BackgroundServiceOptions>(options =>
+{
+    options.MaxConcurrentOperations = builder.Configuration.GetValue("BackgroundService:MaxConcurrentOperations", 10);
+    options.DefaultTimeoutMs = builder.Configuration.GetValue("BackgroundService:DefaultTimeoutMs", 300000); // 5 minutes
+    options.OperationHistoryHours = builder.Configuration.GetValue("BackgroundService:OperationHistoryHours", 2);
+});
+
+// Add Background Chat Service (Phase 3)
+// Register as both IHostedService (for background processing) and IBackgroundChatService (for API access)
+builder.Services.AddSingleton<BackgroundChatService>();
+builder.Services.AddSingleton<IBackgroundChatService>(provider => provider.GetRequiredService<BackgroundChatService>());
+builder.Services.AddHostedService(provider => provider.GetRequiredService<BackgroundChatService>());
 
 var app = builder.Build();
 
