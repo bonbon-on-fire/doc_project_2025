@@ -1,12 +1,17 @@
 using System.Text.Json.Serialization;
 using AchieveAi.LmDotnetTools.Misc.Utils;
+using AIChat.Orleans.Contracts;
 using AIChat.Server.Extensions;
 using AIChat.Server.Hubs;
+using AIChat.Server.Models;
 using AIChat.Server.Services;
 using AIChat.Server.Storage;
 using Lib.AspNetCore.ServerSentEvents;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Options;
+using Microsoft.FeatureManagement;
+using Orleans;
 using ChatDto = AIChat.Server.Services.ChatDto;
 
 namespace AIChat.Server.Controllers;
@@ -19,7 +24,11 @@ public class ChatController(
     IServerSentEventsService serverSentEventsService,
     ITaskStorage taskStorage,
     IChatStorage chatStorage,
-    IHubContext<ChatHub> hubContext
+    IHubContext<ChatHub> hubContext,
+    IFeatureManager featureManager,
+    IOptions<BackgroundProcessingOptions> backgroundProcessingOptions,
+    IClusterClient? clusterClient = null,
+    IBackgroundChatService? backgroundChatService = null
     ) : ControllerBase
 {
     private readonly IChatService _chatService = chatService;
@@ -28,6 +37,138 @@ public class ChatController(
     private readonly ITaskStorage _taskStorage = taskStorage;
     private readonly IChatStorage _chatStorage = chatStorage;
     private readonly IHubContext<ChatHub> _hubContext = hubContext;
+    private readonly IFeatureManager _featureManager = featureManager;
+    private readonly BackgroundProcessingOptions _backgroundProcessingOptions = backgroundProcessingOptions.Value;
+    private readonly IClusterClient? _clusterClient = clusterClient;
+    private readonly IBackgroundChatService? _backgroundChatService = backgroundChatService;
+
+    /// <summary>
+    /// Determines whether background processing via Orleans should be used.
+    /// </summary>
+    private async Task<bool> ShouldUseBackgroundProcessingAsync()
+    {
+        // Check if background processing feature is enabled
+        var backgroundProcessingEnabled = await _featureManager.IsEnabledAsync("BackgroundProcessing");
+        if (!backgroundProcessingEnabled)
+        {
+            _logger.LogDebug("Background processing feature is disabled");
+            return false;
+        }
+
+        // Check if Orleans integration is available
+        var orleansEnabled = await _featureManager.IsEnabledAsync("OrleansIntegration");
+        if (!orleansEnabled)
+        {
+            _logger.LogDebug("Orleans integration feature is disabled");
+            return false;
+        }
+
+        // Check if required services are available
+        if (_clusterClient == null)
+        {
+            _logger.LogWarning("Background processing enabled but Orleans cluster client is not available");
+            return false;
+        }
+
+        // Check cluster health - Orleans IClusterClient doesn't have IsInitialized property
+        try
+        {
+            // Try a simple grain call to check if Orleans is working
+            var healthGrain = _clusterClient.GetGrain<IUserGrain>("health-check-user");
+            // This will throw if Orleans is not available
+            _ = Task.Run(async () => await healthGrain.GetState(), CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Orleans cluster client health check failed, falling back to direct processing");
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Routes a send message request through Orleans background processing or falls back to direct processing.
+    /// </summary>
+    private async Task<(bool Success, string? Error, ChatDto? Chat, string? OperationId)> ProcessSendMessageAsync(
+        Services.SendMessageRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var useBackground = await ShouldUseBackgroundProcessingAsync();
+
+        if (useBackground && _clusterClient != null)
+        {
+            try
+            {
+                return await ProcessSendMessageViaOrleansAsync(request, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Orleans background processing failed for send message, falling back to direct processing");
+                
+                // Fall back to direct processing
+                var fallbackResult = await _chatService.SendMessageAsync(request);
+                
+                // Get the updated chat after direct processing
+                ChatDto? fallbackChat = null;
+                if (fallbackResult.Success)
+                {
+                    var chatResult = await _chatService.GetChatAsync(request.ChatId);
+                    fallbackChat = chatResult.Chat;
+                }
+                
+                return (fallbackResult.Success, fallbackResult.Error, fallbackChat, null);
+            }
+        }
+
+        // Direct processing
+        var result = await _chatService.SendMessageAsync(request);
+        
+        // Get the updated chat after direct processing
+        ChatDto? directChat = null;
+        if (result.Success)
+        {
+            var chatResult = await _chatService.GetChatAsync(request.ChatId);
+            directChat = chatResult.Chat;
+        }
+        
+        return (result.Success, result.Error, directChat, null);
+    }
+
+    /// <summary>
+    /// Processes a send message request via Orleans UserGrain background processing.
+    /// </summary>
+    private async Task<(bool Success, string? Error, ChatDto? Chat, string? OperationId)> ProcessSendMessageViaOrleansAsync(
+        Services.SendMessageRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        // Get the user grain
+        var userGrain = _clusterClient!.GetGrain<IUserGrain>(request.UserId);
+
+        // Create metadata with mode information
+        var metadata = request.ModeId != null 
+            ? System.Text.Json.JsonSerializer.Serialize(new { ModeId = request.ModeId })
+            : null;
+
+        // Create the chat message for background processing
+        var chatMessage = new AIChat.Orleans.Contracts.ChatMessage
+        {
+            Id = Guid.NewGuid().ToString(),
+            ChatId = request.ChatId,
+            UserId = request.UserId,
+            Content = request.Message,
+            Timestamp = DateTime.UtcNow,
+            Role = "user",
+            Metadata = metadata
+        };
+
+        // Process via Orleans background processing
+        var operationId = await userGrain.ProcessMessageWithBackground(chatMessage);
+
+        // Get the updated chat (operation is async, so we return current state)
+        var chatResult = await _chatService.GetChatAsync(request.ChatId);
+        return (chatResult.Success, chatResult.Error, chatResult.Chat, operationId);
+    }
 
     // GET: api/chat/history?userId={userId}&page={page}&pageSize={pageSize}
     [HttpGet("history")]
@@ -99,37 +240,34 @@ public class ChatController(
                 ModeId = request.ModeId,
             };
 
-            var sendResult = await _chatService.SendMessageAsync(sendMessageRequest);
+            // Use dual-mode processing for sending message
+            var (success, error, chat, operationId) = await ProcessSendMessageAsync(sendMessageRequest);
 
-            if (!sendResult.Success)
+            if (!success)
             {
                 _logger.LogError(
                     "Error sending message to chat {ChatId}: {Error}",
                     request.ChatId,
-                    sendResult.Error
+                    error
                 );
                 return StatusCode(
                     500,
-                    new { Error = sendResult.Error ?? "Failed to send message" }
+                    new { Error = error ?? "Failed to send message" }
                 );
             }
 
-            // Get the updated chat
-            var chatResult = await _chatService.GetChatAsync(request.ChatId);
-            if (!chatResult.Success)
+            // If Orleans background processing was used, include operation ID in response
+            if (!string.IsNullOrEmpty(operationId))
             {
-                _logger.LogError(
-                    "Error retrieving updated chat {ChatId}: {Error}",
-                    request.ChatId,
-                    chatResult.Error
-                );
-                return StatusCode(
-                    500,
-                    new { Error = chatResult.Error ?? "Failed to retrieve updated chat" }
-                );
+                return Ok(new
+                {
+                    Chat = chat,
+                    OperationId = operationId,
+                    ProcessingMode = "Background"
+                });
             }
 
-            return Ok(chatResult.Chat);
+            return Ok(chat);
         }
 
         // Create new chat

@@ -345,7 +345,7 @@ data: {"messageId":"gen-1756406547-d-8DDE662A6208D3E-001","sequenceId":1,"payloa
 
 id: 780ed82f-5d21-45db-a9c2-b09996065f42:gen-1756406547-d-8DDE662A62133A6-002:2
 event: message
-data: {"messageId":"gen-1756406547-d-8DDE662A62133A6-002","sequenceId":2,"payload":{"toolCalls":[{"function_name":"get_weather","function_args":"{ \"location\": \"San Francisco\", \"units\": \"celsius\" }","index":0,"tool_call_id":"f1ae8817-8108-43a6-b7c7-cd013e35f9ad"}],"toolResults":[{"tool_call_id":"f1ae8817-8108-43a6-b7c7-cd013e35f9ad","result":"Function 'get_weather' is not available. Available functions: "}]},"chatId":"780ed82f-5d21-45db-a9c2-b09996065f42","version":1,"ts":"2025-08-28T18:42:32.4900477Z","kind":"tools_aggregate"}
+data: {"messageId":"gen-1756406547-d-8DDE662A62133A6-002","sequenceId":2,"payload":{"toolCalls":[{"function_name":"get_weather","function_args":"{ \\\"location\\\": \\\"San Francisco\\\", \\\"units\\\": \\\"celsius\\\" }","index":0,"tool_call_id":"f1ae8817-8108-43a6-b7c7-cd013e35f9ad"}],"toolResults":[{"tool_call_id":"f1ae8817-8108-43a6-b7c7-cd013e35f9ad","result":"Function 'get_weather' is not available. Available functions: "}]},"chatId":"780ed82f-5d21-45db-a9c2-b09996065f42","version":1,"ts":"2025-08-28T18:42:32.4900477Z","kind":"tools_aggregate"}
 
 id: 780ed82f-5d21-45db-a9c2-b09996065f42:gen-1756406552-4-8DDE662A622FC27-003:3:1
 event: messageupdate
