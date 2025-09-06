@@ -1,5 +1,8 @@
+using AIChat.Orleans.Configuration;
 using AIChat.Orleans.Contracts;
 using AIChat.Orleans.Grains;
+using AIChat.Orleans.Metrics;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 using Orleans.TestingHost;
@@ -216,10 +219,35 @@ public class TestSiloConfigurator : ISiloConfigurator
     {
         siloBuilder
             .AddMemoryGrainStorageAsDefault()
+            .AddMemoryGrainStorage("UserGrainStorage")
+            .AddMemoryGrainStorage("PubSubStore")
+            
+            // Configure services required by grains
+            .ConfigureServices(services =>
+            {
+                // Add Orleans metrics collector (required by UserGrain)
+                services.AddSingleton<IOrleansMetricsCollector, OrleansMetricsCollector>();
+                
+                // Add Orleans grain configuration with test-friendly settings
+                services.Configure<OrleansGrainConfiguration>(config =>
+                {
+                    config.UserGrain.MaxActivityBufferSize = 50;
+                    config.UserGrain.CleanupIntervalMinutes = 1;
+                    config.UserGrain.EnablePeriodicTimers = false;
+                    config.Connections.MaxConnectionsPerUser = 5;
+                    config.Persistence.ActivityPersistenceInterval = 5;
+                });
+            })
+            
             .ConfigureLogging(logging =>
             {
                 logging.AddConsole();
                 logging.SetMinimumLevel(LogLevel.Warning);
+                // Only show errors for Orleans runtime during tests
+                logging.AddFilter("Orleans", LogLevel.Error);
+                logging.AddFilter("Microsoft", LogLevel.Error);
+                // But allow our Orleans components to log at Debug level
+                logging.AddFilter("AIChat.Orleans", LogLevel.Debug);
             });
     }
 }

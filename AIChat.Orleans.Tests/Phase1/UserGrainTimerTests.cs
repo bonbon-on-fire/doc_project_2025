@@ -1,6 +1,7 @@
 using AIChat.Orleans.Configuration;
 using AIChat.Orleans.Contracts;
 using AIChat.Orleans.Grains;
+using AIChat.Orleans.Metrics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -185,6 +186,9 @@ public class TimerTestSiloConfigurator : ISiloConfigurator
             services.AddSingleton<IConfiguration>(configuration);
             services.Configure<OrleansGrainConfiguration>(
                 configuration.GetSection(OrleansGrainConfiguration.SectionName));
+            
+            // Add Orleans metrics collector (required by UserGrain)
+            services.AddSingleton<IOrleansMetricsCollector, OrleansMetricsCollector>();
         });
 
         // Add memory grain storage as default for testing  
