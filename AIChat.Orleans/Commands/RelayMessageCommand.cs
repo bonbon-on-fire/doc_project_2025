@@ -1,6 +1,6 @@
+using System.Text.Json;
 using AIChat.Orleans.Contracts;
 using Microsoft.Extensions.Logging;
-using System.Text.Json;
 
 namespace AIChat.Orleans.Commands;
 

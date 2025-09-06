@@ -90,8 +90,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
 
     public async Task<string> EnqueueOperationAsync(ChatOperation operation, CancellationToken cancellationToken = default)
     {
-        if (operation == null)
-            throw new ArgumentNullException(nameof(operation));
+        ArgumentNullException.ThrowIfNull(operation);
 
         // Generate operation ID if not provided
         if (string.IsNullOrEmpty(operation.Id))
@@ -868,7 +867,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
 
     #region Event Conversion Utilities
 
-    private AIChat.Orleans.Contracts.ChatMessage? ConvertMessageEventToChatMessage(MessageEvent messageEvent, ChatOperation operation)
+    private static AIChat.Orleans.Contracts.ChatMessage? ConvertMessageEventToChatMessage(MessageEvent messageEvent, ChatOperation operation)
     {
         return messageEvent switch
         {
@@ -912,7 +911,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
         };
     }
 
-    private AIChat.Orleans.Contracts.StreamChunk? ConvertStreamChunkEventToStreamChunk(StreamChunkEvent chunkEvent, ChatOperation operation, OperationState state)
+    private static AIChat.Orleans.Contracts.StreamChunk? ConvertStreamChunkEventToStreamChunk(StreamChunkEvent chunkEvent, ChatOperation operation, OperationState state)
     {
         var content = chunkEvent switch
         {
@@ -988,7 +987,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
         }
     }
 
-    private IUserGrain GetUserGrainFromOrleansService(IOrleansIntegrationService orleansService, string userId)
+    private static IUserGrain GetUserGrainFromOrleansService(IOrleansIntegrationService orleansService, string userId)
     {
         // Access the grain factory through reflection or implement a method in IOrleansIntegrationService
         // For now, we'll use a workaround to get the grain factory

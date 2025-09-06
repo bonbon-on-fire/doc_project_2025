@@ -28,7 +28,8 @@ public class ChatController(
     IFeatureManager featureManager,
     IOptions<BackgroundProcessingOptions> backgroundProcessingOptions,
     IClusterClient? clusterClient = null,
-    IBackgroundChatService? backgroundChatService = null
+    IBackgroundChatService? backgroundChatService = null,
+    IOperationTrackingService? operationTrackingService = null
     ) : ControllerBase
 {
     private readonly IChatService _chatService = chatService;
@@ -41,6 +42,7 @@ public class ChatController(
     private readonly BackgroundProcessingOptions _backgroundProcessingOptions = backgroundProcessingOptions.Value;
     private readonly IClusterClient? _clusterClient = clusterClient;
     private readonly IBackgroundChatService? _backgroundChatService = backgroundChatService;
+    private readonly IOperationTrackingService? _operationTrackingService = operationTrackingService;
 
     /// <summary>
     /// Determines whether background processing via Orleans should be used.
@@ -164,6 +166,16 @@ public class ChatController(
 
         // Process via Orleans background processing
         var operationId = await userGrain.ProcessMessageWithBackground(chatMessage);
+
+        // Register the operation for tracking (enables cancellation)
+        if (_operationTrackingService != null)
+        {
+            await _operationTrackingService.RegisterOperationAsync(
+                operationId,
+                request.UserId,
+                request.ChatId,
+                "SendMessage");
+        }
 
         // Get the updated chat (operation is async, so we return current state)
         var chatResult = await _chatService.GetChatAsync(request.ChatId);
@@ -598,6 +610,177 @@ public class ChatController(
                 sse.Id = id;
             }
             await client.SendEventAsync(sse);
+        }
+    }
+
+    // POST: api/chat/operations/{operationId}/cancel
+    [HttpPost("operations/{operationId}/cancel")]
+    public async Task<ActionResult> CancelOperation(string operationId)
+    {
+        if (string.IsNullOrEmpty(operationId))
+        {
+            return BadRequest(new { Error = "Operation ID is required" });
+        }
+
+        try
+        {
+            var useBackground = await ShouldUseBackgroundProcessingAsync();
+
+            if (useBackground && _backgroundChatService != null)
+            {
+                // Try to cancel through background service first
+                var cancelled = await _backgroundChatService.CancelOperationAsync(operationId);
+                
+                if (cancelled)
+                {
+                    _logger.LogInformation("Successfully cancelled operation {OperationId} through background service", operationId);
+                    return Ok(new 
+                    { 
+                        Success = true, 
+                        OperationId = operationId, 
+                        Message = "Operation cancelled successfully",
+                        Method = "BackgroundService"
+                    });
+                }
+            }
+
+            // If background service didn't handle it, try Orleans grain cancellation
+            if (_clusterClient != null && _operationTrackingService != null)
+            {
+                try
+                {
+                    // Get operation context to find the associated user
+                    var operationContext = await _operationTrackingService.GetOperationUserContextAsync(operationId);
+                    
+                    if (operationContext != null)
+                    {
+                        // Get the user grain and attempt cancellation
+                        var userGrain = _clusterClient.GetGrain<IUserGrain>(operationContext.UserId);
+                        var cancelled = await userGrain.CancelOperation(operationId);
+                        
+                        if (cancelled)
+                        {
+                            // Unregister the operation from tracking
+                            await _operationTrackingService.UnregisterOperationAsync(operationId);
+                            
+                            _logger.LogInformation(
+                                "Successfully cancelled Orleans operation {OperationId} for user {UserId}",
+                                operationId, operationContext.UserId);
+                                
+                            return Ok(new 
+                            { 
+                                Success = true, 
+                                OperationId = operationId, 
+                                Message = "Operation cancelled successfully via Orleans grain",
+                                Method = "OrleansGrain",
+                                UserId = operationContext.UserId,
+                                ChatId = operationContext.ChatId
+                            });
+                        }
+                        else
+                        {
+                            _logger.LogWarning(
+                                "Orleans grain cancellation failed for operation {OperationId} (user {UserId})",
+                                operationId, operationContext.UserId);
+                                
+                            return BadRequest(new 
+                            { 
+                                Error = "Operation could not be cancelled (may already be completed or not cancellable)",
+                                OperationId = operationId,
+                                UserId = operationContext.UserId
+                            });
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning("No operation context found for {OperationId}", operationId);
+                        
+                        return NotFound(new 
+                        { 
+                            Error = "Operation not found in tracking system", 
+                            OperationId = operationId 
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error during Orleans grain cancellation for operation {OperationId}", operationId);
+                    
+                    return StatusCode(500, new 
+                    { 
+                        Error = "Internal error during Orleans cancellation: " + ex.Message,
+                        OperationId = operationId 
+                    });
+                }
+            }
+
+            return NotFound(new 
+            { 
+                Error = "Operation not found or cannot be cancelled", 
+                OperationId = operationId 
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error cancelling operation {OperationId}: {Error}", 
+                operationId, ex.Message);
+            return StatusCode(500, new 
+            { 
+                Error = ex.Message, 
+                OperationId = operationId 
+            });
+        }
+    }
+
+    // GET: api/chat/operations/{operationId}/status  
+    [HttpGet("operations/{operationId}/status")]
+    public async Task<ActionResult> GetOperationStatus(string operationId)
+    {
+        if (string.IsNullOrEmpty(operationId))
+        {
+            return BadRequest(new { Error = "Operation ID is required" });
+        }
+
+        try
+        {
+            var useBackground = await ShouldUseBackgroundProcessingAsync();
+
+            if (useBackground && _backgroundChatService != null)
+            {
+                var status = await _backgroundChatService.GetOperationStatusAsync(operationId);
+                
+                if (status != null)
+                {
+                    return Ok(new
+                    {
+                        OperationId = operationId,
+                        Status = status.Status.ToString(),
+                        QueuedAt = status.QueuedAt,
+                        StartedAt = status.StartedAt,
+                        CompletedAt = status.CompletedAt,
+                        Error = status.Error,
+                        Progress = status.Progress,
+                        ProgressDescription = status.ProgressDescription,
+                        Method = "BackgroundService"
+                    });
+                }
+            }
+
+            return NotFound(new 
+            { 
+                Error = "Operation not found", 
+                OperationId = operationId 
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting operation status {OperationId}: {Error}", 
+                operationId, ex.Message);
+            return StatusCode(500, new 
+            { 
+                Error = ex.Message, 
+                OperationId = operationId 
+            });
         }
     }
 }

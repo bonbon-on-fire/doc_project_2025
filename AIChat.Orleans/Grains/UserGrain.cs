@@ -1,6 +1,8 @@
 using System.Text.Json;
 using AIChat.Orleans.Configuration;
 using AIChat.Orleans.Contracts;
+using AIChat.Orleans.Metrics;
+using AIChat.Orleans.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orleans;
@@ -18,6 +20,8 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
 {
     private readonly ILogger<UserGrain> _logger;
     private readonly OrleansGrainConfiguration _configuration;
+    private readonly IOrleansMetricsCollector _metricsCollector;
+    private readonly ISignalRBroadcastService _signalRBroadcast;
     private IGrainTimer? _cleanupTimer;
     private IGrainTimer? _metricsTimer;
     private bool _disposed;
@@ -27,17 +31,24 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
     /// </summary>
     /// <param name="logger">Logger instance for diagnostics</param>
     /// <param name="configuration">Configuration for Orleans grains</param>
+    /// <param name="metricsCollector">Metrics collector for performance tracking</param>
+    /// <param name="signalRBroadcast">SignalR broadcast service for real-time messaging (optional)</param>
     public UserGrain(
         ILogger<UserGrain> logger,
-        IOptionsSnapshot<OrleansGrainConfiguration> configuration)
+        IOptionsSnapshot<OrleansGrainConfiguration> configuration,
+        IOrleansMetricsCollector metricsCollector,
+        ISignalRBroadcastService? signalRBroadcast = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _configuration = configuration?.Value ?? new OrleansGrainConfiguration();
+        _metricsCollector = metricsCollector ?? throw new ArgumentNullException(nameof(metricsCollector));
+        _signalRBroadcast = signalRBroadcast ?? new NullSignalRBroadcastService(); // Default to no-op implementation
     }
 
     /// <inheritdoc />
     public override async Task OnActivateAsync(CancellationToken cancellationToken)
     {
+        var activationStart = DateTime.UtcNow;
         await base.OnActivateAsync(cancellationToken);
 
         // Initialize state if new grain
@@ -51,6 +62,10 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
         {
             State.Metrics.ActivationCount++;
         }
+
+        // Record metrics for grain activation
+        var activationTime = (DateTime.UtcNow - activationStart).TotalMilliseconds;
+        await _metricsCollector.RecordGrainActivationAsync("UserGrain", State.UserId, activationTime);
 
         // Setup periodic timers if enabled
         if (_configuration.UserGrain.EnablePeriodicTimers)
@@ -91,6 +106,10 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
             "UserGrain deactivating for {UserId}. Reason: {Reason}",
             State.UserId,
             reason);
+
+        // Record metrics for grain deactivation
+        var lifetimeMinutes = (DateTime.UtcNow - State.ActivatedAt).TotalMinutes;
+        await _metricsCollector.RecordGrainDeactivationAsync("UserGrain", State.UserId, lifetimeMinutes);
 
         // Cleanup timers with proper thread safety
         await DisposeTimersAsync();
@@ -634,14 +653,32 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
             {
                 try
                 {
-                    // TODO: In Phase 2 complete integration, this will call SignalR hub to send message
-                    // For now, we just track the relay intent
-                    await Task.Run(() =>
+                    // Phase 3 Integration: Relay message via SignalR broadcast service
+                    if (_signalRBroadcast.IsAvailable)
+                    {
+                        await _signalRBroadcast.BroadcastToGroupAsync(
+                            $"chat_{message.ChatId}",
+                            "ReceiveMessage",
+                            new
+                            {
+                                Id = message.Id,
+                                ChatId = message.ChatId,
+                                Role = message.Role,
+                                Content = message.Content,
+                                Timestamp = message.Timestamp,
+                                UserId = State.UserId
+                            });
+                            
+                        _logger.LogTrace(
+                            "Relayed message {MessageId} to SignalR group chat_{ChatId} for {UserId}",
+                            message.Id, message.ChatId, State.UserId);
+                    }
+                    else
                     {
                         _logger.LogTrace(
-                            "Would relay message {MessageId} to connection {ConnectionId} for {UserId}",
+                            "Would relay message {MessageId} to connection {ConnectionId} for {UserId} (SignalR not available)",
                             message.Id, connection.ConnectionId, State.UserId);
-                    });
+                    }
 
                     // Update connection activity
                     connection.LastActivity = DateTime.UtcNow;
@@ -719,14 +756,33 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
             {
                 try
                 {
-                    // TODO: In Phase 2 complete integration, this will call SignalR hub to send chunk
-                    // For now, we just track the relay intent
-                    await Task.Run(() =>
+                    // Phase 3 Integration: Relay stream chunk via SignalR broadcast service
+                    if (_signalRBroadcast.IsAvailable)
+                    {
+                        await _signalRBroadcast.BroadcastToGroupAsync(
+                            $"chat_{chunk.ChatId}",
+                            "ReceiveStreamChunk",
+                            new
+                            {
+                                OperationId = chunk.OperationId,
+                                ChatId = chunk.ChatId,
+                                ChunkIndex = chunk.ChunkIndex,
+                                Content = chunk.Content,
+                                IsComplete = chunk.IsComplete,
+                                Timestamp = chunk.Timestamp,
+                                UserId = State.UserId
+                            });
+                            
+                        _logger.LogTrace(
+                            "Relayed chunk {ChunkIndex} of operation {OperationId} to SignalR group chat_{ChatId} for {UserId}",
+                            chunk.ChunkIndex, chunk.OperationId, chunk.ChatId, State.UserId);
+                    }
+                    else
                     {
                         _logger.LogTrace(
-                            "Would relay chunk {ChunkIndex} of operation {OperationId} to connection {ConnectionId} for {UserId}",
+                            "Would relay chunk {ChunkIndex} of operation {OperationId} to connection {ConnectionId} for {UserId} (SignalR not available)",
                             chunk.ChunkIndex, chunk.OperationId, connection.ConnectionId, State.UserId);
-                    });
+                    }
 
                     // Update connection activity
                     connection.LastActivity = DateTime.UtcNow;
@@ -776,6 +832,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
     /// <inheritdoc />
     public async Task<string> ProcessMessageWithBackground(ChatMessage message)
     {
+        var operationStart = DateTime.UtcNow;
         try
         {
             _logger.LogInformation("Processing message in background for chat {ChatId} and user {UserId}", 
@@ -824,11 +881,19 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
             // TODO: Phase 3 complete integration - this will be implemented when background service is available
             // For now, we track the intent and provide the operation ID for coordination
             
+            // Record successful operation metrics
+            var duration = (DateTime.UtcNow - operationStart).TotalMilliseconds;
+            await _metricsCollector.RecordGrainOperationAsync("UserGrain", "ProcessMessageWithBackground", duration, true);
+
             return operationId;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to process message with background for {UserId}", State.UserId);
+            
+            // Record failed operation metrics
+            var duration = (DateTime.UtcNow - operationStart).TotalMilliseconds;
+            await _metricsCollector.RecordGrainOperationAsync("UserGrain", "ProcessMessageWithBackground", duration, false);
             
             // Record error activity
             await RecordActivity(ActivityType.ErrorOccurred,
@@ -1205,28 +1270,56 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
         var successCount = 0;
         var failureCount = 0;
 
-        // Fallback to logging for Phase 3 background processing (SignalR handled by server layer)
-        foreach (var connection in connections)
+        // Phase 3 Integration: Use SignalR broadcast service for actual broadcasting
+        if (_signalRBroadcast.IsAvailable)
         {
             try
             {
-                _logger.LogTrace(
-                    "Would broadcast {Method} to connection {ConnectionId} in chat {ChatId} for {UserId}",
-                    method, connection.ConnectionId, chatId, State.UserId);
+                await _signalRBroadcast.BroadcastToGroupAsync($"chat_{chatId}", method, payload);
 
-                connection.LastActivity = DateTime.UtcNow;
-                successCount++;
+                // Update connection activity for tracked connections
+                foreach (var connection in connections)
+                {
+                    connection.LastActivity = DateTime.UtcNow;
+                    successCount++;
+                }
+
+                _logger.LogTrace(
+                    "Broadcasted {Method} to SignalR group chat_{ChatId} for {UserId} ({ConnectionCount} connections)",
+                    method, chatId, State.UserId, connections.Count());
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex,
-                    "Failed to broadcast {Method} to connection {ConnectionId} in chat {ChatId} for {UserId}",
-                    method, connection.ConnectionId, chatId, State.UserId);
-                failureCount++;
+                    "Failed to broadcast {Method} to SignalR group chat_{ChatId} for {UserId}",
+                    method, chatId, State.UserId);
+                failureCount = connections.Count();
+            }
+        }
+        else
+        {
+            // Fallback to logging when SignalR is not available
+            foreach (var connection in connections)
+            {
+                try
+                {
+                    _logger.LogTrace(
+                        "Would broadcast {Method} to connection {ConnectionId} in chat {ChatId} for {UserId} (SignalR not available)",
+                        method, connection.ConnectionId, chatId, State.UserId);
+
+                    connection.LastActivity = DateTime.UtcNow;
+                    successCount++;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "Failed to track broadcast {Method} to connection {ConnectionId} in chat {ChatId} for {UserId}",
+                        method, connection.ConnectionId, chatId, State.UserId);
+                    failureCount++;
+                }
             }
         }
 
-        await Task.CompletedTask;
         return (successCount, failureCount);
     }
 
@@ -1238,36 +1331,8 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
     /// <returns>Statistics about the broadcast operation</returns>
     private async Task<(int SuccessCount, int FailureCount)> BroadcastToChat(string chatId, object payload)
     {
-        var connections = GetConnectionsForChat(chatId);
-        var successCount = 0;
-        var failureCount = 0;
-
-        foreach (var connection in connections)
-        {
-            try
-            {
-                // TODO: In Phase 2 complete integration, this will call SignalR hub
-                // For now, we just track the broadcast intent
-                await Task.Run(() =>
-                {
-                    _logger.LogTrace(
-                        "Would broadcast to connection {ConnectionId} in chat {ChatId} for {UserId}",
-                        connection.ConnectionId, chatId, State.UserId);
-                });
-
-                connection.LastActivity = DateTime.UtcNow;
-                successCount++;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex,
-                    "Failed to broadcast to connection {ConnectionId} in chat {ChatId} for {UserId}",
-                    connection.ConnectionId, chatId, State.UserId);
-                failureCount++;
-            }
-        }
-
-        return (successCount, failureCount);
+        // Delegate to the main BroadcastToChat method with default method name
+        return await BroadcastToChat(chatId, "ReceiveBroadcast", payload);
     }
 
     /// <summary>
@@ -1442,6 +1507,15 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
 
             // Save metrics periodically
             await WriteStateAsync();
+
+            // Record state metrics to central collector for dashboard
+            var stateSize = System.Text.Json.JsonSerializer.Serialize(State).Length;
+            await _metricsCollector.RecordGrainStateMetricsAsync(
+                "UserGrain", 
+                State.UserId, 
+                stateSize, 
+                State.Metrics.ActiveConnections, 
+                State.Metrics.ActiveOperationsCount);
 
             _logger.LogTrace("Metrics updated for {UserId}: Connections={ConnectionCount}, Activities={ActivityCount}, ActiveOps={ActiveOperations}",
                 State.UserId, State.Metrics.ActiveConnections, State.Metrics.TotalActivities, State.Metrics.ActiveOperationsCount);

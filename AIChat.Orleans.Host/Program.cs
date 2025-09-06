@@ -1,6 +1,7 @@
 using AIChat.Orleans.Configuration;
 using AIChat.Orleans.Contracts;
 using AIChat.Orleans.Grains;
+using AIChat.Orleans.Metrics;
 using Microsoft.ApplicationInsights.AspNetCore.Extensions;
 using Orleans;
 using Orleans.Configuration;
@@ -17,6 +18,10 @@ namespace AIChat.Orleans.Host;
 /// </summary>
 public class Program
 {
+    /// <summary>
+    /// Entry point for the Orleans silo host application.
+    /// </summary>
+    /// <param name="args">Command line arguments</param>
     public static async Task Main(string[] args)
     {
         // Configure Serilog early for startup logging
@@ -65,6 +70,41 @@ public class Program
                         {
                             await context.Response.WriteAsync("Orleans Host is running");
                         });
+
+                        // Phase 4: Orleans Metrics API endpoint
+                        endpoints.MapGet("/api/orleans/metrics", async context =>
+                        {
+                            var metricsCollector = context.RequestServices.GetRequiredService<IOrleansMetricsCollector>();
+                            var summary = await metricsCollector.GetMetricsSummaryAsync();
+                            
+                            context.Response.ContentType = "application/json";
+                            await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(summary, new System.Text.Json.JsonSerializerOptions
+                            {
+                                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+                                WriteIndented = true
+                            }));
+                        });
+
+                        endpoints.MapGet("/api/orleans/metrics/{grainType}", async context =>
+                        {
+                            var grainType = context.Request.RouteValues["grainType"]?.ToString();
+                            if (string.IsNullOrEmpty(grainType))
+                            {
+                                context.Response.StatusCode = 400;
+                                await context.Response.WriteAsync("Grain type is required");
+                                return;
+                            }
+
+                            var metricsCollector = context.RequestServices.GetRequiredService<IOrleansMetricsCollector>();
+                            var grainMetrics = await metricsCollector.GetGrainTypeMetricsAsync(grainType);
+                            
+                            context.Response.ContentType = "application/json";
+                            await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(grainMetrics, new System.Text.Json.JsonSerializerOptions
+                            {
+                                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+                                WriteIndented = true
+                            }));
+                        });
                     });
                 });
             })
@@ -109,6 +149,9 @@ public class Program
                     });
                 }
 
+                // Add Phase 4: Orleans Metrics Collection
+                services.AddSingleton<IOrleansMetricsCollector, OrleansMetricsCollector>();
+
                 // Add health checks
                 services.AddHealthChecks();
             });
@@ -147,15 +190,22 @@ public class Program
 
         // Grain assemblies are auto-discovered in Orleans 9.x
 
-        // NOTE: Orleans Dashboard disabled for Phase 1 due to Orleans 9.x compatibility issues
-        // TODO: Update to Orleans 9.x compatible dashboard in later phases
-        // var dashboardPort = configuration.GetValue<int>("Orleans:DashboardPort", 8080);
-        // siloBuilder.UseDashboard(options =>
-        // {
-        //     options.Port = dashboardPort;
-        //     options.HostSelf = true;
-        //     options.CounterUpdateIntervalMs = 1000;
-        // });
+        // Phase 4: Enable Orleans Dashboard with production configuration
+        var dashboardPort = configuration.GetValue<int>("Orleans:DashboardPort", 8080);
+        siloBuilder.UseDashboard(options =>
+        {
+            options.Port = dashboardPort;
+            options.HostSelf = true;
+            options.CounterUpdateIntervalMs = 1000;
+            
+            // Production security: Enable username/password authentication
+            var dashboardUser = configuration.GetValue<string>("Orleans:Dashboard:Username") ?? "admin";
+            var dashboardPassword = configuration.GetValue<string>("Orleans:Dashboard:Password") ?? "orleans123";
+            options.Username = dashboardUser;
+            options.Password = dashboardPassword;
+            
+            Log.Information("Orleans Dashboard enabled on port {DashboardPort} with authentication", dashboardPort);
+        });
 
         // Add startup task for initialization
         siloBuilder.AddStartupTask<OrleansStartupTask>();
@@ -225,6 +275,10 @@ public class OrleansStartupTask : IStartupTask
 {
     private readonly ILogger<OrleansStartupTask> _logger;
 
+    /// <summary>
+    /// Initializes a new instance of the OrleansStartupTask.
+    /// </summary>
+    /// <param name="logger">Logger instance</param>
     public OrleansStartupTask(ILogger<OrleansStartupTask> logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));

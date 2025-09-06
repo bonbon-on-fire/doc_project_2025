@@ -1,9 +1,15 @@
 using System.Text.Json;
+using AIChat.Orleans.Client.Configuration;
 using AIChat.Orleans.Contracts;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.FeatureManagement;
 using Orleans;
 using Orleans.Runtime;
+using Polly;
+using Polly.CircuitBreaker;
+using Polly.Retry;
+using Polly.Timeout;
 
 namespace AIChat.Orleans.Client.Services;
 
@@ -16,6 +22,8 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
     private readonly IGrainFactory _grainFactory;
     private readonly IFeatureManager _featureManager;
     private readonly ILogger<OrleansIntegrationService> _logger;
+    private readonly OrleansResilienceConfiguration _resilienceConfig;
+    private readonly ResiliencePipeline _resiliencePipeline;
 
     /// <summary>
     /// Initializes a new instance of the OrleansIntegrationService.
@@ -23,14 +31,20 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
     /// <param name="grainFactory">Orleans grain factory</param>
     /// <param name="featureManager">Feature flag manager</param>
     /// <param name="logger">Logger instance</param>
+    /// <param name="resilienceOptions">Resilience configuration options</param>
     public OrleansIntegrationService(
         IGrainFactory grainFactory,
         IFeatureManager featureManager,
-        ILogger<OrleansIntegrationService> logger)
+        ILogger<OrleansIntegrationService> logger,
+        IOptions<OrleansResilienceConfiguration> resilienceOptions)
     {
         _grainFactory = grainFactory ?? throw new ArgumentNullException(nameof(grainFactory));
         _featureManager = featureManager ?? throw new ArgumentNullException(nameof(featureManager));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _resilienceConfig = resilienceOptions?.Value ?? new OrleansResilienceConfiguration();
+
+        // Initialize resilience pipeline with Polly v8 syntax
+        _resiliencePipeline = CreateResiliencePipeline();
     }
 
     #region Phase 1: Shadow Mode Operations
@@ -53,14 +67,17 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
                 return;
             }
 
-            // Execute Orleans operation
-            var grain = _grainFactory.GetGrain<IUserGrain>(userId);
-            var metadata = JsonSerializer.Serialize(data, new JsonSerializerOptions
+            // Execute Orleans operation with resilience
+            await ExecuteWithResilienceAsync(async () =>
             {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            });
+                var grain = _grainFactory.GetGrain<IUserGrain>(userId);
+                var metadata = JsonSerializer.Serialize(data, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                });
 
-            await grain.RecordActivity(type, metadata);
+                await grain.RecordActivity(type, metadata);
+            }, $"RecordActivity-{userId}");
 
             _logger.LogTrace("Activity recorded for {UserId}: {ActivityType}", userId, type);
         }
@@ -90,8 +107,11 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
                 return null;
             }
 
-            var grain = _grainFactory.GetGrain<IUserGrain>(userId);
-            var state = await grain.GetState();
+            var state = await ExecuteWithResilienceAsync(async () =>
+            {
+                var grain = _grainFactory.GetGrain<IUserGrain>(userId);
+                return await grain.GetState();
+            }, $"GetUserState-{userId}");
 
             _logger.LogDebug("Retrieved state for {UserId}: {ConnectionCount} connections, {ActivityCount} activities",
                 userId, state.Connections.Count, state.RecentActivity.Count);
@@ -117,9 +137,11 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
 
             // Try to activate a health check grain and verify it responds
             var healthCheckUserId = $"health-check-{DateTime.UtcNow.Ticks}";
-            var grain = _grainFactory.GetGrain<IUserGrain>(healthCheckUserId);
-
-            var healthResult = await grain.CheckHealth();
+            var healthResult = await ExecuteWithResilienceAsync(async () =>
+            {
+                var grain = _grainFactory.GetGrain<IUserGrain>(healthCheckUserId);
+                return await grain.CheckHealth();
+            }, "OrleansHealthCheck");
 
             _logger.LogDebug("Orleans health check completed. Healthy: {IsHealthy}", healthResult.IsHealthy);
             return healthResult.IsHealthy;
@@ -271,8 +293,141 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
 
     #region Private Helper Methods
 
-    // TODO: Re-implement resilience patterns using correct Polly v8 API
-    // Temporarily removed due to Polly v8 API compatibility issues
+    /// <summary>
+    /// Creates a resilience pipeline using Polly v8 with circuit breaker, retry, and timeout policies.
+    /// </summary>
+    /// <returns>Configured resilience pipeline</returns>
+    private ResiliencePipeline CreateResiliencePipeline()
+    {
+        var pipelineBuilder = new ResiliencePipelineBuilder();
+
+        // Add timeout strategy first (innermost)
+        if (_resilienceConfig.Timeout.Enabled)
+        {
+            pipelineBuilder.AddTimeout(new TimeoutStrategyOptions
+            {
+                Timeout = TimeSpan.FromSeconds(_resilienceConfig.Timeout.DefaultTimeoutSeconds),
+                OnTimeout = args =>
+                {
+                    _logger.LogWarning("Orleans operation timed out after {Timeout}s. Operation: {Operation}",
+                        _resilienceConfig.Timeout.DefaultTimeoutSeconds, args.Context.OperationKey);
+                    return ValueTask.CompletedTask;
+                }
+            });
+        }
+
+        // Add retry strategy
+        if (_resilienceConfig.RetryPolicy.Enabled)
+        {
+            pipelineBuilder.AddRetry(new RetryStrategyOptions
+            {
+                ShouldHandle = new PredicateBuilder().Handle<Exception>(ex =>
+                {
+                    // Check if this exception type should trigger retries
+                    if (_resilienceConfig.RetryPolicy.RetryableExceptions.Count == 0)
+                        return true;
+
+                    var exceptionTypeName = ex.GetType().FullName ?? ex.GetType().Name;
+                    return _resilienceConfig.RetryPolicy.RetryableExceptions.Contains(exceptionTypeName);
+                }),
+                MaxRetryAttempts = _resilienceConfig.RetryPolicy.MaxRetryAttempts,
+                Delay = TimeSpan.FromMilliseconds(_resilienceConfig.RetryPolicy.BaseDelayMilliseconds),
+                MaxDelay = TimeSpan.FromMilliseconds(_resilienceConfig.RetryPolicy.MaxDelayMilliseconds),
+                BackoffType = DelayBackoffType.Exponential,
+                UseJitter = _resilienceConfig.RetryPolicy.UseJitter,
+                OnRetry = args =>
+                {
+                    _logger.LogWarning("Retrying Orleans operation. Attempt {Attempt}/{MaxAttempts}. Exception: {Exception}",
+                        args.AttemptNumber + 1, _resilienceConfig.RetryPolicy.MaxRetryAttempts + 1, args.Outcome.Exception?.Message);
+                    return ValueTask.CompletedTask;
+                }
+            });
+        }
+
+        // Add circuit breaker strategy (outermost)
+        if (_resilienceConfig.CircuitBreaker.Enabled)
+        {
+            pipelineBuilder.AddCircuitBreaker(new CircuitBreakerStrategyOptions
+            {
+                ShouldHandle = new PredicateBuilder().Handle<Exception>(),
+                FailureRatio = (double)_resilienceConfig.CircuitBreaker.FailureThreshold / 100.0,
+                SamplingDuration = TimeSpan.FromSeconds(_resilienceConfig.CircuitBreaker.SamplingDurationSeconds),
+                MinimumThroughput = _resilienceConfig.CircuitBreaker.MinimumThroughput,
+                BreakDuration = TimeSpan.FromSeconds(_resilienceConfig.CircuitBreaker.BreakDurationSeconds),
+                OnOpened = args =>
+                {
+                    _logger.LogError("Orleans circuit breaker OPENED. Break duration: {BreakDuration}s",
+                        _resilienceConfig.CircuitBreaker.BreakDurationSeconds);
+                    return ValueTask.CompletedTask;
+                },
+                OnClosed = args =>
+                {
+                    _logger.LogInformation("Orleans circuit breaker CLOSED. System recovered.");
+                    return ValueTask.CompletedTask;
+                },
+                OnHalfOpened = args =>
+                {
+                    _logger.LogInformation("Orleans circuit breaker HALF-OPENED. Testing system recovery...");
+                    return ValueTask.CompletedTask;
+                }
+            });
+        }
+
+        var pipeline = pipelineBuilder.Build();
+
+        _logger.LogInformation("Orleans resilience pipeline created. Circuit Breaker: {CBEnabled}, Retry: {RetryEnabled}, Timeout: {TimeoutEnabled}",
+            _resilienceConfig.CircuitBreaker.Enabled,
+            _resilienceConfig.RetryPolicy.Enabled,
+            _resilienceConfig.Timeout.Enabled);
+
+        return pipeline;
+    }
+
+    /// <summary>
+    /// Executes an Orleans operation with resilience patterns applied.
+    /// </summary>
+    /// <typeparam name="T">Return type of the operation</typeparam>
+    /// <param name="operation">The operation to execute</param>
+    /// <param name="operationName">Name of the operation for logging</param>
+    /// <returns>Result of the operation</returns>
+    private async Task<T> ExecuteWithResilienceAsync<T>(Func<Task<T>> operation, string operationName)
+    {
+        try
+        {
+            return await _resiliencePipeline.ExecuteAsync(async ct =>
+            {
+                _logger.LogTrace("Executing Orleans operation: {OperationName}", operationName);
+                return await operation();
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Orleans operation failed after all resilience attempts: {OperationName}", operationName);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Executes an Orleans operation with resilience patterns applied (void return).
+    /// </summary>
+    /// <param name="operation">The operation to execute</param>
+    /// <param name="operationName">Name of the operation for logging</param>
+    private async Task ExecuteWithResilienceAsync(Func<Task> operation, string operationName)
+    {
+        try
+        {
+            await _resiliencePipeline.ExecuteAsync(async ct =>
+            {
+                _logger.LogTrace("Executing Orleans operation: {OperationName}", operationName);
+                await operation();
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Orleans operation failed after all resilience attempts: {OperationName}", operationName);
+            throw;
+        }
+    }
 
     #endregion
 }

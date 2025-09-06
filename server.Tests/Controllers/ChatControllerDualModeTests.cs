@@ -12,8 +12,8 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.FeatureManagement;
-using Orleans;
 using Moq;
+using Orleans;
 using Xunit;
 
 namespace server.Tests.Controllers;

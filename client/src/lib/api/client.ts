@@ -136,6 +136,32 @@ export class ApiClient {
 		});
 	}
 
+	// Operation management endpoints
+	async cancelOperation(operationId: string): Promise<{
+		success: boolean;
+		operationId: string;
+		message: string;
+		method: string;
+	}> {
+		return this.request(`/api/chat/operations/${operationId}/cancel`, {
+			method: 'POST'
+		});
+	}
+
+	async getOperationStatus(operationId: string): Promise<{
+		operationId: string;
+		status: string;
+		queuedAt: string;
+		startedAt?: string;
+		completedAt?: string;
+		error?: string;
+		progress: number;
+		progressDescription?: string;
+		method: string;
+	}> {
+		return this.request(`/api/chat/operations/${operationId}/status`);
+	}
+
 	// Health check
 	async getHealth(): Promise<{ status: string; timestamp: string }> {
 		return this.request('/api/health');

@@ -183,6 +183,9 @@ builder.Services.Configure<AiOptions>(builder.Configuration.GetSection("AI"));
 // Configure background processing options
 builder.Services.Configure<BackgroundProcessingOptions>(builder.Configuration.GetSection(BackgroundProcessingOptions.SectionName));
 
+// Configure Orleans resilience options
+builder.Services.Configure<OrleansResilienceConfiguration>(builder.Configuration.GetSection(OrleansResilienceConfiguration.SectionName));
+
 // Configure MCP servers
 builder.Services.Configure<McpConfiguration>(builder.Configuration.GetSection("Mcp"));
 builder.Services.AddSingleton<IMcpConfigurationValidator, McpConfigurationValidator>();
@@ -325,6 +328,12 @@ builder.Services.AddScoped<IChatServiceStreaming>(provider => provider.GetRequir
 
 // Add mode service
 builder.Services.AddScoped<IModeService, ModeService>();
+
+// Add SignalR broadcasting service for Orleans integration (Phase 2/3)
+builder.Services.AddScoped<AIChat.Orleans.Services.ISignalRBroadcastService, SignalRBroadcastService>();
+
+// Add operation tracking service for Orleans background processing (Phase 3)
+builder.Services.AddSingleton<IOperationTrackingService, InMemoryOperationTrackingService>();
 
 // Configure Background Chat Service options
 builder.Services.Configure<BackgroundServiceOptions>(options =>

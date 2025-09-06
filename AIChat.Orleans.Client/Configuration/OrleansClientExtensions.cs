@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Orleans;
 using Orleans.Configuration;
 using Orleans.Hosting;
@@ -36,6 +37,9 @@ public static class OrleansClientExtensions
 
         // Add Orleans integration service
         services.AddScoped<IOrleansIntegrationService, OrleansIntegrationService>();
+
+        // Add configuration validators
+        services.AddSingleton<IValidateOptions<OrleansResilienceConfiguration>, OrleansResilienceConfigurationValidator>();
 
         return services;
     }
