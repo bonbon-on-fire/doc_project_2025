@@ -1,8 +1,24 @@
+# ============================================================
+# BUILD AND START SERVER (Quick Development Mode)
+# ============================================================
+# This script ONLY builds and starts the server service.
+# It does NOT run any tests.
+#
+# FOR FULL BUILD AND TEST VERIFICATION, USE:
+#   ./build-and-test-all.ps1
+# ============================================================
+
 param(
     [int]$Port = 5099,
     [string]$Environment = "Test"
 )
 
+Write-Host "============================================================" -ForegroundColor Yellow
+Write-Host " QUICK START: Server Build & Run (No Tests)" -ForegroundColor Yellow
+Write-Host " For full build and test verification, use:" -ForegroundColor Yellow
+Write-Host " ./build-and-test-all.ps1" -ForegroundColor Cyan
+Write-Host "============================================================" -ForegroundColor Yellow
+Write-Host ""
 Write-Host "Building and starting server on port $Port with environment $Environment..." -ForegroundColor Green
 
 # 1. Take port that server is going to listen to (defaults to 5099), then search for it, and kill any process that may be
@@ -47,29 +63,7 @@ Write-Host "Cleaning existing log files..." -ForegroundColor Yellow
 Get-ChildItem -Path $logsDir -Filter "*.log" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
 Get-ChildItem -Path $logsDir -Filter "*.jsonl" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
 
-# 2. Pre-flight validation
-Write-Host "Running pre-flight validation..." -ForegroundColor Yellow
-try {
-    $validationScript = "scripts/validate-implementation-step.ps1"
-    if (Test-Path $validationScript) {
-        & $validationScript
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "❌ Pre-flight validation failed - cannot start server" -ForegroundColor Red
-            Write-Host "Fix all validation issues before starting server" -ForegroundColor Yellow
-            return 1
-        }
-        Write-Host "✅ Pre-flight validation passed" -ForegroundColor Green
-    }
-    else {
-        Write-Host "⚠️ Validation script not found, skipping pre-flight validation" -ForegroundColor Yellow
-    }
-}
-catch {
-    Write-Host "❌ Pre-flight validation error: $($_.Exception.Message)" -ForegroundColor Red
-    return 1
-}
-
-# 3. Build the server project
+# 2. Build the server project (no tests)
 Write-Host "Building server project..." -ForegroundColor Yellow
 try {
     # Build and log output to build.log

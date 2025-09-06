@@ -1092,7 +1092,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
                     new GrainTimerCreationOptions
                     {
                         DueTime = TimeSpan.FromMinutes(_configuration.UserGrain.CompletedOperationRetentionMinutes),
-                        Period = TimeSpan.MaxValue,
+                        Period = Timeout.InfiniteTimeSpan,
                         Interleave = true
                     });
             }

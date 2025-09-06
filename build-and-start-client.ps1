@@ -1,8 +1,24 @@
+# ============================================================
+# BUILD AND START CLIENT (Quick Development Mode)
+# ============================================================
+# This script ONLY builds and starts the client service.
+# It does NOT run any tests.
+#
+# FOR FULL BUILD AND TEST VERIFICATION, USE:
+#   ./build-and-test-all.ps1
+# ============================================================
+
 param(
     [int]$Port = 5173,
     [string]$Environment = "Test"
 )
 
+Write-Host "============================================================" -ForegroundColor Yellow
+Write-Host " QUICK START: Client Build & Run (No Tests)" -ForegroundColor Yellow
+Write-Host " For full build and test verification, use:" -ForegroundColor Yellow
+Write-Host " ./build-and-test-all.ps1" -ForegroundColor Cyan
+Write-Host "============================================================" -ForegroundColor Yellow
+Write-Host ""
 Write-Host "Building and starting client on port $Port with environment $Environment..." -ForegroundColor Green
 
 # 1. Take port that client is going to listen to (defaults to 5173), then search for it, and kill any process that may be
@@ -49,29 +65,8 @@ Get-ChildItem -Path $logsDir -Filter "*.jsonl" -ErrorAction SilentlyContinue | R
 
 $fail = $false
 
-# 2. Pre-flight validation
-Write-Host "Running pre-flight validation..." -ForegroundColor Yellow
-try {
-    $validationScript = "scripts/validate-implementation-step.ps1"
-    if (Test-Path $validationScript) {
-        & $validationScript
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "❌ Pre-flight validation failed - cannot start client" -ForegroundColor Red
-            Write-Host "Fix all validation issues before starting client" -ForegroundColor Yellow
-            $fail = $true
-        }
-        else {
-            Write-Host "✅ Pre-flight validation passed" -ForegroundColor Green
-        }
-    }
-    else {
-        Write-Host "⚠️ Validation script not found, skipping pre-flight validation" -ForegroundColor Yellow
-    }
-}
-catch {
-    Write-Host "❌ Pre-flight validation error: $($_.Exception.Message)" -ForegroundColor Red
-    $fail = $true
-}
+# 2. Build client only (no tests)
+Write-Host "Building client project..." -ForegroundColor Yellow
 
 if (!$fail) {
     # 3. Install dependencies and build the client project

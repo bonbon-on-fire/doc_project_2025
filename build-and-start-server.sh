@@ -1,5 +1,15 @@
 #!/bin/bash
 
+# ============================================================
+# BUILD AND START SERVER (Quick Development Mode)
+# ============================================================
+# This script ONLY builds and starts the server service.
+# It does NOT run any tests.
+#
+# FOR FULL BUILD AND TEST VERIFICATION, USE:
+#   ./build-and-test-all.sh
+# ============================================================
+
 # Default values
 PORT=5099
 ENVIRONMENT="Test"
@@ -54,6 +64,12 @@ if ! [[ "$PORT" =~ ^[0-9]+$ ]]; then
     exit 1
 fi
 
+print_color $YELLOW "============================================================"
+print_color $YELLOW " QUICK START: Server Build & Run (No Tests)"
+print_color $YELLOW " For full build and test verification, use:"
+print_color $CYAN " ./build-and-test-all.sh"
+print_color $YELLOW "============================================================"
+echo ""
 print_color $GREEN "Building and starting server on port $PORT with environment $ENVIRONMENT..."
 
 # 1. Take port that server is going to listen to (defaults to 5099), then search for it, and kill any process that may be

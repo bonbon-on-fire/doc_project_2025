@@ -1,5 +1,15 @@
 #!/bin/bash
 
+# ============================================================
+# BUILD AND START CLIENT (Quick Development Mode)
+# ============================================================
+# This script ONLY builds and starts the client service.
+# It does NOT run any tests.
+#
+# FOR FULL BUILD AND TEST VERIFICATION, USE:
+#   ./build-and-test-all.sh
+# ============================================================
+
 # Default values
 PORT=5173
 ENVIRONMENT="Test"
@@ -54,6 +64,12 @@ if ! [[ "$PORT" =~ ^[0-9]+$ ]]; then
     exit 1
 fi
 
+print_color $YELLOW "============================================================"
+print_color $YELLOW " QUICK START: Client Build & Run (No Tests)"
+print_color $YELLOW " For full build and test verification, use:"
+print_color $CYAN " ./build-and-test-all.sh"
+print_color $YELLOW "============================================================"
+echo ""
 print_color $GREEN "Building and starting client on port $PORT with environment $ENVIRONMENT..."
 
 # 1. Take port that client is going to listen to (defaults to 5173), then search for it, and kill any process that may be
