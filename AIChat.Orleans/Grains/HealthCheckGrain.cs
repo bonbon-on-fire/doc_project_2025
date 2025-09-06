@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using AIChat.Orleans.Contracts;
+using AIChat.Orleans.Tracing;
 using Microsoft.Extensions.Logging;
 using Orleans;
 using Orleans.Runtime;
@@ -25,9 +27,12 @@ public sealed class HealthCheckGrain : Grain, IHealthCheckGrain
     /// <inheritdoc />
     public async Task<HealthCheckResult> CheckHealthAsync()
     {
-        var result = new HealthCheckResult
+        using var activity = OrleansActivitySource.StartGrainActivity("HealthCheckGrain", nameof(CheckHealthAsync), this.GetPrimaryKeyString());
+        try
         {
-            GrainId = this.GetPrimaryKeyString(),
+            var result = new HealthCheckResult
+            {
+                GrainId = this.GetPrimaryKeyString(),
             CheckedAt = DateTime.UtcNow
         };
 
@@ -66,6 +71,13 @@ public sealed class HealthCheckGrain : Grain, IHealthCheckGrain
                 result.AdditionalInfo = $"Health check completed with {result.Warnings.Count} warnings";
                 _logger.LogWarning("Orleans health check completed with warnings: {Warnings}", string.Join(", ", result.Warnings));
             }
+            
+            // Mark activity as successful
+            OrleansActivitySource.SetSuccess(activity, new Dictionary<string, object>
+            {
+                {"health.status", result.IsHealthy},
+                {"warnings.count", result.Warnings.Count}
+            });
         }
         catch (Exception ex)
         {
@@ -73,10 +85,20 @@ public sealed class HealthCheckGrain : Grain, IHealthCheckGrain
             result.AdditionalInfo = $"Health check failed with exception: {ex.Message}";
             result.Warnings.Add($"Unhandled exception during health check: {ex.GetType().Name}");
             
+            // Set activity error
+            OrleansActivitySource.SetError(activity, ex);
+            
             _logger.LogError(ex, "Orleans health check failed with exception");
         }
 
         return result;
+        }
+        catch (Exception outerEx)
+        {
+            // Handle any exceptions from the activity setup
+            OrleansActivitySource.SetError(activity, outerEx);
+            throw;
+        }
     }
 
     /// <inheritdoc />

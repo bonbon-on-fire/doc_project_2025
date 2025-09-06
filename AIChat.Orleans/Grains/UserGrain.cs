@@ -1,8 +1,10 @@
+using System.Diagnostics;
 using System.Text.Json;
 using AIChat.Orleans.Configuration;
 using AIChat.Orleans.Contracts;
 using AIChat.Orleans.Metrics;
 using AIChat.Orleans.Services;
+using AIChat.Orleans.Tracing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orleans;
@@ -319,8 +321,13 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
     /// <inheritdoc />
     public async Task RegisterConnection(string connectionId, string clientId)
     {
+        using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", nameof(RegisterConnection), State.UserId);
         try
         {
+            // Add tracing tags
+            activity?.SetTag("connection.id", connectionId);
+            activity?.SetTag("client.id", clientId);
+            
             // Validate parameters
             if (string.IsNullOrEmpty(connectionId))
             {
@@ -382,9 +389,19 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
 
             // Save state
             await WriteStateAsync();
+            
+            // Mark activity as successful
+            OrleansActivitySource.SetSuccess(activity, new Dictionary<string, object>
+            {
+                {"buffered.messages.processed", processedCount},
+                {"active.connections", State.Connections.Count}
+            });
         }
         catch (Exception ex)
         {
+            // Set activity error
+            OrleansActivitySource.SetError(activity, ex);
+            
             _logger.LogError(ex,
                 "Failed to register connection {ConnectionId} for {UserId}",
                 connectionId, State.UserId);
@@ -629,8 +646,13 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
     /// <inheritdoc />
     public async Task RelayMessage(ChatMessage message)
     {
+        using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", nameof(RelayMessage), State.UserId);
         try
         {
+            // Add tracing tags
+            activity?.SetTag("chat.id", message?.ChatId);
+            activity?.SetTag("message.id", message?.Id);
+            
             // Validate message
             if (message == null)
             {
@@ -718,9 +740,19 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
             _logger.LogInformation(
                 "Relayed message {MessageId} for chat {ChatId} to {SuccessCount} connections ({FailureCount} failures) for {UserId}",
                 message.Id, message.ChatId, successCount, failureCount, State.UserId);
+            
+            // Mark activity as successful
+            OrleansActivitySource.SetSuccess(activity, new Dictionary<string, object>
+            {
+                {"connections.success", successCount},
+                {"connections.failed", failureCount}
+            });
         }
         catch (Exception ex)
         {
+            // Set activity error
+            OrleansActivitySource.SetError(activity, ex);
+            
             _logger.LogError(ex,
                 "Failed to relay message {MessageId} for {UserId}",
                 message?.Id ?? "null", State.UserId);
@@ -847,11 +879,16 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
     /// <inheritdoc />
     public async Task<string> ProcessMessageWithBackground(ChatMessage message)
     {
+        using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", nameof(ProcessMessageWithBackground), State.UserId);
         var operationStart = DateTime.UtcNow;
         try
         {
             _logger.LogInformation("Processing message in background for chat {ChatId} and user {UserId}", 
                 message.ChatId, State.UserId);
+            
+            // Add tracing tags
+            activity?.SetTag("chat.id", message?.ChatId);
+            activity?.SetTag("message.length", message?.Content?.Length ?? 0);
 
             // Validate message
             if (message == null)
@@ -900,11 +937,21 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
             var duration = (DateTime.UtcNow - operationStart).TotalMilliseconds;
             await _metricsCollector.RecordGrainOperationAsync("UserGrain", "ProcessMessageWithBackground", duration, true);
 
+            // Mark activity as successful
+            OrleansActivitySource.SetSuccess(activity, new Dictionary<string, object>
+            {
+                {"operation.id", operationId},
+                {"duration.ms", duration}
+            });
+
             return operationId;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to process message with background for {UserId}", State.UserId);
+            
+            // Set activity error
+            OrleansActivitySource.SetError(activity, ex);
             
             // Record failed operation metrics
             var duration = (DateTime.UtcNow - operationStart).TotalMilliseconds;

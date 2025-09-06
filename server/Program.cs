@@ -6,6 +6,7 @@ using AchieveAi.LmDotnetTools.Misc.Storage;
 using AchieveAi.LmDotnetTools.OpenAIProvider.Agents;
 using AIChat.Orleans.Client.Configuration;
 using AIChat.Orleans.Client.Services;
+using AIChat.Orleans.Tracing;
 using AIChat.Server.Hubs;
 using AIChat.Server.Logging;
 using AIChat.Server.Middleware;
@@ -16,6 +17,9 @@ using AIChat.Server.Storage;
 using AIChat.Server.Storage.Sqlite;
 using Lib.AspNetCore.ServerSentEvents;
 using Microsoft.FeatureManagement;
+using OpenTelemetry;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Serilog;
 using Serilog.Formatting.Compact;
 
@@ -135,6 +139,51 @@ builder.Services.AddSignalR(hubOptions =>
 
 // Add Feature Management for controlled Orleans rollout
 builder.Services.AddFeatureManagement(builder.Configuration.GetSection("FeatureManagement"));
+
+// Configure OpenTelemetry for distributed tracing
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing =>
+    {
+        tracing
+            .AddSource(OrleansActivitySource.ActivitySourceName)
+            .SetResourceBuilder(ResourceBuilder.CreateDefault()
+                .AddService("AIChat.Server", "1.0.0")
+                .AddAttributes(new[]
+                {
+                    new KeyValuePair<string, object>("environment", builder.Environment.EnvironmentName),
+                    new KeyValuePair<string, object>("version", "1.0.0")
+                }))
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation();
+
+        // Configure exporters based on environment
+        if (builder.Environment.IsDevelopment())
+        {
+            tracing.AddConsoleExporter();
+        }
+        else
+        {
+            // Configure production exporter (OTLP for Jaeger, etc.)
+            var otlpEndpoint = builder.Configuration["OpenTelemetry:Otlp:Endpoint"];
+            if (!string.IsNullOrEmpty(otlpEndpoint))
+            {
+                tracing.AddOtlpExporter(options =>
+                {
+                    options.Endpoint = new Uri(otlpEndpoint);
+                });
+            }
+            else
+            {
+                // Fallback to console in production if no OTLP endpoint configured
+                tracing.AddConsoleExporter();
+            }
+        }
+
+        // Configure sampling - more aggressive in development, conservative in production
+        tracing.SetSampler(builder.Environment.IsDevelopment() 
+            ? new AlwaysOnSampler() 
+            : new TraceIdRatioBasedSampler(0.1)); // Sample 10% in production
+    });
 
 // Add Orleans Client for Phase 1 shadow mode integration
 // Only adds client dependency - Orleans silo runs separately

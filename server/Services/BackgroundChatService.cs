@@ -1,8 +1,10 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Threading.Channels;
 using AchieveAi.LmDotnetTools.LmCore.Agents;
 using AIChat.Orleans.Client.Services;
 using AIChat.Orleans.Contracts;
+using AIChat.Orleans.Tracing;
 using AIChat.Server.Models;
 using AIChat.Server.Storage;
 using Microsoft.Extensions.Options;
@@ -90,13 +92,21 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
 
     public async Task<string> EnqueueOperationAsync(ChatOperation operation, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(operation);
-
-        // Generate operation ID if not provided
-        if (string.IsNullOrEmpty(operation.Id))
+        using var activity = OrleansActivitySource.StartBackgroundActivity("BackgroundChatService", nameof(EnqueueOperationAsync), operation?.Id);
+        try
         {
-            operation.Id = Guid.NewGuid().ToString();
-        }
+            ArgumentNullException.ThrowIfNull(operation);
+
+            // Generate operation ID if not provided
+            if (string.IsNullOrEmpty(operation.Id))
+            {
+                operation.Id = Guid.NewGuid().ToString();
+            }
+            
+            // Add tracing tags
+            activity?.SetTag("operation.type", operation.Type.ToString());
+            activity?.SetTag("operation.chat_id", operation.ChatId);
+            activity?.SetTag("operation.user_id", operation.UserId);
 
         // Set queued timestamp
         operation.QueuedAt = DateTime.UtcNow;
@@ -120,13 +130,30 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
             _logger.LogInformation("Enqueued operation {OperationId} of type {OperationType} for chat {ChatId} and user {UserId}", 
                 operation.Id, operation.Type, operation.ChatId, operation.UserId);
 
+            // Mark activity as successful
+            OrleansActivitySource.SetSuccess(activity, new Dictionary<string, object>
+            {
+                {"queue.size", _operationQueue.Reader.CanCount ? _operationQueue.Reader.Count : -1},
+                {"active.operations", _activeOperations.Count}
+            });
+
             return operation.Id;
         }
         catch (Exception ex)
         {
+            // Set activity error
+            OrleansActivitySource.SetError(activity, ex);
+            
             // Remove from tracking if enqueue failed
             _activeOperations.TryRemove(operation.Id, out _);
             _logger.LogError(ex, "Failed to enqueue operation {OperationId}", operation.Id);
+            throw;
+        }
+        }
+        catch (Exception outerEx)
+        {
+            // Handle any exceptions from the activity setup
+            OrleansActivitySource.SetError(activity, outerEx);
             throw;
         }
     }
