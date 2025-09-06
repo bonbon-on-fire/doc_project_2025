@@ -63,6 +63,13 @@ public sealed class UserGrainState
     /// </summary>
     [Id(7)]
     public DateTime ActivatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// Message buffers per chat room (Phase 3).
+    /// Key: ChatId, Value: Chat message buffer.
+    /// </summary>
+    [Id(8)]
+    public Dictionary<string, ChatMessageBuffer> MessageBuffers { get; set; } = new();
 }
 
 /// <summary>
@@ -243,6 +250,42 @@ public sealed class GrainMetrics
     /// </summary>
     [Id(10)]
     public int ActiveOperationsCount { get; set; } = 0;
+
+    /// <summary>
+    /// Total number of messages buffered across all chats.
+    /// </summary>
+    [Id(11)]
+    public long TotalMessagesBuffered { get; set; } = 0;
+
+    /// <summary>
+    /// Total number of buffered messages that expired and were removed.
+    /// </summary>
+    [Id(12)]
+    public long TotalBufferExpiredMessages { get; set; } = 0;
+
+    /// <summary>
+    /// Total number of messages dropped due to buffer overflow.
+    /// </summary>
+    [Id(13)]
+    public long TotalBufferOverflowDrops { get; set; } = 0;
+
+    /// <summary>
+    /// Current number of message buffers.
+    /// </summary>
+    [Id(14)]
+    public int CurrentBufferCount { get; set; } = 0;
+
+    /// <summary>
+    /// Total number of buffer cleanup operations performed.
+    /// </summary>
+    [Id(15)]
+    public long TotalBufferCleanupRuns { get; set; } = 0;
+
+    /// <summary>
+    /// Total number of buffered messages successfully delivered.
+    /// </summary>
+    [Id(16)]
+    public long TotalBufferedMessagesDelivered { get; set; } = 0;
 }
 
 /// <summary>

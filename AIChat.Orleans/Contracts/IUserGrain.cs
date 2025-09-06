@@ -4,18 +4,19 @@ namespace AIChat.Orleans.Contracts;
 
 /// <summary>
 /// Comprehensive grain interface representing a user in the chat system.
-/// This interface extends all three segregated interfaces to provide backward compatibility
+/// This interface extends all segregated interfaces to provide backward compatibility
 /// while supporting the new Interface Segregation Principle-based architecture.
 /// 
 /// For new code, prefer using the specific segregated interfaces:
 /// - IUserActivityGrain for activity tracking and monitoring
 /// - IUserConnectionGrain for connection and subscription management  
 /// - IUserOperationGrain for background operations and message routing
+/// - IUserMessageBufferGrain for message buffering functionality
 /// </summary>
 [Alias("AIChat.Orleans.Contracts.IUserGrain")]
-public interface IUserGrain : IUserActivityGrain, IUserConnectionGrain, IUserOperationGrain
+public interface IUserGrain : IUserActivityGrain, IUserConnectionGrain, IUserOperationGrain, IUserMessageBufferGrain
 {
-    // This interface now inherits all methods from the three segregated interfaces.
+    // This interface now inherits all methods from the four segregated interfaces.
     // No additional methods are defined here to maintain clean separation of concerns.
     // 
     // Inherited from IUserActivityGrain:
@@ -37,4 +38,16 @@ public interface IUserGrain : IUserActivityGrain, IUserConnectionGrain, IUserOpe
     // - GetOperationStatus(string operationId)
     // - RelayMessage(ChatMessage message)
     // - RelayStreamChunk(StreamChunk chunk)
+    //
+    // Inherited from IUserMessageBufferGrain:
+    // - BufferMessageAsync(ChatMessage message, BufferPriority priority)
+    // - BufferStreamChunkAsync(StreamChunk chunk, BufferPriority priority)
+    // - GetBufferedMessagesAsync(string chatId, int? limit, bool highPriorityOnly)
+    // - RemoveBufferedMessageAsync(string messageId)
+    // - ClearExpiredBufferedMessagesAsync()
+    // - GetChatBufferAsync(string chatId)
+    // - GetBufferSummaryAsync()
+    // - MarkMessageDeliveredAsync(string messageId)
+    // - RecordDeliveryAttemptAsync(string messageId, string error)
+    // - ProcessBufferedMessagesAsync(string connectionId, string? chatId, int maxMessages)
 }

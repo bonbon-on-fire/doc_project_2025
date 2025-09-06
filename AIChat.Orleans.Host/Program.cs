@@ -76,7 +76,7 @@ public class Program
                         {
                             var metricsCollector = context.RequestServices.GetRequiredService<IOrleansMetricsCollector>();
                             var summary = await metricsCollector.GetMetricsSummaryAsync();
-                            
+
                             context.Response.ContentType = "application/json";
                             await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(summary, new System.Text.Json.JsonSerializerOptions
                             {
@@ -97,7 +97,7 @@ public class Program
 
                             var metricsCollector = context.RequestServices.GetRequiredService<IOrleansMetricsCollector>();
                             var grainMetrics = await metricsCollector.GetGrainTypeMetricsAsync(grainType);
-                            
+
                             context.Response.ContentType = "application/json";
                             await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(grainMetrics, new System.Text.Json.JsonSerializerOptions
                             {
@@ -117,12 +117,12 @@ public class Program
                     .MinimumLevel.Override("Orleans.Runtime", LogEventLevel.Warning)
                     .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
                     .MinimumLevel.Override("AIChat.Orleans", LogEventLevel.Debug)
-                    .WriteTo.Console(outputTemplate: 
+                    .WriteTo.Console(outputTemplate:
                         "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}")
                     .WriteTo.File(
                         path: "logs/orleans-host-.log",
                         rollingInterval: RollingInterval.Day,
-                        outputTemplate: 
+                        outputTemplate:
                             "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {SourceContext} - {Message:lj}{NewLine}{Exception}");
 
                 // Add Application Insights if configured
@@ -190,22 +190,14 @@ public class Program
 
         // Grain assemblies are auto-discovered in Orleans 9.x
 
-        // Phase 4: Enable Orleans Dashboard with production configuration
+        // Phase 1: Custom Orleans monitoring dashboard (Orleans 9.x compatible)
         var dashboardPort = configuration.GetValue<int>("Orleans:DashboardPort", 8080);
-        siloBuilder.UseDashboard(options =>
+        var dashboardEnabled = configuration.GetValue("Orleans:Dashboard:Enabled", true);
+
+        if (dashboardEnabled)
         {
-            options.Port = dashboardPort;
-            options.HostSelf = true;
-            options.CounterUpdateIntervalMs = 1000;
-            
-            // Production security: Enable username/password authentication
-            var dashboardUser = configuration.GetValue<string>("Orleans:Dashboard:Username") ?? "admin";
-            var dashboardPassword = configuration.GetValue<string>("Orleans:Dashboard:Password") ?? "orleans123";
-            options.Username = dashboardUser;
-            options.Password = dashboardPassword;
-            
-            Log.Information("Orleans Dashboard enabled on port {DashboardPort} with authentication", dashboardPort);
-        });
+            Log.Information("Custom Orleans monitoring dashboard will be available on port {Port} (integrated with web host)", context.HostingEnvironment.IsDevelopment() ? 5100 : dashboardPort);
+        }
 
         // Add startup task for initialization
         siloBuilder.AddStartupTask<OrleansStartupTask>();
@@ -294,7 +286,7 @@ public class OrleansStartupTask : IStartupTask
         try
         {
             _logger.LogInformation("Orleans startup task beginning...");
-            
+
             _logger.LogInformation("Orleans startup validation successful. Silo is ready to accept requests");
             return Task.CompletedTask;
         }

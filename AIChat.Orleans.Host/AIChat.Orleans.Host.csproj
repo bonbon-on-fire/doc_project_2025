@@ -24,7 +24,6 @@
     <PackageReference Include="Microsoft.Orleans.Persistence.Memory" Version="9.2.1" />
     <PackageReference Include="Microsoft.Orleans.Persistence.AzureStorage" Version="9.2.1" />
     <PackageReference Include="Microsoft.Orleans.Clustering.AzureStorage" Version="9.2.1" />
-    <PackageReference Include="OrleansDashboard" Version="8.0.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.22.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.0" />

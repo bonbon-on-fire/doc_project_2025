@@ -159,14 +159,26 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
         if (string.IsNullOrEmpty(userId))
         {
             _logger.LogWarning("CheckUserHealthAsync called with empty userId");
-            return null;
+            return new HealthCheckResult 
+            { 
+                IsHealthy = false, 
+                GrainId = userId,
+                CheckedAt = DateTime.UtcNow,
+                Warnings = new List<string> { "Invalid user ID provided" }
+            };
         }
 
         try
         {
             if (!await _featureManager.IsEnabledAsync("OrleansIntegration"))
             {
-                return null;
+                return new HealthCheckResult 
+                { 
+                    IsHealthy = false, 
+                    GrainId = userId,
+                    CheckedAt = DateTime.UtcNow,
+                    Warnings = new List<string> { "Orleans integration disabled" }
+                };
             }
 
             var grain = _grainFactory.GetGrain<IUserGrain>(userId);
@@ -180,7 +192,13 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to check health for {UserId}: {Error}", userId, ex.Message);
-            return null;
+            return new HealthCheckResult 
+            { 
+                IsHealthy = false, 
+                GrainId = userId,
+                CheckedAt = DateTime.UtcNow,
+                Warnings = new List<string> { $"Orleans health check failed: {ex.Message}" }
+            };
         }
     }
 

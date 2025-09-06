@@ -1,0 +1,45 @@
+{
+  "mcpServers": {
+    "sequential-thinking-tools": {
+      "command": "cmd",
+      "args": [
+				"/c",
+				"npx",
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ],
+      "env": {}
+    },
+    "playwright": {
+      "command": "cmd",
+      "args": [
+				"/c",
+				"npx",
+        "-y",
+        "@playwright/mcp@latest"
+      ]
+		},
+    "azure-devops-mcp": {
+      "command": "node",
+      "args": [
+        "b:\\sources\\AzureDevOps-MCP\\dist\\index.js"
+      ],
+      "env": {
+        "AZURE_DEVOPS_ORG_URL": "https://mcqdbdev.visualstudio.com/",
+        "AZURE_DEVOPS_PERSONAL_ACCESS_TOKEN": "8NZWG8YGYkm5qxr2tfv8STLoerHDgZcbrsQxWoyP9GWnwU0hnq5NJQQJ99BEACAAAAAkDsKMAAASAZDO0jum",
+        "AZURE_DEVOPS_PROJECT": "MCQdb_Development",
+        "AZURE_DEVOPS_IS_ON_PREMISES": "false",
+        "ALLOWED_TOOLS": "listPullRequests,getPullRequest,getPullRequestComments,approvePullRequest,mergePullRequest,addPullRequestInlineComment,addPullRequestFileComment,addPullRequestComment,getPullRequestFileChanges,getPullRequestChangesCount,getAllPullRequestChanges,getFileContent,browseRepository,getCommitHistory,azureDevOpsWorkItems,addWorkItemComment,assignWorkItem,bulkCreateWorkItems,convertFindingsToWorkItems,createArea,createIteration,createWorkItem,getCurrentSprint,getIterations,getSprints,getSprintWorkItems,getTeamMembers,getTeams,getWorkItemById,getWorkItemTypeFields,getWorkItemTypes,listWorkItems,searchWorkItems,updateWorkItem,updateWorkItemState,listRepositories"
+      }
+    },
+		"mcp-ask-human": {
+			"command": "cmd",
+			"args": [
+				"/c",
+				"npx",
+				"-y",
+				"@achieveai/hitl-mcp-server@latest"
+			]
+    }
+  }
+}

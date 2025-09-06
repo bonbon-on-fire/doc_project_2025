@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using AIChat.Orleans.Contracts;
 
 namespace AIChat.Orleans.Configuration;
 
@@ -73,6 +74,40 @@ public class UserGrainSettings
     /// Default: true
     /// </summary>
     public bool EnablePeriodicTimers { get; set; } = true;
+
+    /// <summary>
+    /// Maximum number of messages to buffer per chat room.
+    /// Default: 100
+    /// </summary>
+    [Range(10, 1000)]
+    public int MessageBufferSizePerChat { get; set; } = 100;
+
+    /// <summary>
+    /// Time in minutes to retain buffered messages (TTL).
+    /// Default: 60 minutes
+    /// </summary>
+    [Range(5, 1440)]
+    public int MessageBufferTtlMinutes { get; set; } = 60;
+
+    /// <summary>
+    /// Interval in minutes for buffer cleanup operations.
+    /// Default: 5 minutes
+    /// </summary>
+    [Range(1, 60)]
+    public int BufferCleanupIntervalMinutes { get; set; } = 5;
+
+    /// <summary>
+    /// Strategy for handling buffer overflow conditions.
+    /// Default: DropOldest
+    /// </summary>
+    public BufferOverflowStrategy BufferOverflowStrategy { get; set; } = BufferOverflowStrategy.DropOldest;
+
+    /// <summary>
+    /// Maximum delivery attempts per buffered message.
+    /// Default: 3
+    /// </summary>
+    [Range(1, 10)]
+    public int MaxBufferDeliveryAttempts { get; set; } = 3;
 }
 
 /// <summary>

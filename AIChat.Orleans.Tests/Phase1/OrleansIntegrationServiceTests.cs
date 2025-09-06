@@ -1,5 +1,7 @@
 using AIChat.Orleans.Client.Services;
+using AIChat.Orleans.Client.Configuration;
 using AIChat.Orleans.Contracts;
+using Microsoft.Extensions.Options;
 using Microsoft.FeatureManagement;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -18,6 +20,7 @@ public class OrleansIntegrationServiceTests
     private Mock<IFeatureManager>? _mockFeatureManager;
     private Mock<ILogger<OrleansIntegrationService>>? _mockLogger;
     private Mock<IUserGrain>? _mockUserGrain;
+    private Mock<IOptions<OrleansResilienceConfiguration>>? _mockResilienceOptions;
     private OrleansIntegrationService? _service;
 
     [SetUp]
@@ -27,6 +30,12 @@ public class OrleansIntegrationServiceTests
         _mockFeatureManager = new Mock<IFeatureManager>();
         _mockLogger = new Mock<ILogger<OrleansIntegrationService>>();
         _mockUserGrain = new Mock<IUserGrain>();
+        _mockResilienceOptions = new Mock<IOptions<OrleansResilienceConfiguration>>();
+
+        // Setup default resilience configuration
+        _mockResilienceOptions
+            .Setup(x => x.Value)
+            .Returns(new OrleansResilienceConfiguration());
 
         _mockGrainFactory
             .Setup(x => x.GetGrain<IUserGrain>(It.IsAny<string>(), It.IsAny<string>()))
@@ -35,7 +44,8 @@ public class OrleansIntegrationServiceTests
         _service = new OrleansIntegrationService(
             _mockGrainFactory.Object,
             _mockFeatureManager.Object,
-            _mockLogger.Object);
+            _mockLogger.Object,
+            _mockResilienceOptions.Object);
     }
 
     [Test]

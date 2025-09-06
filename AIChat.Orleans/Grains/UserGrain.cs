@@ -371,6 +371,15 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
             await RecordActivity(ActivityType.Connected,
                 JsonSerializer.Serialize(new { ConnectionId = connectionId, ClientId = clientId }));
 
+            // Process any buffered messages for connected chats
+            var processedCount = await ProcessBufferedMessagesAsync(connectionId);
+            if (processedCount > 0)
+            {
+                _logger.LogDebug(
+                    "Delivered {ProcessedCount} buffered messages to newly connected {ConnectionId}",
+                    processedCount, connectionId);
+            }
+
             // Save state
             await WriteStateAsync();
         }
@@ -639,8 +648,11 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
             if (!subscribedConnections.Any())
             {
                 _logger.LogDebug(
-                    "No active connections subscribed to chat {ChatId} for {UserId}. Message {MessageId} not relayed.",
+                    "No active connections subscribed to chat {ChatId} for {UserId}. Buffering message {MessageId}.",
                     message.ChatId, State.UserId, message.Id);
+                
+                // Buffer the message for later delivery
+                await BufferMessageAsync(message, BufferPriority.Normal);
                 return;
             }
 
@@ -743,8 +755,11 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
             if (!subscribedConnections.Any())
             {
                 _logger.LogDebug(
-                    "No active connections subscribed to chat {ChatId} for {UserId}. Chunk {ChunkIndex} of operation {OperationId} not relayed.",
+                    "No active connections subscribed to chat {ChatId} for {UserId}. Buffering chunk {ChunkIndex} of operation {OperationId}.",
                     chunk.ChatId, State.UserId, chunk.ChunkIndex, chunk.OperationId);
+                
+                // Buffer the stream chunk for later delivery
+                await BufferStreamChunkAsync(chunk, BufferPriority.Normal);
                 return;
             }
 
@@ -1470,6 +1485,15 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
                     completedOps.Count, State.UserId);
             }
 
+            // Clean up expired buffered messages (Phase 3 data)
+            var expiredMessagesRemoved = await ClearExpiredBufferedMessagesAsync();
+            if (expiredMessagesRemoved > 0)
+            {
+                changed = true;
+                _logger.LogDebug("Cleaned up {Count} expired buffered messages for {UserId}",
+                    expiredMessagesRemoved, State.UserId);
+            }
+
             // Save state if changes were made
             if (changed)
             {
@@ -1570,6 +1594,772 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
             _logger.LogError(ex, "Failed to cleanup operation {OperationId} for user {UserId}",
                 operationId, State.UserId);
         }
+    }
+
+    #endregion
+
+    #region IUserMessageBufferGrain Implementation
+
+    /// <inheritdoc />
+    public async Task<string> BufferMessageAsync(ChatMessage message, BufferPriority priority = BufferPriority.Normal)
+    {
+        try
+        {
+            // Validate message
+            if (message == null)
+            {
+                throw new ArgumentNullException(nameof(message));
+            }
+
+            if (string.IsNullOrEmpty(message.ChatId))
+            {
+                throw new ArgumentException("Message must have a valid ChatId", nameof(message));
+            }
+
+            // Generate unique message ID
+            var messageId = $"{message.ChatId}_{Guid.NewGuid()}";
+
+            // Get or create chat buffer
+            var buffer = GetOrCreateChatBuffer(message.ChatId);
+
+            // Create buffered message
+            var bufferedMessage = new BufferedMessage
+            {
+                MessageId = messageId,
+                ChatId = message.ChatId,
+                Message = message,
+                BufferedAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(buffer.TtlMinutes),
+                Priority = priority,
+                DeliveryAttempts = 0,
+                LastDeliveryAttempt = null,
+                LastDeliveryError = null
+            };
+
+            // Handle buffer overflow if necessary
+            while (buffer.Messages.Count >= buffer.MaxSize)
+            {
+                if (buffer.OverflowStrategy == BufferOverflowStrategy.RejectNew)
+                {
+                    _logger.LogWarning(
+                        "Buffer overflow: Rejecting new message for chat {ChatId} (buffer full at {Count})",
+                        message.ChatId, buffer.MaxSize);
+                    
+                    // Record overflow metric
+                    State.Metrics.TotalBufferOverflowDrops++;
+                    
+                    throw new InvalidOperationException($"Buffer full for chat {message.ChatId}");
+                }
+                else // DropOldest
+                {
+                    var droppedMessage = buffer.Messages.Dequeue();
+                    buffer.TotalOverflowDrops++;
+                    State.Metrics.TotalBufferOverflowDrops++;
+                    
+                    _logger.LogDebug(
+                        "Buffer overflow: Dropped oldest message {MessageId} from chat {ChatId}",
+                        droppedMessage.MessageId, message.ChatId);
+                }
+            }
+
+            // Add message to buffer
+            buffer.Messages.Enqueue(bufferedMessage);
+            buffer.TotalMessagesBuffered++;
+            
+            // Update metrics
+            State.Metrics.TotalMessagesBuffered++;
+            State.Metrics.CurrentBufferCount = State.MessageBuffers.Count;
+
+            // Record activity
+            await RecordActivity(ActivityType.MessageSent,
+                JsonSerializer.Serialize(new { 
+                    Event = "MessageBuffered", 
+                    MessageId = messageId,
+                    ChatId = message.ChatId,
+                    Priority = priority.ToString(),
+                    BufferSize = buffer.Messages.Count
+                }));
+
+            // Save state
+            await WriteStateAsync();
+
+            _logger.LogDebug(
+                "Buffered message {MessageId} for chat {ChatId} with priority {Priority}",
+                messageId, message.ChatId, priority);
+
+            return messageId;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to buffer message for chat {ChatId} and user {UserId}",
+                message?.ChatId, State.UserId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<string> BufferStreamChunkAsync(StreamChunk chunk, BufferPriority priority = BufferPriority.Normal)
+    {
+        try
+        {
+            // Validate chunk
+            if (chunk == null)
+            {
+                throw new ArgumentNullException(nameof(chunk));
+            }
+
+            if (string.IsNullOrEmpty(chunk.ChatId))
+            {
+                throw new ArgumentException("Stream chunk must have a valid ChatId", nameof(chunk));
+            }
+
+            // Create a ChatMessage from the stream chunk for buffering
+            var message = new ChatMessage
+            {
+                Id = chunk.OperationId,
+                ChatId = chunk.ChatId,
+                Content = chunk.Content,
+                Role = "assistant",
+                Timestamp = DateTime.UtcNow,
+                IsStreaming = true,
+                Metadata = JsonSerializer.Serialize(new
+                {
+                    IsComplete = chunk.IsComplete,
+                    ChunkIndex = chunk.ChunkIndex,
+                    TotalChunks = chunk.TotalChunks,
+                    MessageId = chunk.MessageId
+                })
+            };
+
+            // Buffer as a regular message
+            var messageId = await BufferMessageAsync(message, priority);
+
+            _logger.LogDebug(
+                "Buffered stream chunk {ChunkIndex} for operation {OperationId} as message {MessageId}",
+                chunk.ChunkIndex, chunk.OperationId, messageId);
+
+            return messageId;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to buffer stream chunk for chat {ChatId} and user {UserId}",
+                chunk?.ChatId, State.UserId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<IEnumerable<BufferedMessage>> GetBufferedMessagesAsync(
+        string chatId, 
+        int? limit = null, 
+        bool highPriorityOnly = false)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(chatId))
+            {
+                throw new ArgumentException("Chat ID cannot be null or empty", nameof(chatId));
+            }
+
+            if (!State.MessageBuffers.TryGetValue(chatId, out var buffer))
+            {
+                return Task.FromResult(Enumerable.Empty<BufferedMessage>());
+            }
+
+            var messages = buffer.Messages.AsEnumerable();
+
+            // Filter by priority if requested
+            if (highPriorityOnly)
+            {
+                messages = messages.Where(m => m.Priority == BufferPriority.High);
+            }
+
+            // Apply limit if specified
+            if (limit.HasValue && limit.Value > 0)
+            {
+                messages = messages.Take(limit.Value);
+            }
+
+            var result = messages.ToList();
+
+            _logger.LogDebug(
+                "Retrieved {Count} buffered messages for chat {ChatId} (high priority only: {HighPriorityOnly})",
+                result.Count, chatId, highPriorityOnly);
+
+            return Task.FromResult<IEnumerable<BufferedMessage>>(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to get buffered messages for chat {ChatId} and user {UserId}",
+                chatId, State.UserId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<BufferedMessage?> GetBufferedMessageAsync(string messageId)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(messageId))
+            {
+                throw new ArgumentException("Message ID cannot be null or empty", nameof(messageId));
+            }
+
+            // Search through all chat buffers for the message
+            foreach (var buffer in State.MessageBuffers.Values)
+            {
+                var message = buffer.Messages.FirstOrDefault(m => m.MessageId == messageId);
+                if (message != null)
+                {
+                    _logger.LogDebug(
+                        "Found buffered message {MessageId} in chat {ChatId}",
+                        messageId, message.ChatId);
+                    return Task.FromResult<BufferedMessage?>(message);
+                }
+            }
+
+            _logger.LogDebug("Buffered message {MessageId} not found for user {UserId}",
+                messageId, State.UserId);
+
+            return Task.FromResult<BufferedMessage?>(null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to get buffered message {MessageId} for user {UserId}",
+                messageId, State.UserId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> RemoveBufferedMessageAsync(string messageId)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(messageId))
+            {
+                throw new ArgumentException("Message ID cannot be null or empty", nameof(messageId));
+            }
+
+            // Search through all chat buffers for the message
+            foreach (var buffer in State.MessageBuffers.Values)
+            {
+                var messages = buffer.Messages.ToList();
+                var messageToRemove = messages.FirstOrDefault(m => m.MessageId == messageId);
+                
+                if (messageToRemove != null)
+                {
+                    // Rebuild queue without the message
+                    buffer.Messages.Clear();
+                    foreach (var msg in messages.Where(m => m.MessageId != messageId))
+                    {
+                        buffer.Messages.Enqueue(msg);
+                    }
+
+                    // Update metrics
+                    State.Metrics.CurrentBufferCount = State.MessageBuffers.Count;
+
+                    // Record activity
+                    await RecordActivity(ActivityType.MessageCompleted,
+                        JsonSerializer.Serialize(new { 
+                            Event = "MessageRemovedFromBuffer", 
+                            MessageId = messageId,
+                            ChatId = messageToRemove.ChatId
+                        }));
+
+                    // Save state
+                    await WriteStateAsync();
+
+                    _logger.LogDebug(
+                        "Removed buffered message {MessageId} from chat {ChatId}",
+                        messageId, messageToRemove.ChatId);
+
+                    return true;
+                }
+            }
+
+            _logger.LogDebug("Buffered message {MessageId} not found for removal in user {UserId}",
+                messageId, State.UserId);
+
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to remove buffered message {MessageId} for user {UserId}",
+                messageId, State.UserId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<int> ClearExpiredBufferedMessagesAsync()
+    {
+        try
+        {
+            var totalRemoved = 0;
+            var currentTime = DateTime.UtcNow;
+
+            foreach (var kvp in State.MessageBuffers.ToList())
+            {
+                var chatId = kvp.Key;
+                var buffer = kvp.Value;
+                var originalCount = buffer.Messages.Count;
+
+                // Filter out expired messages
+                var validMessages = new Queue<BufferedMessage>();
+                while (buffer.Messages.Count > 0)
+                {
+                    var message = buffer.Messages.Dequeue();
+                    if (message.ExpiresAt > currentTime)
+                    {
+                        validMessages.Enqueue(message);
+                    }
+                    else
+                    {
+                        totalRemoved++;
+                        buffer.TotalExpiredMessages++;
+                        _logger.LogDebug(
+                            "Expired buffered message {MessageId} from chat {ChatId}",
+                            message.MessageId, chatId);
+                    }
+                }
+
+                buffer.Messages = validMessages;
+                buffer.LastCleanupAt = currentTime;
+
+                // Remove empty buffers
+                if (buffer.Messages.Count == 0)
+                {
+                    State.MessageBuffers.Remove(chatId);
+                    _logger.LogDebug("Removed empty buffer for chat {ChatId}", chatId);
+                }
+
+                _logger.LogDebug(
+                    "Cleaned buffer for chat {ChatId}: {OriginalCount} -> {NewCount} messages",
+                    chatId, originalCount, buffer.Messages.Count);
+            }
+
+            // Update metrics
+            State.Metrics.TotalBufferExpiredMessages += totalRemoved;
+            State.Metrics.CurrentBufferCount = State.MessageBuffers.Count;
+            State.Metrics.TotalBufferCleanupRuns++;
+
+            if (totalRemoved > 0)
+            {
+                // Record activity
+                await RecordActivity(ActivityType.MessageCompleted,
+                    JsonSerializer.Serialize(new { 
+                        Event = "BufferCleanup", 
+                        ExpiredMessages = totalRemoved,
+                        RemainingBuffers = State.MessageBuffers.Count
+                    }));
+
+                // Save state
+                await WriteStateAsync();
+            }
+
+            _logger.LogDebug(
+                "Buffer cleanup completed for user {UserId}: removed {ExpiredCount} expired messages",
+                State.UserId, totalRemoved);
+
+            return totalRemoved;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to clear expired buffered messages for user {UserId}",
+                State.UserId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<ChatMessageBuffer?> GetChatBufferAsync(string chatId)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(chatId))
+            {
+                throw new ArgumentException("Chat ID cannot be null or empty", nameof(chatId));
+            }
+
+            if (State.MessageBuffers.TryGetValue(chatId, out var buffer))
+            {
+                _logger.LogDebug(
+                    "Retrieved buffer for chat {ChatId}: {MessageCount} messages",
+                    chatId, buffer.Messages.Count);
+                return Task.FromResult<ChatMessageBuffer?>(buffer);
+            }
+
+            _logger.LogDebug("No buffer found for chat {ChatId} in user {UserId}",
+                chatId, State.UserId);
+
+            return Task.FromResult<ChatMessageBuffer?>(null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to get chat buffer for {ChatId} and user {UserId}",
+                chatId, State.UserId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<Dictionary<string, BufferSummary>> GetBufferSummaryAsync()
+    {
+        try
+        {
+            var summaries = new Dictionary<string, BufferSummary>();
+            var currentTime = DateTime.UtcNow;
+
+            foreach (var kvp in State.MessageBuffers)
+            {
+                var chatId = kvp.Key;
+                var buffer = kvp.Value;
+                var messages = buffer.Messages.ToList();
+
+                var summary = new BufferSummary
+                {
+                    ChatId = chatId,
+                    CurrentMessageCount = messages.Count,
+                    MaxCapacity = buffer.MaxSize,
+                    UtilizationPercent = buffer.MaxSize > 0 ? (messages.Count * 100.0) / buffer.MaxSize : 0,
+                    OldestMessageTime = messages.FirstOrDefault()?.BufferedAt,
+                    NewestMessageTime = messages.LastOrDefault()?.BufferedAt,
+                    HighPriorityCount = messages.Count(m => m.Priority == BufferPriority.High),
+                    ExpiringMessageCount = messages.Count(m => (m.ExpiresAt - currentTime).TotalMinutes <= 5)
+                };
+
+                summaries[chatId] = summary;
+            }
+
+            _logger.LogDebug(
+                "Generated buffer summary for user {UserId}: {BufferCount} active buffers",
+                State.UserId, summaries.Count);
+
+            return Task.FromResult(summaries);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to get buffer summary for user {UserId}",
+                State.UserId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> MarkMessageDeliveredAsync(string messageId)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(messageId))
+            {
+                throw new ArgumentException("Message ID cannot be null or empty", nameof(messageId));
+            }
+
+            // Find and remove the delivered message
+            var removed = await RemoveBufferedMessageAsync(messageId);
+
+            if (removed)
+            {
+                // Update delivery metrics
+                State.Metrics.TotalBufferedMessagesDelivered++;
+
+                // Record activity
+                await RecordActivity(ActivityType.MessageCompleted,
+                    JsonSerializer.Serialize(new { 
+                        Event = "MessageDelivered", 
+                        MessageId = messageId
+                    }));
+
+                _logger.LogDebug(
+                    "Marked buffered message {MessageId} as delivered for user {UserId}",
+                    messageId, State.UserId);
+            }
+
+            return removed;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to mark message {MessageId} as delivered for user {UserId}",
+                messageId, State.UserId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> RecordDeliveryAttemptAsync(string messageId, string error)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(messageId))
+            {
+                throw new ArgumentException("Message ID cannot be null or empty", nameof(messageId));
+            }
+
+            // Find the message in buffers
+            foreach (var buffer in State.MessageBuffers.Values)
+            {
+                var messages = buffer.Messages.ToList();
+                var message = messages.FirstOrDefault(m => m.MessageId == messageId);
+                
+                if (message != null)
+                {
+                    // Update delivery attempt info
+                    message.DeliveryAttempts++;
+                    message.LastDeliveryAttempt = DateTime.UtcNow;
+                    message.LastDeliveryError = error;
+
+                    // Rebuild the queue with updated message
+                    buffer.Messages.Clear();
+                    foreach (var msg in messages)
+                    {
+                        buffer.Messages.Enqueue(msg);
+                    }
+
+                    // Record activity
+                    await RecordActivity(ActivityType.ErrorOccurred,
+                        JsonSerializer.Serialize(new { 
+                            Event = "DeliveryAttemptFailed", 
+                            MessageId = messageId,
+                            ChatId = message.ChatId,
+                            Attempts = message.DeliveryAttempts,
+                            Error = error
+                        }));
+
+                    // Save state
+                    await WriteStateAsync();
+
+                    _logger.LogDebug(
+                        "Recorded delivery attempt #{Attempt} for message {MessageId}: {Error}",
+                        message.DeliveryAttempts, messageId, error);
+
+                    return true;
+                }
+            }
+
+            _logger.LogDebug("Message {MessageId} not found for delivery attempt recording in user {UserId}",
+                messageId, State.UserId);
+
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to record delivery attempt for message {MessageId} and user {UserId}",
+                messageId, State.UserId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<int> ProcessBufferedMessagesAsync(
+        string connectionId, 
+        string? chatId = null, 
+        int maxMessages = 50)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(connectionId))
+            {
+                throw new ArgumentException("Connection ID cannot be null or empty", nameof(connectionId));
+            }
+
+            var processedCount = 0;
+            var buffersToProcess = chatId != null 
+                ? State.MessageBuffers.Where(kvp => kvp.Key == chatId)
+                : State.MessageBuffers;
+
+            foreach (var kvp in buffersToProcess.ToList())
+            {
+                if (processedCount >= maxMessages) break;
+
+                var bufferChatId = kvp.Key;
+                var buffer = kvp.Value;
+                var messagesToDeliver = new List<BufferedMessage>();
+
+                // Get messages to deliver (prioritize high priority)
+                var messages = buffer.Messages
+                    .OrderByDescending(m => m.Priority)
+                    .ThenBy(m => m.BufferedAt)
+                    .Take(maxMessages - processedCount)
+                    .ToList();
+
+                foreach (var message in messages)
+                {
+                    try
+                    {
+                        // Attempt to deliver the message
+                        if (message.Message.IsStreaming && !string.IsNullOrEmpty(message.Message.Metadata))
+                        {
+                            // Try to parse stream metadata
+                            try
+                            {
+                                var metadata = JsonSerializer.Deserialize<JsonElement>(message.Message.Metadata);
+                                
+                                // Deliver as stream chunk
+                                var chunk = new StreamChunk
+                                {
+                                    OperationId = message.Message.Id,
+                                    ChatId = message.Message.ChatId,
+                                    Content = message.Message.Content,
+                                    IsComplete = metadata.TryGetProperty("IsComplete", out var isComplete) ? isComplete.GetBoolean() : true,
+                                    ChunkIndex = metadata.TryGetProperty("ChunkIndex", out var chunkIndex) ? chunkIndex.GetInt32() : 0,
+                                    TotalChunks = metadata.TryGetProperty("TotalChunks", out var totalChunks) ? totalChunks.GetInt32() : null,
+                                    MessageId = metadata.TryGetProperty("MessageId", out var messageId) ? messageId.GetString() : null
+                                };
+
+                                await RelayStreamChunk(chunk);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning(ex, "Failed to parse stream metadata for message {MessageId}, delivering as regular message", message.MessageId);
+                                // Fall back to regular message delivery
+                                await RelayMessage(message.Message);
+                            }
+                        }
+                        else
+                        {
+                            // Deliver as regular message
+                            await RelayMessage(message.Message);
+                        }
+
+                        messagesToDeliver.Add(message);
+                        processedCount++;
+                    }
+                    catch (Exception ex)
+                    {
+                        // Record delivery failure
+                        await RecordDeliveryAttemptAsync(message.MessageId, ex.Message);
+                        
+                        _logger.LogWarning(ex,
+                            "Failed to deliver buffered message {MessageId} to connection {ConnectionId}",
+                            message.MessageId, connectionId);
+                    }
+                }
+
+                // Remove successfully delivered messages
+                foreach (var deliveredMessage in messagesToDeliver)
+                {
+                    await MarkMessageDeliveredAsync(deliveredMessage.MessageId);
+                }
+            }
+
+            if (processedCount > 0)
+            {
+                // Record activity
+                await RecordActivity(ActivityType.MessageCompleted,
+                    JsonSerializer.Serialize(new { 
+                        Event = "BufferedMessagesProcessed", 
+                        ConnectionId = connectionId,
+                        ChatId = chatId,
+                        ProcessedCount = processedCount
+                    }));
+
+                _logger.LogDebug(
+                    "Processed {ProcessedCount} buffered messages for connection {ConnectionId}",
+                    processedCount, connectionId);
+            }
+
+            return processedCount;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to process buffered messages for connection {ConnectionId} and user {UserId}",
+                connectionId, State.UserId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<int> ClearChatBufferAsync(string chatId)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(chatId))
+            {
+                throw new ArgumentException("Chat ID cannot be null or empty", nameof(chatId));
+            }
+
+            if (!State.MessageBuffers.TryGetValue(chatId, out var buffer))
+            {
+                _logger.LogDebug("No buffer found for chat {ChatId} in user {UserId}",
+                    chatId, State.UserId);
+                return 0;
+            }
+
+            var messageCount = buffer.Messages.Count;
+            State.MessageBuffers.Remove(chatId);
+
+            // Update metrics
+            State.Metrics.CurrentBufferCount = State.MessageBuffers.Count;
+
+            // Record activity
+            await RecordActivity(ActivityType.MessageCompleted,
+                JsonSerializer.Serialize(new { 
+                    Event = "ChatBufferCleared", 
+                    ChatId = chatId,
+                    MessagesCleared = messageCount
+                }));
+
+            // Save state
+            await WriteStateAsync();
+
+            _logger.LogDebug(
+                "Cleared buffer for chat {ChatId}: removed {MessageCount} messages",
+                chatId, messageCount);
+
+            return messageCount;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to clear chat buffer for {ChatId} and user {UserId}",
+                chatId, State.UserId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Gets or creates a chat message buffer with default settings.
+    /// </summary>
+    /// <param name="chatId">Chat identifier</param>
+    /// <returns>Chat message buffer</returns>
+    private ChatMessageBuffer GetOrCreateChatBuffer(string chatId)
+    {
+        if (State.MessageBuffers.TryGetValue(chatId, out var existingBuffer))
+        {
+            return existingBuffer;
+        }
+
+        var newBuffer = new ChatMessageBuffer
+        {
+            ChatId = chatId,
+            Messages = new Queue<BufferedMessage>(),
+            MaxSize = _configuration.UserGrain.MessageBufferSizePerChat,
+            TtlMinutes = _configuration.UserGrain.MessageBufferTtlMinutes,
+            LastCleanupAt = DateTime.UtcNow,
+            OverflowStrategy = _configuration.UserGrain.BufferOverflowStrategy,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        State.MessageBuffers[chatId] = newBuffer;
+
+        _logger.LogDebug(
+            "Created new message buffer for chat {ChatId} with size limit {MaxSize}",
+            chatId, newBuffer.MaxSize);
+
+        return newBuffer;
     }
 
     #endregion

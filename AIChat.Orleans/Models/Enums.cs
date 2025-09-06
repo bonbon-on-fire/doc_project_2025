@@ -128,3 +128,35 @@ public enum OperationStatus
     /// </summary>
     Unknown
 }
+
+/// <summary>
+/// Priority levels for buffered messages.
+/// </summary>
+public enum BufferPriority
+{
+    /// <summary>
+    /// Normal priority message.
+    /// </summary>
+    Normal,
+
+    /// <summary>
+    /// High priority message (delivered first).
+    /// </summary>
+    High
+}
+
+/// <summary>
+/// Strategies for handling buffer overflow conditions.
+/// </summary>
+public enum BufferOverflowStrategy
+{
+    /// <summary>
+    /// Drop oldest messages when buffer is full.
+    /// </summary>
+    DropOldest,
+
+    /// <summary>
+    /// Reject new messages when buffer is full.
+    /// </summary>
+    RejectNew
+}

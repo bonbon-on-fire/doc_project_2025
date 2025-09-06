@@ -1,0 +1,76 @@
+{
+  "monitoringAlerts": {
+    "enabled": true,
+    "alertRules": [
+      {
+        "name": "Orleans Silo Down",
+        "description": "Alert when Orleans silo is not responding",
+        "metric": "orleans.silo.health",
+        "condition": "unhealthy",
+        "severity": "critical",
+        "thresholdMinutes": 2,
+        "notificationChannels": ["operations", "development"]
+      },
+      {
+        "name": "High Grain Activation Time",
+        "description": "Alert when grain activation takes too long",
+        "metric": "orleans.grain.activation.time",
+        "condition": "average > 5000ms",
+        "severity": "warning",
+        "thresholdMinutes": 5,
+        "notificationChannels": ["development"]
+      },
+      {
+        "name": "Memory Usage High",
+        "description": "Alert when memory usage exceeds threshold",
+        "metric": "system.memory.usage",
+        "condition": "percentage > 85%",
+        "severity": "warning",
+        "thresholdMinutes": 3,
+        "notificationChannels": ["operations"]
+      },
+      {
+        "name": "Request Processing Errors",
+        "description": "Alert when error rate is high",
+        "metric": "orleans.requests.error.rate",
+        "condition": "percentage > 5%",
+        "severity": "warning",
+        "thresholdMinutes": 5,
+        "notificationChannels": ["development", "operations"]
+      }
+    ],
+    "notificationChannels": {
+      "operations": {
+        "type": "applicationInsights",
+        "enabled": true,
+        "config": {
+          "severity": ["critical", "warning"],
+          "actionGroup": "orleans-operations"
+        }
+      },
+      "development": {
+        "type": "applicationInsights",
+        "enabled": true,
+        "config": {
+          "severity": ["critical", "warning"],
+          "actionGroup": "orleans-development"
+        }
+      }
+    }
+  },
+  "applicationInsights": {
+    "enableCustomMetrics": true,
+    "enablePerformanceCounters": true,
+    "enableDependencyTracking": true,
+    "samplingPercentage": 100,
+    "customMetrics": [
+      "orleans.grain.activations.total",
+      "orleans.grain.activations.persecond",
+      "orleans.silo.cpu.usage",
+      "orleans.silo.memory.usage",
+      "orleans.requests.total",
+      "orleans.requests.persecond",
+      "orleans.requests.duration.average"
+    ]
+  }
+}
