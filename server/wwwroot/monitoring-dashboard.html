@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orleans Production Monitoring Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f7fa;
+            color: #2d3748;
+            line-height: 1.6;
+        }
+        
+        .dashboard-header {
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 1.5rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+        
+        .dashboard-header h1 {
+            color: #1a202c;
+            font-size: 1.875rem;
+            font-weight: 700;
+        }
+        
+        .dashboard-header .subtitle {
+            color: #718096;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+        
+        .dashboard-controls {
+            margin-top: 1rem;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        
+        .refresh-btn {
+            background: #4299e1;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: background-color 0.2s;
+        }
+        
+        .refresh-btn:hover {
+            background: #3182ce;
+        }
+        
+        .refresh-btn:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+        }
+        
+        .auto-refresh-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #4a5568;
+            font-size: 0.875rem;
+        }
+        
+        .dashboard-container {
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .metric-card {
+            background: white;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+        }
+        
+        .metric-card h3 {
+            color: #2d3748;
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+        
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        .metric-value.healthy { color: #38a169; }
+        .metric-value.warning { color: #ed8936; }
+        .metric-value.critical { color: #e53e3e; }
+        
+        .metric-description {
+            color: #718096;
+            font-size: 0.875rem;
+        }
+        
+        .alerts-section {
+            background: white;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+            margin-bottom: 2rem;
+        }
+        
+        .alerts-section h2 {
+            color: #2d3748;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        
+        .alert-item {
+            padding: 1rem;
+            border-radius: 0.375rem;
+            margin-bottom: 0.75rem;
+            border-left: 4px solid;
+        }
+        
+        .alert-item.critical {
+            background: #fed7d7;
+            border-left-color: #e53e3e;
+        }
+        
+        .alert-item.warning {
+            background: #feebc8;
+            border-left-color: #ed8936;
+        }
+        
+        .alert-item.info {
+            background: #bee3f8;
+            border-left-color: #4299e1;
+        }
+        
+        .alert-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+        
+        .alert-time {
+            color: #718096;
+            font-size: 0.75rem;
+        }
+        
+        .no-alerts {
+            text-align: center;
+            color: #718096;
+            font-style: italic;
+            padding: 2rem;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 0.75rem;
+            height: 0.75rem;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+        
+        .status-indicator.healthy { background: #38a169; }
+        .status-indicator.warning { background: #ed8936; }
+        .status-indicator.critical { background: #e53e3e; }
+        
+        .last-updated {
+            color: #718096;
+            font-size: 0.75rem;
+            text-align: right;
+            margin-top: 1rem;
+        }
+        
+        .error-message {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 1rem;
+            border-radius: 0.375rem;
+            margin: 1rem 0;
+            border: 1px solid #feb2b2;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #718096;
+        }
+        
+        .capacity-section {
+            background: white;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+        }
+        
+        .capacity-section h2 {
+            color: #2d3748;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        
+        .recommendation {
+            background: #f0fff4;
+            border: 1px solid #9ae6b4;
+            border-radius: 0.375rem;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard-container {
+                padding: 1rem;
+            }
+            
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .dashboard-controls {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-header">
+        <h1>Orleans Production Monitoring</h1>
+        <div class="subtitle">Real-time system metrics and alerts</div>
+        <div class="dashboard-controls">
+            <button id="refreshBtn" class="refresh-btn">Refresh Now</button>
+            <label class="auto-refresh-toggle">
+                <input type="checkbox" id="autoRefresh" checked> Auto-refresh (30s)
+            </label>
+            <span id="connectionStatus" class="status-indicator healthy"></span>
+            <span>Connected</span>
+        </div>
+    </div>
+
+    <div class="dashboard-container">
+        <div id="loadingIndicator" class="loading">Loading metrics...</div>
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+
+        <div id="metricsGrid" class="metrics-grid" style="display: none;">
+            <!-- Metrics will be populated by JavaScript -->
+        </div>
+
+        <div id="alertsSection" class="alerts-section" style="display: none;">
+            <h2>Active Alerts</h2>
+            <div id="alertsList"></div>
+        </div>
+
+        <div id="capacitySection" class="capacity-section" style="display: none;">
+            <h2>Capacity Planning</h2>
+            <div id="capacityRecommendations"></div>
+        </div>
+
+        <div class="last-updated">
+            Last updated: <span id="lastUpdated">Never</span>
+        </div>
+    </div>
+
+    <script>
+        class MonitoringDashboard {
+            constructor() {
+                this.refreshInterval = null;
+                this.autoRefresh = true;
+                this.lastUpdate = null;
+                
+                this.initializeEventListeners();
+                this.loadDashboard();
+                this.startAutoRefresh();
+            }
+            
+            initializeEventListeners() {
+                document.getElementById('refreshBtn').addEventListener('click', () => {
+                    this.loadDashboard();
+                });
+                
+                document.getElementById('autoRefresh').addEventListener('change', (e) => {
+                    this.autoRefresh = e.target.checked;
+                    if (this.autoRefresh) {
+                        this.startAutoRefresh();
+                    } else {
+                        this.stopAutoRefresh();
+                    }
+                });
+            }
+            
+            startAutoRefresh() {
+                if (this.refreshInterval) {
+                    clearInterval(this.refreshInterval);
+                }
+                
+                if (this.autoRefresh) {
+                    this.refreshInterval = setInterval(() => {
+                        this.loadDashboard();
+                    }, 30000); // 30 seconds
+                }
+            }
+            
+            stopAutoRefresh() {
+                if (this.refreshInterval) {
+                    clearInterval(this.refreshInterval);
+                    this.refreshInterval = null;
+                }
+            }
+            
+            async loadDashboard() {
+                this.setLoading(true);
+                this.hideError();
+                
+                try {
+                    const [metricsResponse, capacityResponse] = await Promise.all([
+                        fetch('/api/monitoring/metrics'),
+                        fetch('/api/monitoring/capacity')
+                    ]);
+                    
+                    if (!metricsResponse.ok || !capacityResponse.ok) {
+                        throw new Error('Failed to load dashboard data');
+                    }
+                    
+                    const metricsData = await metricsResponse.json();
+                    const capacityData = await capacityResponse.json();
+                    
+                    this.renderMetrics(metricsData);
+                    this.renderAlerts(metricsData.alerts);
+                    this.renderCapacity(capacityData);
+                    this.updateLastUpdated();
+                    
+                    this.setConnectionStatus(true);
+                } catch (error) {
+                    console.error('Dashboard load error:', error);
+                    this.showError('Failed to load dashboard data: ' + error.message);
+                    this.setConnectionStatus(false);
+                } finally {
+                    this.setLoading(false);
+                }
+            }
+            
+            renderMetrics(data) {
+                const grid = document.getElementById('metricsGrid');
+                const metrics = data.metrics;
+                
+                const keyMetrics = [
+                    { 
+                        key: 'orleans.silo.healthy', 
+                        title: 'Orleans Silo Health', 
+                        formatter: (value) => value > 0 ? 'Healthy' : 'Unhealthy',
+                        getStatus: (value) => value > 0 ? 'healthy' : 'critical'
+                    },
+                    { 
+                        key: 'system.memory.working_set_mb', 
+                        title: 'Memory Usage', 
+                        formatter: (value) => `${Math.round(value)} MB`,
+                        getStatus: (value) => value > 1536 ? 'warning' : value > 1024 ? 'warning' : 'healthy'
+                    },
+                    { 
+                        key: 'system.cpu.usage_percent', 
+                        title: 'CPU Usage', 
+                        formatter: (value) => `${Math.round(value)}%`,
+                        getStatus: (value) => value > 80 ? 'critical' : value > 60 ? 'warning' : 'healthy'
+                    },
+                    { 
+                        key: 'orleans.grains.active', 
+                        title: 'Active Grains', 
+                        formatter: (value) => Math.round(value).toString(),
+                        getStatus: (value) => value > 1000 ? 'warning' : 'healthy'
+                    },
+                    { 
+                        key: 'background.queue.depth', 
+                        title: 'Background Queue', 
+                        formatter: (value) => Math.round(value).toString(),
+                        getStatus: (value) => value > 100 ? 'critical' : value > 50 ? 'warning' : 'healthy'
+                    },
+                    { 
+                        key: 'errors.total', 
+                        title: 'Error Count', 
+                        formatter: (value) => Math.round(value).toString(),
+                        getStatus: (value) => value > 5 ? 'critical' : value > 0 ? 'warning' : 'healthy'
+                    }
+                ];
+                
+                grid.innerHTML = keyMetrics.map(metricConfig => {
+                    const metricData = metrics[metricConfig.key];
+                    const value = metricData ? metricData.value : 0;
+                    const status = metricConfig.getStatus(value);
+                    const formattedValue = metricConfig.formatter(value);
+                    const timestamp = metricData ? new Date(metricData.timestamp).toLocaleTimeString() : 'N/A';
+                    
+                    return `
+                        <div class="metric-card">
+                            <h3>${metricConfig.title}</h3>
+                            <div class="metric-value ${status}">${formattedValue}</div>
+                            <div class="metric-description">Last updated: ${timestamp}</div>
+                        </div>
+                    `;
+                }).join('');
+                
+                grid.style.display = 'grid';
+            }
+            
+            renderAlerts(alerts) {
+                const section = document.getElementById('alertsSection');
+                const list = document.getElementById('alertsList');
+                
+                const activeAlerts = Object.entries(alerts).filter(([_, alert]) => alert.isActive);
+                
+                if (activeAlerts.length === 0) {
+                    list.innerHTML = '<div class="no-alerts">No active alerts</div>';
+                } else {
+                    list.innerHTML = activeAlerts.map(([name, alert]) => {
+                        const severity = this.getAlertSeverity(name);
+                        const timeAgo = this.getTimeAgo(new Date(alert.lastTriggered));
+                        
+                        return `
+                            <div class="alert-item ${severity}">
+                                <div class="alert-title">${name}</div>
+                                <div class="alert-time">Triggered ${timeAgo} (${alert.triggeredCount} times)</div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+                
+                section.style.display = 'block';
+            }
+            
+            renderCapacity(data) {
+                const section = document.getElementById('capacitySection');
+                const container = document.getElementById('capacityRecommendations');
+                
+                const recommendations = data.recommendations || [];
+                
+                container.innerHTML = recommendations.map(rec => `
+                    <div class="recommendation">${rec}</div>
+                `).join('');
+                
+                // Add current capacity metrics
+                const current = data.current || {};
+                const capacityHtml = `
+                    <div style="margin-bottom: 1rem;">
+                        <strong>Current Capacity:</strong>
+                        <div style="margin-left: 1rem; margin-top: 0.5rem;">
+                            <div>Memory: ${Math.round(current.memoryUsageMB || 0)} MB</div>
+                            <div>CPU: ${Math.round(current.cpuUsagePercent || 0)}%</div>
+                            <div>Active Grains: ${Math.round(current.activeGrains || 0)}</div>
+                            <div>Queue Depth: ${Math.round(current.backgroundQueueDepth || 0)}</div>
+                        </div>
+                    </div>
+                `;
+                
+                container.innerHTML = capacityHtml + container.innerHTML;
+                section.style.display = 'block';
+            }
+            
+            getAlertSeverity(alertName) {
+                if (alertName.toLowerCase().includes('critical') || alertName.toLowerCase().includes('down')) {
+                    return 'critical';
+                } else if (alertName.toLowerCase().includes('high') || alertName.toLowerCase().includes('overload')) {
+                    return 'warning';
+                }
+                return 'info';
+            }
+            
+            getTimeAgo(date) {
+                const now = new Date();
+                const diffMs = now - date;
+                const diffMinutes = Math.floor(diffMs / 60000);
+                
+                if (diffMinutes < 1) return 'just now';
+                if (diffMinutes === 1) return '1 minute ago';
+                if (diffMinutes < 60) return `${diffMinutes} minutes ago`;
+                
+                const diffHours = Math.floor(diffMinutes / 60);
+                if (diffHours === 1) return '1 hour ago';
+                if (diffHours < 24) return `${diffHours} hours ago`;
+                
+                const diffDays = Math.floor(diffHours / 24);
+                if (diffDays === 1) return '1 day ago';
+                return `${diffDays} days ago`;
+            }
+            
+            setLoading(loading) {
+                document.getElementById('loadingIndicator').style.display = loading ? 'block' : 'none';
+                document.getElementById('refreshBtn').disabled = loading;
+            }
+            
+            showError(message) {
+                const errorDiv = document.getElementById('errorMessage');
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+            }
+            
+            hideError() {
+                document.getElementById('errorMessage').style.display = 'none';
+            }
+            
+            setConnectionStatus(connected) {
+                const indicator = document.getElementById('connectionStatus');
+                const text = indicator.nextElementSibling;
+                
+                if (connected) {
+                    indicator.className = 'status-indicator healthy';
+                    text.textContent = 'Connected';
+                } else {
+                    indicator.className = 'status-indicator critical';
+                    text.textContent = 'Disconnected';
+                }
+            }
+            
+            updateLastUpdated() {
+                document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
+            }
+        }
+        
+        // Initialize dashboard when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new MonitoringDashboard();
+        });
+    </script>
+</body>
+</html>

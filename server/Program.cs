@@ -17,6 +17,7 @@ using AIChat.Server.Storage;
 using AIChat.Server.Storage.Sqlite;
 using Lib.AspNetCore.ServerSentEvents;
 using Microsoft.FeatureManagement;
+using Microsoft.Extensions.Options;
 using OpenTelemetry;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -397,6 +398,19 @@ builder.Services.Configure<BackgroundServiceOptions>(options =>
 builder.Services.AddSingleton<BackgroundChatService>();
 builder.Services.AddSingleton<IBackgroundChatService>(provider => provider.GetRequiredService<BackgroundChatService>());
 builder.Services.AddHostedService(provider => provider.GetRequiredService<BackgroundChatService>());
+
+// Add Production Monitoring Service (Phase 3)
+builder.Services.Configure<ProductionMonitoringOptions>(builder.Configuration.GetSection("ProductionMonitoring"));
+builder.Services.AddSingleton<ProductionMonitoringService>(provider =>
+{
+    var logger = provider.GetRequiredService<ILogger<ProductionMonitoringService>>();
+    var orleansService = provider.GetService<IOrleansIntegrationService>(); // Can be null
+    var grainFactory = provider.GetService<IGrainFactory>(); // Can be null
+    var options = provider.GetRequiredService<IOptions<ProductionMonitoringOptions>>();
+    
+    return new ProductionMonitoringService(logger, orleansService, grainFactory, provider, options);
+});
+builder.Services.AddHostedService(provider => provider.GetRequiredService<ProductionMonitoringService>());
 
 var app = builder.Build();
 
