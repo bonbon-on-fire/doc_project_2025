@@ -385,6 +385,12 @@ builder.Services.AddScoped<AIChat.Orleans.Services.ISignalRBroadcastService, Sig
 // Add operation tracking service for Orleans background processing (Phase 3)
 builder.Services.AddSingleton<IOperationTrackingService, InMemoryOperationTrackingService>();
 
+// Configure StreamingBridge for Orleans-to-SSE conversion (Phase 4)
+builder.Services.Configure<AIChat.Server.Configuration.StreamingConfiguration>(
+    builder.Configuration.GetSection(AIChat.Server.Configuration.StreamingConfiguration.SectionName));
+builder.Services.AddScoped<AIChat.Server.Services.Streaming.IStreamingBridge, AIChat.Server.Services.Streaming.StreamingBridge>();
+builder.Services.AddScoped<AIChat.Server.Services.Streaming.IStreamingBridgeFactory, AIChat.Server.Services.Streaming.StreamingBridgeFactory>();
+
 // Configure Background Chat Service options
 builder.Services.Configure<BackgroundServiceOptions>(options =>
 {
