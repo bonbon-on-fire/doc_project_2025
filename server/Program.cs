@@ -7,6 +7,7 @@ using AchieveAi.LmDotnetTools.OpenAIProvider.Agents;
 using AIChat.Orleans.Client.Configuration;
 using AIChat.Orleans.Client.Services;
 using AIChat.Orleans.Tracing;
+using AIChat.Server.HealthChecks;
 using AIChat.Server.Hubs;
 using AIChat.Server.Logging;
 using AIChat.Server.Middleware;
@@ -202,7 +203,8 @@ if (!isTestEnvironment && !orleansDisabled)
         // Add health checks including Orleans client
         _ = builder.Services.AddHealthChecks()
             .AddCheck<OrleansClientHealthCheck>("orleans-client")
-            .AddCheck<OrleansHealthCheck>("orleans");
+            .AddCheck<OrleansHealthCheck>("orleans")
+            .AddResilientStreamingHealthCheck("resilient-streaming", tags: new[] { "streaming" });
     }
     catch (Exception ex)
     {
@@ -390,6 +392,11 @@ builder.Services.Configure<AIChat.Server.Configuration.StreamingConfiguration>(
     builder.Configuration.GetSection(AIChat.Server.Configuration.StreamingConfiguration.SectionName));
 builder.Services.AddScoped<AIChat.Server.Services.Streaming.IStreamingBridge, AIChat.Server.Services.Streaming.StreamingBridge>();
 builder.Services.AddScoped<AIChat.Server.Services.Streaming.IStreamingBridgeFactory, AIChat.Server.Services.Streaming.StreamingBridgeFactory>();
+
+// Configure Resilient Streaming services (Phase 4 - ORL-P4-004)
+builder.Services.Configure<AIChat.Server.Configuration.ResilientStreamingConfiguration>(
+    builder.Configuration.GetSection("ResilientStreaming"));
+builder.Services.AddSingleton<AIChat.Server.Services.Streaming.IResilientStreamManager, AIChat.Server.Services.Streaming.ResilientStreamManager>();
 
 // Configure Background Chat Service options
 builder.Services.Configure<BackgroundServiceOptions>(options =>

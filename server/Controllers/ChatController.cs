@@ -31,7 +31,8 @@ public class ChatController(
     IClusterClient? clusterClient = null,
     IBackgroundChatService? backgroundChatService = null,
     IOperationTrackingService? operationTrackingService = null,
-    IStreamingBridge? streamingBridge = null
+    IStreamingBridge? streamingBridge = null,
+    IResilientStreamManager? resilientStreamManager = null
     ) : ControllerBase
 {
     private readonly IChatService _chatService = chatService;
@@ -46,6 +47,7 @@ public class ChatController(
     private readonly IBackgroundChatService? _backgroundChatService = backgroundChatService;
     private readonly IOperationTrackingService? _operationTrackingService = operationTrackingService;
     private readonly IStreamingBridge? _streamingBridge = streamingBridge;
+    private readonly IResilientStreamManager? _resilientStreamManager = resilientStreamManager;
 
     /// <summary>
     /// Determines whether background processing via Orleans should be used.
@@ -663,7 +665,15 @@ public class ChatController(
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(_clusterClient);
-        ArgumentNullException.ThrowIfNull(_streamingBridge);
+        
+        // Check if we should use resilient streaming
+        var useResilientStreaming = _resilientStreamManager != null && 
+                                   await _featureManager.IsEnabledAsync("ResilientStreaming");
+        
+        if (!useResilientStreaming && _streamingBridge == null)
+        {
+            throw new InvalidOperationException("Neither ResilientStreamManager nor StreamingBridge is available");
+        }
 
         // Validate request for Orleans processing
         if (string.IsNullOrEmpty(request.UserId))
@@ -730,12 +740,32 @@ public class ChatController(
                 return System.Text.Json.JsonSerializer.Serialize(envelope, MessageSerializationOptions.Default);
             });
 
-            // Use StreamingBridge to convert and stream
-            await _streamingBridge.ConvertGrainToHttpStreamAsync(
-                grainStream,
-                Response,
-                formatter,
-                cancellationToken);
+            // Use resilient streaming if available
+            if (useResilientStreaming)
+            {
+                _logger.LogInformation("Using ResilientStreamManager for stream {StreamId}", initResult.ChatId);
+                
+                // Generate a unique stream ID for this request
+                var streamId = $"{request.UserId}:{initResult.ChatId}:{orleansRequest.RequestId}";
+                
+                await _resilientStreamManager!.ProcessResilientStreamAsync(
+                    streamId,
+                    grainStream,
+                    Response,
+                    formatter,
+                    cancellationToken);
+            }
+            else
+            {
+                _logger.LogInformation("Using standard StreamingBridge for stream {StreamId}", initResult.ChatId);
+                
+                // Use standard StreamingBridge
+                await _streamingBridge!.ConvertGrainToHttpStreamAsync(
+                    grainStream,
+                    Response,
+                    formatter,
+                    cancellationToken);
+            }
 
             // Send completion event
             var completeEnvelope = SSEEventExtensions.CreateStreamCompleteEnvelope(initResult.ChatId);

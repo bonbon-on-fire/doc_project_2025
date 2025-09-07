@@ -17,6 +17,8 @@
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.6" />
     <!-- SignalR is included in ASP.NET Core 9.0 framework - no separate package needed -->
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.7" />
+    <PackageReference Include="Polly" Version="8.5.0" />
+    <PackageReference Include="Polly.Extensions.Http" Version="3.0.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.3" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Lib.AspNetCore.ServerSentEvents" Version="9.0.0" />
@@ -47,10 +49,8 @@
   <ItemGroup Condition="Exists('../submodules/LmDotnetTools/src/LmCore/AchieveAi.LmDotnetTools.LmCore.csproj')">
     <ProjectReference Include="../submodules/LmDotnetTools/src/LmCore/AchieveAi.LmDotnetTools.LmCore.csproj" />
     <ProjectReference Include="../submodules/LmDotnetTools/src/Misc/AchieveAi.LmDotnetTools.Misc.csproj" />
-    <ProjectReference
-      Include="../submodules/LmDotnetTools/src/McpMiddleware/AchieveAi.LmDotnetTools.McpMiddleware.csproj" />
-    <ProjectReference
-      Include="../submodules/LmDotnetTools/src/OpenAiProvider/AchieveAi.LmDotnetTools.OpenAiProvider.csproj" />
+    <ProjectReference Include="../submodules/LmDotnetTools/src/McpMiddleware/AchieveAi.LmDotnetTools.McpMiddleware.csproj" />
+    <ProjectReference Include="../submodules/LmDotnetTools/src/OpenAiProvider/AchieveAi.LmDotnetTools.OpenAiProvider.csproj" />
     <ProjectReference Include="../submodules/LmDotnetTools/src/LmConfig/AchieveAi.LmDotnetTools.LmConfig.csproj" />
   </ItemGroup>
   <ItemGroup Condition="!Exists('../submodules/LmDotnetTools/src/LmCore/AchieveAi.LmDotnetTools.LmCore.csproj')">

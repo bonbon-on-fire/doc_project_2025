@@ -12,7 +12,7 @@ $ErrorActionPreference = "Stop"
 # Start timing
 $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
-Write-Host "🧪 Level 1: Build + Test Validation (< 5 minutes)" -ForegroundColor Cyan
+Write-Host "Level 1: Build + Test Validation (< 5 minutes)" -ForegroundColor Cyan
 Write-Host "================================================" -ForegroundColor Cyan
 
 $buildSuccess = $false
@@ -25,17 +25,17 @@ try {
     $buildProcess = Start-Process -FilePath "dotnet" -ArgumentList "build --configuration Release --verbosity minimal" -Wait -PassThru -NoNewWindow
     
     if ($buildProcess.ExitCode -ne 0) {
-        Write-Host "❌ BUILD FAILED" -ForegroundColor Red
-        Write-Host "   ⚠️  Build failed with exit code $($buildProcess.ExitCode)" -ForegroundColor Red
+        Write-Host "BUILD FAILED" -ForegroundColor Red
+        Write-Host "   Build failed with exit code $($buildProcess.ExitCode)" -ForegroundColor Red
         Write-Host "" -ForegroundColor Red
-        Write-Host "�"� REQUIRED ACTION:" -ForegroundColor Yellow
+        Write-Host "REQUIRED ACTION:" -ForegroundColor Yellow
         Write-Host "   Fix build errors before continuing" -ForegroundColor Yellow
         Write-Host "   Run: dotnet build --verbosity normal" -ForegroundColor Yellow
         exit 1
     }
     
     $buildSuccess = $true
-    Write-Host "✅ Build completed successfully" -ForegroundColor Green
+    Write-Host "Build completed successfully" -ForegroundColor Green
     
     # Step 2: Test execution
     Write-Host "Step 2/2: Running tests..." -ForegroundColor Yellow
@@ -48,10 +48,10 @@ try {
     $testProcess = Start-Process -FilePath "dotnet" -ArgumentList $testArgs -Wait -PassThru -NoNewWindow
     
     if ($testProcess.ExitCode -ne 0) {
-        Write-Host "❌ TESTS FAILED" -ForegroundColor Red
-        Write-Host "   ⚠️  Tests failed with exit code $($testProcess.ExitCode)" -ForegroundColor Red
+        Write-Host "TESTS FAILED" -ForegroundColor Red
+        Write-Host "   Tests failed with exit code $($testProcess.ExitCode)" -ForegroundColor Red
         Write-Host "" -ForegroundColor Red
-        Write-Host "�"� REQUIRED ACTION:" -ForegroundColor Yellow
+        Write-Host "REQUIRED ACTION:" -ForegroundColor Yellow
         Write-Host "   Fix failing tests before continuing" -ForegroundColor Yellow
         Write-Host "   Run: dotnet test --verbosity normal" -ForegroundColor Yellow
         Write-Host "   For detailed test failure information" -ForegroundColor Yellow
@@ -63,31 +63,31 @@ try {
     
     # Success summary
     Write-Host "" -ForegroundColor Green
-    Write-Host "✅ LEVEL 1 VALIDATION PASSED" -ForegroundColor Green
-    Write-Host "   ⏱️  Completed in $([math]::Round($elapsed, 1)) seconds" -ForegroundColor Green
-    Write-Host "   🏗️  All projects build successfully" -ForegroundColor Green
-    Write-Host "   🧪 All tests pass" -ForegroundColor Green
+    Write-Host "LEVEL 1 VALIDATION PASSED" -ForegroundColor Green
+    Write-Host "   Completed in $([math]::Round($elapsed, 1)) seconds" -ForegroundColor Green
+    Write-Host "   All projects build successfully" -ForegroundColor Green
+    Write-Host "   All tests pass" -ForegroundColor Green
     Write-Host "" -ForegroundColor Green
-    Write-Host "🎯 Ready for next implementation step" -ForegroundColor Green
+    Write-Host "Ready for next implementation step" -ForegroundColor Green
     
     # Success exit
     exit 0
 }
 catch {
     $elapsed = $stopwatch.Elapsed.TotalSeconds
-    Write-Host "❌ LEVEL 1 VALIDATION ERROR" -ForegroundColor Red
-    Write-Host "   💥 Exception: $($_.Exception.Message)" -ForegroundColor Red
-    Write-Host "   ⏱️  Failed after $([math]::Round($elapsed, 1)) seconds" -ForegroundColor Red
+    Write-Host "LEVEL 1 VALIDATION ERROR" -ForegroundColor Red
+    Write-Host "   Exception: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "   Failed after $([math]::Round($elapsed, 1)) seconds" -ForegroundColor Red
     
     if ($buildSuccess -and -not $testSuccess) {
-        Write-Host "   �"� Build: ✅ Tests: ❌" -ForegroundColor Red
+        Write-Host "   Build: PASS Tests: FAIL" -ForegroundColor Red
     }
     elseif (-not $buildSuccess) {
-        Write-Host "   �"� Build: ❌ Tests: ⏭️" -ForegroundColor Red
+        Write-Host "   Build: FAIL Tests: SKIPPED" -ForegroundColor Red
     }
     
     Write-Host "" -ForegroundColor Red
-    Write-Host "�"� REQUIRED ACTION:" -ForegroundColor Yellow
+    Write-Host "REQUIRED ACTION:" -ForegroundColor Yellow
     Write-Host "   Check build and test output for detailed errors" -ForegroundColor Yellow
     Write-Host "   Ensure dotnet is properly configured" -ForegroundColor Yellow
     
@@ -100,6 +100,7 @@ finally {
     # Show timing warning if approaching limit
     $elapsed = $stopwatch.Elapsed.TotalSeconds
     if ($elapsed -gt 240) { # 4 minutes = warning
-        Write-Host "Performance Warning: Validation took $([math]::Round($elapsed, 1))s (approaching 5-minute limit)" -ForegroundColor Yellow
+        $msg = "Performance Warning: Validation took " + [math]::Round($elapsed, 1).ToString() + " seconds (approaching 5-minute limit)"
+        Write-Host $msg -ForegroundColor Yellow
     }
 }
