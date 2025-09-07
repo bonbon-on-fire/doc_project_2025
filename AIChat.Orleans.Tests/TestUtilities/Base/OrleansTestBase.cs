@@ -1,0 +1,159 @@
+using System.Net.Http.Json;
+using AIChat.Orleans.Tests.TestUtilities.Builders;
+using AIChat.Server.Models;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Xunit;
+using Xunit.Abstractions;
+
+namespace AIChat.Orleans.Tests.TestUtilities.Base;
+
+/// <summary>
+/// Base class for Orleans integration tests providing common functionality.
+/// Implements Template Method pattern for consistent test execution.
+/// </summary>
+public abstract class OrleansTestBase : IClassFixture<OrleansTestFixture>
+{
+    protected readonly OrleansTestFixture Fixture;
+    protected readonly ITestOutputHelper Output;
+
+    protected OrleansTestBase(OrleansTestFixture fixture, ITestOutputHelper output)
+    {
+        Fixture = fixture;
+        Output = output;
+    }
+
+    /// <summary>
+    /// Creates an HTTP client configured for SSE testing.
+    /// </summary>
+    protected HttpClient CreateSseClient() => Fixture.CreateSseClient();
+
+    /// <summary>
+    /// Creates a standard HTTP client from the WebApplicationFactory.
+    /// </summary>
+    protected HttpClient CreateStandardClient() => 
+        Fixture.WebAppFactory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+
+    /// <summary>
+    /// Makes a stream request with the provided request data.
+    /// </summary>
+    protected async Task<HttpResponseMessage> MakeStreamRequestAsync(CreateChatRequest request)
+    {
+        using var client = CreateSseClient();
+        return await client.PostAsJsonAsync("/api/chat/stream-sse", request);
+    }
+
+    /// <summary>
+    /// Makes a stream request with a simple user ID.
+    /// </summary>
+    protected async Task<HttpResponseMessage> MakeStreamRequestAsync(string userId)
+    {
+        var request = CreateChatRequestBuilder.Create()
+            .WithUserId(userId)
+            .Build();
+        return await MakeStreamRequestAsync(request);
+    }
+
+    /// <summary>
+    /// Extracts a header value from the response.
+    /// </summary>
+    protected string? GetHeaderValue(HttpResponseMessage response, string headerName)
+    {
+        if (response.Headers.TryGetValues(headerName, out var values))
+        {
+            return values.FirstOrDefault();
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Logs a test step for debugging purposes.
+    /// </summary>
+    protected void LogTestStep(string step, params object[] args)
+    {
+        Output.WriteLine($"[{DateTime.UtcNow:HH:mm:ss.fff}] {string.Format(step, args)}");
+    }
+
+    /// <summary>
+    /// Performs test-specific setup. Override in derived classes.
+    /// </summary>
+    protected virtual Task SetupAsync()
+    {
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Performs test-specific cleanup. Override in derived classes.
+    /// </summary>
+    protected virtual Task CleanupAsync()
+    {
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Executes a test with setup and cleanup.
+    /// </summary>
+    protected async Task ExecuteTestAsync(Func<Task> testAction)
+    {
+        try
+        {
+            await SetupAsync();
+            await testAction();
+        }
+        finally
+        {
+            await CleanupAsync();
+        }
+    }
+
+    /// <summary>
+    /// Warms up the system by making initial requests.
+    /// </summary>
+    protected async Task WarmupSystemAsync(int requestCount = 3)
+    {
+        LogTestStep("Warming up system with {0} requests", requestCount);
+        
+        for (int i = 0; i < requestCount; i++)
+        {
+            var request = CreateChatRequestBuilder.Create()
+                .WithUserId($"warmup-{i}")
+                .WithMessage("Warmup request")
+                .Build();
+                
+            using var response = await MakeStreamRequestAsync(request);
+            response.EnsureSuccessStatusCode();
+        }
+        
+        LogTestStep("Warmup complete");
+    }
+
+    /// <summary>
+    /// Asserts that Orleans routing was used.
+    /// </summary>
+    protected void AssertOrleansRouted(HttpResponseMessage response)
+    {
+        var orleansRouted = GetHeaderValue(response, "X-Orleans-Routed");
+        var processingMode = GetHeaderValue(response, "X-Processing-Mode");
+        
+        Assert.Equal("true", orleansRouted);
+        Assert.Equal("orleans", processingMode);
+        
+        LogTestStep("Verified Orleans routing: routed={0}, mode={1}", orleansRouted, processingMode);
+    }
+
+    /// <summary>
+    /// Asserts that direct processing was used.
+    /// </summary>
+    protected void AssertDirectProcessing(HttpResponseMessage response)
+    {
+        var orleansRouted = GetHeaderValue(response, "X-Orleans-Routed");
+        var processingMode = GetHeaderValue(response, "X-Processing-Mode");
+        
+        Assert.Equal("false", orleansRouted);
+        Assert.Equal("direct", processingMode);
+        
+        LogTestStep("Verified direct processing: routed={0}, mode={1}", orleansRouted, processingMode);
+    }
+}
