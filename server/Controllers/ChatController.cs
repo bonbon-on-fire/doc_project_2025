@@ -5,6 +5,7 @@ using AIChat.Server.Extensions;
 using AIChat.Server.Hubs;
 using AIChat.Server.Models;
 using AIChat.Server.Services;
+using AIChat.Server.Services.Streaming;
 using AIChat.Server.Storage;
 using Lib.AspNetCore.ServerSentEvents;
 using Microsoft.AspNetCore.Mvc;
@@ -29,7 +30,8 @@ public class ChatController(
     IOptions<BackgroundProcessingOptions> backgroundProcessingOptions,
     IClusterClient? clusterClient = null,
     IBackgroundChatService? backgroundChatService = null,
-    IOperationTrackingService? operationTrackingService = null
+    IOperationTrackingService? operationTrackingService = null,
+    IStreamingBridge? streamingBridge = null
     ) : ControllerBase
 {
     private readonly IChatService _chatService = chatService;
@@ -43,6 +45,7 @@ public class ChatController(
     private readonly IClusterClient? _clusterClient = clusterClient;
     private readonly IBackgroundChatService? _backgroundChatService = backgroundChatService;
     private readonly IOperationTrackingService? _operationTrackingService = operationTrackingService;
+    private readonly IStreamingBridge? _streamingBridge = streamingBridge;
 
     /// <summary>
     /// Determines whether background processing via Orleans should be used.
@@ -87,6 +90,52 @@ public class ChatController(
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Determines whether Orleans streaming should be used for SSE endpoints.
+    /// </summary>
+    private async Task<bool> ShouldUseOrleansStreamingAsync()
+    {
+        // Check if Orleans integration is available
+        var orleansEnabled = await _featureManager.IsEnabledAsync("OrleansIntegration");
+        if (!orleansEnabled)
+        {
+            _logger.LogDebug("Orleans integration feature is disabled for streaming");
+            return false;
+        }
+
+        // Check if required services are available
+        if (_clusterClient == null || _streamingBridge == null)
+        {
+            _logger.LogDebug("Orleans streaming not available: ClusterClient={ClusterClientAvailable}, StreamingBridge={StreamingBridgeAvailable}", 
+                _clusterClient != null, _streamingBridge != null);
+            return false;
+        }
+
+        // Check cluster health
+        try
+        {
+            var healthGrain = _clusterClient.GetGrain<IUserGrain>("health-check-user");
+            // Quick health check with timeout
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            var healthTask = healthGrain.CheckHealth();
+            var completedTask = await Task.WhenAny(healthTask, Task.Delay(TimeSpan.FromSeconds(2), cts.Token));
+            
+            if (completedTask != healthTask)
+            {
+                _logger.LogWarning("Orleans health check timed out");
+                return false;
+            }
+            
+            await healthTask; // Get result or rethrow exception
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Orleans cluster health check failed for streaming, falling back to direct processing");
+            return false;
+        }
     }
 
     /// <summary>
@@ -369,11 +418,18 @@ public class ChatController(
             return await HandleSignalRStreamingAsync(request, cancellationToken);
         }
         
+        // Check if Orleans routing should be used
+        var useOrleans = await ShouldUseOrleansStreamingAsync();
+        
         // Continue with existing SSE implementation
         // Set response headers for SSE
         Response.Headers.Append("Content-Type", "text/event-stream");
         Response.Headers.Append("Cache-Control", "no-cache");
         Response.Headers.Append("Connection", "keep-alive");
+        
+        // Add Orleans routing headers
+        Response.Headers.Append("X-Orleans-Routed", useOrleans.ToString().ToLower());
+        Response.Headers.Append("X-Processing-Mode", useOrleans ? "orleans" : "direct");
 
         string? currentChatId = null;
         string? currentAssistantMessageId = null;
@@ -409,6 +465,25 @@ public class ChatController(
             // Get initialization metadata from service
             var initResult = await _chatService.PrepareUnifiedStreamChatAsync(streamRequest);
             currentChatId = initResult.ChatId;
+
+            // Route through Orleans if available
+            if (useOrleans)
+            {
+                try
+                {
+                    _logger.LogInformation("Routing SSE stream through Orleans for chat {ChatId}", currentChatId);
+                    await ProcessStreamViaOrleansAsync(request, initResult, cancellationToken);
+                    return new EmptyResult();
+                }
+                catch (Exception orleansEx)
+                {
+                    _logger.LogWarning(orleansEx, "Orleans streaming failed for chat {ChatId}, falling back to direct processing", currentChatId);
+                    // Fall through to direct processing
+                }
+            }
+
+            // Direct processing path
+            _logger.LogDebug("Using direct SSE streaming for chat {ChatId}", currentChatId);
 
             // Subscribe to side-channel after IDs are known
             _chatService.MessageReceived += ForwardMessage;
@@ -576,6 +651,114 @@ public class ChatController(
                 Error = ex.Message,
                 Status = "Failed"
             });
+        }
+    }
+
+    /// <summary>
+    /// Processes chat stream through Orleans UserGrain with StreamingBridge conversion.
+    /// </summary>
+    private async Task ProcessStreamViaOrleansAsync(
+        CreateChatRequest request,
+        StreamInitResult initResult,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(_clusterClient);
+        ArgumentNullException.ThrowIfNull(_streamingBridge);
+
+        // Validate request for Orleans processing
+        if (string.IsNullOrEmpty(request.UserId))
+        {
+            throw new ArgumentException("UserId is required for Orleans streaming", nameof(request));
+        }
+
+        if (string.IsNullOrEmpty(initResult.ChatId))
+        {
+            throw new ArgumentException("ChatId is required for Orleans streaming", nameof(initResult));
+        }
+
+        try
+        {
+            // Get the user grain
+            var userGrain = _clusterClient.GetGrain<IUserGrain>(request.UserId);
+
+            // Create Orleans ChatRequest from server request
+            var orleansRequest = new AIChat.Orleans.Contracts.ChatRequest
+            {
+                ChatId = initResult.ChatId,
+                Message = request.Message,
+                UserId = request.UserId,
+                ModeId = request.ModeId,
+                SystemPrompt = request.SystemPrompt,
+                Timestamp = DateTime.UtcNow,
+                RequestId = Guid.NewGuid().ToString()
+            };
+
+            // Send INIT event before starting stream
+            var initEnvelope = SSEEventExtensions.CreateInitEnvelope(
+                initResult.ChatId,
+                initResult.UserMessageId,
+                initResult.UserTimestamp,
+                initResult.UserSequenceNumber
+            );
+
+            var initId = $"{initResult.ChatId}<|>{initResult.UserMessageId}";
+            await SendSseEvent("init", initEnvelope, initId);
+
+            // Get the grain stream
+            var grainStream = userGrain.ProcessChatStreamAsync(orleansRequest, cancellationToken);
+
+            // Convert Orleans stream chunks to SSE format
+            var formatter = new Func<AIChat.Orleans.Contracts.StreamChunk, string>(chunk =>
+            {
+                // Convert Orleans StreamChunk to SSE envelope format
+                var envelope = new
+                {
+                    chatId = chunk.ChatId,
+                    messageId = chunk.MessageId ?? Guid.NewGuid().ToString(),
+                    sequenceNumber = chunk.ChunkIndex,
+                    kind = chunk.IsComplete ? "complete" : "content",
+                    content = chunk.Content,
+                    timestamp = chunk.Timestamp,
+                    metadata = new
+                    {
+                        chunkIndex = chunk.ChunkIndex,
+                        totalChunks = chunk.TotalChunks,
+                        operationId = chunk.OperationId,
+                        type = chunk.Type.ToString()
+                    }
+                };
+                return System.Text.Json.JsonSerializer.Serialize(envelope, MessageSerializationOptions.Default);
+            });
+
+            // Use StreamingBridge to convert and stream
+            await _streamingBridge.ConvertGrainToHttpStreamAsync(
+                grainStream,
+                Response,
+                formatter,
+                cancellationToken);
+
+            // Send completion event
+            var completeEnvelope = SSEEventExtensions.CreateStreamCompleteEnvelope(initResult.ChatId);
+            await SendSseEvent("complete", completeEnvelope, initId);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Orleans stream cancelled for chat {ChatId}", initResult.ChatId);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in Orleans streaming for chat {ChatId}", initResult.ChatId);
+            
+            // Send error event
+            var errorEnvelope = SSEEventExtensions.CreateErrorEnvelope(
+                initResult.ChatId,
+                null, // Assistant message ID not available
+                0,    // Sequence number not available
+                ex.Message
+            );
+            await SendSseEvent("message", errorEnvelope, $"{initResult.ChatId}<|>error");
+            throw;
         }
     }
 

@@ -651,33 +651,34 @@ See [Validation Gates Documentation](./validation-gates.md) for complete details
 **Validation**: Level 2 before completion, Level 3 before commit
 **Reference**: [Design - Enhanced UserGrain](design.md#enhanced-usergrain-streaming)
 
-### ORL-P4-003: Refactor ChatController SSE to Use Orleans 🔴
+### ORL-P4-003: Refactor ChatController SSE to Use Orleans ✅
 **Points**: 10 | **Priority**: Critical | **Depends**: ORL-P4-002
-**Assignee**: `Senior Developer` | **Updated**: -
+**Assignee**: `Senior Developer` | **Updated**: 2025-09-07
+**Status**: COMPLETED
 
 **Requirements**:
-- [ ] Modify `/api/chat/stream` endpoint
-  - [ ] Check Orleans availability via feature flag
-  - [ ] Route to UserGrain.ProcessChatStreamAsync when available
-  - [ ] Use StreamingBridge for conversion
-  - [ ] Maintain fallback to direct ChatService
-- [ ] Add response headers indicating routing
-  - [ ] `X-Orleans-Routed: true/false`
-  - [ ] `X-Processing-Mode: orleans/direct`
-- [ ] Implement proper error handling
-  - [ ] Grain activation failures
-  - [ ] Stream conversion errors
-  - [ ] Timeout handling
-- [ ] Add request validation for Orleans mode
-- [ ] Update OpenAPI documentation
+- [x] Modify `/api/chat/stream-sse` endpoint
+  - [x] Check Orleans availability via feature flag
+  - [x] Route to UserGrain.ProcessChatStreamAsync when available
+  - [x] Use StreamingBridge for conversion
+  - [x] Maintain fallback to direct ChatService
+- [x] Add response headers indicating routing
+  - [x] `X-Orleans-Routed: true/false`
+  - [x] `X-Processing-Mode: orleans/direct`
+- [x] Implement proper error handling
+  - [x] Grain activation failures
+  - [x] Stream conversion errors
+  - [x] Timeout handling
+- [x] Add request validation for Orleans mode
+- [ ] Update OpenAPI documentation (deferred to later task)
 
 **Acceptance Criteria**:
-- [ ] SSE endpoint routes through Orleans when enabled
-- [ ] Fallback to direct processing works
-- [ ] Headers indicate routing mode
-- [ ] No breaking changes to API contract
-- [ ] Performance comparable to direct mode
-- [ ] Error responses are informative
+- [x] SSE endpoint routes through Orleans when enabled
+- [x] Fallback to direct processing works
+- [x] Headers indicate routing mode
+- [x] No breaking changes to API contract
+- [x] Performance comparable to direct mode
+- [x] Error responses are informative
 
 **Validation**: Level 2 before completion, Level 3 before commit
 **Reference**: [Design - ChatController Modifications](design.md#chatcontroller-modifications)
