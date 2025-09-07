@@ -69,4 +69,14 @@ public interface IUserOperationGrain : IGrainWithStringKey
     /// <returns>Task representing the async operation</returns>
     [Alias("RelayStreamChunk")]
     Task RelayStreamChunk(StreamChunk chunk);
+
+    /// <summary>
+    /// Processes a chat request with streaming response (Phase 4).
+    /// Integrates with ChatService to provide Orleans-First message processing.
+    /// </summary>
+    /// <param name="request">Chat request containing message and context</param>
+    /// <param name="cancellationToken">Cancellation token for stream control</param>
+    /// <returns>Async enumerable of stream chunks</returns>
+    [Alias("ProcessChatStreamAsync")]
+    IAsyncEnumerable<StreamChunk> ProcessChatStreamAsync(ChatRequest request, CancellationToken cancellationToken = default);
 }

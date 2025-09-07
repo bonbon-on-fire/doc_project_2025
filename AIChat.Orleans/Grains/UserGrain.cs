@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using AIChat.Orleans.Configuration;
 using AIChat.Orleans.Contracts;
@@ -24,6 +25,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
     private readonly OrleansGrainConfiguration _configuration;
     private readonly IOrleansMetricsCollector _metricsCollector;
     private readonly ISignalRBroadcastService _signalRBroadcast;
+    private readonly IChatServiceProxy _chatServiceProxy;
     private IGrainTimer? _cleanupTimer;
     private IGrainTimer? _metricsTimer;
     private bool _disposed;
@@ -35,16 +37,29 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
     /// <param name="configuration">Configuration for Orleans grains</param>
     /// <param name="metricsCollector">Metrics collector for performance tracking</param>
     /// <param name="signalRBroadcast">SignalR broadcast service for real-time messaging (optional)</param>
+    /// <param name="chatServiceProxy">Chat service proxy for LLM processing (optional)</param>
     public UserGrain(
         ILogger<UserGrain> logger,
         IOptionsSnapshot<OrleansGrainConfiguration> configuration,
         IOrleansMetricsCollector metricsCollector,
-        ISignalRBroadcastService? signalRBroadcast = null)
+        ISignalRBroadcastService? signalRBroadcast = null,
+        IChatServiceProxy? chatServiceProxy = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _configuration = configuration?.Value ?? new OrleansGrainConfiguration();
         _metricsCollector = metricsCollector ?? throw new ArgumentNullException(nameof(metricsCollector));
         _signalRBroadcast = signalRBroadcast ?? new NullSignalRBroadcastService(); // Default to no-op implementation
+        
+        // Use default proxy if none provided - allows for testing and gradual rollout
+        if (chatServiceProxy == null)
+        {
+            var proxyLogger = new Microsoft.Extensions.Logging.Abstractions.NullLogger<DefaultChatServiceProxy>();
+            _chatServiceProxy = new DefaultChatServiceProxy(proxyLogger);
+        }
+        else
+        {
+            _chatServiceProxy = chatServiceProxy;
+        }
     }
 
     /// <inheritdoc />
@@ -2407,6 +2422,406 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
             chatId, newBuffer.MaxSize);
 
         return newBuffer;
+    }
+
+    #endregion
+
+    #region Phase 4: Orleans-First Stream Processing
+
+    /// <summary>
+    /// Semaphore to limit concurrent streams per grain.
+    /// </summary>
+    private readonly SemaphoreSlim _streamSemaphore = new(3); // Default limit, will be updated from config
+
+    /// <summary>
+    /// Dictionary to track active stream cancellation tokens.
+    /// </summary>
+    private readonly Dictionary<string, CancellationTokenSource> _activeStreamCancellations = new();
+
+    /// <inheritdoc />
+    public async IAsyncEnumerable<StreamChunk> ProcessChatStreamAsync(
+        ChatRequest request, 
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", nameof(ProcessChatStreamAsync), State.UserId);
+        var streamId = Guid.NewGuid().ToString();
+        var streamState = new StreamState
+        {
+            StreamId = streamId,
+            ChatId = request.ChatId,
+            UserId = request.UserId,
+            StartedAt = DateTime.UtcNow,
+            Status = StreamStatus.Active
+        };
+
+        // Add tracing tags
+        activity?.SetTag("stream.id", streamId);
+        activity?.SetTag("chat.id", request.ChatId);
+        activity?.SetTag("request.id", request.RequestId);
+
+        // Check stream limit
+        var activeStreamCount = State.ActiveStreams.Count(s => s.Value.Status == StreamStatus.Active);
+        if (activeStreamCount >= _configuration.Streaming.MaxConcurrentStreamsPerUser)
+        {
+            _logger.LogWarning(
+                "Stream limit exceeded for user {UserId}. Active: {ActiveCount}, Max: {MaxCount}",
+                State.UserId, activeStreamCount, _configuration.Streaming.MaxConcurrentStreamsPerUser);
+            
+            OrleansActivitySource.SetError(activity, new InvalidOperationException("Stream limit exceeded"));
+            throw new InvalidOperationException($"Maximum concurrent streams ({_configuration.Streaming.MaxConcurrentStreamsPerUser}) exceeded for user {State.UserId}");
+        }
+
+        // Create linked cancellation token
+        var streamCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _activeStreamCancellations[streamId] = streamCts;
+
+        // Acquire semaphore
+        await _streamSemaphore.WaitAsync(streamCts.Token);
+
+        // Create channel for callback-to-AsyncEnumerable bridge
+        var channel = System.Threading.Channels.Channel.CreateBounded<StreamChunk>(
+            new System.Threading.Channels.BoundedChannelOptions(_configuration.Streaming.StreamChannelBufferSize)
+            {
+                FullMode = System.Threading.Channels.BoundedChannelFullMode.Wait,
+                SingleWriter = true,
+                SingleReader = true
+            });
+
+        Task? processingTask = null;
+        var hasError = false;
+        Exception? capturedError = null;
+
+        try
+        {
+            // Add stream to state
+            State.ActiveStreams[streamId] = streamState;
+            State.TotalStreamsProcessed++;
+            await WriteStateAsync();
+
+            _logger.LogInformation(
+                "Starting stream {StreamId} for chat {ChatId} and user {UserId}",
+                streamId, request.ChatId, request.UserId);
+
+            // Record activity
+            await RecordActivity(ActivityType.MessageSent,
+                System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    Event = "StreamStarted",
+                    StreamId = streamId,
+                    ChatId = request.ChatId,
+                    RequestId = request.RequestId
+                }));
+
+            // Process the message with callbacks
+            processingTask = ProcessMessageWithStreamingCallbacks(
+                request,
+                streamState,
+                channel.Writer,
+                streamCts.Token);
+        }
+        catch (Exception ex)
+        {
+            hasError = true;
+            capturedError = ex;
+            streamState.Status = StreamStatus.Failed;
+            streamState.ErrorMessage = ex.Message;
+            
+            try
+            {
+                await WriteStateAsync();
+            }
+            catch (Exception saveEx)
+            {
+                _logger.LogError(saveEx, "Failed to save state after error in stream {StreamId}", streamId);
+            }
+
+            _logger.LogError(ex, "Stream {StreamId} failed during initialization", streamId);
+            OrleansActivitySource.SetError(activity, ex);
+            
+            // Complete the channel to prevent waiting forever
+            channel.Writer.TryComplete(ex);
+        }
+
+        // Yield chunks from channel (outside try-catch to avoid CS1626)
+        if (!hasError)
+        {
+            await foreach (var chunk in channel.Reader.ReadAllAsync(streamCts.Token))
+            {
+                // Update stream state
+                streamState.ChunksSent++;
+                streamState.LastActivity = DateTime.UtcNow;
+
+                // Persist state periodically
+                if (_configuration.Streaming.PersistPartialStreams &&
+                    streamState.ChunksSent % _configuration.Streaming.PartialStreamSaveInterval == 0)
+                {
+                    streamState.PartialMessage += chunk.Content;
+                    
+                    try
+                    {
+                        await WriteStateAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to persist partial stream state for {StreamId}", streamId);
+                    }
+                }
+
+                // Update metrics
+                if (_configuration.Streaming.EnableStreamMetrics)
+                {
+                    try
+                    {
+                        await _metricsCollector.RecordGrainOperationAsync(
+                            "UserGrain", 
+                            "StreamChunk", 
+                            0, 
+                            true);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to record metrics for stream chunk in {StreamId}", streamId);
+                    }
+                }
+
+                yield return chunk;
+            }
+        }
+
+        // Handle post-streaming logic
+        try
+        {
+            if (processingTask != null)
+            {
+                await processingTask;
+            }
+
+            if (!hasError)
+            {
+                // Mark stream as completed
+                streamState.Status = StreamStatus.Completed;
+                await WriteStateAsync();
+
+                _logger.LogInformation(
+                    "Stream {StreamId} completed successfully. Chunks sent: {ChunkCount}",
+                    streamId, streamState.ChunksSent);
+
+                OrleansActivitySource.SetSuccess(activity, new Dictionary<string, object>
+                {
+                    {"chunks.sent", streamState.ChunksSent},
+                    {"duration.ms", (DateTime.UtcNow - streamState.StartedAt).TotalMilliseconds}
+                });
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            streamState.Status = StreamStatus.Cancelled;
+            
+            try
+            {
+                await WriteStateAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to save state after cancellation for stream {StreamId}", streamId);
+            }
+
+            _logger.LogInformation("Stream {StreamId} was cancelled", streamId);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            streamState.Status = StreamStatus.Failed;
+            streamState.ErrorMessage = ex.Message;
+            
+            try
+            {
+                await WriteStateAsync();
+            }
+            catch (Exception saveEx)
+            {
+                _logger.LogWarning(saveEx, "Failed to save state after error for stream {StreamId}", streamId);
+            }
+
+            _logger.LogError(ex, "Stream {StreamId} failed with error", streamId);
+            OrleansActivitySource.SetError(activity, ex);
+            throw;
+        }
+        finally
+        {
+            // Cleanup
+            _streamSemaphore.Release();
+            
+            if (_activeStreamCancellations.TryGetValue(streamId, out var cts))
+            {
+                _activeStreamCancellations.Remove(streamId);
+                cts.Dispose();
+            }
+
+            // Schedule stream cleanup after retention period
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(TimeSpan.FromMinutes(_configuration.UserGrain.CompletedOperationRetentionMinutes));
+                await CleanupStreamState(streamId);
+            });
+        }
+
+        // Rethrow captured error if any
+        if (capturedError != null)
+        {
+            throw capturedError;
+        }
+    }
+
+    /// <summary>
+    /// Processes a message with streaming callbacks and writes to channel.
+    /// This method bridges the callback-based ChatService API with IAsyncEnumerable.
+    /// </summary>
+    private async Task ProcessMessageWithStreamingCallbacks(
+        ChatRequest request,
+        StreamState streamState,
+        System.Threading.Channels.ChannelWriter<StreamChunk> channelWriter,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "Processing message for stream {StreamId} with ChatService integration",
+                streamState.StreamId);
+
+            // Process the chat stream through the ChatServiceProxy
+            var chunkCount = 0;
+            await foreach (var chunk in _chatServiceProxy.ProcessChatStreamAsync(request, cancellationToken))
+            {
+                // Forward chunks to the channel
+                await channelWriter.WriteAsync(chunk, cancellationToken);
+                chunkCount++;
+
+                // Update stream state
+                streamState.ChunksSent = chunkCount;
+                streamState.LastActivity = DateTime.UtcNow;
+
+                // Add partial message for recovery if configured
+                if (_configuration.Streaming.PersistPartialStreams && 
+                    !string.IsNullOrEmpty(chunk.Content))
+                {
+                    streamState.PartialMessage += chunk.Content;
+                }
+
+                // Check for completion
+                if (chunk.IsComplete)
+                {
+                    streamState.Status = chunk.Type == StreamChunkType.Error 
+                        ? StreamStatus.Failed 
+                        : StreamStatus.Completed;
+                    
+                    if (chunk.Type == StreamChunkType.Error && chunk.Metadata?.ContainsKey("error") == true)
+                    {
+                        streamState.ErrorMessage = chunk.Metadata["error"]?.ToString();
+                    }
+                    
+                    _logger.LogInformation(
+                        "Stream {StreamId} completed with {ChunkCount} chunks. Status: {Status}",
+                        streamState.StreamId, chunkCount, streamState.Status);
+                    break;
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, 
+                "Error processing message for stream {StreamId}",
+                streamState.StreamId);
+            throw;
+        }
+        finally
+        {
+            // Always close the channel writer
+            channelWriter.TryComplete();
+        }
+    }
+
+    /// <summary>
+    /// Cleans up completed stream state after retention period.
+    /// </summary>
+    private async Task CleanupStreamState(string streamId)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        try
+        {
+            if (State.ActiveStreams.TryGetValue(streamId, out var streamState))
+            {
+                // Only cleanup completed/failed/cancelled streams
+                if (streamState.Status != StreamStatus.Active)
+                {
+                    State.ActiveStreams.Remove(streamId);
+                    await WriteStateAsync();
+
+                    _logger.LogDebug(
+                        "Cleaned up stream state for {StreamId} with status {Status}",
+                        streamId, streamState.Status);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to cleanup stream state for {StreamId}", streamId);
+        }
+    }
+
+    /// <summary>
+    /// Handles timeout for active streams.
+    /// </summary>
+    private async Task HandleStreamTimeout()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        try
+        {
+            var now = DateTime.UtcNow;
+            var timeoutThreshold = TimeSpan.FromMinutes(_configuration.Streaming.StreamTimeoutMinutes);
+
+            var timedOutStreams = State.ActiveStreams
+                .Where(kvp => kvp.Value.Status == StreamStatus.Active &&
+                            now - kvp.Value.LastActivity > timeoutThreshold)
+                .Select(kvp => kvp.Key)
+                .ToList();
+
+            foreach (var streamId in timedOutStreams)
+            {
+                _logger.LogWarning("Stream {StreamId} timed out", streamId);
+
+                // Cancel the stream
+                if (_activeStreamCancellations.TryGetValue(streamId, out var cts))
+                {
+                    cts.Cancel();
+                }
+
+                // Update state
+                if (State.ActiveStreams.TryGetValue(streamId, out var streamState))
+                {
+                    streamState.Status = StreamStatus.TimedOut;
+                    streamState.ErrorMessage = "Stream timed out due to inactivity";
+                }
+            }
+
+            if (timedOutStreams.Any())
+            {
+                await WriteStateAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error handling stream timeouts");
+        }
     }
 
     #endregion

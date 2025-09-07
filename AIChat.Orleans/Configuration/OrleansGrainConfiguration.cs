@@ -27,6 +27,11 @@ public class OrleansGrainConfiguration
     /// Settings for state persistence.
     /// </summary>
     public PersistenceSettings Persistence { get; set; } = new();
+
+    /// <summary>
+    /// Settings for streaming operations.
+    /// </summary>
+    public StreamingSettings Streaming { get; set; } = new();
 }
 
 /// <summary>
@@ -182,4 +187,64 @@ public class PersistenceSettings
     /// </summary>
     [Range(10, 5000)]
     public int PersistenceRetryDelayMilliseconds { get; set; } = 100;
+}
+
+/// <summary>
+/// Configuration settings for streaming operations.
+/// </summary>
+public class StreamingSettings
+{
+    /// <summary>
+    /// Maximum number of concurrent streams per user grain.
+    /// Default: 3
+    /// </summary>
+    [Range(1, 10)]
+    public int MaxConcurrentStreamsPerUser { get; set; } = 3;
+
+    /// <summary>
+    /// Timeout in minutes for idle streams.
+    /// Default: 5 minutes
+    /// </summary>
+    [Range(1, 30)]
+    public int StreamTimeoutMinutes { get; set; } = 5;
+
+    /// <summary>
+    /// Buffer size for stream channel.
+    /// Default: 100
+    /// </summary>
+    [Range(10, 1000)]
+    public int StreamChannelBufferSize { get; set; } = 100;
+
+    /// <summary>
+    /// Whether to persist partial stream state for recovery.
+    /// Default: true
+    /// </summary>
+    public bool PersistPartialStreams { get; set; } = true;
+
+    /// <summary>
+    /// Interval in chunks to save partial stream state.
+    /// Default: 50
+    /// </summary>
+    [Range(10, 500)]
+    public int PartialStreamSaveInterval { get; set; } = 50;
+
+    /// <summary>
+    /// Maximum retry attempts for stream failures.
+    /// Default: 3
+    /// </summary>
+    [Range(1, 10)]
+    public int MaxStreamRetries { get; set; } = 3;
+
+    /// <summary>
+    /// Delay in milliseconds between stream retry attempts.
+    /// Default: 1000ms
+    /// </summary>
+    [Range(100, 10000)]
+    public int StreamRetryDelayMilliseconds { get; set; } = 1000;
+
+    /// <summary>
+    /// Whether to enable stream metrics collection.
+    /// Default: true
+    /// </summary>
+    public bool EnableStreamMetrics { get; set; } = true;
 }

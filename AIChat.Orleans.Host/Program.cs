@@ -152,6 +152,11 @@ public class Program
                 // Add Phase 4: Orleans Metrics Collection
                 services.AddSingleton<IOrleansMetricsCollector, OrleansMetricsCollector>();
 
+                // Add ChatServiceProxy for grain LLM processing
+                // Default implementation provides simulated responses
+                // In production, this should be replaced with actual ChatService integration
+                services.AddSingleton<AIChat.Orleans.Services.IChatServiceProxy, AIChat.Orleans.Services.DefaultChatServiceProxy>();
+
                 // Add health checks
                 services.AddHealthChecks();
             });

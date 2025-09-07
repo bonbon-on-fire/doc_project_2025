@@ -28,7 +28,7 @@ try {
         Write-Host "❌ BUILD FAILED" -ForegroundColor Red
         Write-Host "   ⚠️  Build failed with exit code $($buildProcess.ExitCode)" -ForegroundColor Red
         Write-Host "" -ForegroundColor Red
-        Write-Host "🔧 REQUIRED ACTION:" -ForegroundColor Yellow
+        Write-Host "�"� REQUIRED ACTION:" -ForegroundColor Yellow
         Write-Host "   Fix build errors before continuing" -ForegroundColor Yellow
         Write-Host "   Run: dotnet build --verbosity normal" -ForegroundColor Yellow
         exit 1
@@ -51,7 +51,7 @@ try {
         Write-Host "❌ TESTS FAILED" -ForegroundColor Red
         Write-Host "   ⚠️  Tests failed with exit code $($testProcess.ExitCode)" -ForegroundColor Red
         Write-Host "" -ForegroundColor Red
-        Write-Host "🔧 REQUIRED ACTION:" -ForegroundColor Yellow
+        Write-Host "�"� REQUIRED ACTION:" -ForegroundColor Yellow
         Write-Host "   Fix failing tests before continuing" -ForegroundColor Yellow
         Write-Host "   Run: dotnet test --verbosity normal" -ForegroundColor Yellow
         Write-Host "   For detailed test failure information" -ForegroundColor Yellow
@@ -80,14 +80,14 @@ catch {
     Write-Host "   ⏱️  Failed after $([math]::Round($elapsed, 1)) seconds" -ForegroundColor Red
     
     if ($buildSuccess -and -not $testSuccess) {
-        Write-Host "   📊 Build: ✅ Tests: ❌" -ForegroundColor Red
+        Write-Host "   �"� Build: ✅ Tests: ❌" -ForegroundColor Red
     }
     elseif (-not $buildSuccess) {
-        Write-Host "   📊 Build: ❌ Tests: ⏭️" -ForegroundColor Red
+        Write-Host "   �"� Build: ❌ Tests: ⏭️" -ForegroundColor Red
     }
     
     Write-Host "" -ForegroundColor Red
-    Write-Host "🔧 REQUIRED ACTION:" -ForegroundColor Yellow
+    Write-Host "�"� REQUIRED ACTION:" -ForegroundColor Yellow
     Write-Host "   Check build and test output for detailed errors" -ForegroundColor Yellow
     Write-Host "   Ensure dotnet is properly configured" -ForegroundColor Yellow
     
@@ -100,6 +100,6 @@ finally {
     # Show timing warning if approaching limit
     $elapsed = $stopwatch.Elapsed.TotalSeconds
     if ($elapsed -gt 240) { # 4 minutes = warning
-        Write-Host "⚠️  Performance Warning: Validation took $([math]::Round($elapsed, 1))s (approaching 5-minute limit)" -ForegroundColor Yellow
+        Write-Host "Performance Warning: Validation took $([math]::Round($elapsed, 1))s (approaching 5-minute limit)" -ForegroundColor Yellow
     }
 }

@@ -70,6 +70,19 @@ public sealed class UserGrainState
     /// </summary>
     [Id(8)]
     public Dictionary<string, ChatMessageBuffer> MessageBuffers { get; set; } = new();
+
+    /// <summary>
+    /// Active streaming operations (Phase 4).
+    /// Key: StreamId, Value: Stream state.
+    /// </summary>
+    [Id(9)]
+    public Dictionary<string, StreamState> ActiveStreams { get; set; } = new();
+
+    /// <summary>
+    /// Total number of streams processed.
+    /// </summary>
+    [Id(10)]
+    public long TotalStreamsProcessed { get; set; } = 0;
 }
 
 /// <summary>

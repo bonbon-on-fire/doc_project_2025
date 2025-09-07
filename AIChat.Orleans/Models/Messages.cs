@@ -120,6 +120,62 @@ public sealed class StreamChunk
     /// </summary>
     [Id(7)]
     public int? TotalChunks { get; set; }
+
+    /// <summary>
+    /// Type of stream chunk.
+    /// </summary>
+    [Id(8)]
+    public StreamChunkType Type { get; set; } = StreamChunkType.Text;
+
+    /// <summary>
+    /// Additional metadata for the chunk.
+    /// </summary>
+    [Id(9)]
+    public Dictionary<string, object>? Metadata { get; set; }
+}
+
+/// <summary>
+/// Type of stream chunk content.
+/// </summary>
+[Serializable]
+[global::Orleans.GenerateSerializer]
+[global::Orleans.Alias("AIChat.Orleans.Contracts.StreamChunkType")]
+public enum StreamChunkType
+{
+    /// <summary>
+    /// Regular text content.
+    /// </summary>
+    Text = 0,
+
+    /// <summary>
+    /// Delta/incremental text update.
+    /// </summary>
+    Delta = 1,
+
+    /// <summary>
+    /// Tool call information.
+    /// </summary>
+    ToolCall = 2,
+
+    /// <summary>
+    /// Tool call delta/update.
+    /// </summary>
+    ToolCallDelta = 3,
+
+    /// <summary>
+    /// Tool result information.
+    /// </summary>
+    ToolResult = 4,
+
+    /// <summary>
+    /// Stream completion marker.
+    /// </summary>
+    Complete = 5,
+
+    /// <summary>
+    /// Error information.
+    /// </summary>
+    Error = 6
 }
 
 /// <summary>
