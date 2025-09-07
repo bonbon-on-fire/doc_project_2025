@@ -108,10 +108,12 @@ The solution implements a distributed actor model using Microsoft Orleans, with 
 ### Key Architectural Decisions
 
 1. **One Grain Per User**: Ensures all user sessions share same state
-2. **SignalR Over SSE**: Provides bidirectional communication and better connection management
-3. **Background Processing**: Decouples long-running operations from HTTP lifecycle
-4. **Event-Driven Updates**: Loose coupling between components
-5. **Phased Migration**: Minimizes risk with gradual rollout
+2. **Orleans-First Processing**: All chat message processing routes through Orleans grains when available, including SSE streaming endpoints
+3. **Dual Communication Support**: SignalR for new bidirectional features while maintaining SSE for backward compatibility during transition
+4. **Background Processing**: Decouples long-running operations from HTTP lifecycle
+5. **Event-Driven Updates**: Loose coupling between components
+6. **Phased Migration**: Minimizes risk with gradual rollout
+7. **Resilient Processing**: Orleans grains continue processing even if HTTP connections are lost, enabling recovery and reconnection
 
 ---
 
@@ -158,6 +160,22 @@ The solution implements a distributed actor model using Microsoft Orleans, with 
 2. WHEN messages arrive for different chats, THEN they SHALL be routed only to relevant connections
 3. WHEN unsubscribing from a chat, THEN no further messages SHALL be received for that chat
 4. WHEN switching chats, THEN the subscription state SHALL update within 500ms
+
+#### FR-005: Orleans-First Message Processing
+
+**User Story**: As a system architect, I want all chat message processing to be handled by Orleans grains when Orleans is enabled, so that we achieve consistent resilience and state management across all chat scenarios.
+
+**Rationale**: Chat requests are long-running operations that benefit from Orleans' resilience. If a client connection is lost or a web request terminates, Orleans continues processing and results can be retrieved later or streamed when the client reconnects. This requirement ensures Orleans is used consistently for ALL chat scenarios, not just some endpoints.
+
+**Acceptance Criteria**:
+1. WHEN Orleans is enabled (based on feature flags and health checks), THEN all chat message processing SHALL be delegated to Orleans grains
+2. WHEN the SSE streaming endpoint (/api/chat/stream-sse) receives a request and Orleans is available, THEN it SHALL route the processing through Orleans grains rather than directly calling ChatService
+3. WHEN Orleans grains process chat messages, THEN they SHALL stream response chunks back to the ChatController for forwarding to clients
+4. WHEN Orleans grains stream chunks to ChatController, THEN the SSE event format and client experience SHALL remain unchanged
+5. WHEN Orleans is unavailable (disabled or unhealthy), THEN the system SHALL seamlessly fall back to direct ChatService processing
+6. WHEN switching between Orleans and direct processing, THEN there SHALL be no observable difference in the client API contract
+7. WHEN Orleans processes a streaming request, THEN it SHALL continue processing even if the original HTTP connection is terminated
+8. WHEN a client reconnects after disconnection, THEN they SHALL be able to retrieve or continue receiving the Orleans-processed response
 
 ### Non-Functional Requirements
 
@@ -217,25 +235,29 @@ The solution implements a distributed actor model using Microsoft Orleans, with 
 - All existing tests pass
 - Feature flag controls Orleans usage
 
-### Phase 2: SignalR Integration (Weeks 3-5)
+### Phase 2: SignalR Integration with Orleans Routing (Weeks 3-5)
 
 #### Objectives
 
-- Replace SSE with SignalR
-- Activate UserGrain message routing
-- Support dual-mode operation
+- Introduce SignalR alongside SSE for transition period
+- Activate UserGrain message routing for ALL endpoints
+- Ensure Orleans processes both SSE and SignalR requests
+- Support dual-mode operation with seamless fallback
 
 #### Deliverables
 
 1. SignalR hub implementation
 2. Client-side SignalR integration
-3. UserGrain active mode
-4. Fallback mechanisms
-5. Multi-tab synchronization tests
+3. UserGrain active mode for all chat operations
+4. SSE endpoint refactoring to route through Orleans
+5. Fallback mechanisms for both SSE and SignalR
+6. Multi-tab synchronization tests
 
 #### Success Criteria
 
-- SignalR adoption > 80%
+- Both SSE and SignalR route through Orleans when available
+- SignalR adoption > 80% for new features
+- SSE continues working with Orleans processing
 - Multi-tab synchronization working
 - No increase in error rates
 - Performance within targets
@@ -245,23 +267,24 @@ The solution implements a distributed actor model using Microsoft Orleans, with 
 #### Objectives
 
 - Move ChatService to background execution
-- Complete grain coordination
-- Deprecate SSE completely
+- Complete grain coordination for all scenarios
+- Prepare for SSE deprecation (optional, based on adoption)
 
 #### Deliverables
 
 1. Background service infrastructure
-2. Refactored ChatService
-3. Full grain coordination
-4. SSE removal
-5. Production monitoring
+2. Refactored ChatService with full Orleans integration
+3. Full grain coordination for all endpoints
+4. SSE deprecation plan (execute only after full SignalR adoption)
+5. Production monitoring for both SSE and SignalR paths
 
 #### Success Criteria
 
+- All chat operations route through Orleans when available
 - All multi-tab issues resolved
-- Performance targets met
+- Performance targets met for both SSE and SignalR
 - Zero message loss
-- Successful load testing
+- Successful load testing with Orleans handling all traffic
 
 ### Week 9: Buffer and Stabilization
 
@@ -292,6 +315,10 @@ public interface IUserGrain : IGrainWithStringKey
     Task RelayStreamChunk(StreamChunk chunk);
     Task HandleChatServiceUpdate(ChatUpdate update);
     
+    // SSE Stream Processing (Orleans-routed)
+    Task<IAsyncEnumerable<StreamChunk>> ProcessChatStreamAsync(ChatRequest request, CancellationToken cancellationToken);
+    Task CancelStream(string streamId);
+    
     // Health and State
     Task<UserGrainState> GetState();
     Task<HealthStatus> CheckHealth();
@@ -319,7 +346,7 @@ public class ChatHub : Hub
 
 ### Message Flow Sequences
 
-#### New Message Flow
+#### New Message Flow (SignalR)
 
 1. Client sends message via SignalR
 2. Hub authenticates and validates
@@ -329,6 +356,21 @@ public class ChatHub : Hub
 6. Response streams back through UserGrain
 7. UserGrain distributes to connections
 8. Clients receive filtered updates
+
+#### SSE Streaming Flow (with Orleans)
+
+1. Client sends request to /api/chat/stream-sse
+2. ChatController checks Orleans availability
+3. If Orleans available:
+   a. Controller delegates to UserGrain
+   b. UserGrain initiates ChatService processing
+   c. ChatService streams chunks to UserGrain
+   d. UserGrain relays chunks to ChatController
+   e. ChatController forwards as SSE events
+4. If Orleans unavailable:
+   a. Controller directly calls ChatService
+   b. ChatService streams directly to SSE response
+5. Client receives consistent SSE format regardless of path
 
 #### Connection Recovery Flow
 
@@ -471,10 +513,10 @@ public class ChatHub : Hub
 
 ## Document Control
 
-**Version**: 1.0  
+**Version**: 1.1  
 **Status**: Final Draft  
 **Author**: System Architect  
-**Date**: 2025-08-29  
+**Date**: 2025-09-07  
 **Review**: Pending
 
 ### Revision History
@@ -482,6 +524,7 @@ public class ChatHub : Hub
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-08-29 | System Architect | Initial specification |
+| 1.1 | 2025-09-07 | System Architect | Added FR-005: Orleans-First Message Processing requirement to ensure Orleans handles ALL chat scenarios including SSE streaming |
 
 ---
 

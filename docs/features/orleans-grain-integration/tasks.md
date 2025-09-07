@@ -7,16 +7,24 @@
 | **P1** | 10 | 7 | 0 | 3 | **70%** |
 | **P2** | 10 | 10 | 0 | 0 | **100%** |
 | **P3** | 11 | 11 | 0 | 0 | **100%** |
-| **Total** | **31** | **28** | **0** | **3** | **90%** |
+| **P4** | 8 | 0 | 0 | 8 | **0%** |
+| **Total** | **39** | **28** | **0** | **11** | **72%** |
 
-**Overall Progress**: 90% Complete (28/31 tasks)
+**Overall Progress**: 72% Complete (28/39 tasks)
 
 🎉 **MAJOR MILESTONE**: Orleans Phase 3 core functionality **COMPLETED**
+⚠️ **CRITICAL**: Phase 4 addresses SSE bypass issue - current implementation doesn't use Orleans for main chat flow!
 
 ## 🚀 Active Sprint
 
-**Current Focus**: Phase 1 Completion (3 remaining tasks)
+**Current Focus**: Phase 4 - Orleans-First Message Processing (CRITICAL)
 
+🔥 **Urgent Priority**: Fix SSE endpoint bypassing Orleans grains
+1. **ORL-P4-001**: Implement StreamingBridge Class
+2. **ORL-P4-002**: Enhance UserGrain with ProcessChatStreamAsync
+3. **ORL-P4-003**: Refactor ChatController SSE to Use Orleans
+
+**Also Pending**: Phase 1 Completion (3 remaining tasks)
 1. **ORL-P1-008**: Setup Orleans Dashboard
 2. **ORL-P1-009**: Create Integration Tests  
 3. **ORL-P1-010**: Document Rollback Procedure
@@ -576,23 +584,298 @@ See [Validation Gates Documentation](./validation-gates.md) for complete details
 
 ---
 
+## Phase 4: Orleans-First Message Processing (Week 9-10)
+
+### 🚨 Critical Gap Resolution
+
+**Issue Identified**: The current SSE streaming endpoint (`/api/chat/stream`) bypasses Orleans grains entirely, defeating the purpose of the Orleans integration. This phase addresses requirement **FR-005: Orleans-First Message Processing** to ensure ALL message processing flows through Orleans grains.
+
+### ORL-P4-001: Implement StreamingBridge Class 🔴
+**Points**: 8 | **Priority**: Critical | **Depends**: Phase 3 Complete
+**Assignee**: `Senior Developer` | **Updated**: -
+
+**Requirements**:
+- [ ] Create IStreamingBridge interface with methods:
+  - [ ] `ConvertGrainToHttpStream(grain, response)`
+  - [ ] `HandleBackpressure()`
+  - [ ] `PropagateErrors()`
+- [ ] Implement StreamingBridge class
+  - [ ] Buffer management with configurable size
+  - [ ] Backpressure detection and handling
+  - [ ] Error propagation from grain to HTTP stream
+  - [ ] Cancellation token coordination
+- [ ] Add streaming configuration in appsettings.json
+- [ ] Create factory for bridge instances
+- [ ] Add telemetry and logging
+
+**Acceptance Criteria**:
+- [ ] Bridge successfully converts grain streams to HTTP SSE
+- [ ] Backpressure prevents memory overflow
+- [ ] Errors propagate correctly to client
+- [ ] Cancellation works bidirectionally
+- [ ] Performance overhead < 10ms per chunk
+- [ ] Memory usage remains bounded
+
+**Validation**: Level 2 before completion, Level 3 before commit
+**Reference**: [Design - Orleans-First Architecture](design.md#orleans-first-message-processing)
+
+### ORL-P4-002: Enhance UserGrain with ProcessChatStreamAsync 🔴
+**Points**: 8 | **Priority**: Critical | **Depends**: ORL-P4-001
+**Assignee**: `Senior Developer` | **Updated**: -
+
+**Requirements**:
+- [ ] Add ProcessChatStreamAsync method to IUserGrain
+  - [ ] Accept ChatRequest parameter
+  - [ ] Return IAsyncEnumerable<StreamChunk>
+  - [ ] Support cancellation tokens
+- [ ] Implement stream lifecycle management
+  - [ ] Track active streams per user
+  - [ ] Limit concurrent streams (default: 3)
+  - [ ] Auto-cleanup on disconnect
+- [ ] Add stream state persistence
+  - [ ] Store partial messages for recovery
+  - [ ] Track stream metadata
+- [ ] Integrate with existing ChatService
+  - [ ] Use ProcessMessageWithCallbackAsync
+  - [ ] Handle streaming callbacks
+- [ ] Add stream-specific error handling
+
+**Acceptance Criteria**:
+- [ ] Grain successfully processes streaming requests
+- [ ] Multiple concurrent streams work correctly
+- [ ] Stream limits are enforced
+- [ ] Partial messages persist for recovery
+- [ ] Cancellation stops processing immediately
+- [ ] Integration with ChatService works
+
+**Validation**: Level 2 before completion, Level 3 before commit
+**Reference**: [Design - Enhanced UserGrain](design.md#enhanced-usergrain-streaming)
+
+### ORL-P4-003: Refactor ChatController SSE to Use Orleans 🔴
+**Points**: 10 | **Priority**: Critical | **Depends**: ORL-P4-002
+**Assignee**: `Senior Developer` | **Updated**: -
+
+**Requirements**:
+- [ ] Modify `/api/chat/stream` endpoint
+  - [ ] Check Orleans availability via feature flag
+  - [ ] Route to UserGrain.ProcessChatStreamAsync when available
+  - [ ] Use StreamingBridge for conversion
+  - [ ] Maintain fallback to direct ChatService
+- [ ] Add response headers indicating routing
+  - [ ] `X-Orleans-Routed: true/false`
+  - [ ] `X-Processing-Mode: orleans/direct`
+- [ ] Implement proper error handling
+  - [ ] Grain activation failures
+  - [ ] Stream conversion errors
+  - [ ] Timeout handling
+- [ ] Add request validation for Orleans mode
+- [ ] Update OpenAPI documentation
+
+**Acceptance Criteria**:
+- [ ] SSE endpoint routes through Orleans when enabled
+- [ ] Fallback to direct processing works
+- [ ] Headers indicate routing mode
+- [ ] No breaking changes to API contract
+- [ ] Performance comparable to direct mode
+- [ ] Error responses are informative
+
+**Validation**: Level 2 before completion, Level 3 before commit
+**Reference**: [Design - ChatController Modifications](design.md#chatcontroller-modifications)
+
+### ORL-P4-004: Implement ResilientStreamManager 🔴
+**Points**: 8 | **Priority**: High | **Depends**: ORL-P4-003
+**Assignee**: `Senior Developer` | **Updated**: -
+
+**Requirements**:
+- [ ] Create ResilientStreamManager class
+  - [ ] Implement automatic reconnection logic
+  - [ ] Add exponential backoff for retries
+  - [ ] Buffer messages during disconnection
+  - [ ] Track connection health metrics
+- [ ] Implement partial message recovery
+  - [ ] Store incomplete messages
+  - [ ] Resume from last chunk on reconnect
+  - [ ] Merge partial responses
+- [ ] Add circuit breaker pattern
+  - [ ] Detect repeated failures
+  - [ ] Temporarily bypass failed grains
+  - [ ] Auto-recovery after timeout
+- [ ] Create health check endpoints
+- [ ] Add configuration for resilience settings
+
+**Acceptance Criteria**:
+- [ ] Streams recover from temporary failures
+- [ ] Partial messages are not lost
+- [ ] Circuit breaker prevents cascading failures
+- [ ] Buffered messages deliver on reconnect
+- [ ] Health checks report stream status
+- [ ] Recovery time < 5 seconds
+
+**Validation**: Level 2 before completion, Level 3 before commit
+**Reference**: [Design - Stream Recovery](design.md#stream-recovery-mechanisms)
+
+### ORL-P4-005: Add Stream-Specific Monitoring and Metrics 🔴
+**Points**: 5 | **Priority**: High | **Depends**: ORL-P4-004
+**Assignee**: `Senior Developer` | **Updated**: -
+
+**Requirements**:
+- [ ] Add streaming metrics to telemetry
+  - [ ] Stream start/end events
+  - [ ] Chunk delivery latency
+  - [ ] Backpressure occurrences
+  - [ ] Recovery attempts and success rate
+- [ ] Create streaming dashboard
+  - [ ] Active streams count
+  - [ ] Stream health status
+  - [ ] Performance graphs
+  - [ ] Error rate tracking
+- [ ] Add custom performance counters
+  - [ ] Bytes streamed per second
+  - [ ] Average chunk size
+  - [ ] Stream duration distribution
+- [ ] Implement alerting rules
+  - [ ] High error rate alerts
+  - [ ] Performance degradation alerts
+- [ ] Add distributed tracing for streams
+
+**Acceptance Criteria**:
+- [ ] All metrics collected accurately
+- [ ] Dashboard displays real-time data
+- [ ] Alerts trigger at correct thresholds
+- [ ] Tracing shows full stream lifecycle
+- [ ] Performance impact < 2%
+
+**Validation**: Level 2 before completion, Level 3 before commit
+
+### ORL-P4-006: Create Orleans SSE Integration Tests 🔴
+**Points**: 8 | **Priority**: High | **Depends**: ORL-P4-003
+**Assignee**: `Senior Developer` | **Updated**: -
+
+**Requirements**:
+- [ ] Create SSE routing tests
+  - [ ] Test Orleans routing when enabled
+  - [ ] Test fallback to direct processing
+  - [ ] Test header validation
+- [ ] Create stream lifecycle tests
+  - [ ] Test stream creation and completion
+  - [ ] Test concurrent streams per user
+  - [ ] Test stream cancellation
+- [ ] Create recovery scenario tests
+  - [ ] Test reconnection after failure
+  - [ ] Test partial message recovery
+  - [ ] Test circuit breaker behavior
+- [ ] Create performance tests
+  - [ ] Measure Orleans routing overhead
+  - [ ] Test under high concurrency
+  - [ ] Validate memory boundaries
+- [ ] Create end-to-end tests
+  - [ ] Full chat flow through Orleans SSE
+  - [ ] Multi-user scenarios
+
+**Acceptance Criteria**:
+- [ ] All routing scenarios tested
+- [ ] Recovery mechanisms verified
+- [ ] Performance baselines established
+- [ ] Test coverage > 90%
+- [ ] Tests run in CI/CD pipeline
+
+**Validation**: Level 2 before completion, Level 3 before commit
+**Reference**: [Design - Testing Strategy Phase 4](design.md#testing-strategy-phase-4)
+
+### ORL-P4-007: Implement Stream Recovery and Buffering 🔴
+**Points**: 5 | **Priority**: Medium | **Depends**: ORL-P4-004
+**Assignee**: `Senior Developer` | **Updated**: -
+
+**Requirements**:
+- [ ] Implement message buffer for disconnections
+  - [ ] Configurable buffer size (default: 100 messages)
+  - [ ] TTL for buffered messages (default: 5 minutes)
+  - [ ] Overflow handling strategy
+- [ ] Add connection state tracking
+  - [ ] Monitor connection health
+  - [ ] Detect disconnections quickly
+  - [ ] Track reconnection attempts
+- [ ] Implement buffer replay on reconnect
+  - [ ] Chronological message delivery
+  - [ ] Duplicate detection
+  - [ ] Partial message merging
+- [ ] Add buffer persistence option
+  - [ ] Store critical messages to disk
+  - [ ] Recover after service restart
+- [ ] Create buffer management API
+
+**Acceptance Criteria**:
+- [ ] Messages buffered during disconnect
+- [ ] Buffer replay works correctly
+- [ ] No duplicate messages delivered
+- [ ] Buffer limits respected
+- [ ] Persistence works if configured
+
+**Validation**: Level 2 before completion, Level 3 before commit
+
+### ORL-P4-008: Perform Load Testing for Orleans SSE 🔴
+**Points**: 8 | **Priority**: Critical | **Depends**: ORL-P4-006
+**Assignee**: `Senior Developer` | **Updated**: -
+
+**Requirements**:
+- [ ] Create load testing scenarios
+  - [ ] 1000 concurrent SSE streams
+  - [ ] Mixed Orleans/direct routing
+  - [ ] Stream recovery under load
+  - [ ] Sustained streaming for 1 hour
+- [ ] Measure key metrics
+  - [ ] Stream initiation latency
+  - [ ] Chunk delivery latency
+  - [ ] Memory usage per stream
+  - [ ] CPU usage patterns
+  - [ ] Network throughput
+- [ ] Test failure scenarios
+  - [ ] Grain failures during streaming
+  - [ ] Network interruptions
+  - [ ] Silo restarts
+- [ ] Create performance report
+  - [ ] Baseline vs Orleans comparison
+  - [ ] Bottleneck analysis
+  - [ ] Optimization recommendations
+- [ ] Validate production readiness
+
+**Acceptance Criteria**:
+- [ ] 1000 concurrent streams handled
+- [ ] Latency < 100ms per chunk
+- [ ] Memory usage stable
+- [ ] Recovery works under load
+- [ ] Performance meets SLA requirements
+
+**Validation**: Level 2 before completion, Level 3 before commit
+**Reference**: [Design - Load Testing Phase 4](design.md#load-testing-phase-4)
+
+---
+
+## REMINDER
+
+The Developer MUST update task checklist items as he makes progress for rest of the Team to be in the loop.
+
+---
+
 ## Summary Statistics
 
 ### Tasks by Phase
 - **Phase 1**: 10 tasks (38 story points) - 70% complete
-- **Phase 2**: 10 tasks (51 story points) - 10% complete
-- **Phase 3**: 10 tasks (52 story points) - 0% complete
-- **Total**: 30 tasks (141 story points)
+- **Phase 2**: 10 tasks (51 story points) - 100% complete
+- **Phase 3**: 11 tasks (57 story points) - 100% complete
+- **Phase 4**: 8 tasks (60 story points) - 0% complete
+- **Total**: 39 tasks (206 story points)
 
 ### Tasks by Priority
-- **Critical**: 12 tasks
-- **High**: 11 tasks
-- **Medium**: 7 tasks
+- **Critical**: 17 tasks (5 new in Phase 4)
+- **High**: 14 tasks (3 new in Phase 4)
+- **Medium**: 8 tasks (1 new in Phase 4)
 
 ### Estimated Timeline
 - **Phase 1**: Weeks 1-2 (3 tasks remaining)
-- **Phase 2**: Weeks 3-5 (10 tasks)
-- **Phase 3**: Weeks 6-8 (10 tasks)
+- **Phase 2**: Weeks 3-5 (COMPLETED)
+- **Phase 3**: Weeks 6-8 (COMPLETED)
+- **Phase 4**: Weeks 9-10 (8 tasks - CRITICAL PRIORITY)
 
 ### Risk Mitigation Built Into Tasks
 - Feature flags for gradual rollout
@@ -600,6 +883,9 @@ See [Validation Gates Documentation](./validation-gates.md) for complete details
 - Rollback procedures documented
 - Shadow mode for safe validation
 - Dual-mode operation for transition
+- **NEW**: Stream recovery and resilience patterns (Phase 4)
+- **NEW**: Circuit breaker for grain failures (Phase 4)
+- **NEW**: Buffering for connection interruptions (Phase 4)
 
 ---
 

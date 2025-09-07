@@ -187,6 +187,88 @@ graph TB
 
 ### Target Message Flow
 
+#### Orleans-First Message Processing Architecture
+
+With FR-005, ALL message processing routes through Orleans grains when Orleans is enabled, including SSE streaming endpoints. This ensures consistent resilience, state management, and distributed processing across all client communication patterns.
+
+```mermaid
+graph TB
+    subgraph "Client Layer"
+        Client1[Browser Tab 1]
+        Client2[Browser Tab 2]
+    end
+    
+    subgraph "API Layer"
+        API[REST API]
+        SSE[SSE Endpoint]
+        SR[SignalR Hub]
+    end
+    
+    subgraph "Orleans Layer"
+        Router{Orleans<br/>Available?}
+        UG[UserGrain]
+        SB[Streaming<br/>Bridge]
+    end
+    
+    subgraph "Processing Layer"
+        CS[ChatService]
+        LLM[LLM API]
+    end
+    
+    Client1 -->|POST /api/chat| API
+    Client1 -->|GET /api/chat/stream-sse| SSE
+    Client2 -->|WebSocket| SR
+    
+    API --> Router
+    SSE --> Router
+    SR --> Router
+    
+    Router -->|Yes| UG
+    Router -->|No (Fallback)| CS
+    
+    UG --> SB
+    SB --> CS
+    CS --> LLM
+    
+    UG -.->|Stream Chunks| SSE
+    UG -.->|Stream Chunks| SR
+    CS -.->|Direct Stream| SSE
+```
+
+### Streaming Bridge Pattern
+
+The Streaming Bridge pattern enables Orleans grains to handle streaming responses while maintaining compatibility with SSE and SignalR protocols:
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant SSE as SSE Endpoint
+    participant UG as UserGrain
+    participant SB as StreamingBridge
+    participant CS as ChatService
+    participant LLM as LLM API
+    
+    Client->>SSE: GET /api/chat/stream-sse
+    SSE->>UG: ProcessChatStreamAsync(request)
+    UG->>SB: CreateStream(streamId)
+    SB->>CS: ProcessWithCallback(request)
+    
+    loop Streaming Response
+        LLM-->>CS: Chunk
+        CS-->>SB: OnChunk(data)
+        SB-->>UG: RelayChunk(streamId, data)
+        UG-->>SSE: yield return chunk
+        SSE-->>Client: data: {chunk}
+    end
+    
+    CS-->>SB: OnComplete()
+    SB-->>UG: CompleteStream(streamId)
+    UG-->>SSE: Stream Complete
+    SSE-->>Client: data: [DONE]
+```
+
+### Original Message Flow (Reference)
+
 ```mermaid
 sequenceDiagram
     participant C1 as Client Tab 1
@@ -246,7 +328,9 @@ graph LR
 - Requires coordinated client update
 - Extended downtime window
 
-#### Iteration 2: Dual-Mode Operation (Refined)
+#### Iteration 2: Dual-Mode Operation with Unified Orleans Processing
+
+FR-005 mandates that when Orleans is enabled, ALL message processing (including SSE streaming) must route through Orleans grains. This ensures consistent state management and resilience across all communication patterns.
 
 ```mermaid
 graph TB
@@ -516,7 +600,37 @@ public class Program
 }
 ```
 
-#### 1.2 UserGrain Implementation (Passive Mode)
+#### 1.2 UserGrain Implementation (With Streaming Support)
+
+**Enhanced Interface for SSE Streaming**:
+
+```csharp
+// Grains/IUserGrain.cs
+public interface IUserGrain : IGrainWithStringKey
+{
+    // Phase 1: Shadow operations
+    Task RecordActivity(ActivityType type, string metadata);
+    Task<UserGrainState> GetState();
+    Task<HealthCheckResult> CheckHealth();
+    
+    // SSE Stream Processing (Orleans-routed) - FR-005
+    Task<IAsyncEnumerable<StreamChunk>> ProcessChatStreamAsync(
+        ChatRequest request, 
+        CancellationToken cancellationToken);
+    Task CancelStream(string streamId);
+    Task<StreamStatus> GetStreamStatus(string streamId);
+    
+    // Phase 2: Active operations (added later)
+    Task ProcessMessage(ChatMessage message);
+    Task RegisterConnection(string connectionId, string clientId);
+    Task UnregisterConnection(string connectionId);
+    Task SubscribeToChat(string connectionId, string chatId);
+    Task UnsubscribeFromChat(string connectionId, string chatId);
+    Task RelayStreamChunk(StreamChunk chunk);
+}
+```
+
+#### 1.2.1 UserGrain Implementation (Passive Mode with Streaming)
 
 ```csharp
 // Grains/UserGrain.cs
@@ -555,12 +669,19 @@ public class UserGrain : Grain<UserGrainState>, IUserGrain
 {
     private readonly ILogger<UserGrain> _logger;
     private readonly ITelemetryClient _telemetry;
+    private readonly IChatServiceFactory _chatServiceFactory;
+    private readonly Dictionary<string, StreamContext> _activeStreams;
     private IDisposable _cleanupTimer;
     
-    public UserGrain(ILogger<UserGrain> logger, ITelemetryClient telemetry)
+    public UserGrain(
+        ILogger<UserGrain> logger, 
+        ITelemetryClient telemetry,
+        IChatServiceFactory chatServiceFactory)
     {
         _logger = logger;
         _telemetry = telemetry;
+        _chatServiceFactory = chatServiceFactory;
+        _activeStreams = new Dictionary<string, StreamContext>();
     }
     
     public override async Task OnActivateAsync(CancellationToken cancellationToken)
@@ -612,6 +733,122 @@ public class UserGrain : Grain<UserGrainState>, IUserGrain
     }
     
     public Task<UserGrainState> GetState() => Task.FromResult(State);
+    
+    // FR-005: SSE Stream Processing through Orleans
+    public async Task<IAsyncEnumerable<StreamChunk>> ProcessChatStreamAsync(
+        ChatRequest request, 
+        CancellationToken cancellationToken)
+    {
+        var streamId = Guid.NewGuid().ToString();
+        var streamContext = new StreamContext
+        {
+            StreamId = streamId,
+            StartTime = DateTime.UtcNow,
+            Request = request,
+            CancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
+        };
+        
+        _activeStreams[streamId] = streamContext;
+        
+        try
+        {
+            _logger.LogInformation("Starting SSE stream processing through Orleans for stream {StreamId}", streamId);
+            
+            // Create a channel for streaming chunks
+            var channel = Channel.CreateUnbounded<StreamChunk>();
+            
+            // Start processing in background
+            _ = ProcessStreamInBackground(streamContext, channel.Writer);
+            
+            // Return async enumerable that reads from channel
+            return ReadFromChannel(channel.Reader, streamContext.CancellationTokenSource.Token);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to initiate stream processing for stream {StreamId}", streamId);
+            _activeStreams.Remove(streamId);
+            throw;
+        }
+    }
+    
+    private async Task ProcessStreamInBackground(
+        StreamContext context, 
+        ChannelWriter<StreamChunk> writer)
+    {
+        try
+        {
+            var chatService = _chatServiceFactory.CreateStreaming();
+            
+            await chatService.ProcessMessageWithCallbackAsync(
+                context.Request,
+                async (chunkEvent) =>
+                {
+                    var chunk = new StreamChunk
+                    {
+                        StreamId = context.StreamId,
+                        OperationId = context.Request.OperationId,
+                        Content = chunkEvent.Content,
+                        Type = chunkEvent.Type,
+                        Timestamp = DateTime.UtcNow
+                    };
+                    
+                    await writer.WriteAsync(chunk, context.CancellationTokenSource.Token);
+                },
+                context.CancellationTokenSource.Token);
+            
+            writer.Complete();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Stream processing failed for stream {StreamId}", context.StreamId);
+            writer.TryComplete(ex);
+        }
+        finally
+        {
+            _activeStreams.Remove(context.StreamId);
+        }
+    }
+    
+    private async IAsyncEnumerable<StreamChunk> ReadFromChannel(
+        ChannelReader<StreamChunk> reader,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await foreach (var chunk in reader.ReadAllAsync(cancellationToken))
+        {
+            yield return chunk;
+        }
+    }
+    
+    public Task CancelStream(string streamId)
+    {
+        if (_activeStreams.TryGetValue(streamId, out var context))
+        {
+            context.CancellationTokenSource.Cancel();
+            _activeStreams.Remove(streamId);
+            _logger.LogInformation("Cancelled stream {StreamId}", streamId);
+        }
+        return Task.CompletedTask;
+    }
+    
+    public Task<StreamStatus> GetStreamStatus(string streamId)
+    {
+        if (_activeStreams.TryGetValue(streamId, out var context))
+        {
+            return Task.FromResult(new StreamStatus
+            {
+                StreamId = streamId,
+                IsActive = true,
+                StartTime = context.StartTime,
+                Duration = DateTime.UtcNow - context.StartTime
+            });
+        }
+        
+        return Task.FromResult(new StreamStatus
+        {
+            StreamId = streamId,
+            IsActive = false
+        });
+    }
     
     public Task<HealthCheckResult> CheckHealth()
     {
@@ -752,8 +989,32 @@ public class ChatService : IChatService
             ActivityType.MessageSent,
             new { ChatId = request.ChatId, MessageLength = request.Message.Length });
         
-        // Existing SSE logic continues unchanged
-        var response = await ProcessMessageWithSSE(request);
+        // FR-005: Route through Orleans when available
+        if (await _featureManager.IsEnabledAsync("OrleansIntegration"))
+        {
+            try
+            {
+                var grain = _grainFactory.GetGrain<IUserGrain>(userId);
+                var streamChunks = await grain.ProcessChatStreamAsync(request, cancellationToken);
+                
+                // Stream chunks through SSE
+                await foreach (var chunk in streamChunks.WithCancellation(cancellationToken))
+                {
+                    await WriteSSEChunk(response, chunk);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Orleans streaming failed, falling back to direct processing");
+                // Fallback to direct SSE processing
+                var response = await ProcessMessageWithSSE(request);
+            }
+        }
+        else
+        {
+            // Direct SSE processing when Orleans is not available
+            var response = await ProcessMessageWithSSE(request);
+        }
         
         // Shadow: Record completion
         await _orleansIntegration.RecordUserActivityAsync(
@@ -876,13 +1137,13 @@ steps:
 
 ### Objectives
 
-Replace SSE with SignalR while maintaining dual-mode operation for gradual migration and fallback capability.
+Integrate SignalR alongside SSE with both protocols routing through Orleans grains when enabled, ensuring unified message processing and state management (FR-005).
 
 ### Architecture Changes
 
 ```mermaid
 graph TB
-    subgraph "Phase 2: SignalR Active with SSE Fallback"
+    subgraph "Phase 2: Unified Orleans Processing with Dual Protocol Support"
         Client[Client]
         
         subgraph "Server"
@@ -905,8 +1166,8 @@ graph TB
         PN -->|Legacy| SSE
         
         Hub <--> UG
-        SSE --> CS
-        CS <--> UG
+        SSE <--> UG
+        UG <--> CS
         
         UG -->|Relay| Hub
     end
@@ -1062,24 +1323,29 @@ public class ChatHub : Hub
 }
 ```
 
-#### 2.2 Enhanced UserGrain (Active Mode)
+#### 2.2 Enhanced UserGrain (Active Mode with Unified Streaming)
 
 ```csharp
-// Grains/UserGrain.cs (Enhanced for Phase 2)
+// Grains/UserGrain.cs (Enhanced for Phase 2 with FR-005 support)
 public class UserGrain : Grain<UserGrainState>, IUserGrain
 {
     private readonly ILogger<UserGrain> _logger;
     private readonly IHubContext<ChatHub> _hubContext;
     private readonly IChatServiceFacade _chatServiceFacade;
+    private readonly IStreamingBridge _streamingBridge;
+    private readonly Dictionary<string, StreamContext> _activeStreams;
     
     public UserGrain(
         ILogger<UserGrain> logger,
         IHubContext<ChatHub> hubContext,
-        IChatServiceFacade chatServiceFacade)
+        IChatServiceFacade chatServiceFacade,
+        IStreamingBridge streamingBridge)
     {
         _logger = logger;
         _hubContext = hubContext;
         _chatServiceFacade = chatServiceFacade;
+        _streamingBridge = streamingBridge;
+        _activeStreams = new Dictionary<string, StreamContext>();
     }
     
     // Phase 2: Active connection management
@@ -1440,6 +1706,8 @@ public class ProtocolNegotiationMiddleware
             else
             {
                 context.Items["PreferredProtocol"] = "SSE";
+                // FR-005: SSE also routes through Orleans when available
+                context.Items["UseOrleans"] = await _featureManager.IsEnabledAsync("OrleansIntegration");
             }
         }
         
@@ -1860,15 +2128,18 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
 }
 ```
 
-#### 3.2 Enhanced UserGrain for Background Processing
+#### 3.2 Enhanced UserGrain for Background Processing with Full Streaming Support
 
 ```csharp
-// Grains/UserGrain.cs (Final Phase 3 version)
+// Grains/UserGrain.cs (Final Phase 3 version with FR-005 complete implementation)
 public class UserGrain : Grain<UserGrainState>, IUserGrain
 {
     private readonly IBackgroundChatService _backgroundService;
     private readonly IHubContext<ChatHub> _hubContext;
     private readonly ILogger<UserGrain> _logger;
+    private readonly IStreamingBridge _streamingBridge;
+    private readonly Dictionary<string, StreamContext> _activeStreams;
+    private readonly SemaphoreSlim _streamSemaphore;
     
     // ... constructor and other methods ...
     
@@ -2068,6 +2339,248 @@ CREATE TABLE OrleansGrainState (
 
 ---
 
+## Streaming Architecture
+
+### Overview
+
+The streaming architecture enables Orleans grains to handle real-time message streaming while maintaining compatibility with both SSE and SignalR protocols. This design fulfills FR-005 by ensuring all message processing routes through Orleans when enabled.
+
+### Components
+
+#### StreamingBridge
+
+The StreamingBridge acts as an adapter between Orleans grains and the ChatService, converting streaming callbacks into grain-compatible async enumerables:
+
+```csharp
+public class StreamingBridge : IStreamingBridge
+{
+    private readonly ILogger<StreamingBridge> _logger;
+    private readonly Dictionary<string, StreamChannel> _activeStreams;
+    
+    public async IAsyncEnumerable<StreamChunk> CreateStream(
+        string streamId,
+        Func<IStreamCallback, Task> processor,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var channel = Channel.CreateUnbounded<StreamChunk>();
+        var streamChannel = new StreamChannel
+        {
+            StreamId = streamId,
+            Writer = channel.Writer,
+            Reader = channel.Reader
+        };
+        
+        _activeStreams[streamId] = streamChannel;
+        
+        // Start processing in background
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var callback = new ChannelStreamCallback(channel.Writer);
+                await processor(callback);
+                channel.Writer.Complete();
+            }
+            catch (Exception ex)
+            {
+                channel.Writer.TryComplete(ex);
+            }
+            finally
+            {
+                _activeStreams.Remove(streamId);
+            }
+        }, cancellationToken);
+        
+        // Yield chunks as they arrive
+        await foreach (var chunk in channel.Reader.ReadAllAsync(cancellationToken))
+        {
+            yield return chunk;
+        }
+    }
+}
+```
+
+#### SSE Controller Integration
+
+The ChatController integrates with Orleans for SSE streaming:
+
+```csharp
+[HttpGet("stream-sse")]
+public async Task StreamSSE(
+    [FromQuery] string chatId,
+    [FromQuery] string message,
+    CancellationToken cancellationToken)
+{
+    Response.Headers.Add("Content-Type", "text/event-stream");
+    Response.Headers.Add("Cache-Control", "no-cache");
+    Response.Headers.Add("Connection", "keep-alive");
+    
+    var userId = GetUserId();
+    var request = new ChatRequest
+    {
+        ChatId = chatId,
+        UserId = userId,
+        Message = message,
+        OperationId = Guid.NewGuid().ToString()
+    };
+    
+    if (_orleansService.IsAvailable())
+    {
+        try
+        {
+            // Route through Orleans grain
+            var grain = _grainFactory.GetGrain<IUserGrain>(userId);
+            var streamChunks = await grain.ProcessChatStreamAsync(request, cancellationToken);
+            
+            await foreach (var chunk in streamChunks.WithCancellation(cancellationToken))
+            {
+                var sseEvent = FormatSSEEvent(chunk);
+                await Response.WriteAsync(sseEvent, cancellationToken);
+                await Response.Body.FlushAsync(cancellationToken);
+            }
+        }
+        catch (OrleansException ex)
+        {
+            _logger.LogWarning(ex, "Orleans streaming failed, falling back to direct processing");
+            await StreamDirectSSE(request, cancellationToken);
+        }
+    }
+    else
+    {
+        // Fallback to direct streaming when Orleans unavailable
+        await StreamDirectSSE(request, cancellationToken);
+    }
+}
+```
+
+### Stream Lifecycle Management
+
+```csharp
+public class StreamContext
+{
+    public string StreamId { get; set; }
+    public DateTime StartTime { get; set; }
+    public ChatRequest Request { get; set; }
+    public CancellationTokenSource CancellationTokenSource { get; set; }
+    public StreamState State { get; set; }
+    public int ChunksProcessed { get; set; }
+    public DateTime? LastChunkTime { get; set; }
+}
+
+public enum StreamState
+{
+    Initializing,
+    Active,
+    Completing,
+    Completed,
+    Failed,
+    Cancelled
+}
+```
+
+### Buffering and Backpressure
+
+The streaming architecture implements buffering and backpressure handling to manage flow control:
+
+```csharp
+public class BufferedStreamProcessor
+{
+    private readonly int _maxBufferSize;
+    private readonly SemaphoreSlim _bufferSemaphore;
+    
+    public async IAsyncEnumerable<StreamChunk> ProcessWithBackpressure(
+        IAsyncEnumerable<StreamChunk> source,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var buffer = new Queue<StreamChunk>(_maxBufferSize);
+        
+        await foreach (var chunk in source.WithCancellation(cancellationToken))
+        {
+            // Apply backpressure when buffer is full
+            if (buffer.Count >= _maxBufferSize)
+            {
+                await _bufferSemaphore.WaitAsync(cancellationToken);
+            }
+            
+            buffer.Enqueue(chunk);
+            
+            if (buffer.TryDequeue(out var outputChunk))
+            {
+                _bufferSemaphore.Release();
+                yield return outputChunk;
+            }
+        }
+        
+        // Drain remaining buffer
+        while (buffer.TryDequeue(out var chunk))
+        {
+            yield return chunk;
+        }
+    }
+}
+```
+
+### Error Propagation Through Streams
+
+Errors are propagated through the streaming pipeline with proper context:
+
+```csharp
+public class StreamErrorHandler
+{
+    public async IAsyncEnumerable<StreamChunk> HandleStreamErrors(
+        IAsyncEnumerable<StreamChunk> source,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var retryCount = 0;
+        const int maxRetries = 3;
+        
+        await using var enumerator = source.GetAsyncEnumerator(cancellationToken);
+        
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                if (!await enumerator.MoveNextAsync())
+                    yield break;
+                    
+                yield return enumerator.Current;
+                retryCount = 0; // Reset on success
+            }
+            catch (TransientException ex) when (retryCount < maxRetries)
+            {
+                retryCount++;
+                _logger.LogWarning(ex, "Transient error in stream, retry {RetryCount}/{MaxRetries}", 
+                    retryCount, maxRetries);
+                    
+                // Send error notification chunk
+                yield return new StreamChunk
+                {
+                    Type = ChunkType.Error,
+                    Content = $"Temporary error, retrying... ({retryCount}/{maxRetries})",
+                    IsRecoverable = true
+                };
+                
+                await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, retryCount)), cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Fatal error in stream processing");
+                
+                // Send final error chunk
+                yield return new StreamChunk
+                {
+                    Type = ChunkType.Error,
+                    Content = "Stream processing failed",
+                    IsRecoverable = false
+                };
+                
+                yield break;
+            }
+        }
+    }
+}
+```
+
 ## Implementation Details
 
 ### Project Structure
@@ -2180,6 +2693,18 @@ server/
 ## Edge Cases and Failure Scenarios
 
 ### Edge Case Matrix
+
+### Streaming-Specific Failure Scenarios
+
+| Scenario | Impact | Detection | Mitigation | Recovery |
+|----------|--------|-----------|------------|----------|
+| SSE connection drop during streaming | Lost chunks | Client timeout | Buffer recent chunks | Client reconnects with last chunk ID |
+| Orleans grain failure mid-stream | Stream interruption | Grain health check | Stream state persistence | Resume from last checkpoint |
+| ChatService crash during processing | Incomplete response | Stream heartbeat timeout | Graceful stream termination | Retry with new grain activation |
+| Buffer overflow in streaming bridge | Backpressure issues | Buffer size monitoring | Dynamic buffer sizing | Apply flow control |
+| Cancellation token not propagated | Orphaned streams | Stream lifecycle tracking | Timeout-based cleanup | Force terminate after timeout |
+
+### General Failure Scenarios
 
 | Scenario | Impact | Detection | Mitigation | Recovery |
 |----------|--------|-----------|------------|----------|
@@ -2537,9 +3062,13 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
 
 ### Performance Metrics and Targets
 
-| Metric | Current (SSE) | Target (Orleans) | Measurement Method |
-|--------|---------------|------------------|-------------------|
-| Message latency (p50) | 150ms | 50ms | Application Insights |
+| Metric | Current (SSE Direct) | Target (Orleans-Routed SSE) | Target (SignalR+Orleans) | Measurement Method |
+|--------|---------------------|---------------------------|------------------------|-------------------|
+| Message latency (p50) | 150ms | 75ms | 50ms | Application Insights |
+| Stream initiation time | 200ms | 250ms | 100ms | Custom telemetry |
+| Chunk delivery latency | 10ms | 15ms | 8ms | Stream telemetry |
+| Connection recovery time | N/A | 500ms | 300ms | Client metrics |
+| Concurrent streams per user | 3 | 10 | 10 | Load testing |
 | Message latency (p99) | 500ms | 100ms | Application Insights |
 | Concurrent users | 5,000 | 10,000+ | Load testing |
 | Messages per second | 1,000 | 5,000 | Performance counters |
@@ -3102,17 +3631,346 @@ Use Azure Table Storage for grain state persistence.
 
 ---
 
+## Connection Recovery and Resilient Streaming
+
+### Stream Connection Loss and Recovery
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant SSE as SSE Endpoint
+    participant UG as UserGrain  
+    participant CS as ChatService
+    participant Buffer as Stream Buffer
+    
+    Note over Client,SSE: Active streaming session
+    Client->>SSE: Receiving chunks...
+    SSE->>UG: ProcessChatStreamAsync (active)
+    UG->>CS: Processing message
+    
+    Note over Client,SSE: Connection lost
+    Client--xSSE: Connection dropped
+    
+    Note over UG,CS: Orleans continues processing
+    CS->>Buffer: Store chunks
+    CS->>UG: Continue processing
+    UG->>Buffer: Buffer chunks
+    
+    Note over Client: Client reconnects
+    Client->>SSE: GET /api/chat/stream-sse?resume={lastChunkId}
+    SSE->>UG: ResumeStream(streamId, lastChunkId)
+    
+    Note over UG,Buffer: Replay buffered chunks
+    Buffer-->>UG: Retrieve buffered chunks
+    UG-->>SSE: Replay from lastChunkId
+    SSE-->>Client: data: {buffered chunks}
+    
+    Note over CS,UG: Continue live streaming
+    CS-->>UG: New chunks
+    UG-->>SSE: Live chunks
+    SSE-->>Client: data: {new chunks}
+```
+
+### Resilient Stream Management
+
+```csharp
+public class ResilientStreamManager : IResilientStreamManager
+{
+    private readonly IMemoryCache _streamCache;
+    private readonly ILogger<ResilientStreamManager> _logger;
+    private readonly TimeSpan _bufferRetention = TimeSpan.FromMinutes(5);
+    
+    public async Task<StreamResumeContext> PrepareResume(
+        string streamId, 
+        string lastChunkId, 
+        CancellationToken cancellationToken)
+    {
+        // Check if stream is still active or can be resumed
+        if (_streamCache.TryGetValue<StreamBuffer>(streamId, out var buffer))
+        {
+            var resumePoint = buffer.FindResumePoint(lastChunkId);
+            if (resumePoint != null)
+            {
+                return new StreamResumeContext
+                {
+                    CanResume = true,
+                    StreamId = streamId,
+                    BufferedChunks = buffer.GetChunksAfter(resumePoint),
+                    ResumeFrom = resumePoint.SequenceNumber + 1
+                };
+            }
+        }
+        
+        // Stream cannot be resumed, must restart
+        return new StreamResumeContext
+        {
+            CanResume = false,
+            StreamId = Guid.NewGuid().ToString(),
+            RequiresRestart = true
+        };
+    }
+    
+    public async Task BufferChunk(string streamId, StreamChunk chunk)
+    {
+        var buffer = _streamCache.GetOrCreate<StreamBuffer>(
+            streamId,
+            entry =>
+            {
+                entry.SlidingExpiration = _bufferRetention;
+                return new StreamBuffer(streamId, maxSize: 1000);
+            });
+        
+        buffer.AddChunk(chunk);
+        
+        // Persist critical chunks for recovery
+        if (chunk.Type == ChunkType.Checkpoint)
+        {
+            await PersistCheckpoint(streamId, chunk);
+        }
+    }
+}
+```
+
+### Partial Message Handling
+
+```csharp
+public class PartialMessageHandler
+{
+    public async IAsyncEnumerable<StreamChunk> HandlePartialMessages(
+        IAsyncEnumerable<StreamChunk> source,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var messageBuilder = new StringBuilder();
+        var currentMessageId = string.Empty;
+        
+        await foreach (var chunk in source.WithCancellation(cancellationToken))
+        {
+            if (chunk.Type == ChunkType.MessageStart)
+            {
+                // New message starting, flush any previous partial
+                if (messageBuilder.Length > 0)
+                {
+                    yield return new StreamChunk
+                    {
+                        Type = ChunkType.PartialMessage,
+                        Content = messageBuilder.ToString(),
+                        MessageId = currentMessageId,
+                        IsComplete = false
+                    };
+                }
+                
+                messageBuilder.Clear();
+                currentMessageId = chunk.MessageId;
+            }
+            
+            messageBuilder.Append(chunk.Content);
+            
+            if (chunk.Type == ChunkType.MessageEnd)
+            {
+                // Complete message
+                yield return new StreamChunk
+                {
+                    Type = ChunkType.CompleteMessage,
+                    Content = messageBuilder.ToString(),
+                    MessageId = currentMessageId,
+                    IsComplete = true
+                };
+                
+                messageBuilder.Clear();
+            }
+            else if (ShouldFlushPartial(messageBuilder.Length))
+            {
+                // Flush partial for long messages
+                yield return new StreamChunk
+                {
+                    Type = ChunkType.PartialMessage,
+                    Content = messageBuilder.ToString(),
+                    MessageId = currentMessageId,
+                    IsComplete = false
+                };
+                
+                messageBuilder.Clear();
+            }
+        }
+        
+        // Handle any remaining partial content
+        if (messageBuilder.Length > 0)
+        {
+            yield return new StreamChunk
+            {
+                Type = ChunkType.PartialMessage,
+                Content = messageBuilder.ToString(),
+                MessageId = currentMessageId,
+                IsComplete = false,
+                IsFinal = true
+            };
+        }
+    }
+    
+    private bool ShouldFlushPartial(int bufferLength)
+    {
+        // Flush partial messages when buffer exceeds threshold
+        return bufferLength > 4096;
+    }
+}
+```
+
+---
+
 ## Testing Strategy
 
 ### Test Coverage Matrix
 
-| Component | Unit Tests | Integration Tests | E2E Tests | Load Tests |
-|-----------|------------|-------------------|-----------|------------|
-| UserGrain | ✅ 95% | ✅ 80% | ✅ 70% | ✅ |
+| Component | Unit Tests | Integration Tests | E2E Tests | Load Tests | Stream Tests |
+|-----------|------------|-------------------|-----------|------------|-------------|
+| UserGrain | ✅ 95% | ✅ 80% | ✅ 70% | ✅ | ✅ 85% |
+| StreamingBridge | ✅ 90% | ✅ 85% | ✅ 75% | ✅ | ✅ 90% |
+| SSE with Orleans | ✅ 85% | ✅ 80% | ✅ 80% | ✅ | ✅ 95% |
 | SignalR Hub | ✅ 90% | ✅ 85% | ✅ 75% | ✅ |
 | Background Service | ✅ 85% | ✅ 75% | ✅ 60% | ✅ |
 | Migration Logic | ✅ 80% | ✅ 90% | ✅ 80% | ❌ |
 | Fallback Mechanisms | ✅ 90% | ✅ 95% | ✅ 85% | ✅ |
+
+### Streaming Test Scenarios
+
+#### SSE Through Orleans Tests
+
+```csharp
+[TestFixture]
+public class SSEOrleansIntegrationTests
+{
+    private TestCluster _cluster;
+    private HttpClient _httpClient;
+    
+    [Test]
+    public async Task SSE_Should_Route_Through_Orleans_When_Enabled()
+    {
+        // Arrange
+        var grain = _cluster.GrainFactory.GetGrain<IUserGrain>("test-user");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/chat/stream-sse?message=test");
+        
+        // Act
+        var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+        var stream = await response.Content.ReadAsStreamAsync();
+        
+        // Assert
+        Assert.That(response.Headers.Contains("X-Orleans-Routed"), Is.True);
+        Assert.That(response.ContentType, Is.EqualTo("text/event-stream"));
+        
+        // Verify grain was invoked
+        var state = await grain.GetState();
+        Assert.That(state.ActiveStreams.Count, Is.GreaterThan(0));
+    }
+    
+    [Test]
+    public async Task SSE_Should_Fallback_When_Orleans_Unavailable()
+    {
+        // Arrange - simulate Orleans unavailable
+        _cluster.StopAllSilos();
+        
+        // Act
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/chat/stream-sse?message=test");
+        var response = await _httpClient.SendAsync(request);
+        
+        // Assert - should still work via direct processing
+        Assert.That(response.IsSuccessStatusCode, Is.True);
+        Assert.That(response.Headers.Contains("X-Orleans-Routed"), Is.False);
+        Assert.That(response.Headers.Contains("X-Fallback-Mode"), Is.True);
+    }
+}
+```
+
+#### Stream Recovery Tests
+
+```csharp
+[Test]
+public async Task Stream_Should_Resume_After_Connection_Loss()
+{
+    // Arrange
+    var grain = _cluster.GrainFactory.GetGrain<IUserGrain>("test-user");
+    var initialChunks = new List<StreamChunk>();
+    
+    // Start streaming
+    var cts = new CancellationTokenSource();
+    var streamTask = Task.Run(async () =>
+    {
+        var chunks = await grain.ProcessChatStreamAsync(
+            new ChatRequest { Message = "Long message" }, 
+            cts.Token);
+        
+        await foreach (var chunk in chunks)
+        {
+            initialChunks.Add(chunk);
+            if (initialChunks.Count == 5)
+            {
+                // Simulate connection loss
+                cts.Cancel();
+                break;
+            }
+        }
+    });
+    
+    await streamTask;
+    
+    // Act - Resume streaming
+    var lastChunkId = initialChunks.Last().ChunkId;
+    var resumedChunks = await grain.ResumeStream("test-stream", lastChunkId);
+    
+    // Assert
+    Assert.That(resumedChunks, Is.Not.Null);
+    Assert.That(resumedChunks.First().ChunkId, Is.GreaterThan(lastChunkId));
+}
+```
+
+#### Concurrent Stream Tests
+
+```csharp
+[Test]
+public async Task UserGrain_Should_Handle_Multiple_Concurrent_Streams()
+{
+    // Arrange
+    var grain = _cluster.GrainFactory.GetGrain<IUserGrain>("test-user");
+    var streamTasks = new List<Task<List<StreamChunk>>>();
+    
+    // Act - Start multiple concurrent streams
+    for (int i = 0; i < 5; i++)
+    {
+        var request = new ChatRequest 
+        { 
+            ChatId = $"chat-{i}",
+            Message = $"Message {i}"
+        };
+        
+        streamTasks.Add(Task.Run(async () =>
+        {
+            var chunks = new List<StreamChunk>();
+            var stream = await grain.ProcessChatStreamAsync(request, CancellationToken.None);
+            
+            await foreach (var chunk in stream)
+            {
+                chunks.Add(chunk);
+                if (chunks.Count >= 10) break;
+            }
+            
+            return chunks;
+        }));
+    }
+    
+    var results = await Task.WhenAll(streamTasks);
+    
+    // Assert
+    Assert.That(results.Length, Is.EqualTo(5));
+    foreach (var chunks in results)
+    {
+        Assert.That(chunks, Is.Not.Empty);
+        Assert.That(chunks.All(c => c.StreamId != null), Is.True);
+    }
+    
+    // Verify grain handled all streams
+    var state = await grain.GetState();
+    Assert.That(state.TotalStreamsProcessed, Is.EqualTo(5));
+}
+```
 
 ### Test Implementation Examples
 
@@ -3663,7 +4521,7 @@ kill $ORLEANS_PID
 ```csharp
 // In test classes that need Orleans
 [Fact]
-public async Task Test_UserGrain_Functionality()
+public async Task Test_UserGrain_Streaming_Functionality()
 {
     var builder = new TestClusterBuilder();
     var cluster = builder.Build();
@@ -3672,7 +4530,26 @@ public async Task Test_UserGrain_Functionality()
     try 
     {
         var grain = cluster.GrainFactory.GetGrain<IUserGrain>("test-user");
-        // Test grain functionality
+        
+        // Test streaming functionality
+        var request = new ChatRequest 
+        { 
+            ChatId = "test-chat",
+            Message = "Test message",
+            UserId = "test-user"
+        };
+        
+        var streamChunks = await grain.ProcessChatStreamAsync(request, CancellationToken.None);
+        var chunks = new List<StreamChunk>();
+        
+        await foreach (var chunk in streamChunks)
+        {
+            chunks.Add(chunk);
+            if (chunks.Count > 10) break; // Limit for testing
+        }
+        
+        Assert.That(chunks, Is.Not.Empty);
+        Assert.That(chunks.Any(c => c.Type == ChunkType.MessageStart), Is.True);
     }
     finally
     {
@@ -4074,6 +4951,97 @@ dashboards:
 ```
 
 ---
+
+## FR-005 Implementation Summary: Orleans-First Message Processing
+
+### Architectural Impact
+
+The implementation of FR-005 fundamentally changes how message processing works when Orleans is enabled:
+
+#### Before FR-005
+- SSE endpoint (`/api/chat/stream-sse`) directly called `ChatService.StreamAssistantResponseAsync()`
+- Orleans was only used for the `/api/chat` endpoint
+- Two separate processing pipelines existed
+- Lost resilience benefits for SSE streaming
+
+#### After FR-005
+- ALL message processing routes through Orleans grains when enabled
+- Both SSE and SignalR endpoints delegate to `UserGrain.ProcessChatStreamAsync()`
+- Unified processing pipeline with consistent state management
+- Full resilience benefits for all communication patterns
+
+### Key Architectural Components
+
+#### 1. Streaming Bridge Pattern
+Converts between Orleans grain async enumerables and HTTP streaming responses:
+- Adapts grain streaming to SSE event format
+- Maintains compatibility with existing client code
+- Handles backpressure and buffering
+
+#### 2. Enhanced UserGrain Interface
+```csharp
+// Core streaming method for FR-005
+Task<IAsyncEnumerable<StreamChunk>> ProcessChatStreamAsync(
+    ChatRequest request, 
+    CancellationToken cancellationToken);
+```
+
+#### 3. Resilient Stream Management
+- Stream state persistence across grain activations
+- Connection recovery with chunk replay
+- Partial message handling
+- Graceful cancellation propagation
+
+### Implementation Phases
+
+| Phase | SSE Behavior | Orleans Integration | Fallback |
+|-------|-------------|-------------------|----------|
+| Phase 1 | Direct to ChatService | Shadow mode tracking | N/A |
+| Phase 2 | Routes through Orleans | Active processing | Direct ChatService |
+| Phase 3 | Full Orleans streaming | Background processing | Direct ChatService |
+
+### Critical Design Decisions
+
+1. **Async Enumerable Pattern**: Using `IAsyncEnumerable<StreamChunk>` provides natural streaming semantics while maintaining cancellation support.
+
+2. **Channel-Based Streaming**: Internal use of `System.Threading.Channels` for efficient producer-consumer streaming between ChatService and grain.
+
+3. **Fallback Strategy**: Automatic fallback to direct ChatService processing when Orleans is unavailable ensures zero downtime.
+
+4. **Stream Buffering**: 5-minute buffer retention allows connection recovery without message loss.
+
+5. **Protocol Agnostic**: Same grain method handles both SSE and SignalR streaming, ensuring consistent behavior.
+
+### Monitoring Points
+
+- **Stream Initiation**: Track time from request to first chunk
+- **Chunk Latency**: Measure individual chunk delivery times
+- **Recovery Success**: Monitor connection recovery rates
+- **Fallback Frequency**: Track how often fallback mode is triggered
+- **Concurrent Streams**: Monitor active streams per grain
+
+### Testing Coverage
+
+- Unit tests for streaming bridge components
+- Integration tests for SSE-to-Orleans flow
+- E2E tests for connection recovery scenarios
+- Load tests for concurrent stream handling
+- Chaos tests for grain failure during streaming
+
+### Rollout Strategy
+
+1. **Feature Flag Control**: `OrleansIntegration` flag controls routing
+2. **Gradual Rollout**: Start with internal users, expand gradually
+3. **Monitoring**: Watch for increased latency or fallback rates
+4. **Rollback Plan**: Disable feature flag to revert to direct processing
+
+### Success Metrics
+
+- SSE streams successfully routed through Orleans: >95%
+- Stream recovery success rate: >90%
+- Fallback activation rate: <5%
+- No increase in p95 latency vs direct processing
+- Zero message loss during normal operations
 
 ## Appendices
 

@@ -124,12 +124,44 @@ See [development-workflow.md](.repo-instructions/development-workflow.md#develop
 The following scripts will redirect build logs to respective locations for checking offline
 Application logs are also redirected to respective locations to be queried later.
 
-Powershell:
-  MUST use `pwsh build-and-start-server.ps1` for starting / restarting server
-  MUST use `pwsh build-and-start-client.ps1` for starting / restarting client
-Bash:
-  MUST use `bash build-and-start-server.sh` for starting / restarting server
-  MUST use `bash build-and-start-client.sh` for starting / restarting client
+### PowerShell:
+```powershell
+# Standard server start (Test environment, Orleans disabled)
+pwsh build-and-start-server.ps1
+
+# Start with Orleans enabled (auto-switches to Development)
+pwsh build-and-start-server.ps1 -UseOrleans
+
+# Custom port and environment
+pwsh build-and-start-server.ps1 -Port 5130 -Environment Production
+
+# Client start
+pwsh build-and-start-client.ps1
+```
+
+### Bash/Linux/Mac:
+```bash
+# Standard server start
+bash build-and-start-server.sh
+
+# Start with Orleans enabled (auto-switches to Development)
+bash build-and-start-server.sh --orleans
+
+# Custom configuration
+bash build-and-start-server.sh --port 5130 --environment Production
+
+# Client start
+bash build-and-start-client.sh
+```
+
+**Orleans Notes:**
+- `-UseOrleans` / `--orleans` flag enables full Orleans integration:
+  - Automatically builds and starts Orleans Host (silo) in background
+  - Switches from Test to Development environment
+  - Cleans up Orleans ports (30000, 11111, 8081) on startup
+  - Stops both Orleans Host and Server on Ctrl+C
+- Orleans dashboard available at http://localhost:8081 when enabled
+- Logs: `logs/server/orleans-output.log` and `orleans-error.log`
 
 ## 🚨 Continuous Validation Commands
 
