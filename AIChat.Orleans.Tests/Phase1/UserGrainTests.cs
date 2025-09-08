@@ -38,7 +38,7 @@ public class UserGrainTests
     }
 
     [Test]
-    public async Task UserGrain_ShouldActivate_InTestCluster()
+    public async Task UserGrainShouldActivateInTestCluster()
     {
         // Arrange
         Assert.That(_cluster, Is.Not.Null);
@@ -49,14 +49,17 @@ public class UserGrainTests
 
         // Assert
         Assert.That(state, Is.Not.Null);
-        Assert.That(state.UserId, Is.EqualTo("test-user-1"));
-        Assert.That(state.Connections, Is.Not.Null);
-        Assert.That(state.ActiveChats, Is.Not.Null);
-        Assert.That(state.RecentActivity, Is.Not.Null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(state.UserId, Is.EqualTo("test-user-1"));
+            Assert.That(state.Connections, Is.Not.Null);
+            Assert.That(state.ActiveChats, Is.Not.Null);
+            Assert.That(state.RecentActivity, Is.Not.Null);
+        });
     }
 
     [Test]
-    public async Task UserGrain_ShouldRecordActivity_InShadowMode()
+    public async Task UserGrainShouldRecordActivityInShadowMode()
     {
         // Arrange
         Assert.That(_cluster, Is.Not.Null);
@@ -68,38 +71,47 @@ public class UserGrainTests
 
         // Assert
         Assert.That(state.RecentActivity.Count, Is.EqualTo(1));
-        Assert.That(state.RecentActivity.First().Type, Is.EqualTo(ActivityType.MessageSent));
-        Assert.That(state.RecentActivity.First().Metadata, Is.EqualTo("test metadata"));
-        Assert.That(state.Metrics.TotalActivities, Is.EqualTo(1));
-        Assert.That(state.LastActivity, Is.GreaterThan(DateTime.UtcNow.AddMinutes(-1)));
+        Assert.Multiple(() =>
+        {
+            Assert.That(state.RecentActivity.First().Type, Is.EqualTo(ActivityType.MessageSent));
+            Assert.That(state.RecentActivity.First().Metadata, Is.EqualTo("test metadata"));
+            Assert.That(state.Metrics.TotalActivities, Is.EqualTo(1));
+            Assert.That(state.LastActivity, Is.GreaterThan(DateTime.UtcNow.AddMinutes(-1)));
+        });
     }
 
     [Test]
-    public async Task UserGrain_ShouldMaintainCircularActivityBuffer()
+    public async Task UserGrainShouldMaintainCircularActivityBuffer()
     {
         // Arrange
         Assert.That(_cluster, Is.Not.Null);
         var grain = _cluster.GrainFactory.GetGrain<IUserGrain>("test-user-3");
 
         // Act - Record 52 activities to test circular buffer (max 50 in test config)
-        for (int i = 0; i < 52; i++)
+        for (var i = 0; i < 52; i++)
         {
             await grain.RecordActivity(ActivityType.MessageSent, $"activity-{i}");
         }
         var state = await grain.GetState();
 
-        // Assert
-        Assert.That(state.RecentActivity.Count, Is.EqualTo(50)); // Should cap at 50 (test config)
-        Assert.That(state.Metrics.TotalActivities, Is.EqualTo(52)); // Total should be accurate
+        Assert.Multiple(() =>
+        {
+            // Assert
+            Assert.That(state.RecentActivity.Count, Is.EqualTo(50)); // Should cap at 50 (test config)
+            Assert.That(state.Metrics.TotalActivities, Is.EqualTo(52)); // Total should be accurate
+        });
 
         // Should contain the last 50 activities
         var activities = state.RecentActivity.ToList();
-        Assert.That(activities[0].Metadata, Is.EqualTo("activity-2")); // First two were removed
-        Assert.That(activities[49].Metadata, Is.EqualTo("activity-51")); // Last activity
+        Assert.Multiple(() =>
+        {
+            Assert.That(activities[0].Metadata, Is.EqualTo("activity-2")); // First two were removed
+            Assert.That(activities[49].Metadata, Is.EqualTo("activity-51")); // Last activity
+        });
     }
 
     [Test]
-    public async Task UserGrain_HealthCheck_ShouldReturnHealthyForActiveGrain()
+    public async Task UserGrainHealthCheckShouldReturnHealthyForActiveGrain()
     {
         // Arrange
         Assert.That(_cluster, Is.Not.Null);
@@ -111,16 +123,22 @@ public class UserGrainTests
 
         // Assert
         Assert.That(healthResult, Is.Not.Null);
-        Assert.That(healthResult.IsHealthy, Is.True);
-        Assert.That(healthResult.GrainId, Is.EqualTo("test-user-4"));
-        Assert.That(healthResult.LastActivity, Is.GreaterThan(DateTime.UtcNow.AddMinutes(-1)));
-        Assert.That(healthResult.Metrics, Is.Not.Null);
-        Assert.That(healthResult.Metrics.TotalActivities, Is.EqualTo(1));
-        Assert.That(healthResult.Warnings, Is.Empty);
+        Assert.Multiple(() =>
+        {
+            Assert.That(healthResult.IsHealthy, Is.True);
+            Assert.That(healthResult.GrainId, Is.EqualTo("test-user-4"));
+            Assert.That(healthResult.LastActivity, Is.GreaterThan(DateTime.UtcNow.AddMinutes(-1)));
+            Assert.That(healthResult.Metrics, Is.Not.Null);
+        });
+        Assert.Multiple(() =>
+        {
+            Assert.That(healthResult.Metrics.TotalActivities, Is.EqualTo(1));
+            Assert.That(healthResult.Warnings, Is.Empty);
+        });
     }
 
     [Test]
-    public async Task UserGrain_Phase2Methods_ShouldWork()
+    public async Task UserGrainPhase2MethodsShouldWork()
     {
         // Arrange
         Assert.That(_cluster, Is.Not.Null);
@@ -157,14 +175,17 @@ public class UserGrainTests
 
         // Verify grain state has expected activity
         var state = await grain.GetState();
-        Assert.That(state.Connections, Is.Empty);
-        Assert.That(state.ActiveChats, Is.Empty);
-        // Operations may still be cleaning up, so we don't check ActiveOperations
-        Assert.That(state.Metrics.TotalActivities, Is.GreaterThan(0));
+        Assert.Multiple(() =>
+        {
+            Assert.That(state.Connections, Is.Empty);
+            Assert.That(state.ActiveChats, Is.Empty);
+            // Operations may still be cleaning up, so we don't check ActiveOperations
+            Assert.That(state.Metrics.TotalActivities, Is.GreaterThan(0));
+        });
     }
 
     [Test]
-    public async Task MultipleGrains_ShouldWorkConcurrently()
+    public async Task MultipleGrainsShouldWorkConcurrently()
     {
         // Arrange
         Assert.That(_cluster, Is.Not.Null);
@@ -174,7 +195,7 @@ public class UserGrainTests
         // Act - Record activities concurrently
         var tasks = grains.Select(async (grain, index) =>
         {
-            for (int i = 0; i < 10; i++)
+            for (var i = 0; i < 10; i++)
             {
                 await grain.RecordActivity(ActivityType.MessageSent, $"user-{index}-activity-{i}");
             }
@@ -182,17 +203,20 @@ public class UserGrainTests
         await Task.WhenAll(tasks);
 
         // Assert - Check each grain has correct state
-        for (int i = 0; i < grains.Count; i++)
+        for (var i = 0; i < grains.Count; i++)
         {
             var state = await grains[i].GetState();
-            Assert.That(state.UserId, Is.EqualTo(userIds[i]));
-            Assert.That(state.Metrics.TotalActivities, Is.EqualTo(10));
-            Assert.That(state.RecentActivity.Count, Is.EqualTo(10));
+            Assert.Multiple(() =>
+            {
+                Assert.That(state.UserId, Is.EqualTo(userIds[i]));
+                Assert.That(state.Metrics.TotalActivities, Is.EqualTo(10));
+                Assert.That(state.RecentActivity.Count, Is.EqualTo(10));
+            });
         }
     }
 
     [Test]
-    public async Task UserGrain_ShouldPersistStateAcrossReactivation()
+    public async Task UserGrainShouldPersistStateAcrossReactivation()
     {
         // Arrange
         Assert.That(_cluster, Is.Not.Null);
@@ -207,14 +231,20 @@ public class UserGrainTests
         var grain2 = _cluster.GrainFactory.GetGrain<IUserGrain>(userId);
         var state = await grain2.GetState();
 
-        // Assert - State should persist
-        Assert.That(state.UserId, Is.EqualTo(userId));
-        Assert.That(state.Metrics.TotalActivities, Is.EqualTo(2));
-        Assert.That(state.RecentActivity.Count, Is.EqualTo(2));
+        Assert.Multiple(() =>
+        {
+            // Assert - State should persist
+            Assert.That(state.UserId, Is.EqualTo(userId));
+            Assert.That(state.Metrics.TotalActivities, Is.EqualTo(2));
+            Assert.That(state.RecentActivity.Count, Is.EqualTo(2));
+        });
 
         var activities = state.RecentActivity.ToList();
-        Assert.That(activities[0].Type, Is.EqualTo(ActivityType.Connected));
-        Assert.That(activities[1].Type, Is.EqualTo(ActivityType.MessageSent));
+        Assert.Multiple(() =>
+        {
+            Assert.That(activities[0].Type, Is.EqualTo(ActivityType.Connected));
+            Assert.That(activities[1].Type, Is.EqualTo(ActivityType.MessageSent));
+        });
     }
 }
 

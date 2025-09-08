@@ -48,7 +48,7 @@ public class OrleansIntegrationServiceTests
     }
 
     [Test]
-    public async Task RecordUserActivityAsync_WithFeatureFlagEnabled_ShouldCallGrain()
+    public async Task RecordUserActivityAsyncWithFeatureFlagEnabledShouldCallGrain()
     {
         // Arrange
         _ = _mockFeatureManager!
@@ -69,7 +69,7 @@ public class OrleansIntegrationServiceTests
     }
 
     [Test]
-    public async Task RecordUserActivityAsync_WithFeatureFlagDisabled_ShouldNotCallGrain()
+    public async Task RecordUserActivityAsyncWithFeatureFlagDisabledShouldNotCallGrain()
     {
         // Arrange
         _ = _mockFeatureManager!
@@ -86,7 +86,7 @@ public class OrleansIntegrationServiceTests
     }
 
     [Test]
-    public async Task RecordUserActivityAsync_WithEmptyUserId_ShouldNotCallGrain()
+    public async Task RecordUserActivityAsyncWithEmptyUserIdShouldNotCallGrain()
     {
         // Arrange
         _ = _mockFeatureManager!
@@ -103,7 +103,7 @@ public class OrleansIntegrationServiceTests
     }
 
     [Test]
-    public async Task RecordUserActivityAsync_WithGrainException_ShouldNotThrow()
+    public Task RecordUserActivityAsyncWithGrainExceptionShouldNotThrow()
     {
         // Arrange
         _ = _mockFeatureManager!
@@ -115,10 +115,7 @@ public class OrleansIntegrationServiceTests
             .ThrowsAsync(new Exception("Grain failure"));
 
         // Act & Assert - Should not throw in shadow mode
-        Assert.DoesNotThrowAsync(async () =>
-        {
-            await _service!.RecordUserActivityAsync("test-user", ActivityType.MessageSent, new { test = "data" });
-        });
+        Assert.DoesNotThrowAsync(async () => await _service!.RecordUserActivityAsync("test-user", ActivityType.MessageSent, new { test = "data" }));
 
         // Verify warning was logged
         _mockLogger!.Verify(
@@ -129,10 +126,11 @@ public class OrleansIntegrationServiceTests
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
+        return Task.CompletedTask;
     }
 
     [Test]
-    public async Task GetUserStateAsync_WithValidUser_ShouldReturnState()
+    public async Task GetUserStateAsyncWithValidUserShouldReturnState()
     {
         // Arrange
         _ = _mockFeatureManager!
@@ -154,12 +152,15 @@ public class OrleansIntegrationServiceTests
 
         // Assert
         Assert.That(result, Is.Not.Null);
-        Assert.That(result.UserId, Is.EqualTo("test-user"));
-        Assert.That(result.LastActivity, Is.EqualTo(expectedState.LastActivity));
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.UserId, Is.EqualTo("test-user"));
+            Assert.That(result.LastActivity, Is.EqualTo(expectedState.LastActivity));
+        });
     }
 
     [Test]
-    public async Task IsOrleansHealthyAsync_WithHealthyGrain_ShouldReturnTrue()
+    public async Task IsOrleansHealthyAsyncWithHealthyGrainShouldReturnTrue()
     {
         // Arrange
         _ = _mockFeatureManager!
@@ -178,7 +179,7 @@ public class OrleansIntegrationServiceTests
     }
 
     [Test]
-    public async Task IsOrleansHealthyAsync_WithFeatureFlagDisabled_ShouldReturnFalse()
+    public async Task IsOrleansHealthyAsyncWithFeatureFlagDisabledShouldReturnFalse()
     {
         // Arrange
         _ = _mockFeatureManager!
@@ -194,7 +195,7 @@ public class OrleansIntegrationServiceTests
     }
 
     [Test]
-    public async Task CheckUserHealthAsync_WithValidUser_ShouldReturnHealthResult()
+    public async Task CheckUserHealthAsyncWithValidUserShouldReturnHealthResult()
     {
         // Arrange
         _ = _mockFeatureManager!
@@ -218,13 +219,16 @@ public class OrleansIntegrationServiceTests
 
         // Assert
         Assert.That(result, Is.Not.Null);
-        Assert.That(result.IsHealthy, Is.True);
-        Assert.That(result.GrainId, Is.EqualTo("test-user"));
-        Assert.That(result.Warnings, Is.Empty);
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.IsHealthy, Is.True);
+            Assert.That(result.GrainId, Is.EqualTo("test-user"));
+            Assert.That(result.Warnings, Is.Empty);
+        });
     }
 
     [Test]
-    public async Task GetConnectionStatusAsync_ShouldReturnStatusInfo()
+    public async Task GetConnectionStatusAsyncShouldReturnStatusInfo()
     {
         // Arrange
         _ = _mockFeatureManager!
@@ -236,12 +240,15 @@ public class OrleansIntegrationServiceTests
 
         // Assert
         Assert.That(result, Is.Not.Null);
-        Assert.That(result.ConnectionState, Is.Not.Null);
-        Assert.That(result.Warnings, Is.Not.Null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.ConnectionState, Is.Not.Null);
+            Assert.That(result.Warnings, Is.Not.Null);
+        });
     }
 
     [Test]
-    public async Task Phase2Methods_ShouldBeStubbed()
+    public Task Phase2MethodsShouldBeStubbed()
     {
         // Act & Assert - These should not throw but also not do anything in Phase 1
         Assert.DoesNotThrowAsync(async () =>
@@ -250,10 +257,11 @@ public class OrleansIntegrationServiceTests
             await _service.UnregisterConnectionAsync("user", "conn-1");
             await _service.SubscribeToChatAsync("user", "conn-1", "chat-1");
         });
+        return Task.CompletedTask;
     }
 
     [Test]
-    public async Task Phase3Methods_ShouldReturnDummyValues()
+    public async Task Phase3MethodsShouldReturnDummyValues()
     {
         // Arrange
         var message = new ChatMessage { Id = "msg-1", ChatId = "chat-1", UserId = "user", Content = "test" };
@@ -261,10 +269,7 @@ public class OrleansIntegrationServiceTests
         // Act
         var operationId = await _service!.ProcessMessageAsync("user", message);
 
-        Assert.DoesNotThrowAsync(async () =>
-        {
-            await _service.CancelOperationAsync("user", operationId);
-        });
+        Assert.DoesNotThrowAsync(async () => await _service.CancelOperationAsync("user", operationId));
 
         // Assert
         Assert.That(operationId, Is.Not.Null);
@@ -272,7 +277,7 @@ public class OrleansIntegrationServiceTests
     }
 
     [Test]
-    public async Task ShadowMode_ShouldNeverThrowExceptions()
+    public Task ShadowModeShouldNeverThrowExceptions()
     {
         // Arrange - Setup various failure scenarios
         _ = _mockFeatureManager!
@@ -289,5 +294,6 @@ public class OrleansIntegrationServiceTests
             var status = await _service.GetConnectionStatusAsync();
             Assert.That(status, Is.Not.Null);
         });
+        return Task.CompletedTask;
     }
 }

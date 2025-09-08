@@ -15,7 +15,7 @@ public class SchemaHelperTests
     private static readonly string[] expected = ["chats", "messages"];
 
     [Fact]
-    public async Task Schema_Creation_Is_Idempotent()
+    public async Task SchemaCreationIsIdempotent()
     {
         await using var conn = CreateInMemoryShared();
         await conn.OpenAsync();
@@ -38,7 +38,7 @@ public class SchemaHelperTests
     }
 
     [Fact]
-    public async Task Users_Seeded_Once()
+    public async Task UsersSeededOnce()
     {
         await using var conn = CreateInMemoryShared();
         await conn.OpenAsync();
@@ -55,7 +55,7 @@ public class SchemaHelperTests
     }
 
     [Fact]
-    public async Task InMemory_Shared_Persists_While_Root_Open()
+    public async Task InMemorySharedPersistsWhileRootOpen()
     {
         var factory = new SqliteConnectionFactory(
             "Data Source=File:schematest2?mode=memory&cache=shared",

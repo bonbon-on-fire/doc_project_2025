@@ -18,7 +18,7 @@ public class InstructionChainParserTests
     }
 
     [Fact]
-    public void ExtractInstructionChain_WithToolCall_ParsesSuccessfully()
+    public void ExtractInstructionChainWithToolCallParsesSuccessfully()
     {
         // Arrange
         var input = """
@@ -65,7 +65,7 @@ public class InstructionChainParserTests
     }
 
     [Fact]
-    public void ExtractInstructionChain_WithMultipleToolCalls_ParsesAllCalls()
+    public void ExtractInstructionChainWithMultipleToolCallsParsesAllCalls()
     {
         // Arrange
         var input = """
@@ -113,7 +113,7 @@ public class InstructionChainParserTests
     }
 
     [Fact]
-    public void ExtractInstructionChain_WithTextAndToolMessages_ParsesBoth()
+    public void ExtractInstructionChainWithTextAndToolMessagesParsesBoth()
     {
         // Arrange
         var input = """
@@ -163,7 +163,7 @@ public class InstructionChainParserTests
     }
 
     [Fact]
-    public void ExtractInstructionChain_WithInstructionChainArray_ParsesMultipleInstructions()
+    public void ExtractInstructionChainWithInstructionChainArrayParsesMultipleInstructions()
     {
         // Arrange
         var input = """
@@ -215,7 +215,7 @@ public class InstructionChainParserTests
     }
 
     [Fact]
-    public void ExtractInstructionChain_WithReasoningField_ParsesReasoningLength()
+    public void ExtractInstructionChainWithReasoningFieldParsesReasoningLength()
     {
         // Arrange
         var input = """
@@ -246,7 +246,7 @@ public class InstructionChainParserTests
     }
 
     [Fact]
-    public void ExtractInstructionChain_WithNullInput_ReturnsNull()
+    public void ExtractInstructionChainWithNullInputReturnsNull()
     {
         // Act
         var result = _parser.ExtractInstructionChain(null!);
@@ -256,7 +256,7 @@ public class InstructionChainParserTests
     }
 
     [Fact]
-    public void ExtractInstructionChain_WithEmptyString_ReturnsNull()
+    public void ExtractInstructionChainWithEmptyStringReturnsNull()
     {
         // Act
         var result = _parser.ExtractInstructionChain(string.Empty);
@@ -266,7 +266,7 @@ public class InstructionChainParserTests
     }
 
     [Fact]
-    public void ExtractInstructionChain_WithMissingTags_ReturnsNull()
+    public void ExtractInstructionChainWithMissingTagsReturnsNull()
     {
         // Arrange
         var input = /*lang=json,strict*/ """
@@ -284,7 +284,7 @@ public class InstructionChainParserTests
     }
 
     [Fact]
-    public void ExtractInstructionChain_WithInvalidJson_ReturnsNull()
+    public void ExtractInstructionChainWithInvalidJsonReturnsNull()
     {
         // Arrange
         var input = """
@@ -301,7 +301,7 @@ public class InstructionChainParserTests
     }
 
     [Fact]
-    public void ExtractInstructionChain_WithEmptyMessagesArray_ReturnsNull()
+    public void ExtractInstructionChainWithEmptyMessagesArrayReturnsNull()
     {
         // Arrange
         var input = """
@@ -321,7 +321,7 @@ public class InstructionChainParserTests
     }
 
     [Fact]
-    public void ParseSingleInstruction_WithValidJsonElement_ReturnsInstructionPlan()
+    public void ParseSingleInstructionWithValidJsonElementReturnsInstructionPlan()
     {
         // Arrange
         var json = """
@@ -352,7 +352,7 @@ public class InstructionChainParserTests
     }
 
     [Fact]
-    public void ExtractInstructionChain_WithComplexNestedArgs_PreservesJsonStructure()
+    public void ExtractInstructionChainWithComplexNestedArgsPreservesJsonStructure()
     {
         // Arrange
         var input = """
@@ -408,7 +408,7 @@ public class InstructionChainParserTests
     [Theory]
     [InlineData("tool_result")]
     [InlineData("unknown_message_type")]
-    public void ExtractInstructionChain_WithUnsupportedMessageTypes_SkipsThoseMessages(
+    public void ExtractInstructionChainWithUnsupportedMessageTypesSkipsThoseMessages(
         string messageType
     )
     {

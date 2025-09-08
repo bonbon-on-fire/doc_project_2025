@@ -44,13 +44,19 @@ public abstract class OperationCommandBase : IOperationCommand
         var errors = new List<string>();
 
         if (string.IsNullOrWhiteSpace(OperationId))
+        {
             errors.Add("OperationId is required");
+        }
 
         if (string.IsNullOrWhiteSpace(ChatId))
+        {
             errors.Add("ChatId is required");
+        }
 
         if (string.IsNullOrWhiteSpace(UserId))
+        {
             errors.Add("UserId is required");
+        }
 
         // Allow derived classes to add their own validation
         var customValidation = ValidateCustom();
@@ -222,8 +228,7 @@ public abstract class OperationCommandBase<TRequest, TResponse> : OperationComma
         }
 
         // For typed commands, the ExecuteInternalAsync should populate the result data
-        var typedResult = baseResult as CommandExecutionResult<TResponse>;
-        if (typedResult != null)
+        if (baseResult is CommandExecutionResult<TResponse> typedResult)
         {
             return typedResult;
         }

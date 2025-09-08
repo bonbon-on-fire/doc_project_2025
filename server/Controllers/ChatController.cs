@@ -82,7 +82,7 @@ public class ChatController(
             // Try a simple grain call to check if Orleans is working
             var healthGrain = _clusterClient.GetGrain<IUserGrain>("health-check-user");
             // This will throw if Orleans is not available
-            _ = Task.Run(async () => await healthGrain.GetState(), CancellationToken.None);
+            _ = Task.Run(healthGrain.GetState, CancellationToken.None);
         }
         catch (Exception ex)
         {
@@ -203,7 +203,7 @@ public class ChatController(
             : null;
 
         // Create the chat message for background processing
-        var chatMessage = new AIChat.Orleans.Contracts.ChatMessage
+        var chatMessage = new ChatMessage
         {
             Id = Guid.NewGuid().ToString(),
             ChatId = request.ChatId,
@@ -688,7 +688,7 @@ public class ChatController(
             var userGrain = _clusterClient.GetGrain<IUserGrain>(request.UserId);
 
             // Create Orleans ChatRequest from server request
-            var orleansRequest = new AIChat.Orleans.Contracts.ChatRequest
+            var orleansRequest = new ChatRequest
             {
                 ChatId = initResult.ChatId,
                 Message = request.Message,
@@ -714,7 +714,7 @@ public class ChatController(
             var grainStream = userGrain.ProcessChatStreamAsync(orleansRequest, cancellationToken);
 
             // Convert Orleans stream chunks to SSE format
-            var formatter = new Func<AIChat.Orleans.Contracts.StreamChunk, string>(chunk =>
+            var formatter = new Func<StreamChunk, string>(chunk =>
             {
                 // Convert Orleans StreamChunk to SSE envelope format
                 var envelope = new

@@ -119,7 +119,7 @@ public class StreamMetadata
     /// <summary>
     /// Gets or sets custom tags.
     /// </summary>
-    public Dictionary<string, string> Tags { get; init; } = new();
+    public Dictionary<string, string> Tags { get; init; } = [];
 }
 
 /// <summary>

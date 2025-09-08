@@ -35,7 +35,9 @@ public class TestClusterManager : IAsyncDisposable
     public async Task InitializeAsync()
     {
         if (_isInitialized)
+        {
             return;
+        }
 
         var builder = new TestClusterBuilder();
         _ = builder.AddSiloBuilderConfigurator<TestSiloConfigurator>();
@@ -82,22 +84,16 @@ public class TestClusterManager : IAsyncDisposable
     /// <summary>
     /// Test silo configurator for Orleans.
     /// </summary>
-    private class TestSiloConfigurator : ISiloConfigurator
+    private sealed class TestSiloConfigurator : ISiloConfigurator
     {
         public void Configure(ISiloBuilder siloBuilder)
         {
             _ = siloBuilder
                 // Let TestClusterBuilder handle the ClusterId to avoid conflicts
-                .Configure<EndpointOptions>(options =>
-                {
-                    options.AdvertisedIPAddress = System.Net.IPAddress.Loopback;
-                })
+                .Configure<EndpointOptions>(options => options.AdvertisedIPAddress = System.Net.IPAddress.Loopback)
                 .ConfigureServices(services =>
-                {
                     // Register grain assemblies
-                    _ = services.AddSingleton(typeof(UserGrain).Assembly);
-                    // Dashboard is not needed for tests
-                });
+                    _ = services.AddSingleton(typeof(UserGrain).Assembly));
         }
     }
 }

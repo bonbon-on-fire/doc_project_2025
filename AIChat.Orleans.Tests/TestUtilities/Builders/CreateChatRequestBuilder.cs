@@ -125,5 +125,7 @@ public class CreateChatRequestBuilder
     /// Implicit conversion to CreateChatRequest for convenience.
     /// </summary>
     public static implicit operator CreateChatRequest(CreateChatRequestBuilder builder)
-        => builder.Build();
+    {
+        return builder.Build();
+    }
 }

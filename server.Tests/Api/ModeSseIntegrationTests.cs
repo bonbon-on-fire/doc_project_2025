@@ -35,7 +35,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     }
 
     [Fact]
-    public async Task StreamSSE_WithMode_IncludesModeInInitEvent()
+    public async Task StreamSSEWithModeIncludesModeInInitEvent()
     {
         // Arrange
         var client = _factory.CreateClient();
@@ -93,7 +93,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     }
 
     [Fact]
-    public async Task StreamSSE_WithCustomMode_AppliesToolFiltering()
+    public async Task StreamSSEWithCustomModeAppliesToolFiltering()
     {
         // Arrange
         var client = _factory.CreateClient();
@@ -204,7 +204,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     }
 
     [Fact]
-    public async Task StreamSSE_ModeSwitching_HandlesCorrectly()
+    public async Task StreamSSEModeSwitchingHandlesCorrectly()
     {
         // Arrange
         var client = _factory.CreateClient();
@@ -298,7 +298,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     }
 
     [Fact]
-    public async Task StreamSSE_WithInvalidMode_FallsBackGracefully()
+    public async Task StreamSSEWithInvalidModeFallsBackGracefully()
     {
         // Arrange
         var client = _factory.CreateClient();
@@ -333,7 +333,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     }
 
     [Fact]
-    public async Task StreamSSE_Performance_WithMode()
+    public async Task StreamSSEPerformanceWithMode()
     {
         // Arrange
         var client = _factory.CreateClient();
@@ -381,7 +381,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     }
 
     [Fact]
-    public async Task StreamSSE_ConcurrentModeRequests()
+    public async Task StreamSSEConcurrentModeRequests()
     {
         // Arrange
         var client = _factory.CreateClient();
@@ -479,7 +479,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         return events;
     }
 
-    private class SseEvent
+    private sealed class SseEvent
     {
         public string EventType { get; set; } = "";
         public string Data { get; set; } = "";

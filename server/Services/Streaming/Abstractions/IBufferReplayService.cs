@@ -153,7 +153,7 @@ public record ReplayResult
     /// <summary>
     /// Gets the sequence numbers of successfully replayed messages.
     /// </summary>
-    public IReadOnlyList<long> ReplayedSequenceNumbers { get; init; } = Array.Empty<long>();
+    public IReadOnlyList<long> ReplayedSequenceNumbers { get; init; } = [];
 
     /// <summary>
     /// Gets the throughput in messages per second.

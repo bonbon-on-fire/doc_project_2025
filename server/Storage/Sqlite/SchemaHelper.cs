@@ -27,11 +27,10 @@ public static class SchemaHelper
         {
             if (needsReset)
             {
-                using (var drop = connection.CreateCommand())
-                {
-                    drop.Transaction = (SqliteTransaction)tx;
-                    drop.CommandText =
-                        @"
+                using var drop = connection.CreateCommand();
+                drop.Transaction = (SqliteTransaction)tx;
+                drop.CommandText =
+                    @"
 DROP INDEX IF EXISTS idx_user_modes_user;
 DROP INDEX IF EXISTS idx_chat_tasks_chat_id;
 DROP INDEX IF EXISTS idx_chats_user_updated;
@@ -41,8 +40,7 @@ DROP TABLE IF EXISTS user_modes;
 DROP TABLE IF EXISTS chat_tasks;
 DROP TABLE IF EXISTS messages;
 DROP TABLE IF EXISTS chats;";
-                    _ = await drop.ExecuteNonQueryAsync(ct);
-                }
+                _ = await drop.ExecuteNonQueryAsync(ct);
             }
 
             const string ddl =

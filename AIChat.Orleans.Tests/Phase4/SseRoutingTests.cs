@@ -23,7 +23,7 @@ public class SseRoutingTests : OrleansTestBase
     }
 
     [Fact]
-    public async Task StreamChatCompletionSse_WithOrleansEnabled_ShouldRouteToOrleans()
+    public async Task StreamChatCompletionSseWithOrleansEnabledShouldRouteToOrleans()
     {
         // Arrange
         Fixture.OrleansEnabled = true;
@@ -42,7 +42,7 @@ public class SseRoutingTests : OrleansTestBase
     }
 
     [Fact]
-    public async Task StreamChatCompletionSse_WithOrleansDisabled_ShouldUseDirect()
+    public async Task StreamChatCompletionSseWithOrleansDisabledShouldUseDirect()
     {
         // Arrange
         Fixture.OrleansEnabled = false;
@@ -61,7 +61,7 @@ public class SseRoutingTests : OrleansTestBase
     }
 
     [Fact]
-    public async Task StreamChatCompletionSse_WithoutSseHeaders_ShouldReturn400()
+    public async Task StreamChatCompletionSseWithoutSseHeadersShouldReturn400()
     {
         // Arrange
         await Fixture.InitializeAsync();
@@ -80,7 +80,7 @@ public class SseRoutingTests : OrleansTestBase
     }
 
     [Fact]
-    public async Task StreamChatCompletionSse_WithSignalRProtocolHeader_ShouldRouteToSignalR()
+    public async Task StreamChatCompletionSseWithSignalRProtocolHeaderShouldRouteToSignalR()
     {
         // Arrange
         await Fixture.InitializeAsync();
@@ -108,7 +108,7 @@ public class SseRoutingTests : OrleansTestBase
     }
 
     [Fact]
-    public async Task StreamChatCompletionSse_OrleansFallback_ShouldUseDirect()
+    public async Task StreamChatCompletionSseOrleansFallbackShouldUseDirect()
     {
         // Arrange
         Fixture.OrleansEnabled = true;
@@ -136,7 +136,7 @@ public class SseRoutingTests : OrleansTestBase
     }
 
     [Fact]
-    public async Task StreamChatCompletionSse_WithResilientStreaming_ShouldUseResilientManager()
+    public async Task StreamChatCompletionSseWithResilientStreamingShouldUseResilientManager()
     {
         // Arrange
         Fixture.OrleansEnabled = true;
@@ -165,7 +165,7 @@ public class SseRoutingTests : OrleansTestBase
     }
 
     [Fact]
-    public async Task StreamChatCompletionSse_MultipleRoutingDecisions_ShouldBeConsistent()
+    public async Task StreamChatCompletionSseMultipleRoutingDecisionsShouldBeConsistent()
     {
         // Arrange
         Fixture.OrleansEnabled = true;
@@ -175,7 +175,7 @@ public class SseRoutingTests : OrleansTestBase
         var routingResults = new List<string>();
 
         // Act - Make multiple requests
-        for (int i = 0; i < 5; i++)
+        for (var i = 0; i < 5; i++)
         {
             var request = CreateChatRequestBuilder.Create()
                 .WithUserId($"test-user-{i}")
@@ -195,7 +195,7 @@ public class SseRoutingTests : OrleansTestBase
     }
 
     [Fact]
-    public async Task StreamChatCompletionSse_InvalidUserId_ShouldReturn400()
+    public async Task StreamChatCompletionSseInvalidUserIdShouldReturn400()
     {
         // Arrange
         Fixture.OrleansEnabled = true;
@@ -217,7 +217,7 @@ public class SseRoutingTests : OrleansTestBase
     }
 
     [Fact]
-    public async Task StreamChatCompletionSse_WithExistingChatId_ShouldContinueConversation()
+    public async Task StreamChatCompletionSseWithExistingChatIdShouldContinueConversation()
     {
         // Arrange
         await Fixture.InitializeAsync();

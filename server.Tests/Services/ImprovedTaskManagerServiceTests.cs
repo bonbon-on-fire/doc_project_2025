@@ -22,7 +22,7 @@ public class ImprovedTaskManagerServiceTests
     }
 
     [Fact]
-    public async Task GetTaskManagerAsync_WhenNoExistingTasks_CreatesNewTaskManager()
+    public async Task GetTaskManagerAsyncWhenNoExistingTasksCreatesNewTaskManager()
     {
         // Arrange
         var chatId = "test-chat-1";
@@ -41,7 +41,7 @@ public class ImprovedTaskManagerServiceTests
     }
 
     [Fact]
-    public async Task SaveTaskManagerStateAsync_SavesTasksToStorage()
+    public async Task SaveTaskManagerStateAsyncSavesTasksToStorage()
     {
         // Arrange
         var chatId = "test-chat-2";
@@ -80,7 +80,7 @@ public class ImprovedTaskManagerServiceTests
     }
 
     [Fact]
-    public async Task GetTaskManagerAsync_WithExistingTasks_RestoresTasksCorrectly()
+    public async Task GetTaskManagerAsyncWithExistingTasksRestoresTasksCorrectly()
     {
         // Arrange
         var chatId = "test-chat-3";
@@ -129,7 +129,7 @@ public class ImprovedTaskManagerServiceTests
     }
 
     [Fact]
-    public async Task ClearTaskManagerAsync_RemovesFromCacheAndStorage()
+    public async Task ClearTaskManagerAsyncRemovesFromCacheAndStorage()
     {
         // Arrange
         var chatId = "test-chat-4";
@@ -151,7 +151,7 @@ public class ImprovedTaskManagerServiceTests
     }
 
     [Fact]
-    public async Task GetTaskStateAsync_ReturnsCorrectTaskState()
+    public async Task GetTaskStateAsyncReturnsCorrectTaskState()
     {
         // Arrange
         var chatId = "test-chat-5";
@@ -204,7 +204,7 @@ public class ImprovedTaskManagerServiceTests
     }
 
     [Fact]
-    public async Task ParseTasksFromMarkdown_HandlesInProgressTasksCorrectly()
+    public async Task ParseTasksFromMarkdownHandlesInProgressTasksCorrectly()
     {
         // Arrange
         var chatId = "test-chat-inprogress";

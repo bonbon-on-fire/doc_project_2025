@@ -14,7 +14,7 @@ public class ChatApiTests(WebApplicationFactory<Program> factory)
     );
 
     [Fact]
-    public async Task Create_And_Get_Chat_Works()
+    public async Task CreateAndGetChatWorks()
     {
         var client = _factory.CreateClient();
         var userId = TestHelpers.GenerateUniqueUserId("create-chat-test");
@@ -33,7 +33,7 @@ public class ChatApiTests(WebApplicationFactory<Program> factory)
     }
 
     [Fact]
-    public async Task History_And_Delete_Works()
+    public async Task HistoryAndDeleteWorks()
     {
         var client = _factory.CreateClient();
         // Create one chat
@@ -53,7 +53,7 @@ public class ChatApiTests(WebApplicationFactory<Program> factory)
     }
 
     [Fact]
-    public async Task Stream_SSE_Completes_And_Contains_Done()
+    public async Task StreamSSECompletesAndContainsDone()
     {
         var client = _factory.CreateClient();
         var userId = TestHelpers.GenerateUniqueUserId("sse-stream-test");

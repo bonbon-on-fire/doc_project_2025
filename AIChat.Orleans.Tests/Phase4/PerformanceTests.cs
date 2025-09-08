@@ -23,7 +23,7 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
     }
 
     [Fact]
-    public async Task OrleansRoutingOverhead_ShouldBeAcceptable()
+    public async Task OrleansRoutingOverheadShouldBeAcceptable()
     {
         // Arrange
         await _fixture.InitializeAsync();
@@ -39,7 +39,7 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
         _fixture.OrleansEnabled = true;
         await _fixture.InitializeAsync();
 
-        for (int i = 0; i < iterations; i++)
+        for (var i = 0; i < iterations; i++)
         {
             var sw = Stopwatch.StartNew();
             await MakeStreamRequest($"orleans-perf-{i}");
@@ -51,7 +51,7 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
         _fixture.OrleansEnabled = false;
         await _fixture.InitializeAsync();
 
-        for (int i = 0; i < iterations; i++)
+        for (var i = 0; i < iterations; i++)
         {
             var sw = Stopwatch.StartNew();
             await MakeStreamRequest($"direct-perf-{i}");
@@ -63,7 +63,7 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
         var orleansAvg = orleansTimings.Average();
         var directAvg = directTimings.Average();
         var overhead = orleansAvg - directAvg;
-        var overheadPercent = (overhead / directAvg) * 100;
+        var overheadPercent = overhead / directAvg * 100;
 
         _ = orleansAvg.Should().BeLessThan(5000, "Orleans routing should complete within 5 seconds");
         _ = overheadPercent.Should().BeLessThan(50, "Orleans overhead should be less than 50%");
@@ -73,7 +73,7 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
     }
 
     [Fact]
-    public async Task HighConcurrency_ShouldHandleMultipleUsers()
+    public async Task HighConcurrencyShouldHandleMultipleUsers()
     {
         // Arrange
         _fixture.OrleansEnabled = true;
@@ -88,7 +88,7 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
         var tasks = new List<Task>();
         var sw = Stopwatch.StartNew();
 
-        for (int i = 0; i < userCount; i++)
+        for (var i = 0; i < userCount; i++)
         {
             var userId = $"concurrent-user-{i}";
             var task = Task.Run(async () =>
@@ -129,7 +129,7 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
     }
 
     [Fact]
-    public async Task MemoryBoundaries_ShouldBeRespected()
+    public async Task MemoryBoundariesShouldBeRespected()
     {
         // Arrange
         _fixture.OrleansEnabled = true;
@@ -152,7 +152,7 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
         });
 
         var streamTasks = new List<Task>();
-        for (int i = 0; i < 10; i++)
+        for (var i = 0; i < 10; i++)
         {
             var task = MakeStreamRequest($"memory-test-{i}");
             streamTasks.Add(task);
@@ -185,7 +185,7 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
     }
 
     [Fact]
-    public async Task Throughput_UnderLoad_ShouldMaintainBaseline()
+    public async Task ThroughputUnderLoadShouldMaintainBaseline()
     {
         // Arrange
         _fixture.OrleansEnabled = true;
@@ -248,7 +248,7 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
         var errorRate = errors / (double)(completedRequests + errors);
         _ = errorRate.Should().BeLessThan(0.05, "Error rate should be less than 5%");
 
-        if (latencies.Any())
+        if (latencies.Count != 0)
         {
             var p50 = GetPercentile(latencies, 50);
             var p95 = GetPercentile(latencies, 95);
@@ -265,7 +265,7 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
     }
 
     [Fact]
-    public async Task StreamingOverhead_ShouldBeMinimal()
+    public async Task StreamingOverheadShouldBeMinimal()
     {
         // Arrange
         _fixture.OrleansEnabled = true;
@@ -275,7 +275,7 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
         var streamingTimes = new List<long>();
 
         // Act - Measure streaming overhead
-        for (int i = 0; i < 5; i++)
+        for (var i = 0; i < 5; i++)
         {
             var sw = Stopwatch.StartNew();
 
@@ -311,7 +311,7 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
     }
 
     [Fact]
-    public async Task OrleansGrainActivation_ShouldBeEfficient()
+    public async Task OrleansGrainActivationShouldBeEfficient()
     {
         // Arrange
         _fixture.OrleansEnabled = true;
@@ -321,7 +321,7 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
         var warmStartTimes = new List<long>();
 
         // Act - Measure cold starts
-        for (int i = 0; i < 5; i++)
+        for (var i = 0; i < 5; i++)
         {
             var userId = $"cold-start-{Guid.NewGuid()}"; // New grain each time
             var sw = Stopwatch.StartNew();
@@ -332,7 +332,7 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
 
         // Measure warm starts (reuse same user)
         var warmUserId = "warm-start-user";
-        for (int i = 0; i < 5; i++)
+        for (var i = 0; i < 5; i++)
         {
             var sw = Stopwatch.StartNew();
             await MakeStreamRequest(warmUserId);
@@ -355,7 +355,7 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
     private async Task WarmupSystem()
     {
         // Make a few requests to warm up the system
-        for (int i = 0; i < 3; i++)
+        for (var i = 0; i < 3; i++)
         {
             await MakeStreamRequest($"warmup-{i}");
         }

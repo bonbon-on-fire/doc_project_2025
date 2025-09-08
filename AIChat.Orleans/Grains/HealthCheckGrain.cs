@@ -39,11 +39,11 @@ public sealed class HealthCheckGrain : Grain, IHealthCheckGrain
                 _logger.LogDebug("Starting comprehensive health check for Orleans cluster");
 
                 // Test grain activation and basic functionality
-                var activationTest = await TestGrainActivationAsync();
-                if (!activationTest.Success)
+                var (Success, Message) = await TestGrainActivationAsync();
+                if (!Success)
                 {
                     result.IsHealthy = false;
-                    result.Warnings.Add($"Grain activation test failed: {activationTest.Message}");
+                    result.Warnings.Add($"Grain activation test failed: {Message}");
                 }
 
                 // Test cluster connectivity
@@ -153,7 +153,7 @@ public sealed class HealthCheckGrain : Grain, IHealthCheckGrain
     /// Tests cluster connectivity and basic Orleans infrastructure.
     /// </summary>
     /// <returns>Test result with success status and message</returns>
-    private Task<(bool Success, string Message)> TestClusterConnectivityAsync()
+    private static Task<(bool Success, string Message)> TestClusterConnectivityAsync()
     {
         try
         {

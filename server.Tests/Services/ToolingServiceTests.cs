@@ -61,7 +61,7 @@ public class ToolingServiceTests
     #region FunctionFiltering Tests
 
     [Fact]
-    public async Task CreateChatSpecificFunctionCallMiddleware_WithFunctionFiltering_AppliesConfiguration()
+    public async Task CreateChatSpecificFunctionCallMiddlewareWithFunctionFilteringAppliesConfiguration()
     {
         // Arrange
         var config = new McpConfiguration
@@ -133,7 +133,7 @@ public class ToolingServiceTests
     }
 
     [Fact]
-    public async Task CreateChatSpecificFunctionCallMiddleware_WithLegacyToolFiltering_MapsToFunctionFiltering()
+    public async Task CreateChatSpecificFunctionCallMiddlewareWithLegacyToolFilteringMapsToFunctionFiltering()
     {
         // Arrange
 #pragma warning disable CS0618 // Type or member is obsolete
@@ -202,7 +202,7 @@ public class ToolingServiceTests
     }
 
     [Fact]
-    public async Task CreateChatSpecificFunctionCallMiddleware_WithoutFiltering_DoesNotApplyConfiguration()
+    public async Task CreateChatSpecificFunctionCallMiddlewareWithoutFilteringDoesNotApplyConfiguration()
     {
         // Arrange
         var config = new McpConfiguration
@@ -255,7 +255,7 @@ public class ToolingServiceTests
     }
 
     [Fact]
-    public async Task CreateChatSpecificFunctionCallMiddleware_WithMultipleProviders_AppliesProviderSpecificConfig()
+    public async Task CreateChatSpecificFunctionCallMiddlewareWithMultipleProvidersAppliesProviderSpecificConfig()
     {
         // Arrange
         var config = new McpConfiguration
@@ -338,7 +338,7 @@ public class ToolingServiceTests
     #region Edge Cases
 
     [Fact]
-    public async Task CreateChatSpecificFunctionCallMiddleware_WithNullMcpClients_HandlesGracefully()
+    public async Task CreateChatSpecificFunctionCallMiddlewareWithNullMcpClientsHandlesGracefully()
     {
         // Arrange
         var config = new McpConfiguration
@@ -380,7 +380,7 @@ public class ToolingServiceTests
     }
 
     [Fact]
-    public async Task CreateChatSpecificFunctionCallMiddleware_WithEmptyMcpClients_HandlesGracefully()
+    public async Task CreateChatSpecificFunctionCallMiddlewareWithEmptyMcpClientsHandlesGracefully()
     {
         // Arrange
         var config = new McpConfiguration
@@ -422,7 +422,7 @@ public class ToolingServiceTests
     }
 
     [Fact]
-    public async Task CreateChatSpecificFunctionCallMiddleware_WithCancellation_ThrowsOperationCancelledException()
+    public async Task CreateChatSpecificFunctionCallMiddlewareWithCancellationThrowsOperationCancelledException()
     {
         // Arrange
         var config = new McpConfiguration();

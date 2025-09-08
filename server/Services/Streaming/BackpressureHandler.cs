@@ -8,9 +8,7 @@ namespace AIChat.Server.Services.Streaming;
 public sealed class BackpressureHandler : IBackpressureHandler
 {
     private readonly ILogger<BackpressureHandler> _logger;
-    private readonly float _threshold;
     private readonly int _baseDelayMs;
-    private readonly bool _isAdaptive;
     private long _eventCount;
     private long _totalDelayMs;
     private readonly Stopwatch _stopwatch;
@@ -31,14 +29,18 @@ public sealed class BackpressureHandler : IBackpressureHandler
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         if (threshold is < 0 or > 100)
+        {
             throw new ArgumentOutOfRangeException(nameof(threshold), "Threshold must be between 0 and 100");
+        }
 
         if (baseDelayMs < 0)
+        {
             throw new ArgumentOutOfRangeException(nameof(baseDelayMs), "Base delay must be non-negative");
+        }
 
-        _threshold = threshold;
+        Threshold = threshold;
         _baseDelayMs = baseDelayMs;
-        _isAdaptive = isAdaptive;
+        IsAdaptive = isAdaptive;
         _stopwatch = Stopwatch.StartNew();
     }
 
@@ -47,7 +49,7 @@ public sealed class BackpressureHandler : IBackpressureHandler
     {
         return utilization is < 0 or > 100
             ? throw new ArgumentOutOfRangeException(nameof(utilization), "Utilization must be between 0 and 100")
-            : utilization >= _threshold;
+            : utilization >= Threshold;
     }
 
     /// <inheritdoc />
@@ -56,7 +58,9 @@ public sealed class BackpressureHandler : IBackpressureHandler
         CancellationToken cancellationToken = default)
     {
         if (!ShouldApplyBackpressure(utilization))
+        {
             return 0;
+        }
 
         var delay = CalculateDelay(utilization);
 
@@ -84,15 +88,19 @@ public sealed class BackpressureHandler : IBackpressureHandler
     /// <inheritdoc />
     public int CalculateDelay(float utilization)
     {
-        if (utilization < _threshold)
+        if (utilization < Threshold)
+        {
             return 0;
+        }
 
-        if (!_isAdaptive)
+        if (!IsAdaptive)
+        {
             return _baseDelayMs;
+        }
 
         // Adaptive calculation: exponentially increase delay as utilization approaches 100%
-        var utilizationAboveThreshold = utilization - _threshold;
-        var maxUtilizationAboveThreshold = 100 - _threshold;
+        var utilizationAboveThreshold = utilization - Threshold;
+        var maxUtilizationAboveThreshold = 100 - Threshold;
         var utilizationFactor = utilizationAboveThreshold / maxUtilizationAboveThreshold;
 
         // Exponential scaling: delay increases more rapidly as utilization approaches 100%
@@ -114,10 +122,10 @@ public sealed class BackpressureHandler : IBackpressureHandler
     }
 
     /// <inheritdoc />
-    public float Threshold => _threshold;
+    public float Threshold { get; }
 
     /// <inheritdoc />
-    public bool IsAdaptive => _isAdaptive;
+    public bool IsAdaptive { get; }
 
     /// <inheritdoc />
     public long BackpressureEventCount => Interlocked.Read(ref _eventCount);

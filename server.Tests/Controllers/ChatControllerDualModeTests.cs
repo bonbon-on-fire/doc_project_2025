@@ -38,7 +38,7 @@ public class ChatControllerDualModeTests
         _mockChatService = new Mock<IChatService>();
         _mockLogger = new Mock<ILogger<ChatController>>();
         _mockServerSentEventsService = new Mock<IServerSentEventsService>();
-        _ = _mockServerSentEventsService.Setup(x => x.GetClients()).Returns(new List<IServerSentEventsClient>());
+        _ = _mockServerSentEventsService.Setup(x => x.GetClients()).Returns([]);
         _mockTaskStorage = new Mock<ITaskStorage>();
         _mockChatStorage = new Mock<IChatStorage>();
         _mockHubContext = new Mock<IHubContext<ChatHub>>();
@@ -85,7 +85,7 @@ public class ChatControllerDualModeTests
     }
 
     [Fact]
-    public async Task StreamChatCompletionSse_WithSSEProtocol_UsesSSEResponse()
+    public async Task StreamChatCompletionSseWithSSEProtocolUsesSSEResponse()
     {
         // Arrange
         _httpContext.Items["PreferredProtocol"] = "SSE";
@@ -129,7 +129,7 @@ public class ChatControllerDualModeTests
     }
 
     [Fact]
-    public async Task StreamChatCompletionSse_WithSignalRProtocol_ReturnsOperationId()
+    public async Task StreamChatCompletionSseWithSignalRProtocolReturnsOperationId()
     {
         // Arrange
         _httpContext.Items["PreferredProtocol"] = "SignalR";
@@ -175,7 +175,7 @@ public class ChatControllerDualModeTests
     }
 
     [Fact]
-    public async Task StreamChatCompletionSse_WithNoProtocol_DefaultsToSSE()
+    public async Task StreamChatCompletionSseWithNoProtocolDefaultsToSSE()
     {
         // Arrange
         // Don't set PreferredProtocol - should default to SSE
@@ -211,7 +211,7 @@ public class ChatControllerDualModeTests
     }
 
     [Fact]
-    public async Task StreamChatCompletionSse_SignalRError_ReturnsErrorResponse()
+    public async Task StreamChatCompletionSseSignalRErrorReturnsErrorResponse()
     {
         // Arrange
         _httpContext.Items["PreferredProtocol"] = "SignalR";
@@ -249,7 +249,7 @@ public class ChatControllerDualModeTests
     // 3. Orleans unavailable -> falls back to direct processing
 
     [Fact]
-    public async Task DualModeProcessing_FeatureManagerIsInjected_DoesNotThrow()
+    public async Task DualModeProcessingFeatureManagerIsInjectedDoesNotThrow()
     {
         // Simple test to verify the dual-mode controller setup works
         // This ensures all dependencies are properly injected

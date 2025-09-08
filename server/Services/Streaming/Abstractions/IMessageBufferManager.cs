@@ -16,8 +16,8 @@ public interface IMessageBufferManager
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>True if the message was buffered successfully</returns>
     Task<bool> BufferMessageAsync<T>(
-        string streamId, 
-        T message, 
+        string streamId,
+        T message,
         MessagePriority priority = MessagePriority.Normal,
         CancellationToken cancellationToken = default);
 

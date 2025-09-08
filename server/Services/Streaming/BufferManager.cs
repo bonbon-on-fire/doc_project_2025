@@ -9,7 +9,6 @@ namespace AIChat.Server.Services.Streaming;
 public sealed class BufferManager<T> : IBufferManager<T>
 {
     private readonly Channel<T> _channel;
-    private readonly int _capacity;
     private bool _disposed;
 
     /// <summary>
@@ -20,9 +19,11 @@ public sealed class BufferManager<T> : IBufferManager<T>
     public BufferManager(int capacity)
     {
         if (capacity < 1)
+        {
             throw new ArgumentOutOfRangeException(nameof(capacity), "Capacity must be at least 1");
+        }
 
-        _capacity = capacity;
+        Capacity = capacity;
 
         var options = new BoundedChannelOptions(capacity)
         {
@@ -73,7 +74,7 @@ public sealed class BufferManager<T> : IBufferManager<T>
     }
 
     /// <inheritdoc />
-    public int Capacity => _capacity;
+    public int Capacity { get; }
 
     /// <inheritdoc />
     public float UtilizationPercentage
@@ -81,7 +82,7 @@ public sealed class BufferManager<T> : IBufferManager<T>
         get
         {
             ThrowIfDisposed();
-            return (float)Count / _capacity * 100;
+            return (float)Count / Capacity * 100;
         }
     }
 
@@ -99,7 +100,9 @@ public sealed class BufferManager<T> : IBufferManager<T>
     public async ValueTask DisposeAsync()
     {
         if (_disposed)
+        {
             return;
+        }
 
         _disposed = true;
         _ = _channel.Writer.TryComplete();
@@ -113,6 +116,8 @@ public sealed class BufferManager<T> : IBufferManager<T>
     private void ThrowIfDisposed()
     {
         if (_disposed)
+        {
             throw new ObjectDisposedException(nameof(BufferManager<T>));
+        }
     }
 }

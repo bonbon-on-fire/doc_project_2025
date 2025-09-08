@@ -16,7 +16,7 @@ namespace AIChat.Orleans.Grains;
 /// User grain implementation providing user-centric operations.
 /// Maintains user state, connections, and handles message routing.
 /// </summary>
-public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
+public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
 {
     private readonly ILogger<UserGrain> _logger;
     private readonly OrleansGrainConfiguration _configuration;
@@ -344,15 +344,13 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
             }
 
             // Check if connection already exists
-            if (State.Connections.ContainsKey(connectionId))
+            if (State.Connections.TryGetValue(connectionId, out var value))
             {
                 _logger.LogWarning(
                     "Connection {ConnectionId} already registered for {UserId}. Updating existing connection.",
                     connectionId, State.UserId);
-
-                // Update existing connection's client ID and last activity
-                State.Connections[connectionId].ClientId = clientId;
-                State.Connections[connectionId].LastActivity = DateTime.UtcNow;
+                value.ClientId = clientId;
+                value.LastActivity = DateTime.UtcNow;
             }
             else
             {
@@ -658,10 +656,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
             _ = (activity?.SetTag("message.id", message?.Id));
 
             // Validate message
-            if (message == null)
-            {
-                throw new ArgumentNullException(nameof(message));
-            }
+            ArgumentNullException.ThrowIfNull(message);
 
             if (string.IsNullOrEmpty(message.ChatId))
             {
@@ -770,10 +765,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
         try
         {
             // Validate chunk
-            if (chunk == null)
-            {
-                throw new ArgumentNullException(nameof(chunk));
-            }
+            ArgumentNullException.ThrowIfNull(chunk);
 
             if (string.IsNullOrEmpty(chunk.ChatId))
             {
@@ -895,10 +887,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
             _ = (activity?.SetTag("message.length", message?.Content?.Length ?? 0));
 
             // Validate message
-            if (message == null)
-            {
-                throw new ArgumentNullException(nameof(message));
-            }
+            ArgumentNullException.ThrowIfNull(message);
 
             if (string.IsNullOrEmpty(message.ChatId))
             {
@@ -1586,7 +1575,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
             await WriteStateAsync();
 
             // Record state metrics to central collector for dashboard
-            var stateSize = System.Text.Json.JsonSerializer.Serialize(State).Length;
+            var stateSize = JsonSerializer.Serialize(State).Length;
             await _metricsCollector.RecordGrainStateMetricsAsync(
                 "UserGrain",
                 State.UserId,
@@ -1659,10 +1648,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
         try
         {
             // Validate message
-            if (message == null)
-            {
-                throw new ArgumentNullException(nameof(message));
-            }
+            ArgumentNullException.ThrowIfNull(message);
 
             if (string.IsNullOrEmpty(message.ChatId))
             {
@@ -1758,10 +1744,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
         try
         {
             // Validate chunk
-            if (chunk == null)
-            {
-                throw new ArgumentNullException(nameof(chunk));
-            }
+            ArgumentNullException.ThrowIfNull(chunk);
 
             if (string.IsNullOrEmpty(chunk.ChatId))
             {
@@ -2086,7 +2069,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
                     ChatId = chatId,
                     CurrentMessageCount = messages.Count,
                     MaxCapacity = buffer.MaxSize,
-                    UtilizationPercent = buffer.MaxSize > 0 ? (messages.Count * 100.0) / buffer.MaxSize : 0,
+                    UtilizationPercent = buffer.MaxSize > 0 ? messages.Count * 100.0 / buffer.MaxSize : 0,
                     OldestMessageTime = messages.FirstOrDefault()?.BufferedAt,
                     NewestMessageTime = messages.LastOrDefault()?.BufferedAt,
                     HighPriorityCount = messages.Count(m => m.Priority == BufferPriority.High),
@@ -2239,7 +2222,10 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
 
             foreach (var kvp in buffersToProcess.ToList())
             {
-                if (processedCount >= maxMessages) break;
+                if (processedCount >= maxMessages)
+                {
+                    break;
+                }
 
                 var bufferChatId = kvp.Key;
                 var buffer = kvp.Value;
@@ -2270,7 +2256,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
                                     OperationId = message.Message.Id,
                                     ChatId = message.Message.ChatId,
                                     Content = message.Message.Content,
-                                    IsComplete = metadata.TryGetProperty("IsComplete", out var isComplete) ? isComplete.GetBoolean() : true,
+                                    IsComplete = !metadata.TryGetProperty("IsComplete", out var isComplete) || isComplete.GetBoolean(),
                                     ChunkIndex = metadata.TryGetProperty("ChunkIndex", out var chunkIndex) ? chunkIndex.GetInt32() : 0,
                                     TotalChunks = metadata.TryGetProperty("TotalChunks", out var totalChunks) ? totalChunks.GetInt32() : null,
                                     MessageId = metadata.TryGetProperty("MessageId", out var messageId) ? messageId.GetString() : null
@@ -2502,7 +2488,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
 
             // Record activity
             await RecordActivity(ActivityType.MessageSent,
-                System.Text.Json.JsonSerializer.Serialize(new
+                JsonSerializer.Serialize(new
                 {
                     Event = "StreamStarted",
                     StreamId = streamId,
@@ -2661,7 +2647,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
             {
                 await Task.Delay(TimeSpan.FromMinutes(_configuration.UserGrain.CompletedOperationRetentionMinutes));
                 await CleanupStreamState(streamId);
-            });
+            }, cancellationToken);
         }
 
         // Rethrow captured error if any
@@ -2811,7 +2797,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
                 }
             }
 
-            if (timedOutStreams.Any())
+            if (timedOutStreams.Count != 0)
             {
                 await WriteStateAsync();
             }
@@ -2820,6 +2806,11 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain
         {
             _logger.LogError(ex, "Error handling stream timeouts");
         }
+    }
+
+    public void Dispose()
+    {
+        throw new NotImplementedException();
     }
 
     #endregion

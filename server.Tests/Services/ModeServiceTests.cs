@@ -98,7 +98,7 @@ capabilities:
     }
 
     [Fact]
-    public async Task GetAllModesAsync_ReturnsSystemAndCustomModes()
+    public async Task GetAllModesAsyncReturnsSystemAndCustomModes()
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId();
@@ -142,7 +142,7 @@ capabilities:
     }
 
     [Fact]
-    public async Task GetModeByIdAsync_ReturnsSystemMode()
+    public async Task GetModeByIdAsyncReturnsSystemMode()
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId();
@@ -160,7 +160,7 @@ capabilities:
     }
 
     [Fact]
-    public async Task GetModeByIdAsync_ReturnsCustomMode()
+    public async Task GetModeByIdAsyncReturnsCustomMode()
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId();
@@ -195,7 +195,7 @@ capabilities:
     }
 
     [Fact]
-    public async Task CreateCustomModeAsync_CreatesMode()
+    public async Task CreateCustomModeAsyncCreatesMode()
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId();
@@ -248,7 +248,7 @@ capabilities:
     }
 
     [Fact]
-    public async Task UpdateCustomModeAsync_UpdatesMode()
+    public async Task UpdateCustomModeAsyncUpdatesMode()
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId();
@@ -314,7 +314,7 @@ capabilities:
     }
 
     [Fact]
-    public async Task DeleteCustomModeAsync_DeletesMode()
+    public async Task DeleteCustomModeAsyncDeletesMode()
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId();
@@ -337,7 +337,7 @@ capabilities:
     }
 
     [Fact]
-    public async Task DeleteCustomModeAsync_CannotDeleteSystemMode()
+    public async Task DeleteCustomModeAsyncCannotDeleteSystemMode()
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId();
@@ -362,7 +362,7 @@ capabilities:
     }
 
     [Fact]
-    public async Task FilterToolsByModeAsync_FiltersCorrectly()
+    public async Task FilterToolsByModeAsyncFiltersCorrectly()
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId();
@@ -383,7 +383,7 @@ capabilities:
     }
 
     [Fact]
-    public async Task FilterToolsByModeAsync_AllowsAllToolsWithWildcard()
+    public async Task FilterToolsByModeAsyncAllowsAllToolsWithWildcard()
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId();
@@ -412,7 +412,7 @@ capabilities:
     }
 
     [Fact]
-    public async Task GetModeSystemPromptAsync_ReturnsPrompt()
+    public async Task GetModeSystemPromptAsyncReturnsPrompt()
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId();
@@ -430,7 +430,7 @@ capabilities:
     }
 
     [Fact]
-    public async Task GetModeDefaultModelAsync_ReturnsModel()
+    public async Task GetModeDefaultModelAsyncReturnsModel()
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId();
@@ -467,7 +467,7 @@ capabilities:
     #region Caching Behavior Tests
 
     [Fact]
-    public async Task GetAllModesAsync_CachesSystemModes()
+    public async Task GetAllModesAsyncCachesSystemModes()
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId("cache-test");
@@ -511,7 +511,7 @@ capabilities:
     }
 
     [Fact]
-    public async Task GetAllModesAsync_HandlesEmptyModesDirectory()
+    public async Task GetAllModesAsyncHandlesEmptyModesDirectory()
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId("empty-dir");
@@ -550,7 +550,7 @@ capabilities:
     #region File System Error Tests
 
     [Fact]
-    public async Task GetAllModesAsync_HandlesMalformedSystemModeJson()
+    public async Task GetAllModesAsyncHandlesMalformedSystemModeJson()
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId("malformed-file");
@@ -612,7 +612,7 @@ Test"
     }
 
     [Fact]
-    public async Task GetAllModesAsync_HandlesIncompleteModeJson()
+    public async Task GetAllModesAsyncHandlesIncompleteModeJson()
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId("incomplete-yaml");
@@ -667,7 +667,7 @@ Incomplete";
     #region Concurrent Access Tests
 
     [Fact]
-    public async Task GetAllModesAsync_HandlesConcurrentAccess()
+    public async Task GetAllModesAsyncHandlesConcurrentAccess()
     {
         // Arrange
         var userIds = TestHelpers.GenerateUniqueUserIds(10, "concurrent-test").ToList();
@@ -717,7 +717,7 @@ Incomplete";
     }
 
     [Fact]
-    public async Task CreateAndUpdateMode_HandlesConcurrentOperations()
+    public async Task CreateAndUpdateModeHandlesConcurrentOperations()
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId("crud-sequence");
@@ -804,7 +804,7 @@ Incomplete";
     #region Edge Case Tests
 
     [Fact]
-    public async Task UpdateCustomModeAsync_CannotUpdateSystemMode()
+    public async Task UpdateCustomModeAsyncCannotUpdateSystemMode()
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId("edge-case-1");
@@ -844,7 +844,7 @@ Incomplete";
     }
 
     [Fact]
-    public async Task FilterToolsByModeAsync_WithNonExistentMode_ReturnsAllTools()
+    public async Task FilterToolsByModeAsyncWithNonExistentModeReturnsAllTools()
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId("edge-case-2");
@@ -870,7 +870,7 @@ Incomplete";
     }
 
     [Fact]
-    public async Task FilterToolsByModeAsync_WithEmptyToolsList_ReturnsNoTools()
+    public async Task FilterToolsByModeAsyncWithEmptyToolsListReturnsNoTools()
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId("edge-case-3");
@@ -890,7 +890,7 @@ Incomplete";
     }
 
     [Fact]
-    public async Task GetModeSystemPromptAsync_WithNonExistentMode_ReturnsNull()
+    public async Task GetModeSystemPromptAsyncWithNonExistentModeReturnsNull()
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId("edge-case-4");

@@ -68,13 +68,13 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
             httpResponse,
             _loggerFactory.CreateLogger<HttpStreamWriter>(),
             _configuration.WriteTimeoutMs);
-        
+
         var backpressureHandler = new BackpressureHandler(
             _loggerFactory.CreateLogger<BackpressureHandler>(),
             _configuration.BackpressureThreshold,
             _configuration.BackpressureDelayMs,
             _configuration.EnableAdaptiveBackpressure);
-        
+
         var metrics = new StreamingMetrics(_loggerFactory.CreateLogger<StreamingMetrics>());
 
         // Store references for GetBufferStatistics
@@ -227,7 +227,9 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
     public async ValueTask DisposeAsync()
     {
         if (_disposed)
+        {
             return;
+        }
 
         _disposed = true;
 
@@ -270,7 +272,7 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
                     // Buffer is full, apply maximum backpressure
                     var delay = await backpressureHandler.ApplyBackpressureAsync(100, cancellationToken);
                     metrics.RecordBackpressureEvent(delay);
-                    
+
                     // Then do blocking write
                     await bufferManager.WriteAsync(streamItem, cancellationToken);
                 }
@@ -358,7 +360,9 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
     private void ThrowIfDisposed()
     {
         if (_disposed)
+        {
             throw new ObjectDisposedException(nameof(StreamingBridgeV2));
+        }
     }
 
     private record StreamItem

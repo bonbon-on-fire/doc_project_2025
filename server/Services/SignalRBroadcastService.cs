@@ -33,7 +33,7 @@ public class SignalRBroadcastService : ISignalRBroadcastService
         try
         {
             await _hubContext.Clients.Group(groupName).SendAsync(methodName, payload);
-            
+
             _logger.LogTrace(
                 "Successfully broadcasted {MethodName} to group {GroupName}",
                 methodName, groupName);

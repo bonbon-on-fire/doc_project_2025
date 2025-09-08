@@ -87,11 +87,11 @@ public class StreamingConfiguration
     /// <returns>True if configuration is valid, false otherwise.</returns>
     public bool Validate(out List<string> errors)
     {
-        errors = new List<string>();
-        
+        errors = [];
+
         var validationContext = new ValidationContext(this);
         var validationResults = new List<ValidationResult>();
-        
+
         if (!Validator.TryValidateObject(this, validationContext, validationResults, true))
         {
             errors.AddRange(validationResults.Select(r => r.ErrorMessage ?? "Unknown validation error"));

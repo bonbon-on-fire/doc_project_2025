@@ -44,10 +44,7 @@ public class TestWebApplicationManager : IDisposable
                     ConfigureFeatureManagement(services);
                 });
 
-                _ = builder.ConfigureAppConfiguration((context, config) =>
-                {
-                    ConfigureTestSettings(config);
-                });
+                _ = builder.ConfigureAppConfiguration((context, config) => ConfigureTestSettings(config));
             });
     }
 
@@ -133,7 +130,7 @@ public class TestWebApplicationManager : IDisposable
 
     private void ConfigureFeatureManagement(IServiceCollection services)
     {
-        _ = services.AddSingleton<Microsoft.FeatureManagement.IFeatureManager>(sp =>
+        _ = services.AddSingleton(sp =>
         {
             var mock = new Mock<Microsoft.FeatureManagement.IFeatureManager>();
             _ = mock.Setup(x => x.IsEnabledAsync("ResilientStreaming"))

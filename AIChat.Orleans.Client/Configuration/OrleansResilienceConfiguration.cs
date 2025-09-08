@@ -115,12 +115,12 @@ public class RetryPolicySettings
     /// List of exception types that should trigger retries.
     /// Empty list means all exceptions are retried.
     /// </summary>
-    public List<string> RetryableExceptions { get; set; } = new()
-    {
+    public List<string> RetryableExceptions { get; set; } =
+    [
         "Orleans.Runtime.OrleansMessageRejectionException",
         "System.TimeoutException",
         "System.Net.Http.HttpRequestException"
-    };
+    ];
 }
 
 /// <summary>

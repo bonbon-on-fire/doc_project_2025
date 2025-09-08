@@ -85,7 +85,7 @@ public record StreamingStatistics
     /// <summary>
     /// Error counts by type.
     /// </summary>
-    public IReadOnlyDictionary<string, long> ErrorsByType { get; init; } = 
+    public IReadOnlyDictionary<string, long> ErrorsByType { get; init; } =
         new Dictionary<string, long>();
 
     /// <summary>

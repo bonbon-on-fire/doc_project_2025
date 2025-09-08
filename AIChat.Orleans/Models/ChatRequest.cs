@@ -7,8 +7,8 @@ namespace AIChat.Orleans.Contracts;
 /// Provides all necessary context for message processing and streaming.
 /// </summary>
 [Serializable]
-[global::Orleans.GenerateSerializer]
-[global::Orleans.Alias("AIChat.Orleans.Contracts.ChatRequest")]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.ChatRequest")]
 public sealed class ChatRequest
 {
     /// <summary>
@@ -64,8 +64,8 @@ public sealed class ChatRequest
 /// Represents the state of an active stream in the grain.
 /// </summary>
 [Serializable]
-[global::Orleans.GenerateSerializer]
-[global::Orleans.Alias("AIChat.Orleans.Contracts.StreamState")]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.StreamState")]
 public sealed class StreamState
 {
     /// <summary>
@@ -133,8 +133,8 @@ public sealed class StreamState
 /// Status of a streaming operation.
 /// </summary>
 [Serializable]
-[global::Orleans.GenerateSerializer]
-[global::Orleans.Alias("AIChat.Orleans.Contracts.StreamStatus")]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.StreamStatus")]
 public enum StreamStatus
 {
     /// <summary>

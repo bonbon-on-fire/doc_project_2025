@@ -43,7 +43,7 @@ public class UserGrainBufferTests
     }
 
     [Test]
-    public async Task BufferMessageAsync_ShouldCreateBufferedMessage_WhenValidMessage()
+    public async Task BufferMessageAsyncShouldCreateBufferedMessageWhenValidMessage()
     {
         // Arrange
         Assert.That(_grain, Is.Not.Null);
@@ -59,14 +59,17 @@ public class UserGrainBufferTests
         // Verify message is buffered
         var bufferedMessage = await _grain.GetBufferedMessageAsync(messageId);
         Assert.That(bufferedMessage, Is.Not.Null);
-        Assert.That(bufferedMessage!.MessageId, Is.EqualTo(messageId));
-        Assert.That(bufferedMessage.ChatId, Is.EqualTo(TestChatId));
-        Assert.That(bufferedMessage.Message.Content, Is.EqualTo(message.Content));
-        Assert.That(bufferedMessage.Priority, Is.EqualTo(BufferPriority.Normal));
+        Assert.Multiple(() =>
+        {
+            Assert.That(bufferedMessage!.MessageId, Is.EqualTo(messageId));
+            Assert.That(bufferedMessage.ChatId, Is.EqualTo(TestChatId));
+            Assert.That(bufferedMessage.Message.Content, Is.EqualTo(message.Content));
+            Assert.That(bufferedMessage.Priority, Is.EqualTo(BufferPriority.Normal));
+        });
     }
 
     [Test]
-    public async Task BufferStreamChunkAsync_ShouldCreateBufferedStreamChunk_WhenValidChunk()
+    public async Task BufferStreamChunkAsyncShouldCreateBufferedStreamChunkWhenValidChunk()
     {
         // Arrange
         Assert.That(_grain, Is.Not.Null);
@@ -81,12 +84,15 @@ public class UserGrainBufferTests
         // Verify chunk is buffered as a message
         var bufferedMessage = await _grain.GetBufferedMessageAsync(messageId);
         Assert.That(bufferedMessage, Is.Not.Null);
-        Assert.That(bufferedMessage!.Message.IsStreaming, Is.True);
-        Assert.That(bufferedMessage.Priority, Is.EqualTo(BufferPriority.High));
+        Assert.Multiple(() =>
+        {
+            Assert.That(bufferedMessage!.Message.IsStreaming, Is.True);
+            Assert.That(bufferedMessage.Priority, Is.EqualTo(BufferPriority.High));
+        });
     }
 
     [Test]
-    public async Task GetBufferedMessagesAsync_ShouldReturnFilteredMessages_WhenHighPriorityFilter()
+    public async Task GetBufferedMessagesAsyncShouldReturnFilteredMessagesWhenHighPriorityFilter()
     {
         // Arrange
         Assert.That(_grain, Is.Not.Null);
@@ -100,20 +106,23 @@ public class UserGrainBufferTests
         var highPriorityMessages = await _grain.GetBufferedMessagesAsync(TestChatId, null, true);
         var allMessages = await _grain.GetBufferedMessagesAsync(TestChatId);
 
-        // Assert
-        Assert.That(highPriorityMessages.Count(), Is.EqualTo(1));
-        Assert.That(allMessages.Count(), Is.EqualTo(2));
-        Assert.That(highPriorityMessages.First().Priority, Is.EqualTo(BufferPriority.High));
+        Assert.Multiple(() =>
+        {
+            // Assert
+            Assert.That(highPriorityMessages.Count(), Is.EqualTo(1));
+            Assert.That(allMessages.Count(), Is.EqualTo(2));
+            Assert.That(highPriorityMessages.First().Priority, Is.EqualTo(BufferPriority.High));
+        });
     }
 
     [Test]
-    public async Task GetBufferedMessagesAsync_ShouldRespectLimit_WhenLimitSpecified()
+    public async Task GetBufferedMessagesAsyncShouldRespectLimitWhenLimitSpecified()
     {
         // Arrange
         Assert.That(_grain, Is.Not.Null);
 
         // Buffer 3 messages
-        for (int i = 0; i < 3; i++)
+        for (var i = 0; i < 3; i++)
         {
             var message = CreateTestMessage($"Test message {i}");
             _ = await _grain.BufferMessageAsync(message, BufferPriority.Normal);
@@ -123,13 +132,16 @@ public class UserGrainBufferTests
         var limitedMessages = await _grain.GetBufferedMessagesAsync(TestChatId, 2);
         var allMessages = await _grain.GetBufferedMessagesAsync(TestChatId);
 
-        // Assert
-        Assert.That(limitedMessages.Count(), Is.EqualTo(2));
-        Assert.That(allMessages.Count(), Is.EqualTo(3));
+        Assert.Multiple(() =>
+        {
+            // Assert
+            Assert.That(limitedMessages.Count(), Is.EqualTo(2));
+            Assert.That(allMessages.Count(), Is.EqualTo(3));
+        });
     }
 
     [Test]
-    public async Task RemoveBufferedMessageAsync_ShouldRemoveMessage_WhenMessageExists()
+    public async Task RemoveBufferedMessageAsyncShouldRemoveMessageWhenMessageExists()
     {
         // Arrange
         Assert.That(_grain, Is.Not.Null);
@@ -148,7 +160,7 @@ public class UserGrainBufferTests
     }
 
     [Test]
-    public async Task RemoveBufferedMessageAsync_ShouldReturnFalse_WhenMessageDoesNotExist()
+    public async Task RemoveBufferedMessageAsyncShouldReturnFalseWhenMessageDoesNotExist()
     {
         // Arrange
         Assert.That(_grain, Is.Not.Null);
@@ -162,7 +174,7 @@ public class UserGrainBufferTests
     }
 
     [Test]
-    public async Task MarkMessageDeliveredAsync_ShouldRemoveMessageAndUpdateMetrics()
+    public async Task MarkMessageDeliveredAsyncShouldRemoveMessageAndUpdateMetrics()
     {
         // Arrange
         Assert.That(_grain, Is.Not.Null);
@@ -181,7 +193,7 @@ public class UserGrainBufferTests
     }
 
     [Test]
-    public async Task RecordDeliveryAttemptAsync_ShouldUpdateAttemptInfo_WhenMessageExists()
+    public async Task RecordDeliveryAttemptAsyncShouldUpdateAttemptInfoWhenMessageExists()
     {
         // Arrange
         Assert.That(_grain, Is.Not.Null);
@@ -198,13 +210,16 @@ public class UserGrainBufferTests
         // Verify attempt was recorded
         var bufferedMessage = await _grain.GetBufferedMessageAsync(messageId);
         Assert.That(bufferedMessage, Is.Not.Null);
-        Assert.That(bufferedMessage!.DeliveryAttempts, Is.EqualTo(1));
-        Assert.That(bufferedMessage.LastDeliveryError, Is.EqualTo(error));
-        Assert.That(bufferedMessage.LastDeliveryAttempt, Is.Not.Null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(bufferedMessage!.DeliveryAttempts, Is.EqualTo(1));
+            Assert.That(bufferedMessage.LastDeliveryError, Is.EqualTo(error));
+            Assert.That(bufferedMessage.LastDeliveryAttempt, Is.Not.Null);
+        });
     }
 
     [Test]
-    public async Task GetChatBufferAsync_ShouldReturnBufferInfo_WhenBufferExists()
+    public async Task GetChatBufferAsyncShouldReturnBufferInfoWhenBufferExists()
     {
         // Arrange
         Assert.That(_grain, Is.Not.Null);
@@ -216,13 +231,16 @@ public class UserGrainBufferTests
 
         // Assert
         Assert.That(buffer, Is.Not.Null);
-        Assert.That(buffer!.ChatId, Is.EqualTo(TestChatId));
-        Assert.That(buffer.Messages.Count, Is.EqualTo(1));
-        Assert.That(buffer.MaxSize, Is.GreaterThan(0));
+        Assert.Multiple(() =>
+        {
+            Assert.That(buffer!.ChatId, Is.EqualTo(TestChatId));
+            Assert.That(buffer.Messages.Count, Is.EqualTo(1));
+            Assert.That(buffer.MaxSize, Is.GreaterThan(0));
+        });
     }
 
     [Test]
-    public async Task GetBufferSummaryAsync_ShouldReturnSummaryInfo()
+    public async Task GetBufferSummaryAsyncShouldReturnSummaryInfo()
     {
         // Arrange
         Assert.That(_grain, Is.Not.Null);
@@ -241,19 +259,22 @@ public class UserGrainBufferTests
         Assert.That(summary.ContainsKey(TestChatId), Is.True);
 
         var chatSummary = summary[TestChatId];
-        Assert.That(chatSummary.CurrentMessageCount, Is.EqualTo(2));
-        Assert.That(chatSummary.HighPriorityCount, Is.EqualTo(1));
-        Assert.That(chatSummary.UtilizationPercent, Is.GreaterThan(0));
+        Assert.Multiple(() =>
+        {
+            Assert.That(chatSummary.CurrentMessageCount, Is.EqualTo(2));
+            Assert.That(chatSummary.HighPriorityCount, Is.EqualTo(1));
+            Assert.That(chatSummary.UtilizationPercent, Is.GreaterThan(0));
+        });
     }
 
     [Test]
-    public async Task ClearChatBufferAsync_ShouldRemoveAllMessagesFromChat()
+    public async Task ClearChatBufferAsyncShouldRemoveAllMessagesFromChat()
     {
         // Arrange
         Assert.That(_grain, Is.Not.Null);
 
         // Buffer multiple messages
-        for (int i = 0; i < 3; i++)
+        for (var i = 0; i < 3; i++)
         {
             var message = CreateTestMessage($"Message {i}");
             _ = await _grain.BufferMessageAsync(message);
@@ -274,7 +295,7 @@ public class UserGrainBufferTests
     }
 
     [Test]
-    public async Task BufferMessageAsync_ShouldThrowArgumentException_WhenMessageIsNull()
+    public Task BufferMessageAsyncShouldThrowArgumentExceptionWhenMessageIsNull()
     {
         // Arrange
         Assert.That(_grain, Is.Not.Null);
@@ -282,10 +303,11 @@ public class UserGrainBufferTests
         // Act & Assert
         _ = Assert.ThrowsAsync<ArgumentNullException>(
             async () => await _grain.BufferMessageAsync(null!, BufferPriority.Normal));
+        return Task.CompletedTask;
     }
 
     [Test]
-    public async Task BufferMessageAsync_ShouldThrowArgumentException_WhenChatIdIsEmpty()
+    public Task BufferMessageAsyncShouldThrowArgumentExceptionWhenChatIdIsEmpty()
     {
         // Arrange
         Assert.That(_grain, Is.Not.Null);
@@ -295,10 +317,11 @@ public class UserGrainBufferTests
         // Act & Assert
         _ = Assert.ThrowsAsync<ArgumentException>(
             async () => await _grain.BufferMessageAsync(message, BufferPriority.Normal));
+        return Task.CompletedTask;
     }
 
     [Test]
-    public async Task GetBufferedMessagesAsync_ShouldReturnEmpty_WhenChatHasNoBuffer()
+    public async Task GetBufferedMessagesAsyncShouldReturnEmptyWhenChatHasNoBuffer()
     {
         // Arrange
         Assert.That(_grain, Is.Not.Null);
@@ -312,7 +335,7 @@ public class UserGrainBufferTests
         Assert.That(messages.Count(), Is.EqualTo(0));
     }
 
-    private ChatMessage CreateTestMessage(string? content = null)
+    private static ChatMessage CreateTestMessage(string? content = null)
     {
         return new ChatMessage
         {
@@ -325,7 +348,7 @@ public class UserGrainBufferTests
         };
     }
 
-    private StreamChunk CreateTestStreamChunk()
+    private static StreamChunk CreateTestStreamChunk()
     {
         return new StreamChunk
         {

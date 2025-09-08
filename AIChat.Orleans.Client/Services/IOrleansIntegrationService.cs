@@ -128,5 +128,5 @@ public class OrleansConnectionStatus
     /// <summary>
     /// Any connection warnings or issues.
     /// </summary>
-    public List<string> Warnings { get; set; } = new();
+    public List<string> Warnings { get; set; } = [];
 }

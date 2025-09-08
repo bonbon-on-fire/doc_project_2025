@@ -7,8 +7,8 @@ namespace AIChat.Orleans.Contracts;
 /// Contains all user-specific data that needs to survive grain deactivation/reactivation.
 /// </summary>
 [Serializable]
-[global::Orleans.GenerateSerializer]
-[global::Orleans.Alias("AIChat.Orleans.Contracts.UserGrainState")]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.UserGrainState")]
 public sealed class UserGrainState
 {
     /// <summary>
@@ -88,8 +88,8 @@ public sealed class UserGrainState
 /// Information about a SignalR connection.
 /// </summary>
 [Serializable]
-[global::Orleans.GenerateSerializer]
-[global::Orleans.Alias("AIChat.Orleans.Contracts.ConnectionInfo")]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.ConnectionInfo")]
 public sealed class ConnectionInfo
 {
     /// <summary>
@@ -127,8 +127,8 @@ public sealed class ConnectionInfo
 /// Chat subscription information.
 /// </summary>
 [Serializable]
-[global::Orleans.GenerateSerializer]
-[global::Orleans.Alias("AIChat.Orleans.Contracts.ChatSubscription")]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.ChatSubscription")]
 public sealed class ChatSubscription
 {
     /// <summary>
@@ -160,8 +160,8 @@ public sealed class ChatSubscription
 /// User activity record for monitoring.
 /// </summary>
 [Serializable]
-[global::Orleans.GenerateSerializer]
-[global::Orleans.Alias("AIChat.Orleans.Contracts.ActivityRecord")]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.ActivityRecord")]
 public sealed class ActivityRecord
 {
     /// <summary>
@@ -193,8 +193,8 @@ public sealed class ActivityRecord
 /// Grain performance metrics.
 /// </summary>
 [Serializable]
-[global::Orleans.GenerateSerializer]
-[global::Orleans.Alias("AIChat.Orleans.Contracts.GrainMetrics")]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.GrainMetrics")]
 public sealed class GrainMetrics
 {
     /// <summary>
@@ -304,8 +304,8 @@ public sealed class GrainMetrics
 /// Operation context for background processing (Phase 3).
 /// </summary>
 [Serializable]
-[global::Orleans.GenerateSerializer]
-[global::Orleans.Alias("AIChat.Orleans.Contracts.OperationContext")]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.OperationContext")]
 public sealed class OperationContext
 {
     /// <summary>

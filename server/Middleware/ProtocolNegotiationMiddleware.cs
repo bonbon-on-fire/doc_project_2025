@@ -28,22 +28,22 @@ public partial class ProtocolNegotiationMiddleware
         if (IsProtocolNegotiationRequired(context))
         {
             var selectedProtocol = await DetermineProtocolAsync(context);
-            
+
             // Store selected protocol in HttpContext for downstream components
             context.Items["PreferredProtocol"] = selectedProtocol;
             context.Items["ProtocolVersion"] = "1.0";
-            
+
             // Add response headers to indicate selected protocol
             context.Response.Headers["X-Selected-Protocol"] = selectedProtocol;
             context.Response.Headers["X-Protocol-Version"] = "1.0";
-            
+
             _logger.LogDebug(
                 "Protocol negotiation completed. Selected: {Protocol} for path: {Path}, User-Agent: {UserAgent}",
                 selectedProtocol,
                 context.Request.Path,
                 context.Request.Headers.UserAgent.ToString());
         }
-        
+
         await _next(context);
     }
 
@@ -53,7 +53,7 @@ public partial class ProtocolNegotiationMiddleware
     private static bool IsProtocolNegotiationRequired(HttpContext context)
     {
         var path = context.Request.Path.Value ?? "";
-        
+
         // Negotiate for chat-related endpoints
         return path.StartsWith("/api/chat", StringComparison.OrdinalIgnoreCase) ||
                path.StartsWith("/api/messages", StringComparison.OrdinalIgnoreCase) ||
@@ -113,7 +113,7 @@ public partial class ProtocolNegotiationMiddleware
         // Step 5: Check for WebSocket support indication
         var upgradeHeader = context.Request.Headers.Upgrade.ToString();
         var connectionHeader = context.Request.Headers.Connection.ToString();
-        
+
         // If client explicitly requests WebSocket upgrade, prefer SignalR
         if (upgradeHeader.Contains("websocket", StringComparison.OrdinalIgnoreCase) &&
             connectionHeader.Contains("Upgrade", StringComparison.OrdinalIgnoreCase))
@@ -133,11 +133,15 @@ public partial class ProtocolNegotiationMiddleware
     private static bool IsLegacyBrowser(string userAgent)
     {
         if (string.IsNullOrEmpty(userAgent))
+        {
             return false;
+        }
 
         // Check for Internet Explorer
         if (userAgent.Contains("MSIE") || userAgent.Contains("Trident"))
+        {
             return true;
+        }
 
         // Check for old Edge (pre-Chromium)
         if (userAgent.Contains("Edge/") && !userAgent.Contains("Edg/"))

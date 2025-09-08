@@ -121,7 +121,7 @@ public abstract class Phase1IntegrationTestBase
     /// </summary>
     /// <param name="grain">Grain to activate</param>
     /// <param name="timeout">Timeout for activation</param>
-    protected async Task WaitForGrainActivation(IGrain grain, TimeSpan? timeout = null)
+    protected static async Task WaitForGrainActivation(IGrain grain, TimeSpan? timeout = null)
     {
         timeout ??= TimeSpan.FromSeconds(10);
 

@@ -29,7 +29,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
     }
 
     [Fact]
-    public async Task ReconnectionAfterFailure_ShouldRecoverStream()
+    public async Task ReconnectionAfterFailureShouldRecoverStream()
     {
         // Arrange
         _fixture.OrleansEnabled = true;
@@ -92,7 +92,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
     }
 
     [Fact]
-    public async Task PartialMessageRecovery_ShouldResumeFromLastPoint()
+    public async Task PartialMessageRecoveryShouldResumeFromLastPoint()
     {
         // Arrange
         _fixture.OrleansEnabled = true;
@@ -154,10 +154,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
             async (bridge, ct) =>
             {
                 var testItems = GenerateTestItems(5);
-                var testBridge = bridge as ITestStreamingBridge;
-                if (testBridge == null)
-                    throw new InvalidOperationException("Bridge must be ITestStreamingBridge");
-
+                var testBridge = bridge as ITestStreamingBridge ?? throw new InvalidOperationException("Bridge must be ITestStreamingBridge");
                 var sseStream = testBridge.ConvertToSseAsync(testItems, ct);
 
                 await foreach (var item in sseStream)
@@ -171,13 +168,13 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
 
         // Assert
         _ = messagesProcessed.Should().HaveCount(5, "Should process all messages despite failure");
-        _ = messagesProcessed.Should().BeEquivalentTo(new[] { "Message 1", "Message 2", "Message 3", "Message 4", "Message 5" });
+        _ = messagesProcessed.Should().BeEquivalentTo(["Message 1", "Message 2", "Message 3", "Message 4", "Message 5"]);
 
         _output.WriteLine($"Recovered and processed {messagesProcessed.Count} messages");
     }
 
     [Fact]
-    public async Task CircuitBreaker_ShouldOpenAfterThreshold()
+    public async Task CircuitBreakerShouldOpenAfterThreshold()
     {
         // Arrange
         _fixture.OrleansEnabled = true;
@@ -209,7 +206,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
         var circuitBreakerOpened = false;
 
         // Act - Attempt multiple operations to trigger circuit breaker
-        for (int i = 0; i < 5; i++)
+        for (var i = 0; i < 5; i++)
         {
             try
             {
@@ -242,7 +239,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
     }
 
     [Fact]
-    public async Task CircuitBreaker_ShouldResetAfterTimeout()
+    public async Task CircuitBreakerShouldResetAfterTimeout()
     {
         // Arrange
         _fixture.OrleansEnabled = true;
@@ -282,7 +279,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
             Options.Create(config));
 
         // Act - Trigger circuit breaker
-        for (int i = 0; i < 2; i++)
+        for (var i = 0; i < 2; i++)
         {
             try
             {
@@ -322,7 +319,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
     }
 
     [Fact]
-    public async Task GracefulDegradation_ShouldFallbackWhenOrleansUnavailable()
+    public async Task GracefulDegradationShouldFallbackWhenOrleansUnavailable()
     {
         // Arrange
         _fixture.OrleansEnabled = true;
@@ -357,7 +354,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
     }
 
     [Fact]
-    public async Task RetryMechanism_ShouldRespectConfiguration()
+    public async Task RetryMechanismShouldRespectConfiguration()
     {
         // Arrange
         var config = new ResilientStreamingConfiguration
@@ -409,7 +406,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
     }
 
     [Fact]
-    public async Task StreamRecovery_WithPartialData_ShouldNotDuplicateMessages()
+    public async Task StreamRecoveryWithPartialDataShouldNotDuplicateMessages()
     {
         // Arrange
         _fixture.OrleansEnabled = true;
@@ -475,10 +472,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
             async (bridge, ct) =>
             {
                 var testItems = GenerateTestItems(10);
-                var testBridge = bridge as ITestStreamingBridge;
-                if (testBridge == null)
-                    throw new InvalidOperationException("Bridge must be ITestStreamingBridge");
-
+                var testBridge = bridge as ITestStreamingBridge ?? throw new InvalidOperationException("Bridge must be ITestStreamingBridge");
                 var sseStream = testBridge.ConvertToSseAsync(testItems, ct);
 
                 await foreach (var item in sseStream)
@@ -497,9 +491,9 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
         _output.WriteLine($"Processed {processedMessages.Count} unique messages without duplication");
     }
 
-    private async IAsyncEnumerable<ChatStreamItem> GenerateTestItems(int count)
+    private static async IAsyncEnumerable<ChatStreamItem> GenerateTestItems(int count)
     {
-        for (int i = 1; i <= count; i++)
+        for (var i = 1; i <= count; i++)
         {
             yield return new ChatStreamItem
             {

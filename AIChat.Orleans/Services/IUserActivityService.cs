@@ -311,7 +311,7 @@ public class UserActivityService : IUserActivityService
         try
         {
             // Validate activity type
-            if (!Enum.IsDefined(typeof(ActivityType), type))
+            if (!Enum.IsDefined(type))
             {
                 errors.Add($"Invalid activity type: {type}");
             }

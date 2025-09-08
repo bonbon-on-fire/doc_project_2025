@@ -30,7 +30,7 @@ public class SqliteChatStorageTests
         };
 
     [Fact]
-    public async Task CreateChat_List_Delete_Cascade()
+    public async Task CreateChatListDeleteCascade()
     {
         var factory = CreateFactory();
         await TestDatabaseInitializer.InitializeAsync(factory);
@@ -119,7 +119,7 @@ public class SqliteChatStorageTests
     }
 
     [Fact]
-    public async Task Sequence_Allocation_Handles_Conflicts_With_Retry()
+    public async Task SequenceAllocationHandlesConflictsWithRetry()
     {
         var factory = CreateFactory();
         await TestDatabaseInitializer.InitializeAsync(factory);
@@ -180,7 +180,7 @@ public class SqliteChatStorageTests
     }
 
     [Fact]
-    public async Task GetMessageContent_Parses_Text_And_Reasoning()
+    public async Task GetMessageContentParsesTextAndReasoning()
     {
         var factory = CreateFactory();
         await TestDatabaseInitializer.InitializeAsync(factory);

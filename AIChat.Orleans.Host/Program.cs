@@ -54,18 +54,13 @@ public class Program
     public static IHostBuilder CreateHostBuilder(string[] args)
     {
         return Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder(args)
-            .ConfigureWebHostDefaults(webBuilder =>
-            {
-                _ = webBuilder.Configure(app =>
+            .ConfigureWebHostDefaults(webBuilder => _ = webBuilder.Configure(app =>
                 {
                     // Minimal web host for health checks and dashboard
                     _ = app.UseRouting();
                     _ = app.UseEndpoints(endpoints =>
                     {
-                        _ = endpoints.MapGet("/health", async context =>
-                        {
-                            await context.Response.WriteAsync("Orleans Host is running");
-                        });
+                        _ = endpoints.MapGet("/health", async context => await context.Response.WriteAsync("Orleans Host is running"));
 
                         // Phase 4: Orleans Metrics API endpoint
                         _ = endpoints.MapGet("/api/orleans/metrics", async context =>
@@ -102,8 +97,7 @@ public class Program
                             }));
                         });
                     });
-                });
-            })
+                }))
             .UseSerilog((context, configuration) =>
             {
                 _ = configuration
@@ -151,7 +145,7 @@ public class Program
                 // Add ChatServiceProxy for grain LLM processing
                 // Default implementation provides simulated responses
                 // In production, this should be replaced with actual ChatService integration
-                _ = services.AddSingleton<AIChat.Orleans.Services.IChatServiceProxy, AIChat.Orleans.Services.DefaultChatServiceProxy>();
+                _ = services.AddSingleton<Services.IChatServiceProxy, Services.DefaultChatServiceProxy>();
 
                 // Add health checks
                 _ = services.AddHealthChecks();
@@ -176,8 +170,8 @@ public class Program
                 options.ServiceId = configuration.GetValue<string>("Orleans:ServiceId") ?? "doc-chat-service";
             })
             .ConfigureEndpoints(
-                siloPort: configuration.GetValue<int>("Orleans:SiloPort", 11111),
-                gatewayPort: configuration.GetValue<int>("Orleans:GatewayPort", 30000)
+                siloPort: configuration.GetValue("Orleans:SiloPort", 11111),
+                gatewayPort: configuration.GetValue("Orleans:GatewayPort", 30000)
             );
 
         // Environment-specific clustering and storage configuration
@@ -193,7 +187,7 @@ public class Program
         // Grain assemblies are auto-discovered in Orleans 9.x
 
         // Phase 1: Custom Orleans monitoring dashboard (Orleans 9.x compatible)
-        var dashboardPort = configuration.GetValue<int>("Orleans:DashboardPort", 8080);
+        var dashboardPort = configuration.GetValue("Orleans:DashboardPort", 8080);
         var dashboardEnabled = configuration.GetValue("Orleans:Dashboard:Enabled", true);
 
         if (dashboardEnabled)

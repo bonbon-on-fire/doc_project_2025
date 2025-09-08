@@ -32,7 +32,10 @@ public class BufferReplayService : IBufferReplayService
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(streamId))
+        {
             throw new ArgumentNullException(nameof(streamId));
+        }
+
         ArgumentNullException.ThrowIfNull(messages);
         ArgumentNullException.ThrowIfNull(httpResponse);
 
@@ -70,7 +73,7 @@ public class BufferReplayService : IBufferReplayService
             // Process messages in batches if specified
             var batchSize = options.BatchSize > 0 ? options.BatchSize : sortedMessages.Count;
 
-            for (int i = 0; i < sortedMessages.Count; i += batchSize)
+            for (var i = 0; i < sortedMessages.Count; i += batchSize)
             {
                 var batch = sortedMessages.Skip(i).Take(batchSize).ToList();
 
@@ -178,7 +181,9 @@ public class BufferReplayService : IBufferReplayService
     public async Task<bool> IsDuplicateMessageAsync(string streamId, long sequenceNumber)
     {
         if (string.IsNullOrEmpty(streamId))
+        {
             throw new ArgumentNullException(nameof(streamId));
+        }
 
         var tracker = GetOrCreateTracker(streamId);
         return await Task.FromResult(tracker.IsDelivered(sequenceNumber));
@@ -188,7 +193,9 @@ public class BufferReplayService : IBufferReplayService
     public async Task RecordMessageDeliveryAsync(string streamId, long sequenceNumber, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(streamId))
+        {
             throw new ArgumentNullException(nameof(streamId));
+        }
 
         var tracker = GetOrCreateTracker(streamId);
         tracker.RecordDelivery(sequenceNumber);
@@ -203,7 +210,10 @@ public class BufferReplayService : IBufferReplayService
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(streamId))
+        {
             throw new ArgumentNullException(nameof(streamId));
+        }
+
         ArgumentNullException.ThrowIfNull(partialMessages);
 
         var collector = _partialCollectors.GetOrAdd(streamId, _ => new PartialMessageCollector());
@@ -236,7 +246,9 @@ public class BufferReplayService : IBufferReplayService
     public async Task ClearDeliveryTrackingAsync(string streamId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(streamId))
+        {
             throw new ArgumentNullException(nameof(streamId));
+        }
 
         if (_deliveryTrackers.TryRemove(streamId, out var tracker))
         {
@@ -257,10 +269,14 @@ public class BufferReplayService : IBufferReplayService
     public async Task<ReplayStatistics?> GetReplayStatisticsAsync(string streamId)
     {
         if (string.IsNullOrEmpty(streamId))
+        {
             throw new ArgumentNullException(nameof(streamId));
+        }
 
         if (!_deliveryTrackers.TryGetValue(streamId, out var tracker))
+        {
             return null;
+        }
 
         var stats = new ReplayStatistics
         {
@@ -303,7 +319,7 @@ public class BufferReplayService : IBufferReplayService
     private class DeliveryTracker
     {
         private readonly HashSet<long> _deliveredSequences = [];
-        private readonly object _lock = new();
+        private readonly Lock _lock = new();
 
         public int DeliveredCount => _deliveredSequences.Count;
         public int ReplayOperations { get; private set; }
@@ -337,7 +353,9 @@ public class BufferReplayService : IBufferReplayService
                 LastReplayTime = DateTime.UtcNow;
 
                 if (sequenceNumber > HighestSequenceDelivered)
+                {
                     HighestSequenceDelivered = sequenceNumber;
+                }
             }
         }
 
@@ -368,19 +386,21 @@ public class BufferReplayService : IBufferReplayService
         public bool IsComplete(long sequenceNumber)
         {
             if (!_partials.TryGetValue(sequenceNumber, out var partials))
+            {
                 return false;
+            }
 
             var firstPartial = partials.FirstOrDefault();
-            return firstPartial == null
-                ? false
-                : partials.Count == firstPartial.TotalChunks &&
+            return firstPartial != null && partials.Count == firstPartial.TotalChunks &&
                    partials.Select(p => p.ChunkIndex).Distinct().Count() == firstPartial.TotalChunks;
         }
 
         public BufferedStreamMessage? GetMergedMessage(long sequenceNumber)
         {
             if (!_partials.TryGetValue(sequenceNumber, out var partials))
+            {
                 return null;
+            }
 
             // Sort by chunk index and concatenate data
             var sortedPartials = partials.OrderBy(p => p.ChunkIndex).ToList();

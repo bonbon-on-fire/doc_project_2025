@@ -41,7 +41,7 @@ public class UserGrainTimerTests
     /// Tests that timers are properly created when EnablePeriodicTimers is true.
     /// </summary>
     [Test]
-    public async Task UserGrain_ShouldCreateTimers_WhenEnabled()
+    public async Task UserGrainShouldCreateTimersWhenEnabled()
     {
         // Arrange
         Assert.That(_cluster, Is.Not.Null);
@@ -55,15 +55,18 @@ public class UserGrainTimerTests
 
         // Assert - Grain should be active with timers configured
         Assert.That(state, Is.Not.Null);
-        Assert.That(state.UserId, Is.EqualTo("timer-test-user-1"));
-        Assert.That(state.Metrics.ActivationCount, Is.GreaterThan(0));
+        Assert.Multiple(() =>
+        {
+            Assert.That(state.UserId, Is.EqualTo("timer-test-user-1"));
+            Assert.That(state.Metrics.ActivationCount, Is.GreaterThan(0));
+        });
     }
 
     /// <summary>
     /// Tests that grain can be deactivated without errors even with active timers.
     /// </summary>
     [Test]
-    public async Task UserGrain_ShouldDeactivateCleanly_WithActiveTimers()
+    public async Task UserGrainShouldDeactivateCleanlyWithActiveTimers()
     {
         // Arrange
         Assert.That(_cluster, Is.Not.Null);
@@ -83,9 +86,12 @@ public class UserGrainTimerTests
         // Reactivate and check state
         var stateAfter = await grain.GetState();
 
-        // Assert - Should reactivate successfully with incremented activation count
-        Assert.That(stateBefore, Is.Not.Null);
-        Assert.That(stateAfter, Is.Not.Null);
+        Assert.Multiple(() =>
+        {
+            // Assert - Should reactivate successfully with incremented activation count
+            Assert.That(stateBefore, Is.Not.Null);
+            Assert.That(stateAfter, Is.Not.Null);
+        });
         Assert.That(stateAfter.UserId, Is.EqualTo("timer-cleanup-test"));
         // State is persisted, so we can verify the grain was deactivated and reactivated
     }
@@ -94,14 +100,14 @@ public class UserGrainTimerTests
     /// Tests that multiple rapid activations/deactivations don't cause timer issues.
     /// </summary>
     [Test]
-    public async Task UserGrain_ShouldHandleRapidReactivation_WithoutTimerLeaks()
+    public async Task UserGrainShouldHandleRapidReactivationWithoutTimerLeaks()
     {
         // Arrange
         Assert.That(_cluster, Is.Not.Null);
         const string userId = "rapid-reactivation-test";
 
         // Act - Perform multiple activations
-        for (int i = 0; i < 3; i++)
+        for (var i = 0; i < 3; i++)
         {
             var grain = _cluster!.GrainFactory.GetGrain<IUserGrain>(userId);
             await grain.RecordActivity(ActivityType.MessageSent, $"Message {i}");
@@ -116,15 +122,18 @@ public class UserGrainTimerTests
 
         // Assert - Should have clean state without issues
         Assert.That(state, Is.Not.Null);
-        Assert.That(state.RecentActivity.Count, Is.GreaterThan(0));
-        Assert.That(state.Metrics.TotalActivities, Is.EqualTo(3));
+        Assert.Multiple(() =>
+        {
+            Assert.That(state.RecentActivity.Count, Is.GreaterThan(0));
+            Assert.That(state.Metrics.TotalActivities, Is.EqualTo(3));
+        });
     }
 
     /// <summary>
     /// Tests that timer disposal doesn't interfere with state persistence.
     /// </summary>
     [Test]
-    public async Task UserGrain_ShouldPersistState_DuringTimerDisposal()
+    public async Task UserGrainShouldPersistStateDuringTimerDisposal()
     {
         // Arrange
         Assert.That(_cluster, Is.Not.Null);
@@ -132,7 +141,7 @@ public class UserGrainTimerTests
         var grain = _cluster!.GrainFactory.GetGrain<IUserGrain>(userId);
 
         // Act - Add activities to trigger state persistence
-        for (int i = 0; i < 15; i++) // More than ActivityPersistenceInterval
+        for (var i = 0; i < 15; i++) // More than ActivityPersistenceInterval
         {
             await grain.RecordActivity(ActivityType.MessageSent, $"Message {i}");
         }
@@ -144,9 +153,12 @@ public class UserGrainTimerTests
 
         var stateAfter = await grain.GetState();
 
-        // Assert - State should be consistent
-        Assert.That(stateBefore.Metrics.TotalActivities, Is.EqualTo(15));
-        Assert.That(stateAfter.Metrics.TotalActivities, Is.EqualTo(stateBefore.Metrics.TotalActivities));
+        Assert.Multiple(() =>
+        {
+            // Assert - State should be consistent
+            Assert.That(stateBefore.Metrics.TotalActivities, Is.EqualTo(15));
+            Assert.That(stateAfter.Metrics.TotalActivities, Is.EqualTo(stateBefore.Metrics.TotalActivities));
+        });
     }
 }
 

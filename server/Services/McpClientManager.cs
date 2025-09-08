@@ -25,10 +25,9 @@ public class McpClientManager(
     private readonly Dictionary<string, IMcpClient> _clients = [];
     private readonly Dictionary<string, IClientTransport> _transports = [];
     private readonly SemaphoreSlim _initializationLock = new(1, 1);
-    private bool _isInitialized;
     private bool _disposed;
 
-    public bool IsInitialized => _isInitialized;
+    public bool IsInitialized { get; private set; }
 
     private static readonly string[] separator = [":-"];
 
@@ -37,7 +36,7 @@ public class McpClientManager(
         await _initializationLock.WaitAsync(cancellationToken);
         try
         {
-            if (_isInitialized)
+            if (IsInitialized)
             {
                 logger.LogInformation("MCP clients already initialized");
                 return;
@@ -77,7 +76,7 @@ public class McpClientManager(
                 }
             }
 
-            _isInitialized = true;
+            IsInitialized = true;
             logger.LogInformation(
                 "MCP client initialization completed. Active clients: {ClientCount}",
                 _clients.Count
@@ -281,7 +280,7 @@ public class McpClientManager(
         CancellationToken cancellationToken = default
     )
     {
-        if (!_isInitialized)
+        if (!IsInitialized)
         {
             await InitializeClientsAsync(cancellationToken);
         }
@@ -316,7 +315,7 @@ public class McpClientManager(
 
         _clients.Clear();
         _transports.Clear();
-        _isInitialized = false;
+        IsInitialized = false;
 
         await Task.CompletedTask;
     }

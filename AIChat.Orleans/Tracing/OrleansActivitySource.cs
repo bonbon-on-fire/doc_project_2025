@@ -90,7 +90,10 @@ public static class OrleansActivitySource
     /// <param name="exception">The exception that occurred</param>
     public static void SetError(Activity? activity, Exception exception)
     {
-        if (activity == null) return;
+        if (activity == null)
+        {
+            return;
+        }
 
         _ = activity.SetStatus(ActivityStatusCode.Error, exception.Message);
         _ = activity.SetTag("error", true);
@@ -106,7 +109,10 @@ public static class OrleansActivitySource
     /// <param name="additionalTags">Optional additional tags to set</param>
     public static void SetSuccess(Activity? activity, Dictionary<string, object>? additionalTags = null)
     {
-        if (activity == null) return;
+        if (activity == null)
+        {
+            return;
+        }
 
         _ = activity.SetStatus(ActivityStatusCode.Ok);
 

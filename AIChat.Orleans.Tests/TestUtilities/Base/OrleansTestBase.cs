@@ -64,7 +64,7 @@ public abstract class OrleansTestBase : IClassFixture<OrleansTestFixture>
     /// <summary>
     /// Extracts a header value from the response.
     /// </summary>
-    protected string? GetHeaderValue(HttpResponseMessage response, string headerName)
+    protected static string? GetHeaderValue(HttpResponseMessage response, string headerName)
     {
         return response.Headers.TryGetValues(headerName, out var values) ? values.FirstOrDefault() : null;
     }
@@ -116,7 +116,7 @@ public abstract class OrleansTestBase : IClassFixture<OrleansTestFixture>
     {
         LogTestStep("Warming up system with {0} requests", requestCount);
 
-        for (int i = 0; i < requestCount; i++)
+        for (var i = 0; i < requestCount; i++)
         {
             var request = CreateChatRequestBuilder.Create()
                 .WithUserId($"warmup-{i}")

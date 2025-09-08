@@ -37,7 +37,10 @@ public static class SseTestHelpers
         while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
         {
             var line = await reader.ReadLineAsync(cancellationToken);
-            if (line == null) break;
+            if (line == null)
+            {
+                break;
+            }
 
             if (string.IsNullOrEmpty(line))
             {
@@ -72,19 +75,19 @@ public static class SseTestHelpers
 
             if (line.StartsWith("event:"))
             {
-                currentEvent.EventType = line.Substring(6).Trim();
+                currentEvent.EventType = line[6..].Trim();
             }
             else if (line.StartsWith("data:"))
             {
-                dataLines.Add(line.Substring(5).Trim());
+                dataLines.Add(line[5..].Trim());
             }
             else if (line.StartsWith("id:"))
             {
-                currentEvent.Id = line.Substring(3).Trim();
+                currentEvent.Id = line[3..].Trim();
             }
             else if (line.StartsWith("retry:"))
             {
-                if (int.TryParse(line.Substring(6).Trim(), out var retry))
+                if (int.TryParse(line[6..].Trim(), out var retry))
                 {
                     currentEvent.Retry = retry;
                 }
@@ -111,13 +114,19 @@ public static class SseTestHelpers
         foreach (var evt in events)
         {
             if (!string.IsNullOrEmpty(evt.EventType))
+            {
                 _ = sb.AppendLine($"event: {evt.EventType}");
+            }
 
             if (!string.IsNullOrEmpty(evt.Id))
+            {
                 _ = sb.AppendLine($"id: {evt.Id}");
+            }
 
             if (evt.Retry.HasValue)
+            {
                 _ = sb.AppendLine($"retry: {evt.Retry}");
+            }
 
             if (!string.IsNullOrEmpty(evt.Data))
             {
@@ -149,7 +158,7 @@ public static class SseTestHelpers
                 $"Actual: [{string.Join(", ", actualTypes)}]");
         }
 
-        for (int i = 0; i < expectedEventTypes.Length; i++)
+        for (var i = 0; i < expectedEventTypes.Length; i++)
         {
             if (actualTypes[i] != expectedEventTypes[i])
             {

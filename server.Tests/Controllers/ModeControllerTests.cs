@@ -31,7 +31,7 @@ public class ModeControllerTests
     #region GetModes Tests
 
     [Fact]
-    public async Task GetModes_WithValidUserId_ReturnsOkWithModes()
+    public async Task GetModesWithValidUserIdReturnsOkWithModes()
     {
         // Arrange
         var userId = "test-user-1";
@@ -84,7 +84,7 @@ public class ModeControllerTests
     }
 
     [Fact]
-    public async Task GetModes_WithMissingUserId_ReturnsBadRequest()
+    public async Task GetModesWithMissingUserIdReturnsBadRequest()
     {
         // Arrange
         string userId = null!;
@@ -99,7 +99,7 @@ public class ModeControllerTests
     }
 
     [Fact]
-    public async Task GetModes_WithEmptyUserId_ReturnsBadRequest()
+    public async Task GetModesWithEmptyUserIdReturnsBadRequest()
     {
         // Arrange
         var userId = "   "; // Whitespace
@@ -114,7 +114,7 @@ public class ModeControllerTests
     }
 
     [Fact]
-    public async Task GetModes_WhenServiceFails_ReturnsServerError()
+    public async Task GetModesWhenServiceFailsReturnsServerError()
     {
         // Arrange
         var userId = "test-user-2";
@@ -136,7 +136,7 @@ public class ModeControllerTests
     #region GetMode Tests
 
     [Fact]
-    public async Task GetMode_WithValidIdAndUserId_ReturnsOkWithMode()
+    public async Task GetModeWithValidIdAndUserIdReturnsOkWithMode()
     {
         // Arrange
         var modeId = "test-mode-1";
@@ -171,7 +171,7 @@ public class ModeControllerTests
     }
 
     [Fact]
-    public async Task GetMode_WithNonExistentId_ReturnsNotFound()
+    public async Task GetModeWithNonExistentIdReturnsNotFound()
     {
         // Arrange
         var modeId = "non-existent";
@@ -190,7 +190,7 @@ public class ModeControllerTests
     }
 
     [Fact]
-    public async Task GetMode_WithMissingUserId_ReturnsBadRequest()
+    public async Task GetModeWithMissingUserIdReturnsBadRequest()
     {
         // Arrange
         var modeId = "test-mode-2";
@@ -209,7 +209,7 @@ public class ModeControllerTests
     #region CreateMode Tests
 
     [Fact]
-    public async Task CreateMode_WithValidRequest_ReturnsCreatedWithMode()
+    public async Task CreateModeWithValidRequestReturnsCreatedWithMode()
     {
         // Arrange
         var request = new CreateModeApiRequest
@@ -262,7 +262,7 @@ public class ModeControllerTests
     }
 
     [Fact]
-    public async Task CreateMode_WithMissingUserId_ReturnsBadRequest()
+    public async Task CreateModeWithMissingUserIdReturnsBadRequest()
     {
         // Arrange
         var request = new CreateModeApiRequest
@@ -285,7 +285,7 @@ public class ModeControllerTests
     }
 
     [Fact]
-    public async Task CreateMode_WithHtmlSpecialCharactersInName_ReturnsBadRequest()
+    public async Task CreateModeWithHtmlSpecialCharactersInNameReturnsBadRequest()
     {
         // Arrange
         var request = new CreateModeApiRequest
@@ -311,7 +311,7 @@ public class ModeControllerTests
     }
 
     [Fact]
-    public async Task CreateMode_WithScriptTagInDescription_ReturnsBadRequest()
+    public async Task CreateModeWithScriptTagInDescriptionReturnsBadRequest()
     {
         // Arrange
         var request = new CreateModeApiRequest
@@ -337,7 +337,7 @@ public class ModeControllerTests
     }
 
     [Fact]
-    public async Task CreateMode_WithEmptyToolName_ReturnsBadRequest()
+    public async Task CreateModeWithEmptyToolNameReturnsBadRequest()
     {
         // Arrange
         var request = new CreateModeApiRequest
@@ -363,7 +363,7 @@ public class ModeControllerTests
     }
 
     [Fact]
-    public async Task CreateMode_WithTooLongToolName_ReturnsBadRequest()
+    public async Task CreateModeWithTooLongToolNameReturnsBadRequest()
     {
         // Arrange
         var request = new CreateModeApiRequest
@@ -389,7 +389,7 @@ public class ModeControllerTests
     }
 
     [Fact]
-    public async Task CreateMode_WithDuplicateMode_ReturnsConflict()
+    public async Task CreateModeWithDuplicateModeReturnsConflict()
     {
         // Arrange
         var request = new CreateModeApiRequest
@@ -424,7 +424,7 @@ public class ModeControllerTests
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    public void CreateMode_WithInvalidName_ReturnsValidationError(string invalidName)
+    public void CreateModeWithInvalidNameReturnsValidationError(string invalidName)
     {
         // Arrange
         var request = new CreateModeApiRequest
@@ -458,7 +458,7 @@ public class ModeControllerTests
     #region UpdateMode Tests
 
     [Fact]
-    public async Task UpdateMode_WithValidRequest_ReturnsOkWithUpdatedMode()
+    public async Task UpdateModeWithValidRequestReturnsOkWithUpdatedMode()
     {
         // Arrange
         var modeId = "mode-to-update";
@@ -510,7 +510,7 @@ public class ModeControllerTests
     }
 
     [Fact]
-    public async Task UpdateMode_WithNonExistentMode_ReturnsNotFound()
+    public async Task UpdateModeWithNonExistentModeReturnsNotFound()
     {
         // Arrange
         var modeId = "non-existent";
@@ -545,7 +545,7 @@ public class ModeControllerTests
     }
 
     [Fact]
-    public async Task UpdateMode_WithValidationError_ReturnsBadRequest()
+    public async Task UpdateModeWithValidationErrorReturnsBadRequest()
     {
         // Arrange
         var modeId = "mode-to-update";
@@ -576,7 +576,7 @@ public class ModeControllerTests
     #region DeleteMode Tests
 
     [Fact]
-    public async Task DeleteMode_WithValidRequest_ReturnsNoContent()
+    public async Task DeleteModeWithValidRequestReturnsNoContent()
     {
         // Arrange
         var modeId = "mode-to-delete";
@@ -594,7 +594,7 @@ public class ModeControllerTests
     }
 
     [Fact]
-    public async Task DeleteMode_WithNonExistentMode_ReturnsNotFound()
+    public async Task DeleteModeWithNonExistentModeReturnsNotFound()
     {
         // Arrange
         var modeId = "non-existent";
@@ -613,7 +613,7 @@ public class ModeControllerTests
     }
 
     [Fact]
-    public async Task DeleteMode_WithSystemMode_ReturnsBadRequest()
+    public async Task DeleteModeWithSystemModeReturnsBadRequest()
     {
         // Arrange
         var modeId = "system-mode";
@@ -632,7 +632,7 @@ public class ModeControllerTests
     }
 
     [Fact]
-    public async Task DeleteMode_WithMissingUserId_ReturnsBadRequest()
+    public async Task DeleteModeWithMissingUserIdReturnsBadRequest()
     {
         // Arrange
         var modeId = "mode-to-delete";
@@ -647,7 +647,7 @@ public class ModeControllerTests
     }
 
     [Fact]
-    public async Task DeleteMode_WhenServiceFails_ReturnsServerError()
+    public async Task DeleteModeWhenServiceFailsReturnsServerError()
     {
         // Arrange
         var modeId = "mode-to-delete";
@@ -671,7 +671,7 @@ public class ModeControllerTests
     #region Logging Tests
 
     [Fact]
-    public async Task GetModes_WhenServiceFails_LogsError()
+    public async Task GetModesWhenServiceFailsLogsError()
     {
         // Arrange
         var userId = "test-user-18";
@@ -699,7 +699,7 @@ public class ModeControllerTests
     }
 
     [Fact]
-    public async Task CreateMode_WhenServiceFails_LogsError()
+    public async Task CreateModeWhenServiceFailsLogsError()
     {
         // Arrange
         var request = new CreateModeApiRequest

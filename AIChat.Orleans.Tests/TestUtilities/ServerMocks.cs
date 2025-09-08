@@ -1,9 +1,11 @@
+using AIChat.Server.Configuration;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace AIChat.Server.Services.Streaming
 {
-
     // Minimal interfaces for testing - actual implementations are in server project
     public interface IStreamingBridge : IAsyncDisposable
     {
@@ -76,8 +78,16 @@ namespace AIChat.Server.Configuration
         public bool Validate(out List<string> errors)
         {
             errors = [];
-            if (BufferSize <= 0) errors.Add("BufferSize must be positive");
-            if (FlushIntervalMs <= 0) errors.Add("FlushIntervalMs must be positive");
+            if (BufferSize <= 0)
+            {
+                errors.Add("BufferSize must be positive");
+            }
+
+            if (FlushIntervalMs <= 0)
+            {
+                errors.Add("FlushIntervalMs must be positive");
+            }
+
             return errors.Count == 0;
         }
     }
@@ -96,8 +106,16 @@ namespace AIChat.Server.Configuration
         public bool Validate(out List<string> errors)
         {
             errors = [];
-            if (MaxRetryAttempts < 0) errors.Add("MaxRetryAttempts must be non-negative");
-            if (RetryDelayMs <= 0) errors.Add("RetryDelayMs must be positive");
+            if (MaxRetryAttempts < 0)
+            {
+                errors.Add("MaxRetryAttempts must be non-negative");
+            }
+
+            if (RetryDelayMs <= 0)
+            {
+                errors.Add("RetryDelayMs must be positive");
+            }
+
             return errors.Count == 0;
         }
     }
@@ -189,10 +207,6 @@ public partial class Program { }
 // Minimal implementations for testing
 namespace AIChat.Server.Services.Streaming
 {
-    using AIChat.Server.Configuration;
-    using Microsoft.Extensions.Logging;
-    using Microsoft.Extensions.Options;
-
     public class StreamingBridge : IStreamingBridge
     {
         private readonly ILogger<StreamingBridge> _logger;

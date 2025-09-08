@@ -90,7 +90,7 @@ public class ChatControllerOrleansTests
     }
 
     [Fact]
-    public async Task StreamChatCompletionSse_WithOrleansEnabled_AddsOrleansHeaders()
+    public async Task StreamChatCompletionSseWithOrleansEnabledAddsOrleansHeaders()
     {
         // Arrange
         var request = new AIChat.Server.Controllers.CreateChatRequest(
@@ -141,7 +141,7 @@ public class ChatControllerOrleansTests
     }
 
     [Fact]
-    public async Task StreamChatCompletionSse_WithOrleansDisabled_AddsDirectHeaders()
+    public async Task StreamChatCompletionSseWithOrleansDisabledAddsDirectHeaders()
     {
         // Arrange
         var request = new AIChat.Server.Controllers.CreateChatRequest(
@@ -182,7 +182,7 @@ public class ChatControllerOrleansTests
     }
 
     [Fact]
-    public async Task StreamChatCompletionSse_OrleansFailure_FallsBackToDirect()
+    public async Task StreamChatCompletionSseOrleansFailureFallsBackToDirect()
     {
         // Arrange
         var request = new AIChat.Server.Controllers.CreateChatRequest(
@@ -234,7 +234,7 @@ public class ChatControllerOrleansTests
     }
 
     [Fact]
-    public async Task StreamChatCompletionSse_WithOrleansStreaming_RoutesToOrleans()
+    public async Task StreamChatCompletionSseWithOrleansStreamingRoutesToOrleans()
     {
         // Arrange
         var request = new AIChat.Server.Controllers.CreateChatRequest(
@@ -274,8 +274,8 @@ public class ChatControllerOrleansTests
         // Setup the grain streaming
         var streamChunks = new List<StreamChunk>
         {
-            new StreamChunk { Content = "Test", IsComplete = false, ChunkIndex = 0 },
-            new StreamChunk { Content = " response", IsComplete = true, ChunkIndex = 1 }
+            new() { Content = "Test", IsComplete = false, ChunkIndex = 0 },
+            new() { Content = " response", IsComplete = true, ChunkIndex = 1 }
         };
 
         _ = mockUserGrain.Setup(g => g.ProcessChatStreamAsync(It.IsAny<ChatRequest>(), It.IsAny<CancellationToken>()))

@@ -51,7 +51,11 @@ dotnet_separate_import_directive_groups = false
 dotnet_sort_system_directives_first = true
 file_header_template = unset
 
-# This rule
+# Enable analyzers to participate in build and be visible
+# (warning/error are enforced; suggestion/silent are not)
+dotnet_analyzer_diagnostic.severity = warning
+
+# Style category as warnings
 dotnet_analyzer_diagnostic.category-style.severity = warning
 
 # Code style rules
@@ -220,8 +224,30 @@ dotnet_naming_style.prefixed_with_i.required_suffix =
 dotnet_naming_style.prefixed_with_i.word_separator =
 dotnet_naming_style.prefixed_with_i.capitalization = pascal_case
 
+# Common rules with reliable auto-fixers (set to warning for enforcement)
 # IDE0055: Fix formatting
 dotnet_diagnostic.IDE0055.severity = warning
+
+# IDE0005: Remove unnecessary usings
+dotnet_diagnostic.IDE0005.severity = warning
+
+# IDE0065: Using directives placement
+dotnet_diagnostic.IDE0065.severity = warning
+
+# IDE0044: Make field readonly
+dotnet_diagnostic.IDE0044.severity = warning
+
+# IDE0017: Use object initializer
+dotnet_diagnostic.IDE0017.severity = warning
+
+# IDE0028: Use collection initializer  
+dotnet_diagnostic.IDE0028.severity = warning
+
+# IDE0066: Convert switch statement to expression
+dotnet_diagnostic.IDE0066.severity = suggestion
+
+# CA1822: Mark members as static when possible
+dotnet_diagnostic.CA1822.severity = warning
 
 # CA1031: Do not catch general exception types
 dotnet_diagnostic.CA1031.severity = suggestion
@@ -252,7 +278,43 @@ dotnet_diagnostic.IDE0059.severity = none
 dotnet_diagnostic.IDE0038.severity = none
 
 # IDE0032: Use auto property
-dotnet_diagnostic.IDE0032.severity = suggestion
+dotnet_diagnostic.IDE0032.severity = warning
+
+# IDE0007: Use var
+dotnet_diagnostic.IDE0007.severity = warning
+
+# IDE0011: Add braces
+dotnet_diagnostic.IDE0011.severity = warning
+
+# IDE0001: Simplify name
+dotnet_diagnostic.IDE0001.severity = warning
+
+# IDE0301: Collection initialization can be simplified
+dotnet_diagnostic.IDE0301.severity = warning
+
+# IDE0305: Collection initialization can be simplified
+dotnet_diagnostic.IDE0305.severity = warning
+
+# IDE0200: Lambda expression can be removed
+dotnet_diagnostic.IDE0200.severity = warning
+
+# IDE0063: Using statement can be simplified
+dotnet_diagnostic.IDE0063.severity = warning
+
+# IDE0046: If statement can be simplified
+dotnet_diagnostic.IDE0046.severity = suggestion
+
+# IDE0047: Parentheses can be removed
+dotnet_diagnostic.IDE0047.severity = suggestion
+
+# IDE0010: Populate switch
+dotnet_diagnostic.IDE0010.severity = suggestion
+
+# IDE0075: Conditional expression can be simplified
+dotnet_diagnostic.IDE0075.severity = suggestion
+
+# IDE0330: Use System.Threading.Lock
+dotnet_diagnostic.IDE0330.severity = suggestion
 
 # IDE0130: Namespace does not match folder structure
 dotnet_style_namespace_match_folder = false

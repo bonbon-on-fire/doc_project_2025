@@ -118,7 +118,7 @@ public class InMemoryOperationTrackingService : IOperationTrackingService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to get operations for user {UserId}", userId);
-            return Task.FromResult<IEnumerable<OperationUserContext>>(Enumerable.Empty<OperationUserContext>());
+            return Task.FromResult(Enumerable.Empty<OperationUserContext>());
         }
     }
 
@@ -138,7 +138,7 @@ public class InMemoryOperationTrackingService : IOperationTrackingService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to get operations for chat {ChatId}", chatId);
-            return Task.FromResult<IEnumerable<OperationUserContext>>(Enumerable.Empty<OperationUserContext>());
+            return Task.FromResult(Enumerable.Empty<OperationUserContext>());
         }
     }
 }

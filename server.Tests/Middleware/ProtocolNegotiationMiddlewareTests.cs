@@ -32,7 +32,7 @@ public class ProtocolNegotiationMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_WithChatEndpoint_NegotiatesProtocol()
+    public async Task InvokeAsyncWithChatEndpointNegotiatesProtocol()
     {
         // Arrange
         var context = new DefaultHttpContext();
@@ -53,7 +53,7 @@ public class ProtocolNegotiationMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_WithNonChatEndpoint_SkipsNegotiation()
+    public async Task InvokeAsyncWithNonChatEndpointSkipsNegotiation()
     {
         // Arrange
         var context = new DefaultHttpContext();
@@ -70,7 +70,7 @@ public class ProtocolNegotiationMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_WithSignalRDisabled_SelectsSSE()
+    public async Task InvokeAsyncWithSignalRDisabledSelectsSSE()
     {
         // Arrange
         var context = new DefaultHttpContext();
@@ -88,7 +88,7 @@ public class ProtocolNegotiationMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_WithLegacyBrowser_SelectsSSE()
+    public async Task InvokeAsyncWithLegacyBrowserSelectsSSE()
     {
         // Arrange
         var context = new DefaultHttpContext();
@@ -106,7 +106,7 @@ public class ProtocolNegotiationMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_WithExplicitSSERequest_SelectsSSE()
+    public async Task InvokeAsyncWithExplicitSSERequestSelectsSSE()
     {
         // Arrange
         var context = new DefaultHttpContext();
@@ -125,7 +125,7 @@ public class ProtocolNegotiationMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_WithExplicitSignalRRequest_SelectsSignalR()
+    public async Task InvokeAsyncWithExplicitSignalRRequestSelectsSignalR()
     {
         // Arrange
         var context = new DefaultHttpContext();
@@ -144,7 +144,7 @@ public class ProtocolNegotiationMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_WithWebSocketUpgrade_SelectsSignalR()
+    public async Task InvokeAsyncWithWebSocketUpgradeSelectsSignalR()
     {
         // Arrange
         var context = new DefaultHttpContext();
@@ -164,7 +164,7 @@ public class ProtocolNegotiationMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_WithOldEdgeBrowser_SelectsSSE()
+    public async Task InvokeAsyncWithOldEdgeBrowserSelectsSSE()
     {
         // Arrange
         var context = new DefaultHttpContext();
@@ -181,7 +181,7 @@ public class ProtocolNegotiationMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_WithNewEdgeBrowser_SelectsSignalR()
+    public async Task InvokeAsyncWithNewEdgeBrowserSelectsSignalR()
     {
         // Arrange
         var context = new DefaultHttpContext();
@@ -198,7 +198,7 @@ public class ProtocolNegotiationMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_WithMessageEndpoint_NegotiatesProtocol()
+    public async Task InvokeAsyncWithMessageEndpointNegotiatesProtocol()
     {
         // Arrange
         var context = new DefaultHttpContext();
@@ -215,7 +215,7 @@ public class ProtocolNegotiationMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_WithChatHubEndpoint_NegotiatesProtocol()
+    public async Task InvokeAsyncWithChatHubEndpointNegotiatesProtocol()
     {
         // Arrange
         var context = new DefaultHttpContext();
@@ -232,7 +232,7 @@ public class ProtocolNegotiationMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_WithSSEEndpoint_NegotiatesProtocol()
+    public async Task InvokeAsyncWithSSEEndpointNegotiatesProtocol()
     {
         // Arrange
         var context = new DefaultHttpContext();
@@ -249,16 +249,16 @@ public class ProtocolNegotiationMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_WithAuthenticatedUser_ChecksUserPreference()
+    public async Task InvokeAsyncWithAuthenticatedUserChecksUserPreference()
     {
         // Arrange
         var context = new DefaultHttpContext();
         context.Request.Path = "/api/chat/send";
         context.Request.Headers.UserAgent = "Mozilla/5.0 Chrome/120.0";
-        context.User = new ClaimsPrincipal(new ClaimsIdentity(new[]
-        {
+        context.User = new ClaimsPrincipal(new ClaimsIdentity(
+        [
             new Claim("sub", "user123")
-        }));
+        ]));
         _ = _featureManager.Setup(x => x.IsEnabledAsync("SignalRMessaging"))
             .ReturnsAsync(true);
 
@@ -271,7 +271,7 @@ public class ProtocolNegotiationMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_WithEmptyUserAgent_SelectsSignalR()
+    public async Task InvokeAsyncWithEmptyUserAgentSelectsSignalR()
     {
         // Arrange
         var context = new DefaultHttpContext();
@@ -288,7 +288,7 @@ public class ProtocolNegotiationMiddlewareTests
     }
 
     [Fact]
-    public async Task InvokeAsync_WithInvalidRequestedProtocol_DefaultsToSignalR()
+    public async Task InvokeAsyncWithInvalidRequestedProtocolDefaultsToSignalR()
     {
         // Arrange
         var context = new DefaultHttpContext();

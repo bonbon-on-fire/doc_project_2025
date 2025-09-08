@@ -38,7 +38,7 @@ public class StreamingBridgeFactoryTests
     }
 
     [Fact]
-    public void CreateBridge_ReturnsNewInstance()
+    public void CreateBridgeReturnsNewInstance()
     {
         // Act
         var bridge = _factory.CreateBridge();
@@ -49,7 +49,7 @@ public class StreamingBridgeFactoryTests
     }
 
     [Fact]
-    public void CreateBridge_WithDefaultConfiguration_UsesDefaultValues()
+    public void CreateBridgeWithDefaultConfigurationUsesDefaultValues()
     {
         // Act
         var bridge = _factory.CreateBridge();
@@ -60,16 +60,13 @@ public class StreamingBridgeFactoryTests
     }
 
     [Fact]
-    public void CreateBridge_WithCustomConfiguration_AppliesCustomValues()
+    public void CreateBridgeWithCustomConfigurationAppliesCustomValues()
     {
         // Arrange
         var customBufferSize = 200;
 
         // Act
-        var bridge = _factory.CreateBridge(config =>
-        {
-            config.BufferSize = customBufferSize;
-        });
+        var bridge = _factory.CreateBridge(config => config.BufferSize = customBufferSize);
         var stats = bridge.GetBufferStatistics();
 
         // Assert
@@ -77,7 +74,7 @@ public class StreamingBridgeFactoryTests
     }
 
     [Fact]
-    public void CreateBridge_MultipleInstances_ReturnsUniqueInstances()
+    public void CreateBridgeMultipleInstancesReturnsUniqueInstances()
     {
         // Act
         var bridge1 = _factory.CreateBridge();
@@ -90,13 +87,10 @@ public class StreamingBridgeFactoryTests
     }
 
     [Fact]
-    public void CreateBridge_WithCustomConfiguration_DoesNotAffectDefault()
+    public void CreateBridgeWithCustomConfigurationDoesNotAffectDefault()
     {
         // Act
-        var customBridge = _factory.CreateBridge(config =>
-        {
-            config.BufferSize = 500;
-        });
+        var customBridge = _factory.CreateBridge(config => config.BufferSize = 500);
         var defaultBridge = _factory.CreateBridge();
 
         var customStats = customBridge.GetBufferStatistics();
@@ -108,7 +102,7 @@ public class StreamingBridgeFactoryTests
     }
 
     [Fact]
-    public void CreateBridge_WithNullConfigureAction_ThrowsException()
+    public void CreateBridgeWithNullConfigureActionThrowsException()
     {
         // Act & Assert
         _ = Assert.Throws<ArgumentNullException>(() =>
@@ -116,7 +110,7 @@ public class StreamingBridgeFactoryTests
     }
 
     [Fact]
-    public void Constructor_WithNullLoggerFactory_ThrowsException()
+    public void ConstructorWithNullLoggerFactoryThrowsException()
     {
         // Act & Assert
         _ = Assert.Throws<ArgumentNullException>(() =>
@@ -124,7 +118,7 @@ public class StreamingBridgeFactoryTests
     }
 
     [Fact]
-    public void Constructor_WithNullConfiguration_ThrowsException()
+    public void ConstructorWithNullConfigurationThrowsException()
     {
         // Act & Assert
         _ = Assert.Throws<ArgumentNullException>(() =>
@@ -132,7 +126,7 @@ public class StreamingBridgeFactoryTests
     }
 
     [Fact]
-    public void CreateBridge_WithCompleteCustomConfiguration_AppliesAllSettings()
+    public void CreateBridgeWithCompleteCustomConfigurationAppliesAllSettings()
     {
         // Act
         var bridge = _factory.CreateBridge(config =>
@@ -156,7 +150,7 @@ public class StreamingBridgeFactoryTests
     }
 
     [Fact]
-    public async Task CreateBridge_DisposesCorrectly()
+    public async Task CreateBridgeDisposesCorrectly()
     {
         // Arrange
         var bridge = _factory.CreateBridge();

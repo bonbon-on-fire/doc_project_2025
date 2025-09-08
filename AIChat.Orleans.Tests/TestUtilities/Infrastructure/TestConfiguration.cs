@@ -7,7 +7,7 @@ namespace AIChat.Orleans.Tests.TestUtilities.Infrastructure;
 public class TestConfiguration
 {
     public bool OrleansEnabled { get; set; } = true;
-    public bool ResilientStreamingEnabled { get; set; } = false;
+    public bool ResilientStreamingEnabled { get; set; }
     public string LogLevel { get; set; } = "Warning";
 
     public StreamingTestConfig StreamingConfig { get; set; } = new();
@@ -113,7 +113,7 @@ public class PerformanceTestConfig
     public int MaxAcceptableOverheadPercent { get; set; } = 50;
     public int MaxResponseTimeMs { get; set; } = 5000;
     public int ConcurrentUsers { get; set; } = 50;
-    public bool EnableDetailedMetrics { get; set; } = false;
+    public bool EnableDetailedMetrics { get; set; }
 }
 
 /// <summary>

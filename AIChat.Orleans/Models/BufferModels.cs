@@ -7,8 +7,8 @@ namespace AIChat.Orleans.Contracts;
 /// Contains the original message along with buffer-specific metadata.
 /// </summary>
 [Serializable]
-[global::Orleans.GenerateSerializer]
-[global::Orleans.Alias("AIChat.Orleans.Contracts.BufferedMessage")]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.BufferedMessage")]
 public sealed class BufferedMessage
 {
     /// <summary>
@@ -71,8 +71,8 @@ public sealed class BufferedMessage
 /// Manages buffered messages for a single chat room.
 /// </summary>
 [Serializable]
-[global::Orleans.GenerateSerializer]
-[global::Orleans.Alias("AIChat.Orleans.Contracts.ChatMessageBuffer")]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.ChatMessageBuffer")]
 public sealed class ChatMessageBuffer
 {
     /// <summary>
@@ -147,8 +147,8 @@ public sealed class ChatMessageBuffer
 /// Used for monitoring and metrics collection.
 /// </summary>
 [Serializable]
-[global::Orleans.GenerateSerializer]
-[global::Orleans.Alias("AIChat.Orleans.Contracts.BufferSummary")]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.BufferSummary")]
 public sealed class BufferSummary
 {
     /// <summary>

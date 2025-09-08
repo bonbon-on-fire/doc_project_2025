@@ -7,40 +7,38 @@ namespace AIChat.Server.Services.AgentCards;
 public readonly struct Result<T>
 {
     private readonly T? _value;
-    private readonly string? _error;
-    private readonly bool _isSuccess;
 
     private Result(T? value, string? error, bool isSuccess)
     {
         _value = value;
-        _error = error;
-        _isSuccess = isSuccess;
+        Error = error;
+        IsSuccess = isSuccess;
     }
 
     /// <summary>
     /// Gets whether the operation succeeded.
     /// </summary>
-    public bool IsSuccess => _isSuccess;
+    public bool IsSuccess { get; }
 
     /// <summary>
     /// Gets whether the operation failed.
     /// </summary>
-    public bool IsFailure => !_isSuccess;
+    public bool IsFailure => !IsSuccess;
 
     /// <summary>
     /// Gets the success value. Throws if the result is a failure.
     /// </summary>
     public T Value =>
-        !_isSuccess
+        !IsSuccess
             ? throw new InvalidOperationException(
-                $"Cannot access Value on a failed result. Error: {_error}"
+                $"Cannot access Value on a failed result. Error: {Error}"
             )
             : _value!;
 
     /// <summary>
     /// Gets the error message. Returns null if the result is a success.
     /// </summary>
-    public string? Error => _error;
+    public string? Error { get; }
 
     /// <summary>
     /// Creates a successful result with the given value.
@@ -68,8 +66,8 @@ public readonly struct Result<T>
     public Result<TNew> Map<TNew>(Func<T, TNew> mapper)
     {
         return mapper == null ? throw new ArgumentNullException(nameof(mapper))
-            : _isSuccess ? Result<TNew>.Success(mapper(_value!))
-            : Result<TNew>.Failure(_error!);
+            : IsSuccess ? Result<TNew>.Success(mapper(_value!))
+            : Result<TNew>.Failure(Error!);
     }
 
     /// <summary>
@@ -78,8 +76,8 @@ public readonly struct Result<T>
     public Result<TNew> Bind<TNew>(Func<T, Result<TNew>> mapper)
     {
         return mapper == null ? throw new ArgumentNullException(nameof(mapper))
-            : _isSuccess ? mapper(_value!)
-            : Result<TNew>.Failure(_error!);
+            : IsSuccess ? mapper(_value!)
+            : Result<TNew>.Failure(Error!);
     }
 
     /// <summary>
@@ -87,7 +85,7 @@ public readonly struct Result<T>
     /// </summary>
     public T GetValueOrDefault(T defaultValue)
     {
-        return _isSuccess ? _value! : defaultValue;
+        return IsSuccess ? _value! : defaultValue;
     }
 
     /// <summary>
@@ -95,7 +93,7 @@ public readonly struct Result<T>
     /// </summary>
     public Result<T> OnSuccess(Action<T> action)
     {
-        if (_isSuccess && action != null)
+        if (IsSuccess && action != null)
         {
             action(_value!);
         }
@@ -108,9 +106,9 @@ public readonly struct Result<T>
     /// </summary>
     public Result<T> OnFailure(Action<string> action)
     {
-        if (!_isSuccess && action != null)
+        if (!IsSuccess && action != null)
         {
-            action(_error!);
+            action(Error!);
         }
 
         return this;
@@ -122,18 +120,15 @@ public readonly struct Result<T>
 /// </summary>
 public readonly struct Result
 {
-    private readonly string? _error;
-    private readonly bool _isSuccess;
-
     private Result(string? error, bool isSuccess)
     {
-        _error = error;
-        _isSuccess = isSuccess;
+        Error = error;
+        IsSuccess = isSuccess;
     }
 
-    public bool IsSuccess => _isSuccess;
-    public bool IsFailure => !_isSuccess;
-    public string? Error => _error;
+    public bool IsSuccess { get; }
+    public bool IsFailure => !IsSuccess;
+    public string? Error { get; }
 
     public static Result Success()
     {

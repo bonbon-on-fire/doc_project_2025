@@ -9,7 +9,7 @@ namespace AIChat.Orleans.Tests.TestUtilities;
 /// Shared test fixture for Orleans SSE integration tests.
 /// Refactored to follow Single Responsibility Principle by delegating to specialized managers.
 /// </summary>
-public class OrleansTestFixture : IAsyncLifetime
+public class OrleansTestFixture : IAsyncLifetime, IDisposable
 {
     private TestClusterManager? _clusterManager;
     private TestWebApplicationManager? _webAppManager;
@@ -118,5 +118,10 @@ public class OrleansTestFixture : IAsyncLifetime
         configure(builder);
         _configuration = builder.Build();
         return this;
+    }
+
+    public void Dispose()
+    {
+        throw new NotImplementedException();
     }
 }

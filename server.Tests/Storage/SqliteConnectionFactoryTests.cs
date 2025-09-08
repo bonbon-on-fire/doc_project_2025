@@ -7,7 +7,7 @@ namespace AIChat.Server.Tests.Storage;
 public class SqliteConnectionFactoryTests
 {
     [Fact]
-    public async Task RootConnection_Is_Held_When_KeepRootOpen_True()
+    public async Task RootConnectionIsHeldWhenKeepRootOpenTrue()
     {
         var factory = new SqliteConnectionFactory(
             "Data Source=:memory:;Cache=Shared",
@@ -19,7 +19,7 @@ public class SqliteConnectionFactoryTests
     }
 
     [Fact]
-    public async Task Connections_Open_With_Pragma_ForeignKeys_On()
+    public async Task ConnectionsOpenWithPragmaForeignKeysOn()
     {
         var factory = new SqliteConnectionFactory(
             "Data Source=:memory:;Cache=Shared",

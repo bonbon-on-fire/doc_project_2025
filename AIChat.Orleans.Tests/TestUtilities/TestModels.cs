@@ -86,7 +86,7 @@ public class TestResilientStreamManager : IResilientStreamManager
         return _inner.DisposeAsync();
     }
 
-    private class StreamingBridgeFactoryWrapper : IStreamingBridgeFactory
+    private sealed class StreamingBridgeFactoryWrapper : IStreamingBridgeFactory
     {
         private readonly ITestStreamingBridgeFactory _testFactory;
 

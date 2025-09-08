@@ -37,8 +37,8 @@ public interface IUserMessageBufferGrain : IGrainWithStringKey
     /// <returns>Collection of buffered messages</returns>
     [Alias("GetBufferedMessagesAsync")]
     Task<IEnumerable<BufferedMessage>> GetBufferedMessagesAsync(
-        string chatId, 
-        int? limit = null, 
+        string chatId,
+        int? limit = null,
         bool highPriorityOnly = false);
 
     /// <summary>
@@ -105,8 +105,8 @@ public interface IUserMessageBufferGrain : IGrainWithStringKey
     /// <returns>Number of messages processed</returns>
     [Alias("ProcessBufferedMessagesAsync")]
     Task<int> ProcessBufferedMessagesAsync(
-        string connectionId, 
-        string? chatId = null, 
+        string connectionId,
+        string? chatId = null,
         int maxMessages = 50);
 
     /// <summary>

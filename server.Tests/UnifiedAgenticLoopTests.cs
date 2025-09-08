@@ -264,7 +264,7 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
     /// Source: AgenticLoopMockingTests.Should_Parse_InstructionChain_Array_Format
     /// </summary>
     [Fact]
-    public async Task Should_Parse_InstructionChain_Array_Format()
+    public async Task ShouldParseInstructionChainArrayFormat()
     {
         // Arrange
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
@@ -309,7 +309,7 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
     /// Source: AgenticLoopMockingTests.Should_Execute_Second_Instruction_After_One_Response
     /// </summary>
     [Fact]
-    public async Task Should_Execute_Second_Instruction_After_One_Response()
+    public async Task ShouldExecuteSecondInstructionAfterOneResponse()
     {
         // Arrange
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
@@ -349,7 +349,7 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
     /// Source: AgenticLoopMockingTests.Should_Generate_Completion_When_Chain_Exhausted
     /// </summary>
     [Fact]
-    public async Task Should_Generate_Completion_When_Chain_Exhausted()
+    public async Task ShouldGenerateCompletionWhenChainExhausted()
     {
         // Arrange
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
@@ -385,7 +385,7 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
     /// Source: AgenticLoopMockingTests.Should_Count_Only_Assistant_Responses_Not_User_Or_Tool
     /// </summary>
     [Fact]
-    public async Task Should_Count_Only_Assistant_Responses_Not_User_Or_Tool()
+    public async Task ShouldCountOnlyAssistantResponsesNotUserOrTool()
     {
         // Arrange
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
@@ -424,7 +424,7 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
     /// Source: AgenticLoopMockingTests.Should_Support_Backward_Compatibility_Single_Instruction
     /// </summary>
     [Fact]
-    public async Task Should_Support_Backward_Compatibility_Single_Instruction()
+    public async Task ShouldSupportBackwardCompatibilitySingleInstruction()
     {
         // Arrange
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
@@ -461,7 +461,7 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
     /// Source: TestModeIntegrationTests.TestMode_ShouldGenerateValidSSE_ForToolCalls
     /// </summary>
     [Fact]
-    public async Task TestMode_ShouldGenerateValidSSE_ForToolCalls()
+    public async Task TestModeShouldGenerateValidSSEForToolCalls()
     {
         // Arrange
         var handler = new TestSseMessageHandler(_logger) { WordsPerChunk = 5, ChunkDelayMs = 0 };
@@ -527,7 +527,7 @@ Get the weather for San Francisco";
     /// Source: TestModeIntegrationTests.TestMode_ShouldExecuteInstructionChain_ThroughFullStack
     /// </summary>
     [Fact]
-    public async Task TestMode_ShouldExecuteInstructionChain_ThroughFullStack()
+    public async Task TestModeShouldExecuteInstructionChainThroughFullStack()
     {
         // Arrange
         var handler = new TestSseMessageHandler(_logger) { WordsPerChunk = 3, ChunkDelayMs = 0 };
@@ -644,7 +644,7 @@ Get the weather for San Francisco";
     /// Source: TestModeIntegrationTests.TestMode_ShouldHandleChainExhaustion_WithCompletionFallback
     /// </summary>
     [Fact]
-    public async Task TestMode_ShouldHandleChainExhaustion_WithCompletionFallback()
+    public async Task TestModeShouldHandleChainExhaustionWithCompletionFallback()
     {
         // Arrange
         var handler = new TestSseMessageHandler(_logger) { WordsPerChunk = 3, ChunkDelayMs = 0 };
@@ -734,7 +734,7 @@ Get the weather for San Francisco";
     /// Source: TestModeIntegrationTests.TestMode_ShouldMaintainBackwardCompatibility_WithSingleInstruction
     /// </summary>
     [Fact]
-    public async Task TestMode_ShouldMaintainBackwardCompatibility_WithSingleInstruction()
+    public async Task TestModeShouldMaintainBackwardCompatibilityWithSingleInstruction()
     {
         // Arrange
         var handler = new TestSseMessageHandler(_logger) { WordsPerChunk = 5, ChunkDelayMs = 0 };
@@ -800,7 +800,7 @@ Get the weather for San Francisco";
     /// Follows the exact pattern from ExamplePythonMCPClient.
     /// </summary>
     [Fact]
-    public async Task TestMode_ShouldGenerateCompositeMessage_WithMultipleMessageTypes()
+    public async Task TestModeShouldGenerateCompositeMessageWithMultipleMessageTypes()
     {
         // Arrange
         var handler = new TestSseMessageHandler(_logger) { WordsPerChunk = 3, ChunkDelayMs = 0 };
@@ -924,7 +924,7 @@ Get the weather for San Francisco";
     /// Note: This test focuses on CompositeMessage creation, not chain progression through API calls.
     /// </summary>
     [Fact]
-    public async Task TestMode_ShouldHandleChainProgression_WithCompositeMessagesInHistory()
+    public async Task TestModeShouldHandleChainProgressionWithCompositeMessagesInHistory()
     {
         // Arrange
         var handler = new TestSseMessageHandler(_logger) { WordsPerChunk = 3, ChunkDelayMs = 0 };
@@ -1143,7 +1143,7 @@ Get the weather for San Francisco";
     /// Note: CompositeMessage is for local tracking only, not for API submission.
     /// </summary>
     [Fact]
-    public void TestMode_ShouldValidateCompositeMessageStructure_ForAgentLoop()
+    public void TestModeShouldValidateCompositeMessageStructureForAgentLoop()
     {
         // Arrange
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
@@ -1259,7 +1259,7 @@ Get the weather for San Francisco";
     /// and track tool calls for loop continuation - exactly as in ExamplePythonMCPClient.
     /// </summary>
     [Fact]
-    public async Task TestMode_ShouldDemonstrateCompleteAgentLoopPattern_WithCompositeMessage()
+    public async Task TestModeShouldDemonstrateCompleteAgentLoopPatternWithCompositeMessage()
     {
         // Arrange
         var handler = new TestSseMessageHandler(_logger) { WordsPerChunk = 3, ChunkDelayMs = 0 };
@@ -1378,7 +1378,7 @@ Get the weather for San Francisco";
     /// and can be aggregated into a CompositeMessage by the client.
     /// </summary>
     [Fact]
-    public async Task TestMode_ShouldStreamMultipleMessageTypes_ForClientAggregation()
+    public async Task TestModeShouldStreamMultipleMessageTypesForClientAggregation()
     {
         // Arrange
         var handler = new TestSseMessageHandler(_logger) { WordsPerChunk = 2, ChunkDelayMs = 0 };
@@ -1471,7 +1471,7 @@ Get the weather for San Francisco";
     /// Note: Updated to match actual behavior - graceful fallback instead of throwing
     /// </summary>
     [Fact]
-    public async Task Should_Throw_On_Malformed_JSON_In_Chain()
+    public async Task ShouldThrowOnMalformedJSONInChain()
     {
         // Arrange
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
@@ -1501,7 +1501,7 @@ Get the weather for San Francisco";
     /// Source: AgenticLoopMockingTests.Should_Handle_Empty_Chain_Array
     /// </summary>
     [Fact]
-    public async Task Should_Handle_Empty_Chain_Array()
+    public async Task ShouldHandleEmptyChainArray()
     {
         // Arrange
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
@@ -1532,7 +1532,7 @@ Get the weather for San Francisco";
     /// Source: AgenticLoopMockingTests.Should_Reset_Count_With_New_Chain
     /// </summary>
     [Fact]
-    public async Task Should_Reset_Count_With_New_Chain()
+    public async Task ShouldResetCountWithNewChain()
     {
         // Arrange
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
@@ -1600,7 +1600,7 @@ Get the weather for San Francisco";
     /// Source: AgenticLoopMockingTests.Should_Execute_Multi_Step_Workflow_Sequentially
     /// </summary>
     [Fact]
-    public async Task Should_Execute_Multi_Step_Workflow_Sequentially()
+    public async Task ShouldExecuteMultiStepWorkflowSequentially()
     {
         // Arrange
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
@@ -1699,7 +1699,7 @@ public class XunitLogger<T>(ITestOutputHelper output) : ILogger<T>
         }
     }
 
-    private class NullScope : IDisposable
+    private sealed class NullScope : IDisposable
     {
         public static NullScope Instance { get; } = new NullScope();
 

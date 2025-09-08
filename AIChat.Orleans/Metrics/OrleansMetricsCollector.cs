@@ -31,7 +31,7 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         // Start background cleanup task
-        _ = Task.Run(async () => await PeriodicCleanupAsync());
+        _ = Task.Run(PeriodicCleanupAsync);
     }
 
     /// <inheritdoc />
@@ -215,7 +215,7 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
 
             // Operation metrics
             var recentOps = _recentOperations.Where(o => o.Timestamp > cutoffTime).ToList();
-            if (recentOps.Any())
+            if (recentOps.Count != 0)
             {
                 summary.AverageOperationDuration = recentOps.Average(o => o.Duration);
                 summary.OperationSuccessRate = (double)recentOps.Count(o => o.Success) / recentOps.Count * 100;
@@ -252,23 +252,23 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
 
             metrics.ActiveInstances = activeInstances.Count;
 
-            if (grainInstances.Any())
+            if (grainInstances.Count != 0)
             {
                 var activations = _recentActivations.Where(a => a.GrainType == grainType).ToList();
                 var deactivations = _recentDeactivations.Where(d => d.GrainType == grainType).ToList();
                 var operations = _recentOperations.Where(o => o.GrainType == grainType).ToList();
 
-                if (activations.Any())
+                if (activations.Count != 0)
                 {
                     metrics.AverageActivationTime = activations.Average(a => a.ActivationTime);
                 }
 
-                if (deactivations.Any())
+                if (deactivations.Count != 0)
                 {
                     metrics.AverageLifetime = deactivations.Average(d => d.LifetimeMinutes);
                 }
 
-                if (operations.Any())
+                if (operations.Count != 0)
                 {
                     metrics.AverageOperationDuration = operations.Average(o => o.Duration);
                     metrics.OperationSuccessRate = (double)operations.Count(o => o.Success) / operations.Count * 100;
@@ -363,7 +363,7 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
 /// <summary>
 /// Internal metrics for tracking individual grain instances.
 /// </summary>
-internal class GrainInstanceMetrics
+internal sealed class GrainInstanceMetrics
 {
     public string GrainType { get; set; } = string.Empty;
     public string GrainId { get; set; } = string.Empty;
@@ -382,7 +382,7 @@ internal class GrainInstanceMetrics
 /// <summary>
 /// Event record for grain activation.
 /// </summary>
-internal class GrainActivationEvent
+internal sealed class GrainActivationEvent
 {
     public string GrainType { get; set; } = string.Empty;
     public string GrainId { get; set; } = string.Empty;
@@ -393,7 +393,7 @@ internal class GrainActivationEvent
 /// <summary>
 /// Event record for grain deactivation.
 /// </summary>
-internal class GrainDeactivationEvent
+internal sealed class GrainDeactivationEvent
 {
     public string GrainType { get; set; } = string.Empty;
     public string GrainId { get; set; } = string.Empty;
@@ -404,7 +404,7 @@ internal class GrainDeactivationEvent
 /// <summary>
 /// Metrics record for grain operations.
 /// </summary>
-internal class OperationMetrics
+internal sealed class OperationMetrics
 {
     public string GrainType { get; set; } = string.Empty;
     public string OperationType { get; set; } = string.Empty;

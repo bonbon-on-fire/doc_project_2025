@@ -12,9 +12,7 @@ public sealed class SqliteConnectionFactory(string connectionString, bool keepRo
     : ISqliteConnectionFactory,
         IAsyncDisposable
 {
-    private SqliteConnection? _rootConnection;
-
-    public SqliteConnection? RootConnection => _rootConnection;
+    public SqliteConnection? RootConnection { get; private set; }
 
     public async ValueTask<SqliteConnection> CreateOpenConnectionAsync(
         CancellationToken ct = default
@@ -23,12 +21,12 @@ public sealed class SqliteConnectionFactory(string connectionString, bool keepRo
         if (keepRootOpen)
         {
             // In shared cache in-memory mode, keep one root open and return new pooled connections
-            if (_rootConnection == null)
+            if (RootConnection == null)
             {
-                _rootConnection = new SqliteConnection(connectionString);
-                await _rootConnection.OpenAsync(ct);
-                await SchemaHelper.EnsurePragmasAsync(_rootConnection, ct);
-                await SchemaHelper.EnsureSchemaAsync(_rootConnection, ct);
+                RootConnection = new SqliteConnection(connectionString);
+                await RootConnection.OpenAsync(ct);
+                await SchemaHelper.EnsurePragmasAsync(RootConnection, ct);
+                await SchemaHelper.EnsureSchemaAsync(RootConnection, ct);
             }
         }
 
@@ -40,10 +38,10 @@ public sealed class SqliteConnectionFactory(string connectionString, bool keepRo
 
     public async ValueTask DisposeAsync()
     {
-        if (_rootConnection != null)
+        if (RootConnection != null)
         {
-            await _rootConnection.DisposeAsync();
-            _rootConnection = null;
+            await RootConnection.DisposeAsync();
+            RootConnection = null;
         }
     }
 }

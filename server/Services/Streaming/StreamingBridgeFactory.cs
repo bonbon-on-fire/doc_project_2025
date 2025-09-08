@@ -23,7 +23,7 @@ public class StreamingBridgeFactory : IStreamingBridgeFactory
     {
         _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
         _defaultConfiguration = defaultConfiguration ?? throw new ArgumentNullException(nameof(defaultConfiguration));
-        
+
         // Check configuration or environment variable to determine which implementation to use
         _useRefactoredImplementation = Environment.GetEnvironmentVariable("USE_REFACTORED_STREAMING_BRIDGE") == "true";
     }

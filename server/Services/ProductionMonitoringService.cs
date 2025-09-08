@@ -231,7 +231,7 @@ public class ProductionMonitoringService : IHostedService, IDisposable
 
                 if (timeDiff.TotalMilliseconds > 0)
                 {
-                    var cpuUsage = (cpuTimeDiff.TotalMilliseconds / timeDiff.TotalMilliseconds) * 100 / Environment.ProcessorCount;
+                    var cpuUsage = cpuTimeDiff.TotalMilliseconds / timeDiff.TotalMilliseconds * 100 / Environment.ProcessorCount;
                     cpuUsage = Math.Min(100, Math.Max(0, cpuUsage)); // Clamp between 0 and 100
 
                     UpdateMetric("system.cpu.usage_percent", cpuUsage, timestamp);

@@ -23,7 +23,7 @@ public class AgentCardParserTests
     }
 
     [Fact]
-    public void ParseAgentCard_WithValidCompleteCard_ShouldParseAllFields()
+    public void ParseAgentCardWithValidCompleteCardShouldParseAllFields()
     {
         // Arrange
         var content =
@@ -99,7 +99,7 @@ Validate the parser functionality.
     }
 
     [Fact]
-    public void ParseAgentCard_WithMinimalCard_ShouldParseRequiredFields()
+    public void ParseAgentCardWithMinimalCardShouldParseRequiredFields()
     {
         // Arrange
         var content =
@@ -131,7 +131,7 @@ Test minimal configuration.";
     }
 
     [Fact]
-    public void ParseAgentCard_WithoutFrontMatter_ShouldReturnFailure()
+    public void ParseAgentCardWithoutFrontMatterShouldReturnFailure()
     {
         // Arrange
         var content =
@@ -147,7 +147,7 @@ Some role without front matter";
     }
 
     [Fact]
-    public void ParseAgentCard_WithEmptyContent_ShouldReturnFailure()
+    public void ParseAgentCardWithEmptyContentShouldReturnFailure()
     {
         // Act
         var result = _parser.ParseAgentCard("");
@@ -158,7 +158,7 @@ Some role without front matter";
     }
 
     [Fact]
-    public void ParseAgentCard_WithNullContent_ShouldReturnFailure()
+    public void ParseAgentCardWithNullContentShouldReturnFailure()
     {
         // Act
         var result = _parser.ParseAgentCard(null!);
@@ -169,7 +169,7 @@ Some role without front matter";
     }
 
     [Fact]
-    public void ToMode_ShouldConvertCorrectly()
+    public void ToModeShouldConvertCorrectly()
     {
         // Arrange
         var content =
@@ -215,7 +215,7 @@ Convert to Mode object.
     }
 
     [Fact]
-    public void ParseWorkflow_WithNumberedSteps_ShouldExtractSteps()
+    public void ParseWorkflowWithNumberedStepsShouldExtractSteps()
     {
         // Arrange
         var content =
@@ -245,7 +245,7 @@ Some additional text that's not a step";
     }
 
     [Fact]
-    public void ParseJsonSchema_WithValidSchema_ShouldParseCorrectly()
+    public void ParseJsonSchemaWithValidSchemaShouldParseCorrectly()
     {
         // Arrange
         var content =
@@ -286,7 +286,7 @@ Test
     }
 
     [Fact]
-    public void ParseJsonSchema_WithInvalidJson_ShouldGracefullyDegrade()
+    public void ParseJsonSchemaWithInvalidJsonShouldGracefullyDegrade()
     {
         // Arrange
         var content =
@@ -315,7 +315,7 @@ Test
     }
 
     [Fact]
-    public void ParseSections_ShouldHandleAllStandardSections()
+    public void ParseSectionsShouldHandleAllStandardSections()
     {
         // Arrange
         var content =
@@ -361,7 +361,7 @@ Examples content";
     }
 
     [Fact]
-    public void ParseSections_ShouldHandleUnknownSections()
+    public void ParseSectionsShouldHandleUnknownSections()
     {
         // Arrange
         var content =
@@ -393,7 +393,7 @@ Another custom section content";
     }
 
     [Fact]
-    public void ParseAgentCard_WithMissingAgentId_ShouldReturnFailure()
+    public void ParseAgentCardWithMissingAgentIdShouldReturnFailure()
     {
         // Arrange
         var content =
@@ -413,7 +413,7 @@ Test";
     }
 
     [Fact]
-    public void LoadFromFile_WithNonExistentFile_ShouldReturnFailure()
+    public void LoadFromFileWithNonExistentFileShouldReturnFailure()
     {
         // Act
         var result = AgentCardParser.LoadFromFile("/nonexistent/file.agent.md");
@@ -424,7 +424,7 @@ Test";
     }
 
     [Fact]
-    public void LoadFromFile_WithEmptyPath_ShouldReturnFailure()
+    public void LoadFromFileWithEmptyPathShouldReturnFailure()
     {
         // Act
         var result = AgentCardParser.LoadFromFile("");
@@ -435,7 +435,7 @@ Test";
     }
 
     [Fact]
-    public void ParseAgentCard_WithInvalidYaml_ShouldReturnFailure()
+    public void ParseAgentCardWithInvalidYamlShouldReturnFailure()
     {
         // Arrange
         var content =
@@ -457,7 +457,7 @@ Test";
     }
 
     [Fact]
-    public void SectionHandlerRegistry_ShouldBeExtensible()
+    public void SectionHandlerRegistryShouldBeExtensible()
     {
         // Arrange
         var registry = new SectionHandlerRegistry();
@@ -473,7 +473,7 @@ Test";
     }
 
     [Fact]
-    public void Result_Map_ShouldTransformSuccessValue()
+    public void ResultMapShouldTransformSuccessValue()
     {
         // Arrange
         var result = Result<int>.Success(42);
@@ -487,7 +487,7 @@ Test";
     }
 
     [Fact]
-    public void Result_Map_ShouldPropagateFailure()
+    public void ResultMapShouldPropagateFailure()
     {
         // Arrange
         var result = Result<int>.Failure("Error message");
@@ -501,7 +501,7 @@ Test";
     }
 
     [Fact]
-    public void Result_Bind_ShouldChainOperations()
+    public void ResultBindShouldChainOperations()
     {
         // Arrange
         var result = Result<int>.Success(10);
@@ -518,7 +518,7 @@ Test";
         _ = chained.Value.Should().Be("Value is 10");
     }
 
-    private class TestCustomSectionHandler : ISectionHandler
+    private sealed class TestCustomSectionHandler : ISectionHandler
     {
         public string SectionName => "TEST CUSTOM";
 

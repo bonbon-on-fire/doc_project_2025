@@ -55,18 +55,13 @@ public sealed class ResilientStreamManager : IResilientStreamManager
         _uptimeStopwatch = Stopwatch.StartNew();
 
         // Start health check timer if enabled
-        if (_configuration.HealthCheck.Enabled)
-        {
-            _healthCheckTimer = new Timer(
+        _healthCheckTimer = _configuration.HealthCheck.Enabled
+            ? new Timer(
                 PerformHealthCheck,
                 null,
                 TimeSpan.FromSeconds(_configuration.HealthCheck.CheckIntervalSeconds),
-                TimeSpan.FromSeconds(_configuration.HealthCheck.CheckIntervalSeconds));
-        }
-        else
-        {
-            _healthCheckTimer = new Timer(_ => { }, null, Timeout.Infinite, Timeout.Infinite);
-        }
+                TimeSpan.FromSeconds(_configuration.HealthCheck.CheckIntervalSeconds))
+            : new Timer(_ => { }, null, Timeout.Infinite, Timeout.Infinite);
 
         _logger.LogInformation(
             "ResilientStreamManager initialized with reconnection attempts: {MaxAttempts}, " +
@@ -104,14 +99,11 @@ public sealed class ResilientStreamManager : IResilientStreamManager
             var resiliencePipeline = CreateResiliencePipeline(context);
 
             // Process stream with resilience
-            await resiliencePipeline.ExecuteAsync(async (ct) =>
-            {
-                await ProcessStreamWithRecoveryAsync(
+            await resiliencePipeline.ExecuteAsync(async (ct) => await ProcessStreamWithRecoveryAsync(
                     context,
                     grainStream,
                     formatter,
-                    ct);
-            }, cancellationToken);
+                    ct), cancellationToken);
 
             context.State = StreamState.Completed;
             _ = Interlocked.Increment(ref _totalStreamsProcessed);
@@ -283,7 +275,9 @@ public sealed class ResilientStreamManager : IResilientStreamManager
     public async ValueTask DisposeAsync()
     {
         if (_disposed)
+        {
             return;
+        }
 
         _disposed = true;
 
@@ -294,7 +288,7 @@ public sealed class ResilientStreamManager : IResilientStreamManager
 
             // Clean up all active streams
             var cleanupTasks = _activeStreams.Values
-                .Select(context => CleanupStreamContextAsync(context))
+                .Select(CleanupStreamContextAsync)
                 .ToArray();
 
             await Task.WhenAll(cleanupTasks);
@@ -352,7 +346,7 @@ public sealed class ResilientStreamManager : IResilientStreamManager
             .Handle<Exception>(ex => ex is not OperationCanceledException)
             .WaitAndRetryAsync(
                 _configuration.Reconnection.MaxAttempts,
-                retryAttempt => CalculateRetryDelay(retryAttempt),
+                CalculateRetryDelay,
                 onRetry: (outcome, timespan, retryCount, ctx) =>
                 {
                     context.ReconnectionAttempts++;
@@ -467,7 +461,10 @@ public sealed class ResilientStreamManager : IResilientStreamManager
                 try
                 {
                     if (!await enumerator.MoveNextAsync())
+                    {
                         break;
+                    }
+
                     item = enumerator.Current;
                 }
                 catch (OperationCanceledException)
@@ -476,7 +473,7 @@ public sealed class ResilientStreamManager : IResilientStreamManager
                 }
 
                 string? formattedData = null;
-                bool shouldYield = false;
+                var shouldYield = false;
 
                 try
                 {
@@ -639,7 +636,9 @@ public sealed class ResilientStreamManager : IResilientStreamManager
         CancellationToken cancellationToken)
     {
         if (context.PartialMessages.IsEmpty)
+        {
             return;
+        }
 
         var partialMessages = context.PartialMessages.Values
             .OrderBy(m => m.SequenceNumber)
@@ -740,7 +739,9 @@ public sealed class ResilientStreamManager : IResilientStreamManager
     private static bool DetermineHealthStatus(List<StreamContext> streams)
     {
         if (streams.Count == 0)
+        {
             return true;
+        }
 
         var failedPercentage = (double)streams.Count(s => s.State == StreamState.Failed) / streams.Count * 100;
         var openCircuitsPercentage = (double)streams.Count(s => s.CircuitState == CircuitState.Open) / streams.Count * 100;
@@ -751,7 +752,9 @@ public sealed class ResilientStreamManager : IResilientStreamManager
     private double CalculateAverageRecoveryTime()
     {
         if (_successfulRecoveries == 0)
+        {
             return 0;
+        }
 
         // This is a simplified calculation - in production, you'd track actual recovery times
         return 2500; // Placeholder: 2.5 seconds average
@@ -760,12 +763,14 @@ public sealed class ResilientStreamManager : IResilientStreamManager
     private double CalculateSuccessRate()
     {
         if (_totalStreamsProcessed == 0)
+        {
             return 100;
+        }
 
         var failedStreams = _activeStreams.Values.Count(s => s.State == StreamState.Failed);
         var totalAttempted = _totalStreamsProcessed + failedStreams;
 
-        return ((double)_totalStreamsProcessed / totalAttempted) * 100;
+        return (double)_totalStreamsProcessed / totalAttempted * 100;
     }
 
     private List<string> GenerateStatusMessages(List<StreamContext> streams)
@@ -776,7 +781,7 @@ public sealed class ResilientStreamManager : IResilientStreamManager
         {
             messages.Add($"Uptime: {_uptimeStopwatch.Elapsed:d\\.hh\\:mm\\:ss}");
             messages.Add($"Total messages processed: {_totalMessagesProcessed:N0}");
-            messages.Add($"Recovery success rate: {(_successfulRecoveries / (double)Math.Max(1, _totalRecoveryAttempts) * 100):F1}%");
+            messages.Add($"Recovery success rate: {_successfulRecoveries / (double)Math.Max(1, _totalRecoveryAttempts) * 100:F1}%");
         }
 
         var inactiveStreams = streams.Where(s =>

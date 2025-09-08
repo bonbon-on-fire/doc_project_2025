@@ -17,7 +17,7 @@ public sealed class StreamingBridge : IStreamingBridge
     private readonly StreamingConfiguration _configuration;
     private readonly Channel<StreamItem> _buffer;
     private readonly SemaphoreSlim _writeSemaphore;
-    private readonly object _statsLock = new();
+    private readonly Lock _statsLock = new();
 
     private long _itemsProcessed;
     private long _backpressureEvents;
@@ -211,7 +211,9 @@ public sealed class StreamingBridge : IStreamingBridge
     public async ValueTask DisposeAsync()
     {
         if (_disposed)
+        {
             return;
+        }
 
         _disposed = true;
 

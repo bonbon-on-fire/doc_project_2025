@@ -38,7 +38,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     #region Mode Selection Flow Tests
 
     [Fact]
-    public async Task CreateChat_WithMode_FiltersToolsCorrectly()
+    public async Task CreateChatWithModeFiltersToolsCorrectly()
     {
         // Arrange
         var client = _factory.CreateClient();
@@ -82,7 +82,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     }
 
     [Fact]
-    public async Task SwitchMode_MidConversation_UpdatesToolContext()
+    public async Task SwitchModeMidConversationUpdatesToolContext()
     {
         // Arrange
         var client = _factory.CreateClient();
@@ -125,7 +125,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     }
 
     [Fact]
-    public async Task CreateAndUseCustomMode_FullFlow()
+    public async Task CreateAndUseCustomModeFullFlow()
     {
         // Arrange
         var client = _factory.CreateClient();
@@ -229,7 +229,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     #region Error Scenario Tests
 
     [Fact]
-    public async Task CreateChat_WithInvalidMode_FallsBackToGeneral()
+    public async Task CreateChatWithInvalidModeFallsBackToGeneral()
     {
         // Arrange
         var client = _factory.CreateClient();
@@ -254,7 +254,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     }
 
     [Fact]
-    public async Task CreateMode_WithInvalidData_ReturnsBadRequest()
+    public async Task CreateModeWithInvalidDataReturnsBadRequest()
     {
         // Arrange
         var client = _factory.CreateClient();
@@ -282,7 +282,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     }
 
     [Fact]
-    public async Task UpdateSystemMode_ReturnsForbidden()
+    public async Task UpdateSystemModeReturnsForbidden()
     {
         // Arrange
         var client = _factory.CreateClient();
@@ -312,7 +312,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     }
 
     [Fact]
-    public async Task DeleteSystemMode_ReturnsForbidden()
+    public async Task DeleteSystemModeReturnsForbidden()
     {
         // Arrange
         var client = _factory.CreateClient();
@@ -332,7 +332,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     #region Performance Tests
 
     [Fact]
-    public async Task GetModes_Performance_CompletesWithinTimeLimit()
+    public async Task GetModesPerformanceCompletesWithinTimeLimit()
     {
         // Arrange
         var client = _factory.CreateClient();
@@ -351,7 +351,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     }
 
     [Fact]
-    public async Task SwitchMode_Performance_CompletesQuickly()
+    public async Task SwitchModePerformanceCompletesQuickly()
     {
         // Arrange
         var client = _factory.CreateClient();
@@ -394,7 +394,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     }
 
     [Fact]
-    public async Task ConcurrentModeAccess_HandlesMultipleUsers()
+    public async Task ConcurrentModeAccessHandlesMultipleUsers()
     {
         // Arrange
         var client = _factory.CreateClient();
@@ -427,7 +427,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     #region SSE Integration Tests
 
     [Fact]
-    public async Task StreamSSE_WithMode_IncludesModeInformation()
+    public async Task StreamSSEWithModeIncludesModeInformation()
     {
         // Arrange
         var client = _factory.CreateClient();
@@ -463,7 +463,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     #region Mode Persistence Tests
 
     [Fact]
-    public async Task ModePersistence_AcrossMultipleChats()
+    public async Task ModePersistenceAcrossMultipleChats()
     {
         // Arrange
         var client = _factory.CreateClient();

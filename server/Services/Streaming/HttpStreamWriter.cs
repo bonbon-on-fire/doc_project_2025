@@ -39,7 +39,9 @@ public sealed class HttpStreamWriter : IHttpStreamWriter
         ThrowIfDisposed();
 
         if (string.IsNullOrEmpty(data))
+        {
             return;
+        }
 
         var sseData = $"data: {data}\n\n";
         var bytes = Encoding.UTF8.GetBytes(sseData);
@@ -120,7 +122,9 @@ public sealed class HttpStreamWriter : IHttpStreamWriter
     public async ValueTask DisposeAsync()
     {
         if (_disposed)
+        {
             return;
+        }
 
         _disposed = true;
 
@@ -181,6 +185,8 @@ public sealed class HttpStreamWriter : IHttpStreamWriter
     private void ThrowIfDisposed()
     {
         if (_disposed)
+        {
             throw new ObjectDisposedException(nameof(HttpStreamWriter));
+        }
     }
 }

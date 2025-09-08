@@ -158,7 +158,9 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
     public Task<bool> CancelOperationAsync(string operationId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(operationId))
+        {
             return Task.FromResult(false);
+        }
 
         _logger.LogInformation("Attempting to cancel operation {OperationId}", operationId);
 
@@ -206,7 +208,9 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
     public Task<OperationStatusInfo?> GetOperationStatusAsync(string operationId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(operationId))
+        {
             return Task.FromResult<OperationStatusInfo?>(null);
+        }
 
         if (_activeOperations.TryGetValue(operationId, out var state))
         {
@@ -258,7 +262,9 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
     public Task<IEnumerable<OperationStatusInfo>> GetUserOperationsAsync(string userId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(userId))
+        {
             return Task.FromResult(Enumerable.Empty<OperationStatusInfo>());
+        }
 
         var operations = _activeOperations.Values
             .Where(state => state.Operation.UserId == userId)
@@ -281,7 +287,9 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
     public Task<IEnumerable<OperationStatusInfo>> GetChatOperationsAsync(string chatId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(chatId))
+        {
             return Task.FromResult(Enumerable.Empty<OperationStatusInfo>());
+        }
 
         var operations = _activeOperations.Values
             .Where(state => state.Operation.ChatId == chatId)
@@ -311,10 +319,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
             await foreach (var operation in _queueReader.ReadAllAsync(stoppingToken))
             {
                 // Don't block the main loop - fire and forget each operation
-                _ = Task.Run(async () =>
-                {
-                    await ProcessOperationAsync(operation, stoppingToken);
-                }, stoppingToken);
+                _ = Task.Run(async () => await ProcessOperationAsync(operation, stoppingToken), stoppingToken);
             }
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -533,7 +538,8 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
                         operation, state, chatService, storage, streamingAgent,
                         toolingService, modeService, orleansService, cancellationToken);
                     break;
-
+                case OperationType.DeleteMessage:
+                    break;
                 default:
                     throw new ArgumentException($"Unknown operation type: {operation.Type}");
             }
@@ -650,7 +656,10 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
     private void CleanupOldOperations()
     {
         // Only cleanup every 100 operations to avoid overhead
-        if (_activeOperations.Count < 100) return;
+        if (_activeOperations.Count < 100)
+        {
+            return;
+        }
 
         try
         {
@@ -761,12 +770,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
         CancellationToken cancellationToken)
     {
         // Extract edit payload
-        var editPayload = ExtractEditPayloadFromOperation(operation.Payload);
-        if (editPayload == null)
-        {
-            throw new ArgumentException("EditMessage operation requires edit payload with messageId and newContent");
-        }
-
+        var editPayload = ExtractEditPayloadFromOperation(operation.Payload) ?? throw new ArgumentException("EditMessage operation requires edit payload with messageId and newContent");
         state.ProgressDescription = "Updating message content";
         state.Progress = 0.3;
 
@@ -807,7 +811,10 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
 
     private async Task NotifyUserGrainOperationStartedAsync(ChatOperation operation, IOrleansIntegrationService? orleansService)
     {
-        if (orleansService == null) return;
+        if (orleansService == null)
+        {
+            return;
+        }
 
         try
         {
@@ -826,7 +833,10 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
 
     private async Task NotifyUserGrainOperationCompletedAsync(ChatOperation operation, IOrleansIntegrationService? orleansService, bool success, string? error = null)
     {
-        if (orleansService == null) return;
+        if (orleansService == null)
+        {
+            return;
+        }
 
         try
         {
@@ -843,14 +853,17 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
         }
     }
 
-    private async Task RelayMessageThroughUserGrainAsync(ChatOperation operation, AIChat.Orleans.Contracts.ChatMessage chatMessage)
+    private async Task RelayMessageThroughUserGrainAsync(ChatOperation operation, ChatMessage chatMessage)
     {
         try
         {
             using var scope = _serviceProvider.CreateScope();
             var orleansService = scope.ServiceProvider.GetService<IOrleansIntegrationService>();
 
-            if (orleansService == null) return;
+            if (orleansService == null)
+            {
+                return;
+            }
 
             var userGrain = GetUserGrainFromOrleansService(orleansService, operation.UserId);
             await userGrain.RelayMessage(chatMessage);
@@ -865,14 +878,17 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
         }
     }
 
-    private async Task RelayStreamChunkThroughUserGrainAsync(ChatOperation operation, AIChat.Orleans.Contracts.StreamChunk streamChunk)
+    private async Task RelayStreamChunkThroughUserGrainAsync(ChatOperation operation, StreamChunk streamChunk)
     {
         try
         {
             using var scope = _serviceProvider.CreateScope();
             var orleansService = scope.ServiceProvider.GetService<IOrleansIntegrationService>();
 
-            if (orleansService == null) return;
+            if (orleansService == null)
+            {
+                return;
+            }
 
             var userGrain = GetUserGrainFromOrleansService(orleansService, operation.UserId);
             await userGrain.RelayStreamChunk(streamChunk);
@@ -891,11 +907,11 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
 
     #region Event Conversion Utilities
 
-    private static AIChat.Orleans.Contracts.ChatMessage? ConvertMessageEventToChatMessage(MessageEvent messageEvent, ChatOperation operation)
+    private static ChatMessage? ConvertMessageEventToChatMessage(MessageEvent messageEvent, ChatOperation operation)
     {
         return messageEvent switch
         {
-            TextEvent textEvent => new AIChat.Orleans.Contracts.ChatMessage
+            TextEvent textEvent => new ChatMessage
             {
                 Id = messageEvent.MessageId ?? Guid.NewGuid().ToString(),
                 ChatId = operation.ChatId,
@@ -906,7 +922,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
                 IsStreaming = false
             },
 
-            ReasoningEvent reasoningEvent => new AIChat.Orleans.Contracts.ChatMessage
+            ReasoningEvent reasoningEvent => new ChatMessage
             {
                 Id = messageEvent.MessageId ?? Guid.NewGuid().ToString(),
                 ChatId = operation.ChatId,
@@ -918,7 +934,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
                 Metadata = System.Text.Json.JsonSerializer.Serialize(new { Type = "reasoning", reasoningEvent.Visibility })
             },
 
-            ToolCallEvent toolCallEvent => new AIChat.Orleans.Contracts.ChatMessage
+            ToolCallEvent toolCallEvent => new ChatMessage
             {
                 Id = messageEvent.MessageId ?? Guid.NewGuid().ToString(),
                 ChatId = operation.ChatId,
@@ -935,7 +951,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
         };
     }
 
-    private static AIChat.Orleans.Contracts.StreamChunk? ConvertStreamChunkEventToStreamChunk(StreamChunkEvent chunkEvent, ChatOperation operation, OperationState state)
+    private static StreamChunk? ConvertStreamChunkEventToStreamChunk(StreamChunkEvent chunkEvent, ChatOperation operation, OperationState state)
     {
         var content = chunkEvent switch
         {
@@ -948,7 +964,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
 
         return content == null
             ? null
-            : new AIChat.Orleans.Contracts.StreamChunk
+            : new StreamChunk
             {
                 OperationId = operation.Id,
                 ChatId = operation.ChatId,
@@ -966,19 +982,29 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
 
     private string? ExtractMessageIdFromPayload(object? payload)
     {
-        if (payload == null) return null;
+        if (payload == null)
+        {
+            return null;
+        }
 
         try
         {
             if (payload is string directString)
+            {
                 return directString;
+            }
 
             var json = payload.ToString();
-            if (string.IsNullOrEmpty(json)) return null;
+            if (string.IsNullOrEmpty(json))
+            {
+                return null;
+            }
 
             var jsonDoc = System.Text.Json.JsonDocument.Parse(json);
             if (jsonDoc.RootElement.TryGetProperty("messageId", out var messageIdElement))
+            {
                 return messageIdElement.GetString();
+            }
 
             // Also try "id" property
             return jsonDoc.RootElement.TryGetProperty("id", out var idElement) ? idElement.GetString() : null;
@@ -992,7 +1018,10 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
 
     private EditMessagePayload? ExtractEditPayloadFromOperation(object? payload)
     {
-        if (payload == null) return null;
+        if (payload == null)
+        {
+            return null;
+        }
 
         try
         {

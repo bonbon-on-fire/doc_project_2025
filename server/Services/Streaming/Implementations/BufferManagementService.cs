@@ -459,7 +459,7 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
                     BuffersRecovered = 0,
                     TotalMessagesRecovered = 0,
                     CorruptedBuffers = 0,
-                    RecoveredStreamIds = Array.Empty<string>(),
+                    RecoveredStreamIds = [],
                     Duration = DateTime.UtcNow - startTime
                 };
             }

@@ -36,17 +36,19 @@ public class ConnectionStateTracker : IConnectionStateTracker
     /// <inheritdoc />
     public async Task<ConnectionState?> GetConnectionStateAsync(string streamId)
     {
-        if (string.IsNullOrEmpty(streamId))
-            throw new ArgumentNullException(nameof(streamId));
-
-        return _connectionStates.TryGetValue(streamId, out var data) ? await Task.FromResult(data.ToConnectionState()) : null;
+        return string.IsNullOrEmpty(streamId)
+            ? throw new ArgumentNullException(nameof(streamId))
+            : _connectionStates.TryGetValue(streamId, out var data) ? await Task.FromResult(data.ToConnectionState()) : null;
     }
 
     /// <inheritdoc />
     public async Task UpdateConnectionStateAsync(string streamId, ConnectionState state, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(streamId))
+        {
             throw new ArgumentNullException(nameof(streamId));
+        }
+
         ArgumentNullException.ThrowIfNull(state);
 
         var data = ConnectionStateData.FromConnectionState(state);
@@ -63,7 +65,9 @@ public class ConnectionStateTracker : IConnectionStateTracker
     public async Task RecordConnectionAsync(string streamId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(streamId))
+        {
             throw new ArgumentNullException(nameof(streamId));
+        }
 
         var now = DateTime.UtcNow;
         var data = _connectionStates.AddOrUpdate(streamId,
@@ -82,7 +86,10 @@ public class ConnectionStateTracker : IConnectionStateTracker
                 existing.LastActivityAt = now;
                 existing.DisconnectedAt = null;
                 if (existing.ConnectionStartTime == default)
+                {
                     existing.ConnectionStartTime = now;
+                }
+
                 return existing;
             });
 
@@ -94,7 +101,9 @@ public class ConnectionStateTracker : IConnectionStateTracker
     public async Task RecordDisconnectionAsync(string streamId, string? reason = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(streamId))
+        {
             throw new ArgumentNullException(nameof(streamId));
+        }
 
         var now = DateTime.UtcNow;
         var data = _connectionStates.AddOrUpdate(streamId,
@@ -116,7 +125,9 @@ public class ConnectionStateTracker : IConnectionStateTracker
                     existing.TotalConnectionTime = existing.TotalConnectionTime.Add(connectionDuration);
 
                     if (connectionDuration > existing.LongestConnectionDuration)
+                    {
                         existing.LongestConnectionDuration = connectionDuration;
+                    }
                 }
 
                 existing.Status = ConnectionStatus.Disconnected;
@@ -139,7 +150,9 @@ public class ConnectionStateTracker : IConnectionStateTracker
     public async Task RecordReconnectionAttemptAsync(string streamId, bool success, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(streamId))
+        {
             throw new ArgumentNullException(nameof(streamId));
+        }
 
         var now = DateTime.UtcNow;
         var data = _connectionStates.AddOrUpdate(streamId,
@@ -197,10 +210,14 @@ public class ConnectionStateTracker : IConnectionStateTracker
     public async Task<bool> IsConnectionHealthyAsync(string streamId)
     {
         if (string.IsNullOrEmpty(streamId))
+        {
             throw new ArgumentNullException(nameof(streamId));
+        }
 
         if (!_connectionStates.TryGetValue(streamId, out var data))
+        {
             return false;
+        }
 
         var now = DateTime.UtcNow;
         var timeSinceLastActivity = now - data.LastActivityAt;
@@ -220,10 +237,14 @@ public class ConnectionStateTracker : IConnectionStateTracker
     public async Task<ConnectionMetrics?> GetConnectionMetricsAsync(string streamId)
     {
         if (string.IsNullOrEmpty(streamId))
+        {
             throw new ArgumentNullException(nameof(streamId));
+        }
 
         if (!_connectionStates.TryGetValue(streamId, out var data))
+        {
             return null;
+        }
 
         var now = DateTime.UtcNow;
 
@@ -252,7 +273,7 @@ public class ConnectionStateTracker : IConnectionStateTracker
                 ? TimeSpan.FromMilliseconds(data.ReconnectionTimes.Average(t => t.TotalMilliseconds))
                 : TimeSpan.Zero,
             UptimePercentage = totalTime.TotalSeconds > 0
-                ? (totalConnectionTime.TotalSeconds / totalTime.TotalSeconds) * 100
+                ? totalConnectionTime.TotalSeconds / totalTime.TotalSeconds * 100
                 : 100,
             LongestConnectionDuration = data.LongestConnectionDuration
         };
@@ -264,7 +285,9 @@ public class ConnectionStateTracker : IConnectionStateTracker
     public async Task RemoveTrackingAsync(string streamId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(streamId))
+        {
             throw new ArgumentNullException(nameof(streamId));
+        }
 
         if (_connectionStates.TryRemove(streamId, out var removed))
         {
@@ -314,9 +337,14 @@ public class ConnectionStateTracker : IConnectionStateTracker
             {
                 case ConnectionStatus.Connected:
                     if (timeSinceLastActivity < _inactivityThreshold)
+                    {
                         healthyCount++;
+                    }
                     else
+                    {
                         unstableCount++;
+                    }
+
                     break;
                 case ConnectionStatus.Unstable:
                 case ConnectionStatus.Reconnecting:
@@ -327,6 +355,10 @@ public class ConnectionStateTracker : IConnectionStateTracker
                     break;
                 case ConnectionStatus.Failed:
                     failedCount++;
+                    break;
+                case ConnectionStatus.Unknown:
+                    break;
+                default:
                     break;
             }
         }

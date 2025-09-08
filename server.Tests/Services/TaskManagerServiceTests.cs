@@ -22,7 +22,7 @@ public class TaskManagerServiceTests
     }
 
     [Fact]
-    public async Task GetTaskManagerAsync_CreatesNewInstance_WhenNoneExists()
+    public async Task GetTaskManagerAsyncCreatesNewInstanceWhenNoneExists()
     {
         // Arrange
         var chatId = "test-chat-1";
@@ -41,7 +41,7 @@ public class TaskManagerServiceTests
     }
 
     [Fact]
-    public async Task GetTaskManagerAsync_LoadsExistingState_WhenExists()
+    public async Task GetTaskManagerAsyncLoadsExistingStateWhenExists()
     {
         // Arrange
         var chatId = "test-chat-2";
@@ -73,7 +73,7 @@ public class TaskManagerServiceTests
     }
 
     [Fact]
-    public async Task SaveTaskManagerStateAsync_PersistsState_Successfully()
+    public async Task SaveTaskManagerStateAsyncPersistsStateSuccessfully()
     {
         // Arrange
         var chatId = "test-chat-3";
@@ -115,7 +115,7 @@ public class TaskManagerServiceTests
     }
 
     [Fact]
-    public async Task ClearTaskManagerAsync_RemovesFromCacheAndStorage()
+    public async Task ClearTaskManagerAsyncRemovesFromCacheAndStorage()
     {
         // Arrange
         var chatId = "test-chat-4";
@@ -136,7 +136,7 @@ public class TaskManagerServiceTests
     }
 
     [Fact]
-    public async Task GetTaskStateAsync_ReturnsProperJsonStructure()
+    public async Task GetTaskStateAsyncReturnsProperJsonStructure()
     {
         // Arrange
         var chatId = "test-chat-5";
@@ -153,7 +153,7 @@ public class TaskManagerServiceTests
     }
 
     [Fact]
-    public async Task MultipleChats_MaintainSeparateTaskManagers()
+    public async Task MultipleChatsMaintainSeparateTaskManagers()
     {
         // Arrange
         var chatId1 = "test-chat-6";

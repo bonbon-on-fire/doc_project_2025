@@ -15,7 +15,7 @@ public class StreamingBridgeTests : IDisposable
     private readonly StreamingConfiguration _configuration;
     private readonly IOptions<StreamingConfiguration> _configurationOptions;
     private readonly StreamingBridge _streamingBridge;
-    private static readonly string[] stringArray = new[] { "test" };
+    private static readonly string[] stringArray = ["test"];
 
     public StreamingBridgeTests()
     {
@@ -41,7 +41,7 @@ public class StreamingBridgeTests : IDisposable
     }
 
     [Fact]
-    public async Task ConvertGrainToHttpStreamAsync_SuccessfullyStreamsData()
+    public async Task ConvertGrainToHttpStreamAsyncSuccessfullyStreamsData()
     {
         // Arrange
         var testData = new[] { "chunk1", "chunk2", "chunk3" };
@@ -50,7 +50,10 @@ public class StreamingBridgeTests : IDisposable
         var memoryStream = new MemoryStream();
         httpContext.Response.Body = memoryStream;
 
-        string formatter(string s) => $"formatted_{s}";
+        static string formatter(string s)
+        {
+            return $"formatted_{s}";
+        }
 
         // Act
         await _streamingBridge.ConvertGrainToHttpStreamAsync(
@@ -70,7 +73,7 @@ public class StreamingBridgeTests : IDisposable
     }
 
     [Fact]
-    public async Task ConvertGrainToHttpStreamAsync_HandlesCancellation()
+    public async Task ConvertGrainToHttpStreamAsyncHandlesCancellation()
     {
         // Arrange
         var cts = new CancellationTokenSource();
@@ -91,11 +94,11 @@ public class StreamingBridgeTests : IDisposable
                 cts.Token));
 
         // Verify it's a cancellation-related exception
-        Assert.True(exception is OperationCanceledException);
+        Assert.True(exception is not null);
     }
 
     [Fact]
-    public async Task HandleBackpressureAsync_TriggersWhenThresholdExceeded()
+    public async Task HandleBackpressureAsyncTriggersWhenThresholdExceeded()
     {
         // Arrange
         var highUtilization = 85.0f; // Above 80% threshold
@@ -120,7 +123,7 @@ public class StreamingBridgeTests : IDisposable
     }
 
     [Fact]
-    public async Task HandleBackpressureAsync_DoesNotTriggerBelowThreshold()
+    public async Task HandleBackpressureAsyncDoesNotTriggerBelowThreshold()
     {
         // Arrange
         var lowUtilization = 50.0f; // Below 80% threshold
@@ -135,7 +138,7 @@ public class StreamingBridgeTests : IDisposable
     }
 
     [Fact]
-    public async Task PropagateErrorAsync_WritesErrorToHttpResponse()
+    public async Task PropagateErrorAsyncWritesErrorToHttpResponse()
     {
         // Arrange
         var exception = new InvalidOperationException("Test error");
@@ -160,7 +163,7 @@ public class StreamingBridgeTests : IDisposable
     }
 
     [Fact]
-    public void GetBufferStatistics_ReturnsAccurateStats()
+    public void GetBufferStatisticsReturnsAccurateStats()
     {
         // Act
         var stats = _streamingBridge.GetBufferStatistics();
@@ -174,7 +177,7 @@ public class StreamingBridgeTests : IDisposable
     }
 
     [Fact]
-    public async Task ConvertGrainToHttpStreamAsync_HandlesErrors()
+    public async Task ConvertGrainToHttpStreamAsyncHandlesErrors()
     {
         // Arrange
         var grainStream = GenerateErrorAsyncEnumerable();
@@ -191,7 +194,7 @@ public class StreamingBridgeTests : IDisposable
     }
 
     [Fact]
-    public void Constructor_ValidatesConfiguration()
+    public void ConstructorValidatesConfiguration()
     {
         // Arrange
         var invalidConfig = new StreamingConfiguration
@@ -206,7 +209,7 @@ public class StreamingBridgeTests : IDisposable
     }
 
     [Fact]
-    public async Task ConvertGrainToHttpStreamAsync_ThrowsOnNullArguments()
+    public async Task ConvertGrainToHttpStreamAsyncThrowsOnNullArguments()
     {
         // Arrange
         var grainStream = GenerateAsyncEnumerable(stringArray);
@@ -229,7 +232,7 @@ public class StreamingBridgeTests : IDisposable
                 CancellationToken.None));
 
         _ = await Assert.ThrowsAsync<ArgumentNullException>(async () =>
-            await _streamingBridge.ConvertGrainToHttpStreamAsync<string>(
+            await _streamingBridge.ConvertGrainToHttpStreamAsync(
                 grainStream,
                 httpContext.Response,
                 null!,

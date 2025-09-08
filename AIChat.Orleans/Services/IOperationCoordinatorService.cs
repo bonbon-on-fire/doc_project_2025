@@ -604,7 +604,7 @@ public class OperationCoordinatorService : IOperationCoordinatorService
             }
 
             // Validate operation type
-            if (!Enum.IsDefined(typeof(OperationType), operationType))
+            if (!Enum.IsDefined(operationType))
             {
                 errors.Add($"Invalid operation type: {operationType}");
             }

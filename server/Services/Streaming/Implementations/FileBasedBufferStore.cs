@@ -170,8 +170,8 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
                 return new PersistedBuffer
                 {
                     StreamId = streamId,
-                    Messages = Array.Empty<BufferedStreamMessage>(),
-                    Metadata = CreateMetadata(streamId, Array.Empty<BufferedStreamMessage>()),
+                    Messages = [],
+                    Metadata = CreateMetadata(streamId, []),
                     IsCorrupted = true,
                     CorruptionDetails = $"All {corruptedFiles.Count} files are corrupted"
                 };
@@ -247,7 +247,7 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
         {
             if (!Directory.Exists(_options.StoragePath))
             {
-                return Array.Empty<string>();
+                return [];
             }
 
             var streamIds = Directory.GetDirectories(_options.StoragePath)
@@ -261,7 +261,7 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to list persisted buffers");
-            return Array.Empty<string>();
+            return [];
         }
         finally
         {
@@ -397,7 +397,7 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
             DateTime? newestTimestamp = null;
             long largestSize = 0;
             long totalMessages = 0;
-            int corruptedCount = 0;
+            var corruptedCount = 0;
 
             foreach (var streamDir in streamDirs)
             {

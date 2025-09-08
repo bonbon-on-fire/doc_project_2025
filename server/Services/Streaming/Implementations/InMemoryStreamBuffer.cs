@@ -80,7 +80,7 @@ public class InMemoryStreamBuffer : IStreamBuffer
             // Check if buffer is full
             if (_messages.Count >= Configuration.MaxSize)
             {
-                bool handled = await HandleOverflowAsync(message);
+                var handled = await HandleOverflowAsync(message);
                 if (!handled)
                 {
                     _ = Interlocked.Increment(ref _totalMessagesDropped);
@@ -114,7 +114,7 @@ public class InMemoryStreamBuffer : IStreamBuffer
             _ = await RemoveExpiredMessagesInternalAsync();
 
             // Return a snapshot of current messages
-            return _messages.ToList();
+            return [.. _messages];
         }
         finally
         {
@@ -132,9 +132,9 @@ public class InMemoryStreamBuffer : IStreamBuffer
             _ = await RemoveExpiredMessagesInternalAsync();
 
             var drainedMessages = new List<BufferedStreamMessage>();
-            int messagesToDrain = maxMessages > 0 ? Math.Min(maxMessages, _messages.Count) : _messages.Count;
+            var messagesToDrain = maxMessages > 0 ? Math.Min(maxMessages, _messages.Count) : _messages.Count;
 
-            for (int i = 0; i < messagesToDrain; i++)
+            for (var i = 0; i < messagesToDrain; i++)
             {
                 if (_messages.TryDequeue(out var message))
                 {
@@ -160,7 +160,7 @@ public class InMemoryStreamBuffer : IStreamBuffer
         await _semaphore.WaitAsync(cancellationToken);
         try
         {
-            int count = _messages.Count;
+            var count = _messages.Count;
 
             // Clear all messages
             while (_messages.TryDequeue(out _))
@@ -283,7 +283,10 @@ public class InMemoryStreamBuffer : IStreamBuffer
                     "Rejecting new message {Sequence} for buffer {BufferId} due to overflow",
                     newMessage.SequenceNumber, BufferId);
                 return Task.FromResult(false);
-
+            case OverflowStrategy.DropLowPriority:
+                // TODO: Implement priority-based dropping
+                // For now, fall through to default behavior
+                goto default;
             default:
                 // Default to dropping oldest
                 if (_messages.TryDequeue(out var defaultOldest))

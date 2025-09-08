@@ -144,7 +144,7 @@ public record ChatHistoryResult
     public string? Error { get; init; }
 
     [JsonPropertyName("chats")]
-    public List<ChatDto> Chats { get; init; } = new();
+    public List<ChatDto> Chats { get; init; } = [];
 
     [JsonPropertyName("totalCount")]
     public int TotalCount { get; init; }
@@ -313,7 +313,7 @@ public record ChatDto
     public DateTime UpdatedAt { get; init; }
 
     [JsonPropertyName("messages")]
-    public List<MessageDto> Messages { get; init; } = new();
+    public List<MessageDto> Messages { get; init; } = [];
 
     [JsonPropertyName("tasks")]
     public IList<TaskItem>? Tasks { get; init; }

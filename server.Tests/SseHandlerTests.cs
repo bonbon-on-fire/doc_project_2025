@@ -52,7 +52,7 @@ public class SseHandlerTests
     }
 
     [Fact]
-    public async Task NonTargetedPath_Returns404()
+    public async Task NonTargetedPathReturns404()
     {
         var handler = new TestSseMessageHandler { ChunkDelayMs = 0 };
         using var invoker = new HttpMessageInvoker(handler);
@@ -62,7 +62,7 @@ public class SseHandlerTests
     }
 
     [Fact]
-    public async Task MissingStreamTrue_Returns404()
+    public async Task MissingStreamTrueReturns404()
     {
         var handler = new TestSseMessageHandler { ChunkDelayMs = 0 };
         using var invoker = new HttpMessageInvoker(handler);
@@ -72,7 +72,7 @@ public class SseHandlerTests
     }
 
     [Fact]
-    public async Task Response_IsEventStream_WithChunks_AndDone()
+    public async Task ResponseIsEventStreamWithChunksAndDone()
     {
         var handler = new TestSseMessageHandler { ChunkDelayMs = 0, WordsPerChunk = 3 };
         using var invoker = new HttpMessageInvoker(handler);
@@ -95,7 +95,7 @@ public class SseHandlerTests
     }
 
     [Fact]
-    public async Task Model_IsEchoed_WhenProvided()
+    public async Task ModelIsEchoedWhenProvided()
     {
         var handler = new TestSseMessageHandler { ChunkDelayMs = 0 };
         using var invoker = new HttpMessageInvoker(handler);
@@ -108,7 +108,7 @@ public class SseHandlerTests
     }
 
     [Fact]
-    public async Task Lorem_Count_WithinRange_And_EchoExcluded()
+    public async Task LoremCountWithinRangeAndEchoExcluded()
     {
         var handler = new TestSseMessageHandler { ChunkDelayMs = 0, WordsPerChunk = 50 };
         using var invoker = new HttpMessageInvoker(handler);
@@ -135,7 +135,7 @@ public class SseHandlerTests
     }
 
     [Fact]
-    public async Task ReasoningFirst_WhenTriggered()
+    public async Task ReasoningFirstWhenTriggered()
     {
         var handler = new TestSseMessageHandler { ChunkDelayMs = 0 };
         using var invoker = new HttpMessageInvoker(handler);
@@ -171,7 +171,7 @@ public class SseHandlerTests
     }
 
     [Fact]
-    public async Task Request_Parsing_Ignores_Complex_Content_Arrays()
+    public async Task RequestParsingIgnoresComplexContentArrays()
     {
         var handler = new TestSseMessageHandler { ChunkDelayMs = 0 };
         using var invoker = new HttpMessageInvoker(handler);
@@ -213,7 +213,7 @@ public class SseHandlerTests
     }
 
     [Fact]
-    public async Task Emits_Multiple_Chunks_Before_Done()
+    public async Task EmitsMultipleChunksBeforeDone()
     {
         // Arrange: force small chunks and a long message to produce multiple chunks deterministically
         var handler = new TestSseMessageHandler { ChunkDelayMs = 0, WordsPerChunk = 3 };
@@ -234,7 +234,7 @@ public class SseHandlerTests
     }
 
     [Fact]
-    public async Task NoReasoning_WhenNotRequested()
+    public async Task NoReasoningWhenNotRequested()
     {
         // Arrange
         var handler = new TestSseMessageHandler { ChunkDelayMs = 0, WordsPerChunk = 5 };
@@ -257,7 +257,7 @@ public class SseHandlerTests
     }
 
     [Fact]
-    public async Task WithReasoning_PreReasoningMarker_And_PostTextEcho_Present()
+    public async Task WithReasoningPreReasoningMarkerAndPostTextEchoPresent()
     {
         // Arrange
         var handler = new TestSseMessageHandler { ChunkDelayMs = 0, WordsPerChunk = 5 };
@@ -297,7 +297,7 @@ public class SseHandlerTests
     }
 
     [Fact]
-    public async Task InstructionMode_ParsesBlock_And_IgnoresOutsideText()
+    public async Task InstructionModeParsesBlockAndIgnoresOutsideText()
     {
         var handler = new TestSseMessageHandler { ChunkDelayMs = 0, WordsPerChunk = 3 };
         using var invoker = new HttpMessageInvoker(handler);
@@ -326,7 +326,7 @@ public class SseHandlerTests
     }
 
     [Fact]
-    public async Task InstructionMode_MultipleMessages_ProduceDistinctIndices()
+    public async Task InstructionModeMultipleMessagesProduceDistinctIndices()
     {
         var handler = new TestSseMessageHandler { ChunkDelayMs = 0, WordsPerChunk = 2 };
         using var invoker = new HttpMessageInvoker(handler);
@@ -358,7 +358,7 @@ public class SseHandlerTests
     }
 
     [Fact]
-    public async Task InstructionMode_TextLength_Honored_IdMessage_Excluded()
+    public async Task InstructionModeTextLengthHonoredIdMessageExcluded()
     {
         var handler = new TestSseMessageHandler { ChunkDelayMs = 0, WordsPerChunk = 5 };
         using var invoker = new HttpMessageInvoker(handler);
@@ -398,7 +398,7 @@ public class SseHandlerTests
     }
 
     [Fact]
-    public async Task InstructionMode_ToolCall_DeltaShape_And_Indexing()
+    public async Task InstructionModeToolCallDeltaShapeAndIndexing()
     {
         var handler = new TestSseMessageHandler { ChunkDelayMs = 0 };
         using var invoker = new HttpMessageInvoker(handler);
@@ -454,7 +454,7 @@ public class SseHandlerTests
     }
 
     [Fact]
-    public async Task InstructionMode_Fallback_On_InvalidJson()
+    public async Task InstructionModeFallbackOnInvalidJson()
     {
         var handler = new TestSseMessageHandler { ChunkDelayMs = 0 };
         using var invoker = new HttpMessageInvoker(handler);

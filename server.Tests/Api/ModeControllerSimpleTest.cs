@@ -13,7 +13,7 @@ public class ModeControllerSimpleTest(WebApplicationFactory<Program> factory)
     );
 
     [Fact]
-    public async Task ModeController_IsAccessible()
+    public async Task ModeControllerIsAccessible()
     {
         // Arrange
         var client = _factory.CreateClient();

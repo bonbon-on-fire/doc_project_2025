@@ -6,7 +6,7 @@ namespace AIChat.Orleans.Client.Configuration;
 /// Validator for Orleans resilience configuration using IValidateOptions pattern.
 /// Provides comprehensive validation of circuit breaker, retry, timeout, and bulkhead settings.
 /// </summary>
-public class OrleansResilienceConfigurationValidator : IValidateOptions<OrleansResilienceConfiguration>
+public partial class OrleansResilienceConfigurationValidator : IValidateOptions<OrleansResilienceConfiguration>
 {
     /// <summary>
     /// Validates the Orleans resilience configuration.
@@ -168,13 +168,18 @@ public class OrleansResilienceConfigurationValidator : IValidateOptions<OrleansR
     private static bool IsValidTypeName(string typeName)
     {
         if (string.IsNullOrWhiteSpace(typeName))
+        {
             return false;
+        }
 
         // Basic validation: should contain namespace and type name
         // Allow generic types with backtick notation (e.g., List`1)
         var parts = typeName.Split('.');
         return parts.Length >= 2 &&
                parts.All(part => !string.IsNullOrWhiteSpace(part) &&
-                               System.Text.RegularExpressions.Regex.IsMatch(part, @"^[a-zA-Z_][a-zA-Z0-9_`]*$"));
+                               MyRegex().IsMatch(part));
     }
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"^[a-zA-Z_][a-zA-Z0-9_`]*$")]
+    private static partial System.Text.RegularExpressions.Regex MyRegex();
 }

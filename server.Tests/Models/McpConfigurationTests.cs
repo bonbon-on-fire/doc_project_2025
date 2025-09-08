@@ -12,7 +12,7 @@ public class McpConfigurationTests
     #region FunctionFilterConfig Tests
 
     [Fact]
-    public void FunctionFilterConfig_DefaultValues_AreCorrect()
+    public void FunctionFilterConfigDefaultValuesAreCorrect()
     {
         // Arrange & Act
         var config = new FunctionFilterConfig();
@@ -26,7 +26,7 @@ public class McpConfigurationTests
     }
 
     [Fact]
-    public void FunctionFilterConfig_Serialization_WorksCorrectly()
+    public void FunctionFilterConfigSerializationWorksCorrectly()
     {
         // Arrange
         var config = new FunctionFilterConfig
@@ -66,7 +66,7 @@ public class McpConfigurationTests
     #region ProviderFilterConfig Tests
 
     [Fact]
-    public void ProviderFilterConfig_DefaultValues_AreCorrect()
+    public void ProviderFilterConfigDefaultValuesAreCorrect()
     {
         // Arrange & Act
         var config = new ProviderFilterConfig();
@@ -78,7 +78,7 @@ public class McpConfigurationTests
     }
 
     [Fact]
-    public void ProviderFilterConfig_WithWildcards_SerializesCorrectly()
+    public void ProviderFilterConfigWithWildcardsSerializesCorrectly()
     {
         // Arrange
         var config = new ProviderFilterConfig
@@ -107,7 +107,7 @@ public class McpConfigurationTests
     #region McpConfiguration Integration Tests
 
     [Fact]
-    public void McpConfiguration_WithFunctionFiltering_SerializesCorrectly()
+    public void McpConfigurationWithFunctionFilteringSerializesCorrectly()
     {
         // Arrange
         var config = new McpConfiguration
@@ -137,7 +137,7 @@ public class McpConfigurationTests
 
 #pragma warning disable CS0618 // Type or member is obsolete
     [Fact]
-    public void McpConfiguration_WithLegacyToolFiltering_StillWorks()
+    public void McpConfigurationWithLegacyToolFilteringStillWorks()
     {
         // Arrange
         var config = new McpConfiguration
@@ -164,7 +164,7 @@ public class McpConfigurationTests
 #pragma warning restore CS0618 // Type or member is obsolete
 
     [Fact]
-    public void McpConfiguration_BothFilteringConfigs_NewTakesPrecedence()
+    public void McpConfigurationBothFilteringConfigsNewTakesPrecedence()
     {
         // Arrange
 #pragma warning disable CS0618 // Type or member is obsolete
@@ -198,7 +198,7 @@ public class McpConfigurationTests
     #region McpServerConfig Tests
 
     [Fact]
-    public void McpServerConfig_WithAllowedTools_SerializesCorrectly()
+    public void McpServerConfigWithAllowedToolsSerializesCorrectly()
     {
         // Arrange
         var serverConfig = new McpServerConfig

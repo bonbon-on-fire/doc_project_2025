@@ -23,6 +23,11 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
     private readonly OrleansResilienceConfiguration _resilienceConfig;
     private readonly ResiliencePipeline _resiliencePipeline;
 
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
     /// <summary>
     /// Initializes a new instance of the OrleansIntegrationService.
     /// </summary>
@@ -69,10 +74,7 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
             await ExecuteWithResilienceAsync(async () =>
             {
                 var grain = _grainFactory.GetGrain<IUserGrain>(userId);
-                var metadata = JsonSerializer.Serialize(data, new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                });
+                var metadata = JsonSerializer.Serialize(data, JsonOptions);
 
                 await grain.RecordActivity(type, metadata);
             }, $"RecordActivity-{userId}");
@@ -341,7 +343,9 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
                 {
                     // Check if this exception type should trigger retries
                     if (_resilienceConfig.RetryPolicy.RetryableExceptions.Count == 0)
+                    {
                         return true;
+                    }
 
                     var exceptionTypeName = ex.GetType().FullName ?? ex.GetType().Name;
                     return _resilienceConfig.RetryPolicy.RetryableExceptions.Contains(exceptionTypeName);
@@ -366,7 +370,7 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
             _ = pipelineBuilder.AddCircuitBreaker(new CircuitBreakerStrategyOptions
             {
                 ShouldHandle = new PredicateBuilder().Handle<Exception>(),
-                FailureRatio = (double)_resilienceConfig.CircuitBreaker.FailureThreshold / 100.0,
+                FailureRatio = _resilienceConfig.CircuitBreaker.FailureThreshold / 100.0,
                 SamplingDuration = TimeSpan.FromSeconds(_resilienceConfig.CircuitBreaker.SamplingDurationSeconds),
                 MinimumThroughput = _resilienceConfig.CircuitBreaker.MinimumThroughput,
                 BreakDuration = TimeSpan.FromSeconds(_resilienceConfig.CircuitBreaker.BreakDurationSeconds),

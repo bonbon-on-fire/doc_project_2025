@@ -20,7 +20,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
     private readonly ResilientStreamManager _manager;
     private readonly Mock<HttpResponse> _httpResponseMock;
     private readonly Mock<HttpContext> _httpContextMock;
-    private static readonly string[] stringArray = new[] { "data" };
+    private static readonly string[] stringArray = ["data"];
 
     public ResilientStreamManagerTests()
     {
@@ -105,7 +105,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task ProcessResilientStreamAsync_SuccessfulStream_CompletesNormally()
+    public async Task ProcessResilientStreamAsyncSuccessfulStreamCompletesNormally()
     {
         // Arrange
         var streamId = "test-stream-1";
@@ -134,7 +134,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task ProcessResilientStreamAsync_DuplicateStreamId_ThrowsException()
+    public async Task ProcessResilientStreamAsyncDuplicateStreamIdThrowsException()
     {
         // Arrange
         var streamId = "test-stream-2";
@@ -177,7 +177,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task RecoverStreamAsync_NonExistentStream_ReturnsFalse()
+    public async Task RecoverStreamAsyncNonExistentStreamReturnsFalse()
     {
         // Arrange
         var streamId = "non-existent";
@@ -190,7 +190,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task GetHealthStatusAsync_ReturnsCorrectStatus()
+    public async Task GetHealthStatusAsyncReturnsCorrectStatus()
     {
         // Arrange & Act
         var status = await _manager.GetHealthStatusAsync();
@@ -206,7 +206,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task GetStreamMetricsAsync_ActiveStream_ReturnsMetrics()
+    public async Task GetStreamMetricsAsyncActiveStreamReturnsMetrics()
     {
         // Arrange
         var streamId = "test-stream-3";
@@ -245,7 +245,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task ResetCircuitBreakerAsync_ExistingStream_ReturnsTrue()
+    public async Task ResetCircuitBreakerAsyncExistingStreamReturnsTrue()
     {
         // Arrange
         var streamId = "test-stream-4";
@@ -281,7 +281,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task ClearBufferedMessagesAsync_ExistingStream_ReturnsCount()
+    public async Task ClearBufferedMessagesAsyncExistingStreamReturnsCount()
     {
         // Arrange
         var streamId = "test-stream-5";
@@ -317,7 +317,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task GetActiveStreamIdsAsync_MultipleStreams_ReturnsAllIds()
+    public async Task GetActiveStreamIdsAsyncMultipleStreamsReturnsAllIds()
     {
         // Arrange
         var streamIds = new[] { "stream-6", "stream-7", "stream-8" };
@@ -367,7 +367,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task ProcessResilientStreamAsync_WithCancellation_StopsGracefully()
+    public async Task ProcessResilientStreamAsyncWithCancellationStopsGracefully()
     {
         // Arrange
         var streamId = "test-stream-9";
@@ -406,7 +406,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
     }
 
     [Fact]
-    public void Configuration_Validation_InvalidConfig_ThrowsException()
+    public void ConfigurationValidationInvalidConfigThrowsException()
     {
         // Arrange
         var invalidConfig = new ResilientStreamingConfiguration
@@ -471,7 +471,7 @@ public class ResilientStreamingHealthCheckTests
     }
 
     [Fact]
-    public async Task CheckHealthAsync_HealthySystem_ReturnsHealthy()
+    public async Task CheckHealthAsyncHealthySystemReturnsHealthy()
     {
         // Arrange
         var healthStatus = new StreamHealthStatus
@@ -498,7 +498,7 @@ public class ResilientStreamingHealthCheckTests
     }
 
     [Fact]
-    public async Task CheckHealthAsync_UnhealthySystem_ReturnsUnhealthy()
+    public async Task CheckHealthAsyncUnhealthySystemReturnsUnhealthy()
     {
         // Arrange
         var healthStatus = new StreamHealthStatus
@@ -524,7 +524,7 @@ public class ResilientStreamingHealthCheckTests
     }
 
     [Fact]
-    public async Task CheckHealthAsync_DegradedSystem_ReturnsDegraded()
+    public async Task CheckHealthAsyncDegradedSystemReturnsDegraded()
     {
         // Arrange
         var healthStatus = new StreamHealthStatus
@@ -546,11 +546,11 @@ public class ResilientStreamingHealthCheckTests
 
         // Assert
         Assert.Equal(HealthStatus.Healthy, result.Status);
-        Assert.Contains("warnings", result.Description!.ToLower());
+        Assert.Contains("warnings", result.Description!.ToLower(System.Globalization.CultureInfo.CurrentCulture));
     }
 
     [Fact]
-    public async Task CheckHealthAsync_ExceptionThrown_ReturnsUnhealthy()
+    public async Task CheckHealthAsyncExceptionThrownReturnsUnhealthy()
     {
         // Arrange
         _ = _streamManagerMock.Setup(m => m.GetHealthStatusAsync())

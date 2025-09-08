@@ -23,7 +23,7 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
     }
 
     [Fact]
-    public async Task FullChatFlow_ThroughOrleansSse_ShouldCompleteSuccessfully()
+    public async Task FullChatFlowThroughOrleansSseShouldCompleteSuccessfully()
     {
         // Arrange
         _fixture.OrleansEnabled = true;
@@ -91,7 +91,7 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
     }
 
     [Fact]
-    public async Task MultiUserChat_ShouldMaintainIsolation()
+    public async Task MultiUserChatShouldMaintainIsolation()
     {
         // Arrange
         _fixture.OrleansEnabled = true;
@@ -114,12 +114,12 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
         // Assert
         _ = results.Should().HaveCount(3);
         _ = results.Select(r => r.ChatId).Should().OnlyHaveUniqueItems();
-        _ = results.Select(r => r.UserId).Should().BeEquivalentTo(new[] { user1, user2, user3 });
+        _ = results.Select(r => r.UserId).Should().BeEquivalentTo([user1, user2, user3]);
 
         // Verify each user's grain has separate state
-        foreach (var result in results)
+        foreach (var (ChatId, UserId, EventCount) in results)
         {
-            var grain = _fixture.Cluster.Client.GetGrain<IUserGrain>(result.UserId);
+            var grain = _fixture.Cluster.Client.GetGrain<IUserGrain>(UserId);
             var state = await grain.GetState();
             _ = state.Should().NotBeNull();
             _ = state.LastActivity.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(1));
@@ -127,14 +127,14 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
         }
 
         _output.WriteLine($"Multi-user chat test completed:");
-        foreach (var result in results)
+        foreach (var (ChatId, UserId, EventCount) in results)
         {
-            _output.WriteLine($"  User: {result.UserId}, ChatId: {result.ChatId}, Events: {result.EventCount}");
+            _output.WriteLine($"  User: {UserId}, ChatId: {ChatId}, Events: {EventCount}");
         }
     }
 
     [Fact]
-    public async Task MessageOrdering_ShouldBePreserved()
+    public async Task MessageOrderingShouldBePreserved()
     {
         // Arrange
         _fixture.OrleansEnabled = true;
@@ -145,7 +145,7 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
         var chatId = string.Empty;
 
         // Act - Send messages in sequence
-        for (int i = 0; i < messages.Length; i++)
+        for (var i = 0; i < messages.Length; i++)
         {
             using var client = _fixture.CreateSseClient();
             var request = new CreateChatRequest
@@ -184,7 +184,7 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
     }
 
     [Fact]
-    public async Task ErrorPropagation_ShouldReachClient()
+    public async Task ErrorPropagationShouldReachClient()
     {
         // Arrange
         _fixture.OrleansEnabled = true;
@@ -227,7 +227,7 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
     }
 
     [Fact]
-    public async Task StreamInterruption_Recovery_ShouldWork()
+    public async Task StreamInterruptionRecoveryShouldWork()
     {
         // Arrange
         _fixture.OrleansEnabled = true;
@@ -288,7 +288,7 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
     }
 
     [Fact]
-    public async Task ComplexConversation_WithContext_ShouldMaintainState()
+    public async Task ComplexConversationWithContextShouldMaintainState()
     {
         // Arrange
         _fixture.OrleansEnabled = true;
@@ -347,7 +347,7 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
     }
 
     [Fact]
-    public async Task ConcurrentChatsPerUser_ShouldBeSupported()
+    public async Task ConcurrentChatsPerUserShouldBeSupported()
     {
         // Arrange
         _fixture.OrleansEnabled = true;
@@ -359,7 +359,7 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
 
         // Act - Create multiple concurrent chats for same user
         var tasks = new List<Task<string>>();
-        for (int i = 0; i < chatCount; i++)
+        for (var i = 0; i < chatCount; i++)
         {
             var index = i;
             var task = Task.Run(async () =>

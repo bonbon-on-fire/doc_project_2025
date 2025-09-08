@@ -9,7 +9,7 @@ namespace AIChat.Server.Services.Streaming.Models;
 /// </summary>
 public sealed class StreamContext
 {
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private StreamState _state;
     private CircuitState _circuitState;
     private long _messagesProcessed;
@@ -51,8 +51,16 @@ public sealed class StreamContext
     /// </summary>
     public StreamState State
     {
-        get { lock (_lock) return _state; }
-        set { lock (_lock) _state = value; }
+        get { lock (_lock)
+            {
+                return _state;
+            }
+        }
+        set { lock (_lock)
+            {
+                _state = value;
+            }
+        }
     }
 
     /// <summary>
@@ -60,17 +68,22 @@ public sealed class StreamContext
     /// </summary>
     public CircuitState CircuitState
     {
-        get { lock (_lock) return _circuitState; }
-        set { lock (_lock) _circuitState = value; }
+        get { lock (_lock)
+            {
+                return _circuitState;
+            }
+        }
+        set { lock (_lock)
+            {
+                _circuitState = value;
+            }
+        }
     }
 
     /// <summary>
     /// Gets the number of messages processed.
     /// </summary>
-    public long MessagesProcessed
-    {
-        get => Interlocked.Read(ref _messagesProcessed);
-    }
+    public long MessagesProcessed => Interlocked.Read(ref _messagesProcessed);
 
     /// <summary>
     /// Increments the messages processed count.
@@ -83,10 +96,7 @@ public sealed class StreamContext
     /// <summary>
     /// Gets the number of reconnection attempts.
     /// </summary>
-    public int ReconnectionAttempts
-    {
-        get => Interlocked.CompareExchange(ref _reconnectionAttempts, 0, 0);
-    }
+    public int ReconnectionAttempts => Interlocked.CompareExchange(ref _reconnectionAttempts, 0, 0);
 
     /// <summary>
     /// Increments the reconnection attempts.
@@ -99,10 +109,7 @@ public sealed class StreamContext
     /// <summary>
     /// Gets the failure count.
     /// </summary>
-    public int FailureCount
-    {
-        get => Interlocked.CompareExchange(ref _failureCount, 0, 0);
-    }
+    public int FailureCount => Interlocked.CompareExchange(ref _failureCount, 0, 0);
 
     /// <summary>
     /// Increments the failure count.
@@ -117,8 +124,16 @@ public sealed class StreamContext
     /// </summary>
     public int ConsecutiveFailures
     {
-        get { lock (_lock) return _consecutiveFailures; }
-        set { lock (_lock) _consecutiveFailures = value; }
+        get { lock (_lock)
+            {
+                return _consecutiveFailures;
+            }
+        }
+        set { lock (_lock)
+            {
+                _consecutiveFailures = value;
+            }
+        }
     }
 
     /// <summary>
@@ -126,8 +141,16 @@ public sealed class StreamContext
     /// </summary>
     public int ConsecutiveSuccesses
     {
-        get { lock (_lock) return _consecutiveSuccesses; }
-        set { lock (_lock) _consecutiveSuccesses = value; }
+        get { lock (_lock)
+            {
+                return _consecutiveSuccesses;
+            }
+        }
+        set { lock (_lock)
+            {
+                _consecutiveSuccesses = value;
+            }
+        }
     }
 
     /// <summary>
@@ -135,8 +158,16 @@ public sealed class StreamContext
     /// </summary>
     public string? LastError
     {
-        get { lock (_lock) return _lastError; }
-        set { lock (_lock) _lastError = value; }
+        get { lock (_lock)
+            {
+                return _lastError;
+            }
+        }
+        set { lock (_lock)
+            {
+                _lastError = value;
+            }
+        }
     }
 
     /// <summary>
@@ -144,8 +175,16 @@ public sealed class StreamContext
     /// </summary>
     public DateTime LastActivityTime
     {
-        get { lock (_lock) return _lastActivityTime; }
-        set { lock (_lock) _lastActivityTime = value; }
+        get { lock (_lock)
+            {
+                return _lastActivityTime;
+            }
+        }
+        set { lock (_lock)
+            {
+                _lastActivityTime = value;
+            }
+        }
     }
 
     /// <summary>
@@ -153,7 +192,11 @@ public sealed class StreamContext
     /// </summary>
     public double TotalProcessingTimeMs
     {
-        get { lock (_lock) return _totalProcessingTimeMs; }
+        get { lock (_lock)
+            {
+                return _totalProcessingTimeMs;
+            }
+        }
     }
 
     /// <summary>

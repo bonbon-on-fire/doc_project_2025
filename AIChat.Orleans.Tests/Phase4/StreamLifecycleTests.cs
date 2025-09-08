@@ -29,7 +29,7 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
     }
 
     [Fact]
-    public async Task StreamCreation_ShouldInitializeCorrectly()
+    public async Task StreamCreationShouldInitializeCorrectly()
     {
         // Arrange
         _fixture.OrleansEnabled = true;
@@ -64,7 +64,7 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
     }
 
     [Fact]
-    public async Task StreamCompletion_ShouldSendCompleteEvent()
+    public async Task StreamCompletionShouldSendCompleteEvent()
     {
         // Arrange
         _fixture.OrleansEnabled = true;
@@ -97,7 +97,7 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
     }
 
     [Fact]
-    public async Task ConcurrentStreamsPerUser_ShouldHandleMultipleStreams()
+    public async Task ConcurrentStreamsPerUserShouldHandleMultipleStreams()
     {
         // Arrange
         _fixture.OrleansEnabled = true;
@@ -107,7 +107,7 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
         var tasks = new List<Task<List<SseTestHelpers.SseEvent>>>();
 
         // Act - Create multiple concurrent streams for same user
-        for (int i = 0; i < 3; i++)
+        for (var i = 0; i < 3; i++)
         {
             var task = Task.Run(async () =>
             {
@@ -145,7 +145,7 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
     }
 
     [Fact]
-    public async Task StreamCancellation_ShouldCleanupProperly()
+    public async Task StreamCancellationShouldCleanupProperly()
     {
         // Arrange
         _fixture.OrleansEnabled = true;
@@ -189,7 +189,7 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
     }
 
     [Fact]
-    public async Task StreamTimeout_ShouldHandleGracefully()
+    public async Task StreamTimeoutShouldHandleGracefully()
     {
         // Arrange
         _fixture.OrleansEnabled = true;
@@ -227,7 +227,7 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
     }
 
     [Fact]
-    public async Task StreamBuffer_ShouldHandleBackpressure()
+    public async Task StreamBufferShouldHandleBackpressure()
     {
         // Arrange
         _fixture.OrleansEnabled = true;
@@ -278,7 +278,7 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
     }
 
     [Fact]
-    public async Task StreamCleanup_OnCompletion_ShouldReleaseResources()
+    public async Task StreamCleanupOnCompletionShouldReleaseResources()
     {
         // Arrange
         _fixture.OrleansEnabled = true;
@@ -313,7 +313,7 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
     }
 
     [Fact]
-    public async Task MultipleStreamCreation_ShouldMaintainIsolation()
+    public async Task MultipleStreamCreationShouldMaintainIsolation()
     {
         // Arrange
         _fixture.OrleansEnabled = true;
@@ -357,9 +357,9 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
         return (initEvent.Envelope!.ChatId!, userId);
     }
 
-    private async IAsyncEnumerable<ChatStreamItem> GenerateTestStream()
+    private static async IAsyncEnumerable<ChatStreamItem> GenerateTestStream()
     {
-        for (int i = 0; i < 10; i++)
+        for (var i = 0; i < 10; i++)
         {
             yield return new ChatStreamItem
             {

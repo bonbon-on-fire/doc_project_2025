@@ -36,15 +36,15 @@ public abstract class TracedGrainBase<TGrainState> : Grain<TGrainState> where TG
     {
         var grainType = GetType().Name;
         var grainId = this.GetPrimaryKeyString();
-        
+
         var activity = OrleansActivitySource.StartGrainActivity(grainType, methodName, grainId);
-        
+
         if (activity != null)
         {
             Logger.LogDebug("Started tracing activity {ActivityId} for {GrainType}.{Method} (GrainId: {GrainId})",
                 activity.Id, grainType, methodName, grainId);
         }
-        
+
         return activity;
     }
 
@@ -55,12 +55,15 @@ public abstract class TracedGrainBase<TGrainState> : Grain<TGrainState> where TG
     /// <param name="additionalTags">Optional additional tags to add</param>
     protected void CompleteActivity(Activity? activity, Dictionary<string, object>? additionalTags = null)
     {
-        if (activity == null) return;
-        
+        if (activity == null)
+        {
+            return;
+        }
+
         OrleansActivitySource.SetSuccess(activity, additionalTags);
-        
+
         Logger.LogDebug("Completed tracing activity {ActivityId} successfully", activity.Id);
-        
+
         activity.Dispose();
     }
 
@@ -71,12 +74,15 @@ public abstract class TracedGrainBase<TGrainState> : Grain<TGrainState> where TG
     /// <param name="exception">The exception that occurred</param>
     protected void CompleteActivityWithError(Activity? activity, Exception exception)
     {
-        if (activity == null) return;
-        
+        if (activity == null)
+        {
+            return;
+        }
+
         OrleansActivitySource.SetError(activity, exception);
-        
+
         Logger.LogError(exception, "Completed tracing activity {ActivityId} with error", activity.Id);
-        
+
         activity.Dispose();
     }
 
@@ -91,7 +97,7 @@ public abstract class TracedGrainBase<TGrainState> : Grain<TGrainState> where TG
     protected async Task<TResult> ExecuteWithTracing<TResult>(string methodName, Func<Task<TResult>> operation)
     {
         using var activity = StartActivity(methodName);
-        
+
         try
         {
             var result = await operation();
@@ -114,7 +120,7 @@ public abstract class TracedGrainBase<TGrainState> : Grain<TGrainState> where TG
     protected async Task ExecuteWithTracing(string methodName, Func<Task> operation)
     {
         using var activity = StartActivity(methodName);
-        
+
         try
         {
             await operation();

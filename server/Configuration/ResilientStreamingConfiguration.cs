@@ -45,22 +45,32 @@ public class ResilientStreamingConfiguration
     /// <returns>True if configuration is valid, false otherwise</returns>
     public bool Validate(out List<string> errors)
     {
-        errors = new List<string>();
+        errors = [];
 
         if (!Reconnection.Validate(out var reconnectionErrors))
+        {
             errors.AddRange(reconnectionErrors.Select(e => $"Reconnection: {e}"));
+        }
 
         if (!Buffer.Validate(out var bufferErrors))
+        {
             errors.AddRange(bufferErrors.Select(e => $"Buffer: {e}"));
+        }
 
         if (!CircuitBreaker.Validate(out var cbErrors))
+        {
             errors.AddRange(cbErrors.Select(e => $"CircuitBreaker: {e}"));
+        }
 
         if (!PartialRecovery.Validate(out var prErrors))
+        {
             errors.AddRange(prErrors.Select(e => $"PartialRecovery: {e}"));
+        }
 
         if (!HealthCheck.Validate(out var hcErrors))
+        {
             errors.AddRange(hcErrors.Select(e => $"HealthCheck: {e}"));
+        }
 
         return errors.Count == 0;
     }
@@ -105,19 +115,27 @@ public class ReconnectionConfiguration
     /// </summary>
     public bool Validate(out List<string> errors)
     {
-        errors = new List<string>();
+        errors = [];
 
         if (MaxAttempts < 1)
+        {
             errors.Add("MaxAttempts must be at least 1");
+        }
 
         if (InitialDelayMs < 100)
+        {
             errors.Add("InitialDelayMs must be at least 100ms");
+        }
 
         if (MaxDelayMs < InitialDelayMs)
+        {
             errors.Add("MaxDelayMs must be greater than or equal to InitialDelayMs");
+        }
 
         if (JitterMs < 0)
+        {
             errors.Add("JitterMs cannot be negative");
+        }
 
         return errors.Count == 0;
     }
@@ -157,20 +175,28 @@ public class BufferConfiguration
     /// </summary>
     public bool Validate(out List<string> errors)
     {
-        errors = new List<string>();
+        errors = [];
 
         if (Size < 10)
+        {
             errors.Add("Buffer Size must be at least 10");
+        }
 
         if (TTLMinutes < 1)
+        {
             errors.Add("TTLMinutes must be at least 1");
+        }
 
         if (HighPrioritySize > Size)
+        {
             errors.Add("HighPrioritySize cannot exceed total Size");
+        }
 
         var validStrategies = new[] { "DropOldest", "DropNewest", "RejectNew" };
         if (!validStrategies.Contains(OverflowStrategy))
+        {
             errors.Add($"OverflowStrategy must be one of: {string.Join(", ", validStrategies)}");
+        }
 
         return errors.Count == 0;
     }
@@ -215,19 +241,27 @@ public class CircuitBreakerConfiguration
     /// </summary>
     public bool Validate(out List<string> errors)
     {
-        errors = new List<string>();
+        errors = [];
 
         if (FailureThreshold < 1)
+        {
             errors.Add("FailureThreshold must be at least 1");
+        }
 
         if (FailureWindowSeconds < 10)
+        {
             errors.Add("FailureWindowSeconds must be at least 10");
+        }
 
         if (RecoveryTimeoutSeconds < 5)
+        {
             errors.Add("RecoveryTimeoutSeconds must be at least 5");
+        }
 
         if (SuccessThreshold < 1)
+        {
             errors.Add("SuccessThreshold must be at least 1");
+        }
 
         return errors.Count == 0;
     }
@@ -271,16 +305,22 @@ public class PartialRecoveryConfiguration
     /// </summary>
     public bool Validate(out List<string> errors)
     {
-        errors = new List<string>();
+        errors = [];
 
         if (MaxPartialMessages < 1)
+        {
             errors.Add("MaxPartialMessages must be at least 1");
+        }
 
         if (ChunkTimeoutSeconds < 10)
+        {
             errors.Add("ChunkTimeoutSeconds must be at least 10");
+        }
 
         if (MaxStorageSizeKb < 100)
+        {
             errors.Add("MaxStorageSizeKb must be at least 100");
+        }
 
         return errors.Count == 0;
     }
@@ -317,16 +357,22 @@ public class HealthCheckConfiguration
     /// </summary>
     public bool Validate(out List<string> errors)
     {
-        errors = new List<string>();
+        errors = [];
 
         if (string.IsNullOrWhiteSpace(EndpointPath))
+        {
             errors.Add("EndpointPath cannot be empty");
+        }
 
         if (!EndpointPath.StartsWith("/"))
+        {
             errors.Add("EndpointPath must start with /");
+        }
 
         if (CheckIntervalSeconds < 5)
+        {
             errors.Add("CheckIntervalSeconds must be at least 5");
+        }
 
         return errors.Count == 0;
     }

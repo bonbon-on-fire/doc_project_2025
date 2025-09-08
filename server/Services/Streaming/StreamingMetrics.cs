@@ -37,7 +37,9 @@ public sealed class StreamingMetrics : IStreamingMetrics
     public void RecordItemProcessed(long processingTimeMs)
     {
         if (processingTimeMs < 0)
+        {
             throw new ArgumentOutOfRangeException(nameof(processingTimeMs), "Processing time cannot be negative");
+        }
 
         _ = Interlocked.Increment(ref _itemsProcessed);
         _ = Interlocked.Add(ref _totalProcessingTimeMs, processingTimeMs);
@@ -48,7 +50,9 @@ public sealed class StreamingMetrics : IStreamingMetrics
         {
             currentMax = _maxProcessingTimeMs;
             if (processingTimeMs <= currentMax)
+            {
                 break;
+            }
         } while (Interlocked.CompareExchange(ref _maxProcessingTimeMs, processingTimeMs, currentMax) != currentMax);
 
         // Update min processing time
@@ -57,7 +61,9 @@ public sealed class StreamingMetrics : IStreamingMetrics
         {
             currentMin = _minProcessingTimeMs;
             if (processingTimeMs >= currentMin)
+            {
                 break;
+            }
         } while (Interlocked.CompareExchange(ref _minProcessingTimeMs, processingTimeMs, currentMin) != currentMin);
 
         if (_logger?.IsEnabled(LogLevel.Trace) == true)
@@ -73,7 +79,9 @@ public sealed class StreamingMetrics : IStreamingMetrics
     public void RecordBackpressureEvent(int delayMs)
     {
         if (delayMs < 0)
+        {
             throw new ArgumentOutOfRangeException(nameof(delayMs), "Delay cannot be negative");
+        }
 
         _ = Interlocked.Increment(ref _backpressureEvents);
         _ = Interlocked.Add(ref _totalBackpressureDelayMs, delayMs);
@@ -94,7 +102,9 @@ public sealed class StreamingMetrics : IStreamingMetrics
     public void RecordBytesWritten(long bytes)
     {
         if (bytes < 0)
+        {
             throw new ArgumentOutOfRangeException(nameof(bytes), "Bytes cannot be negative");
+        }
 
         _ = Interlocked.Add(ref _totalBytesWritten, bytes);
     }
@@ -116,7 +126,9 @@ public sealed class StreamingMetrics : IStreamingMetrics
 
         var minTime = Interlocked.Read(ref _minProcessingTimeMs);
         if (minTime == long.MaxValue)
+        {
             minTime = 0;
+        }
 
         return new StreamingStatistics
         {
