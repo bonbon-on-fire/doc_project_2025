@@ -3,8 +3,6 @@ using AIChat.Orleans.Metrics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Orleans;
-using Orleans.Hosting;
 using Orleans.TestingHost;
 
 namespace AIChat.Orleans.Tests.Phase1;
@@ -17,20 +15,20 @@ public class Phase1TestSiloConfigurator : ISiloConfigurator
 {
     public void Configure(ISiloBuilder siloBuilder)
     {
-        siloBuilder
+        _ = siloBuilder
             // Use memory storage for tests
             .AddMemoryGrainStorageAsDefault()
             .AddMemoryGrainStorage("UserGrainStorage")
             .AddMemoryGrainStorage("PubSubStore")
-            
+
             // Configure services required by grains
             .ConfigureServices(services =>
             {
                 // Add Orleans metrics collector (required by UserGrain)
-                services.AddSingleton<IOrleansMetricsCollector, OrleansMetricsCollector>();
-                
+                _ = services.AddSingleton<IOrleansMetricsCollector, OrleansMetricsCollector>();
+
                 // Add Orleans grain configuration with test-friendly settings
-                services.Configure<OrleansGrainConfiguration>(config =>
+                _ = services.Configure<OrleansGrainConfiguration>(config =>
                 {
                     config.UserGrain.MaxActivityBufferSize = 50; // Smaller buffer for tests
                     config.UserGrain.CleanupIntervalMinutes = 1; // Faster cleanup for tests
@@ -39,18 +37,18 @@ public class Phase1TestSiloConfigurator : ISiloConfigurator
                     config.Persistence.ActivityPersistenceInterval = 5;
                 });
             })
-            
+
             // Configure logging for tests (reduced noise)
             .ConfigureLogging(logging =>
             {
-                logging.ClearProviders();
-                logging.AddConsole();
-                logging.SetMinimumLevel(LogLevel.Warning);
+                _ = logging.ClearProviders();
+                _ = logging.AddConsole();
+                _ = logging.SetMinimumLevel(LogLevel.Warning);
                 // Only show errors for Orleans runtime during tests
-                logging.AddFilter("Orleans", LogLevel.Error);
-                logging.AddFilter("Microsoft", LogLevel.Error);
+                _ = logging.AddFilter("Orleans", LogLevel.Error);
+                _ = logging.AddFilter("Microsoft", LogLevel.Error);
                 // But allow our Orleans components to log at Debug level
-                logging.AddFilter("AIChat.Orleans", LogLevel.Debug);
+                _ = logging.AddFilter("AIChat.Orleans", LogLevel.Debug);
             });
     }
 }
@@ -83,9 +81,9 @@ public abstract class Phase1IntegrationTestBase
     protected async Task SetupTestCluster()
     {
         var builder = new TestClusterBuilder();
-        builder.AddSiloBuilderConfigurator<Phase1TestSiloConfigurator>();
-        builder.AddClientBuilderConfigurator<Phase1TestClientConfigurator>();
-        
+        _ = builder.AddSiloBuilderConfigurator<Phase1TestSiloConfigurator>();
+        _ = builder.AddClientBuilderConfigurator<Phase1TestClientConfigurator>();
+
         TestCluster = builder.Build();
         await TestCluster.DeployAsync();
     }
@@ -112,10 +110,9 @@ public abstract class Phase1IntegrationTestBase
     /// <returns>Grain proxy</returns>
     protected TGrain GetGrain<TGrain>(string grainId) where TGrain : IGrainWithStringKey
     {
-        if (TestCluster == null)
-            throw new InvalidOperationException("TestCluster not initialized. Call SetupTestCluster() first.");
-            
-        return TestCluster.GrainFactory.GetGrain<TGrain>(grainId);
+        return TestCluster == null
+            ? throw new InvalidOperationException("TestCluster not initialized. Call SetupTestCluster() first.")
+            : TestCluster.GrainFactory.GetGrain<TGrain>(grainId);
     }
 
     /// <summary>
@@ -127,13 +124,13 @@ public abstract class Phase1IntegrationTestBase
     protected async Task WaitForGrainActivation(IGrain grain, TimeSpan? timeout = null)
     {
         timeout ??= TimeSpan.FromSeconds(10);
-        
+
         using var cts = new CancellationTokenSource(timeout.Value);
-        
+
         // Ping the grain to ensure activation
-        var pingMethod = grain.GetType().GetMethod("GetState") ?? 
+        var pingMethod = grain.GetType().GetMethod("GetState") ??
                         grain.GetType().GetMethod("CheckHealth");
-        
+
         if (pingMethod != null)
         {
             try

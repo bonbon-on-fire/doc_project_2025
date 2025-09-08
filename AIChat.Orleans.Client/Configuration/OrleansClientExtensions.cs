@@ -1,14 +1,10 @@
 using AIChat.Orleans.Client.Services;
-using AIChat.Orleans.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Orleans;
 using Orleans.Configuration;
-using Orleans.Hosting;
-using Orleans.Runtime;
 
 namespace AIChat.Orleans.Client.Configuration;
 
@@ -30,16 +26,16 @@ public static class OrleansClientExtensions
         IHostEnvironment environment)
     {
         // Add Orleans client
-        services.AddOrleansClient(clientBuilder =>
+        _ = services.AddOrleansClient(clientBuilder =>
         {
             ConfigureOrleansClient(clientBuilder, configuration, environment);
         });
 
-        // Add Orleans integration service
-        services.AddScoped<IOrleansIntegrationService, OrleansIntegrationService>();
+        // Add Orleans integration service (Singleton because it's used by singleton services)
+        _ = services.AddSingleton<IOrleansIntegrationService, OrleansIntegrationService>();
 
         // Add configuration validators
-        services.AddSingleton<IValidateOptions<OrleansResilienceConfiguration>, OrleansResilienceConfigurationValidator>();
+        _ = services.AddSingleton<IValidateOptions<OrleansResilienceConfiguration>, OrleansResilienceConfigurationValidator>();
 
         return services;
     }
@@ -56,7 +52,7 @@ public static class OrleansClientExtensions
         IHostEnvironment environment)
     {
         // Basic client configuration
-        clientBuilder
+        _ = clientBuilder
             .Configure<ClusterOptions>(options =>
             {
                 options.ClusterId = configuration.GetValue<string>("Orleans:ClusterId") ?? "doc-chat-cluster";
@@ -74,7 +70,7 @@ public static class OrleansClientExtensions
         }
 
         // Configure client connection
-        clientBuilder.Configure<GatewayOptions>(options =>
+        _ = clientBuilder.Configure<GatewayOptions>(options =>
         {
             options.GatewayListRefreshPeriod = TimeSpan.FromMinutes(5);
         });
@@ -89,7 +85,7 @@ public static class OrleansClientExtensions
     {
         var gatewayPort = configuration.GetValue<int>("Orleans:GatewayPort", 30000);
 
-        clientBuilder.UseLocalhostClustering(gatewayPort);
+        _ = clientBuilder.UseLocalhostClustering(gatewayPort);
     }
 
     /// <summary>
@@ -105,11 +101,11 @@ public static class OrleansClientExtensions
         {
             // Fallback to localhost for testing
             var gatewayPort = configuration.GetValue<int>("Orleans:GatewayPort", 30000);
-            clientBuilder.UseLocalhostClustering(gatewayPort);
+            _ = clientBuilder.UseLocalhostClustering(gatewayPort);
         }
         else
         {
-            clientBuilder.UseAzureStorageClustering(options =>
+            _ = clientBuilder.UseAzureStorageClustering(options =>
             {
                 options.TableServiceClient = new Azure.Data.Tables.TableServiceClient(clusteringConnection);
                 options.TableName = "OrleansCluster";
@@ -172,16 +168,14 @@ public class OrleansClientHealthCheck : Microsoft.Extensions.Diagnostics.HealthC
                 return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy(
                     "Orleans client is connected and responsive", data);
             }
-            else if (connectionStatus.ConnectionState == "Disabled")
-            {
-                return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy(
-                    "Orleans client is disabled via feature flags", data);
-            }
             else
             {
-                return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Unhealthy(
-                    $"Orleans client is not healthy: {connectionStatus.ConnectionState}",
-                    data: data);
+                return connectionStatus.ConnectionState == "Disabled"
+                    ? Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy(
+                                    "Orleans client is disabled via feature flags", data)
+                    : Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Unhealthy(
+                                    $"Orleans client is not healthy: {connectionStatus.ConnectionState}",
+                                    data: data);
             }
         }
         catch (Exception ex)

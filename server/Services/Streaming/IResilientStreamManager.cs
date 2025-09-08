@@ -1,5 +1,3 @@
-using AIChat.Orleans.Contracts;
-
 namespace AIChat.Server.Services.Streaming;
 
 /// <summary>
@@ -112,7 +110,7 @@ public record StreamHealthStatus
     /// <summary>
     /// Gets detailed status messages.
     /// </summary>
-    public List<string> StatusMessages { get; init; } = new();
+    public List<string> StatusMessages { get; init; } = [];
 
     /// <summary>
     /// Gets the timestamp of this health check.

@@ -1,12 +1,11 @@
-using AIChat.Orleans.Client.Services;
 using AIChat.Orleans.Client.Configuration;
+using AIChat.Orleans.Client.Services;
 using AIChat.Orleans.Contracts;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.FeatureManagement;
-using Microsoft.Extensions.Logging;
 using Moq;
 using NUnit.Framework;
-using Orleans;
 
 namespace AIChat.Orleans.Tests.Phase1;
 
@@ -33,11 +32,11 @@ public class OrleansIntegrationServiceTests
         _mockResilienceOptions = new Mock<IOptions<OrleansResilienceConfiguration>>();
 
         // Setup default resilience configuration
-        _mockResilienceOptions
+        _ = _mockResilienceOptions
             .Setup(x => x.Value)
             .Returns(new OrleansResilienceConfiguration());
 
-        _mockGrainFactory
+        _ = _mockGrainFactory
             .Setup(x => x.GetGrain<IUserGrain>(It.IsAny<string>(), It.IsAny<string>()))
             .Returns(_mockUserGrain.Object);
 
@@ -52,11 +51,11 @@ public class OrleansIntegrationServiceTests
     public async Task RecordUserActivityAsync_WithFeatureFlagEnabled_ShouldCallGrain()
     {
         // Arrange
-        _mockFeatureManager!
+        _ = _mockFeatureManager!
             .Setup(x => x.IsEnabledAsync("OrleansIntegration"))
             .ReturnsAsync(true);
 
-        _mockUserGrain!
+        _ = _mockUserGrain!
             .Setup(x => x.RecordActivity(It.IsAny<ActivityType>(), It.IsAny<string>()))
             .Returns(Task.CompletedTask);
 
@@ -73,7 +72,7 @@ public class OrleansIntegrationServiceTests
     public async Task RecordUserActivityAsync_WithFeatureFlagDisabled_ShouldNotCallGrain()
     {
         // Arrange
-        _mockFeatureManager!
+        _ = _mockFeatureManager!
             .Setup(x => x.IsEnabledAsync("OrleansIntegration"))
             .ReturnsAsync(false);
 
@@ -90,7 +89,7 @@ public class OrleansIntegrationServiceTests
     public async Task RecordUserActivityAsync_WithEmptyUserId_ShouldNotCallGrain()
     {
         // Arrange
-        _mockFeatureManager!
+        _ = _mockFeatureManager!
             .Setup(x => x.IsEnabledAsync("OrleansIntegration"))
             .ReturnsAsync(true);
 
@@ -107,11 +106,11 @@ public class OrleansIntegrationServiceTests
     public async Task RecordUserActivityAsync_WithGrainException_ShouldNotThrow()
     {
         // Arrange
-        _mockFeatureManager!
+        _ = _mockFeatureManager!
             .Setup(x => x.IsEnabledAsync("OrleansIntegration"))
             .ReturnsAsync(true);
 
-        _mockUserGrain!
+        _ = _mockUserGrain!
             .Setup(x => x.RecordActivity(It.IsAny<ActivityType>(), It.IsAny<string>()))
             .ThrowsAsync(new Exception("Grain failure"));
 
@@ -136,17 +135,17 @@ public class OrleansIntegrationServiceTests
     public async Task GetUserStateAsync_WithValidUser_ShouldReturnState()
     {
         // Arrange
-        _mockFeatureManager!
+        _ = _mockFeatureManager!
             .Setup(x => x.IsEnabledAsync("OrleansIntegration"))
             .ReturnsAsync(true);
 
-        var expectedState = new UserGrainState 
-        { 
+        var expectedState = new UserGrainState
+        {
             UserId = "test-user",
             LastActivity = DateTime.UtcNow
         };
 
-        _mockUserGrain!
+        _ = _mockUserGrain!
             .Setup(x => x.GetState())
             .ReturnsAsync(expectedState);
 
@@ -163,11 +162,11 @@ public class OrleansIntegrationServiceTests
     public async Task IsOrleansHealthyAsync_WithHealthyGrain_ShouldReturnTrue()
     {
         // Arrange
-        _mockFeatureManager!
+        _ = _mockFeatureManager!
             .Setup(x => x.IsEnabledAsync("OrleansIntegration"))
             .ReturnsAsync(true);
 
-        _mockUserGrain!
+        _ = _mockUserGrain!
             .Setup(x => x.CheckHealth())
             .ReturnsAsync(new HealthCheckResult { IsHealthy = true });
 
@@ -182,7 +181,7 @@ public class OrleansIntegrationServiceTests
     public async Task IsOrleansHealthyAsync_WithFeatureFlagDisabled_ShouldReturnFalse()
     {
         // Arrange
-        _mockFeatureManager!
+        _ = _mockFeatureManager!
             .Setup(x => x.IsEnabledAsync("OrleansIntegration"))
             .ReturnsAsync(false);
 
@@ -198,7 +197,7 @@ public class OrleansIntegrationServiceTests
     public async Task CheckUserHealthAsync_WithValidUser_ShouldReturnHealthResult()
     {
         // Arrange
-        _mockFeatureManager!
+        _ = _mockFeatureManager!
             .Setup(x => x.IsEnabledAsync("OrleansIntegration"))
             .ReturnsAsync(true);
 
@@ -207,10 +206,10 @@ public class OrleansIntegrationServiceTests
             IsHealthy = true,
             GrainId = "test-user",
             CheckedAt = DateTime.UtcNow,
-            Warnings = new List<string>()
+            Warnings = []
         };
 
-        _mockUserGrain!
+        _ = _mockUserGrain!
             .Setup(x => x.CheckHealth())
             .ReturnsAsync(expectedHealth);
 
@@ -228,7 +227,7 @@ public class OrleansIntegrationServiceTests
     public async Task GetConnectionStatusAsync_ShouldReturnStatusInfo()
     {
         // Arrange
-        _mockFeatureManager!
+        _ = _mockFeatureManager!
             .Setup(x => x.IsEnabledAsync("OrleansIntegration"))
             .ReturnsAsync(true);
 
@@ -261,7 +260,7 @@ public class OrleansIntegrationServiceTests
 
         // Act
         var operationId = await _service!.ProcessMessageAsync("user", message);
-        
+
         Assert.DoesNotThrowAsync(async () =>
         {
             await _service.CancelOperationAsync("user", operationId);
@@ -276,7 +275,7 @@ public class OrleansIntegrationServiceTests
     public async Task ShadowMode_ShouldNeverThrowExceptions()
     {
         // Arrange - Setup various failure scenarios
-        _mockFeatureManager!
+        _ = _mockFeatureManager!
             .Setup(x => x.IsEnabledAsync("OrleansIntegration"))
             .ThrowsAsync(new Exception("Feature manager failure"));
 
@@ -284,9 +283,9 @@ public class OrleansIntegrationServiceTests
         Assert.DoesNotThrowAsync(async () =>
         {
             await _service!.RecordUserActivityAsync("user", ActivityType.MessageSent, new { test = "data" });
-            await _service.GetUserStateAsync("user");
-            await _service.IsOrleansHealthyAsync();
-            await _service.CheckUserHealthAsync("user");
+            _ = await _service.GetUserStateAsync("user");
+            _ = await _service.IsOrleansHealthyAsync();
+            _ = await _service.CheckUserHealthAsync("user");
             var status = await _service.GetConnectionStatusAsync();
             Assert.That(status, Is.Not.Null);
         });

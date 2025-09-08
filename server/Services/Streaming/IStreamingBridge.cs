@@ -1,5 +1,3 @@
-using System.Threading.Channels;
-
 namespace AIChat.Server.Services.Streaming;
 
 /// <summary>

@@ -27,7 +27,7 @@ public class ResilientStreamingHealthCheck : IHealthCheck
     {
         _streamManager = streamManager ?? throw new ArgumentNullException(nameof(streamManager));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        
+
         // Configurable thresholds - could be moved to configuration
         _unhealthyThresholdActiveStreams = 100; // Unhealthy if more than 100 active streams
         _unhealthyThresholdOpenCircuits = 5; // Unhealthy if more than 5 open circuits
@@ -47,10 +47,10 @@ public class ResilientStreamingHealthCheck : IHealthCheck
         try
         {
             var stopwatch = Stopwatch.StartNew();
-            
+
             // Get health status from stream manager
             var status = await _streamManager.GetHealthStatusAsync();
-            
+
             stopwatch.Stop();
 
             // Build health check data
@@ -67,7 +67,7 @@ public class ResilientStreamingHealthCheck : IHealthCheck
             };
 
             // Add detailed metrics if available
-            if (status.StatusMessages.Any())
+            if (status.StatusMessages.Count != 0)
             {
                 data["statusMessages"] = status.StatusMessages;
             }
@@ -104,16 +104,13 @@ public class ResilientStreamingHealthCheck : IHealthCheck
             }
 
             // Return appropriate health status
-            if (issues.Any())
+            if (issues.Count != 0)
             {
                 var description = string.Join("; ", issues);
-                
-                if (issues.Count >= 2 || status.OpenCircuitBreakers > _unhealthyThresholdOpenCircuits)
-                {
-                    return HealthCheckResult.Unhealthy(description, data: data);
-                }
-                
-                return HealthCheckResult.Degraded(description, data: data);
+
+                return issues.Count >= 2 || status.OpenCircuitBreakers > _unhealthyThresholdOpenCircuits
+                    ? HealthCheckResult.Unhealthy(description, data: data)
+                    : HealthCheckResult.Degraded(description, data: data);
             }
 
             // Check for warnings
@@ -129,21 +126,18 @@ public class ResilientStreamingHealthCheck : IHealthCheck
                 warnings.Add($"High number of buffered messages: {status.TotalBufferedMessages}");
             }
 
-            if (warnings.Any())
-            {
-                return HealthCheckResult.Healthy(
+            return warnings.Count != 0
+                ? HealthCheckResult.Healthy(
                     $"Resilient streaming is healthy with warnings: {string.Join("; ", warnings)}",
-                    data: data);
-            }
-
-            return HealthCheckResult.Healthy(
+                    data: data)
+                : HealthCheckResult.Healthy(
                 "Resilient streaming system is healthy",
                 data: data);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error performing resilient streaming health check");
-            
+
             return HealthCheckResult.Unhealthy(
                 "Failed to check resilient streaming health",
                 exception: ex,

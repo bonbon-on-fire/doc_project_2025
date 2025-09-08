@@ -1,12 +1,9 @@
 using AIChat.Orleans.Configuration;
 using AIChat.Orleans.Contracts;
-using AIChat.Orleans.Grains;
 using AIChat.Orleans.Metrics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using NUnit.Framework;
-using Orleans.Hosting;
 using Orleans.TestingHost;
 
 namespace AIChat.Orleans.Tests.Phase1;
@@ -24,8 +21,8 @@ public class UserGrainTimerTests
     public async Task Setup()
     {
         var builder = new TestClusterBuilder();
-        builder.AddSiloBuilderConfigurator<TimerTestSiloConfigurator>();
-        
+        _ = builder.AddSiloBuilderConfigurator<TimerTestSiloConfigurator>();
+
         _cluster = builder.Build();
         await _cluster.DeployAsync();
     }
@@ -79,7 +76,7 @@ public class UserGrainTimerTests
         // Force deactivation by requesting deactivation (Orleans test cluster feature)
         await _cluster.Client.GetGrain<IUserGrain>("timer-cleanup-test")
             .RecordActivity(ActivityType.Disconnected, "Forcing deactivation");
-        
+
         // Wait for potential deactivation
         await Task.Delay(1000);
 
@@ -108,7 +105,7 @@ public class UserGrainTimerTests
         {
             var grain = _cluster!.GrainFactory.GetGrain<IUserGrain>(userId);
             await grain.RecordActivity(ActivityType.MessageSent, $"Message {i}");
-            
+
             // Small delay between iterations
             await Task.Delay(100);
         }
@@ -161,7 +158,7 @@ public class TimerTestSiloConfigurator : ISiloConfigurator
     public void Configure(ISiloBuilder siloBuilder)
     {
         // Configure test services with timer settings
-        siloBuilder.ConfigureServices(services =>
+        _ = siloBuilder.ConfigureServices(services =>
         {
             // Add configuration with timers enabled
             var configuration = new ConfigurationBuilder()
@@ -183,15 +180,15 @@ public class TimerTestSiloConfigurator : ISiloConfigurator
                 })
                 .Build();
 
-            services.AddSingleton<IConfiguration>(configuration);
-            services.Configure<OrleansGrainConfiguration>(
+            _ = services.AddSingleton<IConfiguration>(configuration);
+            _ = services.Configure<OrleansGrainConfiguration>(
                 configuration.GetSection(OrleansGrainConfiguration.SectionName));
-            
+
             // Add Orleans metrics collector (required by UserGrain)
-            services.AddSingleton<IOrleansMetricsCollector, OrleansMetricsCollector>();
+            _ = services.AddSingleton<IOrleansMetricsCollector, OrleansMetricsCollector>();
         });
 
-        // Add memory grain storage as default for testing  
-        siloBuilder.AddMemoryGrainStorageAsDefault();
+        // Add memory grain storage as default for testing
+        _ = siloBuilder.AddMemoryGrainStorageAsDefault();
     }
 }

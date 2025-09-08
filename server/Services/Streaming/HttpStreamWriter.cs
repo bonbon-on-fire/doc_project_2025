@@ -1,6 +1,5 @@
 using System.Text;
 using AIChat.Server.Extensions;
-using AIChat.Server.Models.SSE;
 
 namespace AIChat.Server.Services.Streaming;
 
@@ -38,7 +37,7 @@ public sealed class HttpStreamWriter : IHttpStreamWriter
     public async Task WriteDataAsync(string data, CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();
-        
+
         if (string.IsNullOrEmpty(data))
             return;
 
@@ -74,7 +73,7 @@ public sealed class HttpStreamWriter : IHttpStreamWriter
     public async Task WriteKeepAliveAsync(CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();
-        
+
         var keepAlive = ":keepalive\n\n";
         var bytes = Encoding.UTF8.GetBytes(keepAlive);
 
@@ -92,12 +91,12 @@ public sealed class HttpStreamWriter : IHttpStreamWriter
             using var cts = new CancellationTokenSource(_writeTimeoutMs);
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
                 cancellationToken, cts.Token);
-            
+
             await _httpResponse.Body.FlushAsync(linkedCts.Token).ConfigureAwait(false);
         }
         finally
         {
-            _writeSemaphore.Release();
+            _ = _writeSemaphore.Release();
         }
     }
 
@@ -140,7 +139,7 @@ public sealed class HttpStreamWriter : IHttpStreamWriter
         finally
         {
             _writeSemaphore?.Dispose();
-            
+
             _logger.LogInformation(
                 "HttpStreamWriter disposed. Total bytes: {Bytes}, Total writes: {Writes}",
                 BytesWritten,
@@ -153,7 +152,7 @@ public sealed class HttpStreamWriter : IHttpStreamWriter
     private async Task WriteInternalAsync(byte[] bytes, CancellationToken cancellationToken)
     {
         await _writeSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-        
+
         var cts = new CancellationTokenSource(_writeTimeoutMs);
         try
         {
@@ -163,9 +162,9 @@ public sealed class HttpStreamWriter : IHttpStreamWriter
                 cts.Token);
 
             await _httpResponse.Body.WriteAsync(bytes, linkedCts.Token).ConfigureAwait(false);
-            
-            Interlocked.Add(ref _bytesWritten, bytes.Length);
-            Interlocked.Increment(ref _writeCount);
+
+            _ = Interlocked.Add(ref _bytesWritten, bytes.Length);
+            _ = Interlocked.Increment(ref _writeCount);
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
@@ -175,7 +174,7 @@ public sealed class HttpStreamWriter : IHttpStreamWriter
         finally
         {
             cts.Dispose();
-            _writeSemaphore.Release();
+            _ = _writeSemaphore.Release();
         }
     }
 

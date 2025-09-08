@@ -9,7 +9,7 @@ public class TestConfiguration
     public bool OrleansEnabled { get; set; } = true;
     public bool ResilientStreamingEnabled { get; set; } = false;
     public string LogLevel { get; set; } = "Warning";
-    
+
     public StreamingTestConfig StreamingConfig { get; set; } = new();
     public ResilientTestConfig ResilientConfig { get; set; } = new();
     public PerformanceTestConfig PerformanceConfig { get; set; } = new();
@@ -22,46 +22,58 @@ public class TestConfiguration
     /// <summary>
     /// Creates a configuration for Orleans testing.
     /// </summary>
-    public static TestConfiguration ForOrleans() => new()
+    public static TestConfiguration ForOrleans()
     {
-        OrleansEnabled = true,
-        ResilientStreamingEnabled = false
-    };
+        return new()
+        {
+            OrleansEnabled = true,
+            ResilientStreamingEnabled = false
+        };
+    }
 
     /// <summary>
     /// Creates a configuration for direct processing testing.
     /// </summary>
-    public static TestConfiguration ForDirect() => new()
+    public static TestConfiguration ForDirect()
     {
-        OrleansEnabled = false,
-        ResilientStreamingEnabled = false
-    };
+        return new()
+        {
+            OrleansEnabled = false,
+            ResilientStreamingEnabled = false
+        };
+    }
 
     /// <summary>
     /// Creates a configuration for resilient streaming testing.
     /// </summary>
-    public static TestConfiguration ForResilientStreaming() => new()
+    public static TestConfiguration ForResilientStreaming()
     {
-        OrleansEnabled = true,
-        ResilientStreamingEnabled = true
-    };
+        return new()
+        {
+            OrleansEnabled = true,
+            ResilientStreamingEnabled = true
+        };
+    }
 
     /// <summary>
     /// Creates a configuration for performance testing.
     /// </summary>
-    public static TestConfiguration ForPerformance() => new()
+    public static TestConfiguration ForPerformance()
     {
-        OrleansEnabled = true,
-        LogLevel = "Error", // Reduce logging for performance tests
-        PerformanceConfig = new PerformanceTestConfig
+        return new()
         {
-            WarmupIterations = 5,
-            TestIterations = 20,
-            MaxAcceptableOverheadPercent = 50,
-            MaxResponseTimeMs = 5000,
-            ConcurrentUsers = 100
-        }
-    };
+            OrleansEnabled = true,
+            LogLevel = "Error", // Reduce logging for performance tests
+            PerformanceConfig = new PerformanceTestConfig
+            {
+                WarmupIterations = 5,
+                TestIterations = 20,
+                MaxAcceptableOverheadPercent = 50,
+                MaxResponseTimeMs = 5000,
+                ConcurrentUsers = 100
+            }
+        };
+    }
 }
 
 /// <summary>
@@ -111,7 +123,10 @@ public class TestConfigurationBuilder
 {
     private readonly TestConfiguration _config = new();
 
-    public static TestConfigurationBuilder Create() => new();
+    public static TestConfigurationBuilder Create()
+    {
+        return new();
+    }
 
     public TestConfigurationBuilder WithOrleans(bool enabled = true)
     {
@@ -149,5 +164,8 @@ public class TestConfigurationBuilder
         return this;
     }
 
-    public TestConfiguration Build() => _config;
+    public TestConfiguration Build()
+    {
+        return _config;
+    }
 }

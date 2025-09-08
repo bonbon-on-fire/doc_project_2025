@@ -163,7 +163,7 @@ public class OperationCoordinatorService : IOperationCoordinatorService
                 Metadata = JsonSerializer.Serialize(new
                 {
                     OperationId = operationId,
-                    ChatId = message.ChatId,
+                    message.ChatId,
                     MessageId = message.Id,
                     MessageLength = message.Content?.Length ?? 0,
                     MessageRole = message.Role
@@ -313,7 +313,7 @@ public class OperationCoordinatorService : IOperationCoordinatorService
                 {
                     Event = "OperationCompleted",
                     OperationId = operationId,
-                    ChatId = operation.ChatId,
+                    operation.ChatId,
                     Success = success,
                     Error = error,
                     Duration = duration.TotalMilliseconds,
@@ -422,7 +422,7 @@ public class OperationCoordinatorService : IOperationCoordinatorService
                 {
                     Event = "OperationCancelled",
                     OperationId = operationId,
-                    ChatId = operation.ChatId,
+                    operation.ChatId,
                     Duration = duration.TotalMilliseconds,
                     Status = "Cancelled"
                 }),
@@ -541,7 +541,7 @@ public class OperationCoordinatorService : IOperationCoordinatorService
                 // Only clean up completed, failed, or cancelled operations
                 if (operation.Status is OperationStatus.Completed or OperationStatus.Failed or OperationStatus.Cancelled)
                 {
-                    state.ActiveOperations.Remove(operationId);
+                    _ = state.ActiveOperations.Remove(operationId);
 
                     _logger.LogDebug(
                         "Cleaned up completed operation {OperationId} for user {UserId}",

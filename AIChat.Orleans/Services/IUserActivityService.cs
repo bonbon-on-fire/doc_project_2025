@@ -73,13 +73,13 @@ public interface IUserActivityService
 /// </summary>
 public class UserActivityService : IUserActivityService
 {
-    private readonly Microsoft.Extensions.Logging.ILogger<UserActivityService> _logger;
+    private readonly ILogger<UserActivityService> _logger;
 
     /// <summary>
     /// Initializes a new instance of the UserActivityService.
     /// </summary>
     /// <param name="logger">Logger for service operations</param>
-    public UserActivityService(Microsoft.Extensions.Logging.ILogger<UserActivityService> logger)
+    public UserActivityService(ILogger<UserActivityService> logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -159,8 +159,7 @@ public class UserActivityService : IUserActivityService
             // Check for stale connections
             var staleThreshold = now.AddMinutes(-staleConnectionThresholdMinutes);
             var staleConnections = state.Connections.Values
-                .Where(c => c.LastActivity <= staleThreshold)
-                .Count();
+                .Count(c => c.LastActivity <= staleThreshold);
 
             if (staleConnections > 0)
             {
@@ -178,9 +177,8 @@ public class UserActivityService : IUserActivityService
             // Check for stale operations
             var operationStaleThreshold = now.AddMinutes(-staleOperationThresholdMinutes);
             var staleOperations = state.ActiveOperations.Values
-                .Where(op => op.StartedAt <= operationStaleThreshold 
-                           && op.Status == OperationStatus.InProgress)
-                .Count();
+                .Count(op => op.StartedAt <= operationStaleThreshold
+                           && op.Status == OperationStatus.InProgress);
 
             if (staleOperations > 0)
             {
@@ -220,7 +218,7 @@ public class UserActivityService : IUserActivityService
                 GrainId = state.UserId,
                 CheckedAt = DateTime.UtcNow,
                 AdditionalInfo = $"Health check exception: {ex.Message}",
-                Warnings = new List<string> { "Health check threw exception" }
+                Warnings = ["Health check threw exception"]
             });
         }
     }
@@ -265,7 +263,7 @@ public class UserActivityService : IUserActivityService
 
             foreach (var opId in completedOps)
             {
-                state.ActiveOperations.Remove(opId);
+                _ = state.ActiveOperations.Remove(opId);
             }
 
             _logger.LogDebug(
@@ -336,7 +334,7 @@ public class UserActivityService : IUserActivityService
                 {
                     try
                     {
-                        System.Text.Json.JsonSerializer.Deserialize<object>(metadata);
+                        _ = System.Text.Json.JsonSerializer.Deserialize<object>(metadata);
                     }
                     catch (System.Text.Json.JsonException)
                     {

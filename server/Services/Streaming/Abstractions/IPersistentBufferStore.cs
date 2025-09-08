@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace AIChat.Server.Services.Streaming.Abstractions;
 
 /// <summary>
@@ -179,8 +174,10 @@ public record BufferMetadata
     /// </summary>
     /// <param name="retentionPeriod">The retention period</param>
     /// <returns>True if expired, false otherwise</returns>
-    public bool IsExpired(TimeSpan retentionPeriod) => 
-        DateTime.UtcNow - LastUpdatedAt > retentionPeriod;
+    public bool IsExpired(TimeSpan retentionPeriod)
+    {
+        return DateTime.UtcNow - LastUpdatedAt > retentionPeriod;
+    }
 }
 
 /// <summary>
@@ -216,8 +213,8 @@ public record PersistenceStatistics
     /// <summary>
     /// Gets the average buffer size in bytes.
     /// </summary>
-    public double AverageBufferSizeBytes => TotalBuffers > 0 
-        ? (double)TotalSizeBytes / TotalBuffers 
+    public double AverageBufferSizeBytes => TotalBuffers > 0
+        ? (double)TotalSizeBytes / TotalBuffers
         : 0;
 
     /// <summary>
@@ -243,7 +240,7 @@ public record PersistenceStatistics
     /// <summary>
     /// Gets the storage utilization percentage.
     /// </summary>
-    public double? StorageUtilizationPercentage => AvailableStorageBytes > 0 
-        ? (double)TotalSizeBytes / AvailableStorageBytes.Value * 100 
+    public double? StorageUtilizationPercentage => AvailableStorageBytes > 0
+        ? (double)TotalSizeBytes / AvailableStorageBytes.Value * 100
         : null;
 }

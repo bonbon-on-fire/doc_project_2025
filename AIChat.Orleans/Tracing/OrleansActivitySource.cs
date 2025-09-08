@@ -34,22 +34,22 @@ public static class OrleansActivitySource
     {
         var activityName = $"{grainType}.{methodName}";
         var activity = Source.StartActivity(activityName);
-        
+
         if (activity != null)
         {
-            activity.SetTag("grain.type", grainType);
-            activity.SetTag("grain.method", methodName);
-            
+            _ = activity.SetTag("grain.type", grainType);
+            _ = activity.SetTag("grain.method", methodName);
+
             if (!string.IsNullOrEmpty(grainId))
             {
-                activity.SetTag("grain.id", grainId);
+                _ = activity.SetTag("grain.id", grainId);
             }
-            
+
             // Standard OpenTelemetry attributes
-            activity.SetTag("component", "orleans");
-            activity.SetTag("service.name", "AIChat");
+            _ = activity.SetTag("component", "orleans");
+            _ = activity.SetTag("service.name", "AIChat");
         }
-        
+
         return activity;
     }
 
@@ -64,22 +64,22 @@ public static class OrleansActivitySource
     {
         var activityName = $"{serviceName}.{operationName}";
         var activity = Source.StartActivity(activityName);
-        
+
         if (activity != null)
         {
-            activity.SetTag("service.type", "background");
-            activity.SetTag("service.name", serviceName);
-            activity.SetTag("operation.name", operationName);
-            
+            _ = activity.SetTag("service.type", "background");
+            _ = activity.SetTag("service.name", serviceName);
+            _ = activity.SetTag("operation.name", operationName);
+
             if (!string.IsNullOrEmpty(operationId))
             {
-                activity.SetTag("operation.id", operationId);
+                _ = activity.SetTag("operation.id", operationId);
             }
-            
+
             // Standard OpenTelemetry attributes
-            activity.SetTag("component", "background-service");
+            _ = activity.SetTag("component", "background-service");
         }
-        
+
         return activity;
     }
 
@@ -91,12 +91,12 @@ public static class OrleansActivitySource
     public static void SetError(Activity? activity, Exception exception)
     {
         if (activity == null) return;
-        
-        activity.SetStatus(ActivityStatusCode.Error, exception.Message);
-        activity.SetTag("error", true);
-        activity.SetTag("error.type", exception.GetType().Name);
-        activity.SetTag("error.message", exception.Message);
-        activity.SetTag("error.stack", exception.StackTrace);
+
+        _ = activity.SetStatus(ActivityStatusCode.Error, exception.Message);
+        _ = activity.SetTag("error", true);
+        _ = activity.SetTag("error.type", exception.GetType().Name);
+        _ = activity.SetTag("error.message", exception.Message);
+        _ = activity.SetTag("error.stack", exception.StackTrace);
     }
 
     /// <summary>
@@ -107,14 +107,14 @@ public static class OrleansActivitySource
     public static void SetSuccess(Activity? activity, Dictionary<string, object>? additionalTags = null)
     {
         if (activity == null) return;
-        
-        activity.SetStatus(ActivityStatusCode.Ok);
-        
+
+        _ = activity.SetStatus(ActivityStatusCode.Ok);
+
         if (additionalTags != null)
         {
             foreach (var tag in additionalTags)
             {
-                activity.SetTag(tag.Key, tag.Value);
+                _ = activity.SetTag(tag.Key, tag.Value);
             }
         }
     }

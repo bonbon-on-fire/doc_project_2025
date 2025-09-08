@@ -1,10 +1,10 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using AIChat.LoadTesting.Configuration;
 using AIChat.LoadTesting.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Text.Json;
 
 namespace AIChat.LoadTesting.Services;
 
@@ -18,9 +18,9 @@ public class SystemMetricsCollector : IDisposable
     private readonly ILogger<SystemMetricsCollector> _logger;
     private readonly HttpClient _httpClient;
     private readonly Timer _metricsTimer;
-    private readonly List<SystemMetrics> _metricsHistory = new();
+    private readonly List<SystemMetrics> _metricsHistory = [];
     private readonly object _metricsLock = new();
-    
+
     private PerformanceCounter? _cpuCounter;
     private PerformanceCounter? _memoryCounter;
     private Process _currentProcess;
@@ -41,7 +41,7 @@ public class SystemMetricsCollector : IDisposable
         InitializePerformanceCounters();
 
         // Start metrics collection timer
-        _metricsTimer = new Timer(CollectMetrics, null, TimeSpan.Zero, 
+        _metricsTimer = new Timer(CollectMetrics, null, TimeSpan.Zero,
             TimeSpan.FromSeconds(_config.MetricsIntervalSeconds));
     }
 
@@ -114,9 +114,9 @@ public class SystemMetricsCollector : IDisposable
             {
                 _cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
                 _memoryCounter = new PerformanceCounter("Memory", "Available MBytes");
-                
+
                 // Prime the CPU counter (first call always returns 0)
-                _cpuCounter.NextValue();
+                _ = _cpuCounter.NextValue();
             }
         }
         catch (Exception ex)
@@ -130,11 +130,11 @@ public class SystemMetricsCollector : IDisposable
         try
         {
             var metrics = await CollectCurrentMetricsAsync();
-            
+
             lock (_metricsLock)
             {
                 _metricsHistory.Add(metrics);
-                
+
                 // Keep only last 1000 metrics (about 2.7 hours at 10-second intervals)
                 if (_metricsHistory.Count > 1000)
                 {
@@ -187,7 +187,7 @@ public class SystemMetricsCollector : IDisposable
             }
 
             // Fallback for non-Windows systems or when performance counters fail
-            return _currentProcess.TotalProcessorTime.TotalMilliseconds / Environment.ProcessorCount / 
+            return _currentProcess.TotalProcessorTime.TotalMilliseconds / Environment.ProcessorCount /
                    Environment.TickCount * 100.0;
         }
         catch (Exception ex)
@@ -237,7 +237,7 @@ public class SystemMetricsCollector : IDisposable
         try
         {
             var monitoringUrl = $"{_loadTestConfig.ServerBaseUrl.TrimEnd('/')}{_config.MonitoringApiUrl}/metrics";
-            
+
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             var response = await _httpClient.GetAsync(monitoringUrl, cts.Token);
 
@@ -280,7 +280,7 @@ public class SystemMetricsCollector : IDisposable
                         _ => defaultValue
                     };
                 }
-                
+
                 if (value is T directValue)
                 {
                     return directValue;
@@ -303,7 +303,7 @@ public class SystemMetricsCollector : IDisposable
         _cpuCounter?.Dispose();
         _memoryCounter?.Dispose();
         _currentProcess?.Dispose();
-        
+
         _disposed = true;
     }
 }

@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -10,7 +9,6 @@ using AIChat.Orleans.Contracts;
 using AIChat.Server.Models;
 using AIChat.Server.Storage;
 using Microsoft.Extensions.Options;
-using static AchieveAi.LmDotnetTools.Misc.Utils.TaskManager;
 
 namespace AIChat.Server.Services;
 
@@ -410,11 +408,11 @@ public class ChatService(
                     ActivityType.MessageSent,
                     new
                     {
-                        ChatId = request.ChatId,
+                        request.ChatId,
                         MessageId = userDto.Id,
                         MessageLength = request.Message.Length,
-                        SequenceNumber = userDto.SequenceNumber,
-                        ModeId = request.ModeId,
+                        userDto.SequenceNumber,
+                        request.ModeId,
                     }
                 );
             }
@@ -475,7 +473,7 @@ public class ChatService(
                     ActivityType.MessageCompleted,
                     new
                     {
-                        ChatId = request.ChatId,
+                        request.ChatId,
                         UserMessageId = userDto.Id,
                         AssistantMessageId = assistantDto.Id,
                         ResponseLength = aiResponse.Length,
@@ -702,12 +700,12 @@ public class ChatService(
 
         // Note: This method doesn't have mode context, will use default behavior
         await StreamChatCompletionAsync(
-            chatId, 
-            history, 
-            cancellationToken, 
-            streamingAgent, 
-            toolingService, 
-            storage, 
+            chatId,
+            history,
+            cancellationToken,
+            streamingAgent,
+            toolingService,
+            storage,
             modeService,
             orleansService,
             null, // modeId - not available in this context
@@ -1062,7 +1060,7 @@ public class ChatService(
                                 ChunkSequenceId = chunkSequenceId,
                                 Delta = content
                             };
-                            
+
                             await chunkCallback(chunkEvent);
                         }
                     }
@@ -1085,7 +1083,7 @@ public class ChatService(
                             delta
                         );
 
-                        // NOTE: Event handling moved to ChatServiceFacade for controller scenarios  
+                        // NOTE: Event handling moved to ChatServiceFacade for controller scenarios
                         // Background processing scenarios will use callbacks instead
                         if (false) // StreamChunkReceived != null)
                         {
@@ -1120,7 +1118,7 @@ public class ChatService(
 
                         if (!string.IsNullOrEmpty(toolCallUpdate.ToolCallId))
                         {
-                            // Update with tool_call_id - store as last seen  
+                            // Update with tool_call_id - store as last seen
                             effectiveToolCallId = toolCallUpdate.ToolCallId;
                             // TODO: Use StreamingContext to track last seen tool call ID
                             // TODO: Use StreamingContext to track tool call to message mapping
@@ -1192,7 +1190,7 @@ public class ChatService(
                                 ?? $"idx_{correctedToolCallUpdate.Index}"
                         );
 
-                        // NOTE: Event handling moved to ChatServiceFacade for controller scenarios  
+                        // NOTE: Event handling moved to ChatServiceFacade for controller scenarios
                         // Background processing scenarios will use callbacks instead
                         if (false) // StreamChunkReceived != null)
                         {
@@ -1580,26 +1578,26 @@ public class ChatService(
             }
 
             await StreamAssistantResponseAsync(
-                request.ChatId, 
-                storage, 
-                modeService, 
-                streamingAgent, 
-                toolingService, 
+                request.ChatId,
+                storage,
+                modeService,
+                streamingAgent,
+                toolingService,
                 orleansService,
                 null, // messageCallback - not provided at this level
-                null, // chunkCallback - not provided at this level 
+                null, // chunkCallback - not provided at this level
                 cancellationToken
             );
         }
         else
         {
             await StreamChatCompletionAsync(
-                request, 
-                storage, 
-                modeService, 
-                streamingAgent, 
-                toolingService, 
-                orleansService, 
+                request,
+                storage,
+                modeService,
+                streamingAgent,
+                toolingService,
+                orleansService,
                 cancellationToken
             );
         }
@@ -1647,7 +1645,7 @@ public class ChatService(
             chatId,
             cancellationToken
         );
-        
+
         var history = listMessages
             .Select(m =>
                 JsonSerializer.Deserialize<MessageDto>(
@@ -1692,14 +1690,14 @@ public class ChatService(
         // For now, delegate to the existing method with null callbacks to prevent recursion
         // TODO: Implement full callback-based streaming
         logger.LogWarning("StreamChatCompletionWithCallbacksAsync is not fully implemented yet");
-        
+
         // For now, just generate a simple AI response without streaming
         var lmMessages = history.Select(ConvertToLmMessage).ToList();
         var modelId = await GetModelIdAsync(modeService, context.ModeId, context.UserId);
         var options = new GenerateReplyOptions { ModelId = modelId };
         var messages = await streamingAgent.GenerateReplyAsync(lmMessages, options);
         var response = string.Join("", messages.OfType<TextMessage>().Select(m => m.Text));
-        
+
         // Create a simple text response
         var (seqSuccess, seqError, nextSequence) = await storage.AllocateSequenceAsync(context.ChatId);
         if (seqSuccess)
@@ -1713,7 +1711,7 @@ public class ChatService(
                 SequenceNumber = nextSequence,
                 Text = response,
             };
-            
+
             var assistantRecord = new MessageRecord
             {
                 Id = assistantDto.Id,
@@ -1727,9 +1725,9 @@ public class ChatService(
                     MessageSerializationOptions.Default
                 ),
             };
-            
-            await storage.InsertMessageAsync(assistantRecord);
-            
+
+            _ = await storage.InsertMessageAsync(assistantRecord);
+
             // Notify via callback if provided
             if (messageCallback != null)
             {
@@ -1889,8 +1887,8 @@ public class ChatService(
         CancellationToken cancellationToken = default
     )
     {
-        // TODO: Implement stateless version with callback parameters  
-        logger.LogError("Tool call error: {ToolCallId}, Function: {FunctionName}, Error: {Error}", 
+        // TODO: Implement stateless version with callback parameters
+        logger.LogError("Tool call error: {ToolCallId}, Function: {FunctionName}, Error: {Error}",
             toolCallId, functionName, error);
         await Task.CompletedTask;
     }

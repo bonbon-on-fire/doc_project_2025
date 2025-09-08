@@ -56,7 +56,7 @@ public class InMemoryOperationTrackingService : IOperationTrackingService
     {
         try
         {
-            _operations.TryGetValue(operationId, out var context);
+            _ = _operations.TryGetValue(operationId, out var context);
 
             if (context != null)
             {

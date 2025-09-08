@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using Orleans;
 
 namespace AIChat.Orleans.Contracts;
@@ -23,14 +22,14 @@ public sealed class UserGrainState
     /// Key: ConnectionId, Value: Connection information.
     /// </summary>
     [Id(1)]
-    public Dictionary<string, ConnectionInfo> Connections { get; set; } = new();
+    public Dictionary<string, ConnectionInfo> Connections { get; set; } = [];
 
     /// <summary>
     /// Active chat subscriptions for this user.
     /// Key: ChatId, Value: Subscription information.
     /// </summary>
     [Id(2)]
-    public Dictionary<string, ChatSubscription> ActiveChats { get; set; } = new();
+    public Dictionary<string, ChatSubscription> ActiveChats { get; set; } = [];
 
     /// <summary>
     /// Recent user activity (circular buffer, max 100 items).
@@ -56,7 +55,7 @@ public sealed class UserGrainState
     /// Key: OperationId, Value: Operation context.
     /// </summary>
     [Id(6)]
-    public Dictionary<string, OperationContext> ActiveOperations { get; set; } = new();
+    public Dictionary<string, OperationContext> ActiveOperations { get; set; } = [];
 
     /// <summary>
     /// Grain activation timestamp for debugging.
@@ -69,14 +68,14 @@ public sealed class UserGrainState
     /// Key: ChatId, Value: Chat message buffer.
     /// </summary>
     [Id(8)]
-    public Dictionary<string, ChatMessageBuffer> MessageBuffers { get; set; } = new();
+    public Dictionary<string, ChatMessageBuffer> MessageBuffers { get; set; } = [];
 
     /// <summary>
     /// Active streaming operations (Phase 4).
     /// Key: StreamId, Value: Stream state.
     /// </summary>
     [Id(9)]
-    public Dictionary<string, StreamState> ActiveStreams { get; set; } = new();
+    public Dictionary<string, StreamState> ActiveStreams { get; set; } = [];
 
     /// <summary>
     /// Total number of streams processed.
@@ -115,7 +114,7 @@ public sealed class ConnectionInfo
     /// Chat rooms this connection is subscribed to.
     /// </summary>
     [Id(3)]
-    public HashSet<string> SubscribedChatIds { get; set; } = new();
+    public HashSet<string> SubscribedChatIds { get; set; } = [];
 
     /// <summary>
     /// Last activity timestamp for this connection.

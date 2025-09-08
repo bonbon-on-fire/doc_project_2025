@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using AIChat.LoadTesting.Configuration;
 using AIChat.LoadTesting.Models;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -38,7 +37,10 @@ public class SignalRConnectionManager : IDisposable
     /// <summary>
     /// Gets all test users
     /// </summary>
-    public IEnumerable<TestUser> GetUsers() => _users.Values;
+    public IEnumerable<TestUser> GetUsers()
+    {
+        return _users.Values;
+    }
 
     /// <summary>
     /// Creates and connects a new SignalR connection for a test user
@@ -79,7 +81,7 @@ public class SignalRConnectionManager : IDisposable
             try
             {
                 await connection.StartAsync(combinedCts.Token);
-                
+
                 user.ConnectionId = connection.ConnectionId ?? Guid.NewGuid().ToString();
                 user.IsConnected = true;
                 user.Metrics.ConnectionTime = DateTime.UtcNow - connectionStart;
@@ -97,16 +99,16 @@ public class SignalRConnectionManager : IDisposable
                 user.Metrics.ConnectionFailures++;
                 user.Metrics.LastError = DateTime.UtcNow;
                 user.Metrics.LastErrorMessage = ex.Message;
-                
+
                 _logger.LogWarning(ex, "Failed to connect user {UserId}", userId);
-                
+
                 await connection.DisposeAsync();
                 throw;
             }
         }
         finally
         {
-            _connectionSemaphore.Release();
+            _ = _connectionSemaphore.Release();
         }
     }
 
@@ -133,7 +135,7 @@ public class SignalRConnectionManager : IDisposable
         try
         {
             await connection.InvokeAsync("SendMessage", chatId, userId, content, cancellationToken);
-            
+
             user.MessagesSent++;
             user.LastActivity = DateTime.UtcNow;
 
@@ -147,9 +149,9 @@ public class SignalRConnectionManager : IDisposable
             user.Metrics.MessageFailures++;
             user.Metrics.LastError = DateTime.UtcNow;
             user.Metrics.LastErrorMessage = ex.Message;
-            
-            _pendingMessages.TryRemove(message.Id, out _);
-            
+
+            _ = _pendingMessages.TryRemove(message.Id, out _);
+
             _logger.LogWarning(ex, "Failed to send message for user {UserId}", userId);
             throw;
         }
@@ -168,12 +170,12 @@ public class SignalRConnectionManager : IDisposable
         try
         {
             await connection.InvokeAsync("JoinChatGroup", chatId, cancellationToken);
-            
+
             if (!user.JoinedChats.Contains(chatId))
             {
                 user.JoinedChats.Add(chatId);
             }
-            
+
             user.LastActivity = DateTime.UtcNow;
 
             _logger.LogTrace("User {UserId} joined chat {ChatId}", userId, chatId);
@@ -206,7 +208,7 @@ public class SignalRConnectionManager : IDisposable
         if (_users.TryGetValue(userId, out var user))
         {
             user.IsConnected = false;
-            _users.TryUpdate(userId, user, user);
+            _ = _users.TryUpdate(userId, user, user);
         }
 
         _logger.LogDebug("User {UserId} disconnected", userId);
@@ -231,7 +233,7 @@ public class SignalRConnectionManager : IDisposable
     public ConnectionMetrics GetConnectionMetrics()
     {
         var users = _users.Values.ToList();
-        
+
         return new ConnectionMetrics
         {
             TotalUsers = users.Count,
@@ -248,18 +250,18 @@ public class SignalRConnectionManager : IDisposable
     private void SetupMessageHandlers(HubConnection connection, TestUser user)
     {
         // Handle received messages
-        connection.On<object>("ReceiveMessage", (messageData) =>
+        _ = connection.On<object>("ReceiveMessage", (messageData) =>
         {
             user.MessagesReceived++;
             user.LastActivity = DateTime.UtcNow;
-            
+
             // Try to extract message ID for latency calculation
-            if (ExtractMessageId(messageData, out var messageId) && 
+            if (ExtractMessageId(messageData, out var messageId) &&
                 _pendingMessages.TryRemove(messageId, out var pendingMessage))
             {
                 pendingMessage.ReceivedAt = DateTime.UtcNow;
                 pendingMessage.IsDelivered = true;
-                
+
                 if (pendingMessage.Latency.HasValue)
                 {
                     user.Metrics.MessageLatencies.Add(pendingMessage.Latency.Value.TotalMilliseconds);
@@ -270,23 +272,23 @@ public class SignalRConnectionManager : IDisposable
         });
 
         // Handle streaming chunks
-        connection.On<object>("ReceiveStreamChunk", (chunkData) =>
+        _ = connection.On<object>("ReceiveStreamChunk", (chunkData) =>
         {
             user.LastActivity = DateTime.UtcNow;
             _logger.LogTrace("User {UserId} received stream chunk", user.UserId);
         });
 
         // Handle errors
-        connection.On<object>("ReceiveError", (errorData) =>
+        _ = connection.On<object>("ReceiveError", (errorData) =>
         {
             user.Metrics.MessageFailures++;
             user.Metrics.LastError = DateTime.UtcNow;
-            
+
             if (errorData != null)
             {
                 user.Metrics.LastErrorMessage = errorData.ToString() ?? "Unknown error";
             }
-            
+
             _logger.LogWarning("User {UserId} received error: {Error}", user.UserId, errorData);
         });
 
@@ -320,14 +322,14 @@ public class SignalRConnectionManager : IDisposable
     private bool ExtractMessageId(object messageData, out string messageId)
     {
         messageId = string.Empty;
-        
+
         try
         {
             // Try to extract message ID from the received data
             // This depends on the message format from the server
             var json = System.Text.Json.JsonSerializer.Serialize(messageData);
             var document = System.Text.Json.JsonDocument.Parse(json);
-            
+
             if (document.RootElement.TryGetProperty("Id", out var idProperty))
             {
                 messageId = idProperty.GetString() ?? string.Empty;
@@ -338,7 +340,7 @@ public class SignalRConnectionManager : IDisposable
         {
             _logger.LogTrace(ex, "Failed to extract message ID from message data");
         }
-        
+
         return false;
     }
 
@@ -352,7 +354,7 @@ public class SignalRConnectionManager : IDisposable
     {
         if (_disposed) return;
 
-        Task.Run(async () =>
+        _ = Task.Run(async () =>
         {
             try
             {

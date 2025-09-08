@@ -6,8 +6,8 @@ namespace AIChat.Orleans.Contracts;
 /// Represents a chat message in the Orleans system.
 /// </summary>
 [Serializable]
-[global::Orleans.GenerateSerializer]
-[global::Orleans.Alias("AIChat.Orleans.Contracts.ChatMessage")]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.ChatMessage")]
 public sealed class ChatMessage
 {
     /// <summary>
@@ -69,8 +69,8 @@ public sealed class ChatMessage
 /// Represents a streaming chunk for real-time message delivery.
 /// </summary>
 [Serializable]
-[global::Orleans.GenerateSerializer]
-[global::Orleans.Alias("AIChat.Orleans.Contracts.StreamChunk")]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.StreamChunk")]
 public sealed class StreamChunk
 {
     /// <summary>
@@ -138,8 +138,8 @@ public sealed class StreamChunk
 /// Type of stream chunk content.
 /// </summary>
 [Serializable]
-[global::Orleans.GenerateSerializer]
-[global::Orleans.Alias("AIChat.Orleans.Contracts.StreamChunkType")]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.StreamChunkType")]
 public enum StreamChunkType
 {
     /// <summary>
@@ -182,8 +182,8 @@ public enum StreamChunkType
 /// Health check result for grain monitoring.
 /// </summary>
 [Serializable]
-[global::Orleans.GenerateSerializer]
-[global::Orleans.Alias("AIChat.Orleans.Contracts.HealthCheckResult")]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.HealthCheckResult")]
 public sealed class HealthCheckResult
 {
     /// <summary>
@@ -226,5 +226,5 @@ public sealed class HealthCheckResult
     /// Any warnings or issues found.
     /// </summary>
     [Id(6)]
-    public List<string> Warnings { get; set; } = new();
+    public List<string> Warnings { get; set; } = [];
 }

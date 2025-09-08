@@ -1,11 +1,9 @@
-using System.Diagnostics.Metrics;
 using System.Collections.Concurrent;
-using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Logging;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using AIChat.Orleans.Client.Services;
 using AIChat.Orleans.Contracts;
-using Orleans;
-using System.Diagnostics;
+using Microsoft.Extensions.Options;
 
 namespace AIChat.Server.Services;
 
@@ -21,7 +19,7 @@ public class ProductionMonitoringService : IHostedService, IDisposable
     private readonly IServiceProvider _serviceProvider;
     private readonly Timer _metricsTimer;
     private readonly Timer _alertTimer;
-    
+
     // OpenTelemetry Metrics
     private readonly Meter _meter;
     private readonly Counter<long> _grainActivationsCounter;
@@ -35,19 +33,19 @@ public class ProductionMonitoringService : IHostedService, IDisposable
     private readonly UpDownCounter<long> _queueDepthGauge;
     private readonly Gauge<double> _memoryUsageGauge;
     private readonly Gauge<double> _cpuUsageGauge;
-    
+
     // Metrics storage for dashboard
     private readonly ConcurrentDictionary<string, MetricValue> _currentMetrics = new();
     private readonly ConcurrentQueue<HistoricalMetric> _historicalMetrics = new();
     private readonly ConcurrentDictionary<string, AlertState> _alertStates = new();
-    
+
     // Configuration
     private readonly ProductionMonitoringOptions _options;
-    
+
     // Performance tracking - using cross-platform alternatives
     private DateTime _lastCpuTime = DateTime.UtcNow;
     private TimeSpan _lastTotalProcessorTime = TimeSpan.Zero;
-    
+
     public ProductionMonitoringService(
         ILogger<ProductionMonitoringService> logger,
         IOrleansIntegrationService? orleansService,
@@ -60,57 +58,57 @@ public class ProductionMonitoringService : IHostedService, IDisposable
         _grainFactory = grainFactory;
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _options = options.Value ?? throw new ArgumentNullException(nameof(options));
-        
+
         // Initialize OpenTelemetry Meter
         _meter = new Meter("AIChat.ProductionMonitoring", "1.0.0");
-        
+
         // Initialize metrics instruments
         _grainActivationsCounter = _meter.CreateCounter<long>(
             "orleans_grain_activations_total",
             description: "Total number of grain activations");
-            
+
         _messageRelayCounter = _meter.CreateCounter<long>(
-            "orleans_message_relay_total", 
+            "orleans_message_relay_total",
             description: "Total number of messages relayed through grains");
-            
+
         _backgroundOperationsCounter = _meter.CreateCounter<long>(
             "background_operations_total",
             description: "Total number of background operations processed");
-            
+
         _signalrConnectionsCounter = _meter.CreateCounter<long>(
             "signalr_connections_total",
             description: "Total number of SignalR connections");
-            
+
         _errorCounter = _meter.CreateCounter<long>(
             "errors_total",
             description: "Total number of errors");
-            
+
         _messageLatencyHistogram = _meter.CreateHistogram<double>(
             "message_relay_latency",
             unit: "ms",
             description: "Message relay latency distribution");
-            
+
         _grainMethodDurationHistogram = _meter.CreateHistogram<double>(
             "orleans_grain_method_duration",
-            unit: "ms", 
+            unit: "ms",
             description: "Grain method execution duration");
-            
+
         _activeGrainsGauge = _meter.CreateUpDownCounter<long>(
             "orleans_active_grains",
             description: "Current number of active grains");
-            
+
         _queueDepthGauge = _meter.CreateUpDownCounter<long>(
             "background_service_queue_depth",
             description: "Current depth of background processing queue");
-            
+
         _memoryUsageGauge = _meter.CreateGauge<double>(
             "system_memory_usage_percent",
             description: "System memory usage percentage");
-            
+
         _cpuUsageGauge = _meter.CreateGauge<double>(
-            "system_cpu_usage_percent", 
+            "system_cpu_usage_percent",
             description: "System CPU usage percentage");
-        
+
         // Initialize cross-platform performance tracking
         try
         {
@@ -122,55 +120,55 @@ public class ProductionMonitoringService : IHostedService, IDisposable
         {
             _logger.LogWarning(ex, "Failed to initialize performance tracking, system metrics may not be available");
         }
-        
+
         // Initialize timers
         _metricsTimer = new Timer(CollectMetrics, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
         _alertTimer = new Timer(ProcessAlerts, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
     }
-    
+
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Starting Production Monitoring Service");
-        
+
         // Start metrics collection timer
-        _metricsTimer.Change(TimeSpan.Zero, TimeSpan.FromSeconds(_options.MetricsCollectionIntervalSeconds));
-        
+        _ = _metricsTimer.Change(TimeSpan.Zero, TimeSpan.FromSeconds(_options.MetricsCollectionIntervalSeconds));
+
         // Start alert processing timer
-        _alertTimer.Change(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(_options.AlertCheckIntervalMinutes));
-        
+        _ = _alertTimer.Change(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(_options.AlertCheckIntervalMinutes));
+
         _logger.LogInformation("Production Monitoring Service started");
         await Task.CompletedTask;
     }
-    
+
     public async Task StopAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Stopping Production Monitoring Service");
-        
-        _metricsTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
-        _alertTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
-        
+
+        _ = _metricsTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+        _ = _alertTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+
         _logger.LogInformation("Production Monitoring Service stopped");
         await Task.CompletedTask;
     }
-    
+
     private async void CollectMetrics(object? state)
     {
         try
         {
             var timestamp = DateTime.UtcNow;
-            
+
             // Collect Orleans metrics
             await CollectOrleansMetrics(timestamp);
-            
+
             // Collect system metrics
             CollectSystemMetrics(timestamp);
-            
+
             // Collect background processing metrics
             await CollectBackgroundProcessingMetrics(timestamp);
-            
+
             // Clean up old historical metrics
             CleanupHistoricalMetrics();
-            
+
             _logger.LogDebug("Metrics collection completed");
         }
         catch (Exception ex)
@@ -179,7 +177,7 @@ public class ProductionMonitoringService : IHostedService, IDisposable
             IncrementErrorCounter("metrics_collection_failed");
         }
     }
-    
+
     private async Task CollectOrleansMetrics(DateTime timestamp)
     {
         if (_orleansService == null || !await _orleansService.IsOrleansHealthyAsync() || _grainFactory == null)
@@ -187,16 +185,16 @@ public class ProductionMonitoringService : IHostedService, IDisposable
             UpdateMetric("orleans.silo.healthy", 0.0, timestamp);
             return;
         }
-        
+
         try
         {
             // Get health check grain for cluster metrics
             var healthGrain = _grainFactory.GetGrain<IHealthCheckGrain>("orleans-health-check");
             var healthResult = await healthGrain.CheckHealthAsync().WaitAsync(TimeSpan.FromSeconds(5));
-            
+
             // Update metrics based on health check result
             UpdateMetric("orleans.silo.healthy", healthResult.IsHealthy ? 1.0 : 0.0, timestamp);
-            
+
             if (healthResult.AdditionalInfo != null)
             {
                 // Parse additional info for metrics (this would contain grain counts, etc.)
@@ -210,7 +208,7 @@ public class ProductionMonitoringService : IHostedService, IDisposable
             UpdateMetric("orleans.silo.healthy", 0.0, timestamp);
         }
     }
-    
+
     private void CollectSystemMetrics(DateTime timestamp)
     {
         try
@@ -219,36 +217,36 @@ public class ProductionMonitoringService : IHostedService, IDisposable
             var process = Process.GetCurrentProcess();
             var memoryMB = process.WorkingSet64 / 1024 / 1024;
             UpdateMetric("system.memory.working_set_mb", memoryMB, timestamp);
-            
+
             // CPU metrics (cross-platform)
             try
             {
                 var currentProcess = Process.GetCurrentProcess();
                 var currentTime = DateTime.UtcNow;
                 var currentTotalProcessorTime = currentProcess.TotalProcessorTime;
-                
+
                 // Calculate CPU usage percentage
                 var timeDiff = currentTime - _lastCpuTime;
                 var cpuTimeDiff = currentTotalProcessorTime - _lastTotalProcessorTime;
-                
+
                 if (timeDiff.TotalMilliseconds > 0)
                 {
                     var cpuUsage = (cpuTimeDiff.TotalMilliseconds / timeDiff.TotalMilliseconds) * 100 / Environment.ProcessorCount;
                     cpuUsage = Math.Min(100, Math.Max(0, cpuUsage)); // Clamp between 0 and 100
-                    
+
                     UpdateMetric("system.cpu.usage_percent", cpuUsage, timestamp);
                     // Note: Gauge metrics are recorded differently - we'll store in our metrics instead
                     // _cpuUsageGauge would be used with a callback for observation
-                    
+
                     // Update for next calculation
                     _lastCpuTime = currentTime;
                     _lastTotalProcessorTime = currentTotalProcessorTime;
                 }
-                
+
                 // Available memory (cross-platform approximation using GC)
                 var gcMemoryMB = GC.GetTotalMemory(false) / 1024 / 1024;
                 UpdateMetric("system.memory.gc_mb", gcMemoryMB, timestamp);
-                
+
                 // Rough estimation of memory pressure
                 var memoryPressure = gcMemoryMB > 512 ? 80 : gcMemoryMB > 256 ? 60 : 40;
                 // Note: Gauge metrics are recorded differently - we'll store in our metrics instead
@@ -263,7 +261,7 @@ public class ProductionMonitoringService : IHostedService, IDisposable
             _logger.LogWarning(ex, "Failed to collect system metrics");
         }
     }
-    
+
     private Task CollectBackgroundProcessingMetrics(DateTime timestamp)
     {
         try
@@ -282,10 +280,10 @@ public class ProductionMonitoringService : IHostedService, IDisposable
         {
             _logger.LogWarning(ex, "Failed to collect background processing metrics");
         }
-        
+
         return Task.CompletedTask;
     }
-    
+
     private void ParseHealthCheckInfo(string info, DateTime timestamp)
     {
         // This would parse the health check additional info
@@ -293,7 +291,7 @@ public class ProductionMonitoringService : IHostedService, IDisposable
         UpdateMetric("orleans.grains.active", 0, timestamp);
         UpdateMetric("orleans.grain.activation.average_time_ms", 0, timestamp);
     }
-    
+
     private void UpdateMetric(string name, double value, DateTime timestamp)
     {
         var metric = new MetricValue
@@ -306,9 +304,9 @@ public class ProductionMonitoringService : IHostedService, IDisposable
                 ["source"] = "production_monitoring"
             }
         };
-        
-        _currentMetrics.AddOrUpdate(name, metric, (_, _) => metric);
-        
+
+        _ = _currentMetrics.AddOrUpdate(name, metric, (_, _) => metric);
+
         // Add to historical data
         _historicalMetrics.Enqueue(new HistoricalMetric
         {
@@ -317,17 +315,17 @@ public class ProductionMonitoringService : IHostedService, IDisposable
             Timestamp = timestamp
         });
     }
-    
+
     private void CleanupHistoricalMetrics()
     {
         var cutoffTime = DateTime.UtcNow.AddHours(-_options.MetricsRetentionHours);
-        
+
         while (_historicalMetrics.TryPeek(out var metric) && metric.Timestamp < cutoffTime)
         {
-            _historicalMetrics.TryDequeue(out _);
+            _ = _historicalMetrics.TryDequeue(out _);
         }
     }
-    
+
     private async void ProcessAlerts(object? state)
     {
         try
@@ -336,7 +334,7 @@ public class ProductionMonitoringService : IHostedService, IDisposable
             {
                 await ProcessAlertRule(alertRule);
             }
-            
+
             _logger.LogDebug("Alert processing completed");
         }
         catch (Exception ex)
@@ -344,14 +342,14 @@ public class ProductionMonitoringService : IHostedService, IDisposable
             _logger.LogError(ex, "Error during alert processing");
         }
     }
-    
+
     private async Task ProcessAlertRule(AlertRule alertRule)
     {
         try
         {
             var shouldAlert = await EvaluateAlertCondition(alertRule);
             var alertKey = alertRule.Name;
-            
+
             var currentState = _alertStates.GetOrAdd(alertKey, new AlertState
             {
                 AlertName = alertRule.Name,
@@ -359,7 +357,7 @@ public class ProductionMonitoringService : IHostedService, IDisposable
                 IsActive = false,
                 TriggeredCount = 0
             });
-            
+
             if (shouldAlert && !currentState.IsActive)
             {
                 // Trigger alert
@@ -376,59 +374,59 @@ public class ProductionMonitoringService : IHostedService, IDisposable
             _logger.LogError(ex, "Failed to process alert rule: {AlertRule}", alertRule.Name);
         }
     }
-    
+
     private Task<bool> EvaluateAlertCondition(AlertRule alertRule)
     {
         if (!_currentMetrics.TryGetValue(alertRule.MetricName, out var metric))
         {
             return Task.FromResult(false);
         }
-        
+
         // Simple threshold-based evaluation
         var result = alertRule.Condition switch
         {
             "unhealthy" => metric.Value == 0,
-            var condition when condition.StartsWith("average >") => 
-                double.TryParse(condition.Replace("average >", "").Replace("ms", "").Trim(), out var threshold) && 
+            var condition when condition.StartsWith("average >") =>
+                double.TryParse(condition.Replace("average >", "").Replace("ms", "").Trim(), out var threshold) &&
                 metric.Value > threshold,
             var condition when condition.StartsWith("percentage >") =>
                 double.TryParse(condition.Replace("percentage >", "").Replace("%", "").Trim(), out var percentage) &&
                 metric.Value > percentage,
             _ => false
         };
-        
+
         return Task.FromResult(result);
     }
-    
+
     private Task TriggerAlert(AlertRule alertRule, AlertState alertState)
     {
         alertState.IsActive = true;
         alertState.LastTriggered = DateTime.UtcNow;
         alertState.TriggeredCount++;
-        
-        _logger.LogWarning("Alert triggered: {AlertName} - {Description}", 
+
+        _logger.LogWarning("Alert triggered: {AlertName} - {Description}",
             alertRule.Name, alertRule.Description);
-        
+
         // Increment error counter for monitoring
         IncrementErrorCounter("alert_triggered", new Dictionary<string, object?>
         {
             ["alert_name"] = alertRule.Name,
             ["severity"] = alertRule.Severity
         });
-        
+
         // Here you would implement actual alert notifications
         // For now, just log the alert
         return Task.CompletedTask;
     }
-    
+
     private Task ClearAlert(AlertRule alertRule, AlertState alertState)
     {
         alertState.IsActive = false;
-        
+
         _logger.LogInformation("Alert cleared: {AlertName}", alertRule.Name);
         return Task.CompletedTask;
     }
-    
+
     /// <summary>
     /// Public method to record grain activation
     /// </summary>
@@ -437,7 +435,7 @@ public class ProductionMonitoringService : IHostedService, IDisposable
         _grainActivationsCounter.Add(1, new KeyValuePair<string, object?>("grain_type", grainType));
         UpdateMetric($"orleans.grain.activations.{grainType.ToLower()}", 1, DateTime.UtcNow);
     }
-    
+
     /// <summary>
     /// Public method to record message relay
     /// </summary>
@@ -447,7 +445,7 @@ public class ProductionMonitoringService : IHostedService, IDisposable
         _messageLatencyHistogram.Record(latencyMs);
         UpdateMetric("orleans.message.relay.latency_ms", latencyMs, DateTime.UtcNow);
     }
-    
+
     /// <summary>
     /// Public method to record background operation
     /// </summary>
@@ -456,7 +454,7 @@ public class ProductionMonitoringService : IHostedService, IDisposable
         _backgroundOperationsCounter.Add(1, new KeyValuePair<string, object?>("operation_type", operationType));
         UpdateMetric($"background.operation.{operationType.ToLower()}.duration_ms", durationMs, DateTime.UtcNow);
     }
-    
+
     /// <summary>
     /// Public method to increment error counter
     /// </summary>
@@ -467,11 +465,11 @@ public class ProductionMonitoringService : IHostedService, IDisposable
         {
             tagList.AddRange(tags.Select(kv => new KeyValuePair<string, object?>(kv.Key, kv.Value)));
         }
-        
-        _errorCounter.Add(1, tagList.ToArray());
+
+        _errorCounter.Add(1, [.. tagList]);
         UpdateMetric($"errors.{errorType.ToLower()}", 1, DateTime.UtcNow);
     }
-    
+
     /// <summary>
     /// Get current metrics snapshot for dashboard
     /// </summary>
@@ -479,19 +477,18 @@ public class ProductionMonitoringService : IHostedService, IDisposable
     {
         return new Dictionary<string, MetricValue>(_currentMetrics);
     }
-    
+
     /// <summary>
     /// Get historical metrics for a specific metric name
     /// </summary>
     public List<HistoricalMetric> GetHistoricalMetrics(string metricName, TimeSpan? timeRange = null)
     {
         var cutoffTime = DateTime.UtcNow - (timeRange ?? TimeSpan.FromHours(1));
-        return _historicalMetrics
+        return [.. _historicalMetrics
             .Where(m => m.Name == metricName && m.Timestamp >= cutoffTime)
-            .OrderBy(m => m.Timestamp)
-            .ToList();
+            .OrderBy(m => m.Timestamp)];
     }
-    
+
     /// <summary>
     /// Get current alert states
     /// </summary>
@@ -499,7 +496,7 @@ public class ProductionMonitoringService : IHostedService, IDisposable
     {
         return new Dictionary<string, AlertState>(_alertStates);
     }
-    
+
     public void Dispose()
     {
         _metricsTimer?.Dispose();
@@ -516,7 +513,7 @@ public class ProductionMonitoringOptions
     public int MetricsCollectionIntervalSeconds { get; set; } = 30;
     public int AlertCheckIntervalMinutes { get; set; } = 1;
     public int MetricsRetentionHours { get; set; } = 24;
-    public List<AlertRule> AlertRules { get; set; } = new();
+    public List<AlertRule> AlertRules { get; set; } = [];
 }
 
 /// <summary>
@@ -530,7 +527,7 @@ public class AlertRule
     public required string Condition { get; set; }
     public required string Severity { get; set; }
     public int ThresholdMinutes { get; set; } = 5;
-    public List<string> NotificationChannels { get; set; } = new();
+    public List<string> NotificationChannels { get; set; } = [];
 }
 
 /// <summary>
@@ -541,7 +538,7 @@ public class MetricValue
     public required string Name { get; set; }
     public double Value { get; set; }
     public DateTime Timestamp { get; set; }
-    public Dictionary<string, string> Tags { get; set; } = new();
+    public Dictionary<string, string> Tags { get; set; } = [];
 }
 
 /// <summary>

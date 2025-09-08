@@ -38,10 +38,10 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
 
         var userId = "test-user-reconnect";
         var attemptCount = 0;
-        
+
         // Simulate a failure on first attempt
         var mockBridgeFactory = new Mock<ITestStreamingBridgeFactory>();
-        mockBridgeFactory
+        _ = mockBridgeFactory
             .Setup(x => x.CreateBridge())
             .Returns(() =>
             {
@@ -50,7 +50,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
                 {
                     throw new InvalidOperationException("Simulated connection failure");
                 }
-                
+
                 var services = _fixture.WebAppFactory.Services;
                 var logger = services.GetRequiredService<ILogger<StreamingBridge>>();
                 var config = services.GetRequiredService<IOptions<StreamingConfiguration>>();
@@ -68,7 +68,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
         var streamId = $"stream-{Guid.NewGuid()}";
         var recoveryTask = Task.Run(async () =>
         {
-            await resilientManager.ProcessStreamWithRecoveryAsync(
+            _ = await resilientManager.ProcessStreamWithRecoveryAsync(
                 streamId,
                 userId,
                 async (bridge, ct) =>
@@ -83,10 +83,10 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
         await recoveryTask;
 
         // Assert
-        attemptCount.Should().Be(2, "Should have retried after failure");
+        _ = attemptCount.Should().Be(2, "Should have retried after failure");
         var metrics = await resilientManager.GetMetricsAsync();
-        metrics.TotalRecoveryAttempts.Should().BeGreaterThan(0);
-        metrics.SuccessfulRecoveries.Should().BeGreaterThan(0);
+        _ = metrics.TotalRecoveryAttempts.Should().BeGreaterThan(0);
+        _ = metrics.SuccessfulRecoveries.Should().BeGreaterThan(0);
 
         _output.WriteLine($"Recovery successful after {attemptCount} attempts");
     }
@@ -109,7 +109,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
 
         var logger = new Mock<ILogger<ResilientStreamManager>>();
         var bridgeFactory = new Mock<ITestStreamingBridgeFactory>();
-        
+
         var manager = new TestResilientStreamManager(
             logger.Object,
             bridgeFactory.Object,
@@ -119,12 +119,12 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
         var failureOccurred = false;
 
         // Setup bridge to fail mid-stream
-        bridgeFactory
+        _ = bridgeFactory
             .Setup(x => x.CreateBridge())
             .Returns(() =>
             {
                 var mockBridge = new Mock<ITestStreamingBridge>();
-                mockBridge
+                _ = mockBridge
                     .Setup(b => b.ConvertToSseAsync(It.IsAny<IAsyncEnumerable<ChatStreamItem>>(), It.IsAny<CancellationToken>()))
                     .Returns(async (IAsyncEnumerable<ChatStreamItem> items, CancellationToken ct) =>
                     {
@@ -137,18 +137,18 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
                                 failureOccurred = true;
                                 throw new IOException("Simulated stream failure");
                             }
-                            
+
                             messagesProcessed.Add(item.Content ?? "");
                             // Cannot use yield in lambda, need to return as enumerable
                         }
                     });
-                
+
                 return mockBridge.Object;
             });
 
         // Act
         var streamId = $"stream-{Guid.NewGuid()}";
-        await manager.ProcessStreamWithRecoveryAsync(
+        _ = await manager.ProcessStreamWithRecoveryAsync(
             streamId,
             "test-user",
             async (bridge, ct) =>
@@ -157,21 +157,21 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
                 var testBridge = bridge as ITestStreamingBridge;
                 if (testBridge == null)
                     throw new InvalidOperationException("Bridge must be ITestStreamingBridge");
-                    
+
                 var sseStream = testBridge.ConvertToSseAsync(testItems, ct);
-                
+
                 await foreach (var item in sseStream)
                 {
                     // Process SSE items
                 }
-                
+
                 return "Completed";
             },
             CancellationToken.None);
 
         // Assert
-        messagesProcessed.Should().HaveCount(5, "Should process all messages despite failure");
-        messagesProcessed.Should().BeEquivalentTo(new[] { "Message 1", "Message 2", "Message 3", "Message 4", "Message 5" });
+        _ = messagesProcessed.Should().HaveCount(5, "Should process all messages despite failure");
+        _ = messagesProcessed.Should().BeEquivalentTo(new[] { "Message 1", "Message 2", "Message 3", "Message 4", "Message 5" });
 
         _output.WriteLine($"Recovered and processed {messagesProcessed.Count} messages");
     }
@@ -194,9 +194,9 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
 
         var logger = new Mock<ILogger<ResilientStreamManager>>();
         var bridgeFactory = new Mock<ITestStreamingBridgeFactory>();
-        
+
         // Setup bridge to always fail
-        bridgeFactory
+        _ = bridgeFactory
             .Setup(x => x.CreateBridge())
             .Throws(new InvalidOperationException("Persistent failure"));
 
@@ -213,7 +213,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
         {
             try
             {
-                await manager.ProcessStreamWithRecoveryAsync(
+                _ = await manager.ProcessStreamWithRecoveryAsync(
                     $"stream-{i}",
                     "test-user",
                     async (bridge, ct) =>
@@ -235,8 +235,8 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
         }
 
         // Assert
-        failureCount.Should().Be(3, "Should fail up to threshold");
-        circuitBreakerOpened.Should().BeTrue("Circuit breaker should open after threshold");
+        _ = failureCount.Should().Be(3, "Should fail up to threshold");
+        _ = circuitBreakerOpened.Should().BeTrue("Circuit breaker should open after threshold");
 
         _output.WriteLine($"Circuit breaker opened after {failureCount} failures");
     }
@@ -259,9 +259,9 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
 
         var logger = new Mock<ILogger<ResilientStreamManager>>();
         var bridgeFactory = new Mock<ITestStreamingBridgeFactory>();
-        
+
         var attemptCount = 0;
-        bridgeFactory
+        _ = bridgeFactory
             .Setup(x => x.CreateBridge())
             .Returns(() =>
             {
@@ -270,7 +270,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
                 {
                     throw new InvalidOperationException("Initial failures");
                 }
-                
+
                 // Success after circuit reset
                 var mockBridge = new Mock<ITestStreamingBridge>();
                 return mockBridge.Object;
@@ -286,7 +286,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
         {
             try
             {
-                await manager.ProcessStreamWithRecoveryAsync(
+                _ = await manager.ProcessStreamWithRecoveryAsync(
                     $"stream-fail-{i}",
                     "test-user",
                     async (bridge, ct) => await Task.FromResult("Success"),
@@ -302,7 +302,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
         var success = false;
         try
         {
-            await manager.ProcessStreamWithRecoveryAsync(
+            _ = await manager.ProcessStreamWithRecoveryAsync(
                 "stream-success",
                 "test-user",
                 async (bridge, ct) =>
@@ -315,8 +315,8 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
         catch { /* Ignore */ }
 
         // Assert
-        attemptCount.Should().Be(3);
-        success.Should().BeTrue("Should succeed after circuit reset");
+        _ = attemptCount.Should().Be(3);
+        _ = success.Should().BeTrue("Should succeed after circuit reset");
 
         _output.WriteLine("Circuit breaker reset successfully after timeout");
     }
@@ -344,14 +344,14 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
         var response = await client.PostAsJsonAsync("/api/chat/stream-sse", request);
 
         // Assert
-        response.EnsureSuccessStatusCode();
-        response.Headers.GetValues("X-Processing-Mode").First().Should().Be("direct");
+        _ = response.EnsureSuccessStatusCode();
+        _ = response.Headers.GetValues("X-Processing-Mode").First().Should().Be("direct");
 
         using var stream = await response.Content.ReadAsStreamAsync();
         var events = await SseTestHelpers.ParseSseStreamAsync(stream);
-        
-        events.Should().NotBeEmpty();
-        events.Should().Contain(e => e.EventType == "init");
+
+        _ = events.Should().NotBeEmpty();
+        _ = events.Should().Contain(e => e.EventType == "init");
 
         _output.WriteLine("Successfully degraded to direct processing when Orleans unavailable");
     }
@@ -369,9 +369,9 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
 
         var logger = new Mock<ILogger<ResilientStreamManager>>();
         var bridgeFactory = new Mock<ITestStreamingBridgeFactory>();
-        
+
         var attemptCount = 0;
-        bridgeFactory
+        _ = bridgeFactory
             .Setup(x => x.CreateBridge())
             .Returns(() =>
             {
@@ -380,7 +380,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
                 {
                     throw new InvalidOperationException($"Failure {attemptCount}");
                 }
-                
+
                 var mockBridge = new Mock<ITestStreamingBridge>();
                 return mockBridge.Object;
             });
@@ -393,7 +393,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
         var startTime = DateTime.UtcNow;
 
         // Act
-        await manager.ProcessStreamWithRecoveryAsync(
+        _ = await manager.ProcessStreamWithRecoveryAsync(
             "stream-retry",
             "test-user",
             async (bridge, ct) => await Task.FromResult("Success"),
@@ -402,8 +402,8 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
         var duration = DateTime.UtcNow - startTime;
 
         // Assert
-        attemptCount.Should().Be(3, "Should retry up to configured limit");
-        duration.TotalMilliseconds.Should().BeGreaterThan(200, "Should respect retry delays");
+        _ = attemptCount.Should().Be(3, "Should retry up to configured limit");
+        _ = duration.TotalMilliseconds.Should().BeGreaterThan(200, "Should respect retry delays");
 
         _output.WriteLine($"Retried {attemptCount} times over {duration.TotalMilliseconds}ms");
     }
@@ -428,14 +428,14 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
 
         var logger = new Mock<ILogger<ResilientStreamManager>>();
         var bridgeFactory = new Mock<ITestStreamingBridgeFactory>();
-        
+
         var failureSimulated = false;
-        bridgeFactory
+        _ = bridgeFactory
             .Setup(x => x.CreateBridge())
             .Returns(() =>
             {
                 var mockBridge = new Mock<ITestStreamingBridge>();
-                mockBridge
+                _ = mockBridge
                     .Setup(b => b.ConvertToSseAsync(It.IsAny<IAsyncEnumerable<ChatStreamItem>>(), It.IsAny<CancellationToken>()))
                     .Returns(async (IAsyncEnumerable<ChatStreamItem> items, CancellationToken ct) =>
                     {
@@ -444,22 +444,22 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
                         {
                             count++;
                             var messageId = $"{item.Content}-{count}";
-                            
+
                             if (!processedMessages.Add(messageId))
                             {
                                 duplicateDetected = true;
                             }
-                            
+
                             if (count == 5 && !failureSimulated)
                             {
                                 failureSimulated = true;
                                 throw new IOException("Simulated failure");
                             }
-                            
+
                             // Cannot use yield in lambda, need to return as enumerable
                         }
                     });
-                
+
                 return mockBridge.Object;
             });
 
@@ -469,7 +469,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
             Options.Create(config));
 
         // Act
-        await manager.ProcessStreamWithRecoveryAsync(
+        _ = await manager.ProcessStreamWithRecoveryAsync(
             "stream-no-dup",
             "test-user",
             async (bridge, ct) =>
@@ -478,21 +478,21 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
                 var testBridge = bridge as ITestStreamingBridge;
                 if (testBridge == null)
                     throw new InvalidOperationException("Bridge must be ITestStreamingBridge");
-                    
+
                 var sseStream = testBridge.ConvertToSseAsync(testItems, ct);
-                
+
                 await foreach (var item in sseStream)
                 {
                     // Process items
                 }
-                
+
                 return "Completed";
             },
             CancellationToken.None);
 
         // Assert
-        duplicateDetected.Should().BeFalse("Should not duplicate messages during recovery");
-        processedMessages.Count.Should().Be(10, "Should process all unique messages");
+        _ = duplicateDetected.Should().BeFalse("Should not duplicate messages during recovery");
+        _ = processedMessages.Count.Should().Be(10, "Should process all unique messages");
 
         _output.WriteLine($"Processed {processedMessages.Count} unique messages without duplication");
     }
@@ -522,7 +522,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
     {
         var count = 0;
         var failureOccurred = false;
-        
+
         await foreach (var item in items.WithCancellation(cancellationToken))
         {
             count++;
@@ -531,12 +531,12 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
                 failureOccurred = true;
                 throw new IOException("Simulated stream failure");
             }
-            
+
             messagesProcessed.Add(item.Content ?? "");
             yield return $"data: {item.Content}\n\n";
         }
     }
-    
+
     /// <summary>
     /// Helper method to convert items to SSE format for duplicate detection.
     /// </summary>
@@ -549,25 +549,25 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
     {
         var count = 0;
         var failureOccurred = false;
-        
+
         await foreach (var item in items.WithCancellation(cancellationToken))
         {
             count++;
-            
+
             // Check for duplicates
             var messageId = item.Content ?? "";
             if (!processedIds.Add(messageId))
             {
                 throw new InvalidOperationException($"Duplicate message detected: {messageId}");
             }
-            
+
             // Simulate failure if requested
             if (simulateFailure && count == failureAtCount && !failureOccurred)
             {
                 failureOccurred = true;
                 throw new IOException("Simulated failure");
             }
-            
+
             yield return $"data: {item.Content}\n\n";
         }
     }

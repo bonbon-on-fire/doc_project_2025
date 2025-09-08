@@ -1,9 +1,7 @@
-using Orleans;
-using Orleans.Configuration;
-using Orleans.Hosting;
-using Orleans.TestingHost;
 using AIChat.Orleans.Grains;
 using Microsoft.Extensions.DependencyInjection;
+using Orleans.Configuration;
+using Orleans.TestingHost;
 
 namespace AIChat.Orleans.Tests.TestUtilities.Infrastructure;
 
@@ -40,8 +38,8 @@ public class TestClusterManager : IAsyncDisposable
             return;
 
         var builder = new TestClusterBuilder();
-        builder.AddSiloBuilderConfigurator<TestSiloConfigurator>();
-        
+        _ = builder.AddSiloBuilderConfigurator<TestSiloConfigurator>();
+
         _cluster = builder.Build();
         await _cluster.DeployAsync();
         _isInitialized = true;
@@ -88,7 +86,7 @@ public class TestClusterManager : IAsyncDisposable
     {
         public void Configure(ISiloBuilder siloBuilder)
         {
-            siloBuilder
+            _ = siloBuilder
                 // Let TestClusterBuilder handle the ClusterId to avoid conflicts
                 .Configure<EndpointOptions>(options =>
                 {
@@ -97,7 +95,7 @@ public class TestClusterManager : IAsyncDisposable
                 .ConfigureServices(services =>
                 {
                     // Register grain assemblies
-                    services.AddSingleton(typeof(UserGrain).Assembly);
+                    _ = services.AddSingleton(typeof(UserGrain).Assembly);
                     // Dashboard is not needed for tests
                 });
         }

@@ -17,7 +17,10 @@ public class CreateChatRequestBuilder
     /// <summary>
     /// Creates a new instance of the builder with default values.
     /// </summary>
-    public static CreateChatRequestBuilder Create() => new();
+    public static CreateChatRequestBuilder Create()
+    {
+        return new();
+    }
 
     /// <summary>
     /// Sets the chat ID for continuing an existing conversation.

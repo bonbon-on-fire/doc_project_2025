@@ -1,10 +1,6 @@
-using AIChat.Orleans.Contracts;
-using AIChat.Orleans.Grains;
-using Microsoft.Extensions.Logging;
-using NUnit.Framework;
-using Orleans.TestingHost;
-using Orleans.Hosting;
 using System.Diagnostics;
+using AIChat.Orleans.Contracts;
+using NUnit.Framework;
 
 namespace AIChat.Orleans.Tests.Phase1;
 
@@ -60,9 +56,9 @@ public class PerformanceBenchmarkTests : Phase1IntegrationTestBase
         Console.WriteLine($"  Activations per Second: {grainActivationsPerSecond:F0}");
 
         // Performance expectations for Phase 1
-        Assert.That(averageTimePerGrain, Is.LessThan(100), 
+        Assert.That(averageTimePerGrain, Is.LessThan(100),
             $"Grain activation should average < 100ms per grain, actual: {averageTimePerGrain:F2}ms");
-        Assert.That(grainActivationsPerSecond, Is.GreaterThan(10), 
+        Assert.That(grainActivationsPerSecond, Is.GreaterThan(10),
             $"Should achieve > 10 activations/sec, actual: {grainActivationsPerSecond:F0}");
         Assert.That(results.Length, Is.EqualTo(grainCount), "All grains should activate successfully");
 
@@ -101,9 +97,9 @@ public class PerformanceBenchmarkTests : Phase1IntegrationTestBase
         Console.WriteLine($"  Average Time per Activity: {averageTimePerActivity:F3} ms");
 
         // Performance expectations
-        Assert.That(activitiesPerSecond, Is.GreaterThan(100), 
+        Assert.That(activitiesPerSecond, Is.GreaterThan(100),
             $"Should achieve > 100 activities/sec, actual: {activitiesPerSecond:F0}");
-        Assert.That(averageTimePerActivity, Is.LessThan(10), 
+        Assert.That(averageTimePerActivity, Is.LessThan(10),
             $"Activity recording should average < 10ms, actual: {averageTimePerActivity:F3}ms");
 
         // Verify data integrity
@@ -127,12 +123,12 @@ public class PerformanceBenchmarkTests : Phase1IntegrationTestBase
             .Select(async userId =>
             {
                 var grain = GetGrain<IUserGrain>($"concurrent-user-{userId}");
-                
+
                 for (int i = 0; i < operationsPerUser; i++)
                 {
                     await grain.RecordActivity(ActivityType.MessageSent, $"operation-{i}");
                 }
-                
+
                 return await grain.GetState();
             });
 
@@ -154,9 +150,9 @@ public class PerformanceBenchmarkTests : Phase1IntegrationTestBase
         Console.WriteLine($"  Average Time per User: {averageTimePerUser:F2} ms");
 
         // Performance expectations for concurrent operations
-        Assert.That(operationsPerSecond, Is.GreaterThan(200), 
+        Assert.That(operationsPerSecond, Is.GreaterThan(200),
             $"Concurrent operations should achieve > 200 ops/sec, actual: {operationsPerSecond:F0}");
-        Assert.That(averageTimePerUser, Is.LessThan(5000), 
+        Assert.That(averageTimePerUser, Is.LessThan(5000),
             $"User operation set should complete < 5000ms, actual: {averageTimePerUser:F2}ms");
 
         // Verify all operations completed successfully
@@ -205,9 +201,9 @@ public class PerformanceBenchmarkTests : Phase1IntegrationTestBase
         Console.WriteLine($"  95th Percentile: {p95Time:N0} ms");
 
         // Performance expectations for health checks
-        Assert.That(averageTime, Is.LessThan(50), 
+        Assert.That(averageTime, Is.LessThan(50),
             $"Average health check should be < 50ms, actual: {averageTime:F2}ms");
-        Assert.That(p95Time, Is.LessThan(100), 
+        Assert.That(p95Time, Is.LessThan(100),
             $"95th percentile should be < 100ms, actual: {p95Time}ms");
 
         TestContext.WriteLine($"BASELINE_HEALTH_CHECK: {averageTime:F2}ms avg, {p95Time}ms p95");
@@ -219,7 +215,7 @@ public class PerformanceBenchmarkTests : Phase1IntegrationTestBase
         // Arrange
         Assert.That(TestCluster, Is.Not.Null);
         var grain = GetGrain<IUserGrain>("state-perf-user");
-        
+
         // Pre-populate with activities
         for (int i = 0; i < 50; i++)
         {
@@ -252,9 +248,9 @@ public class PerformanceBenchmarkTests : Phase1IntegrationTestBase
         Console.WriteLine($"  95th Percentile: {p95Time:N0} ms");
 
         // Performance expectations
-        Assert.That(averageTime, Is.LessThan(20), 
+        Assert.That(averageTime, Is.LessThan(20),
             $"Average state retrieval should be < 20ms, actual: {averageTime:F2}ms");
-        Assert.That(p95Time, Is.LessThan(50), 
+        Assert.That(p95Time, Is.LessThan(50),
             $"95th percentile should be < 50ms, actual: {p95Time}ms");
 
         TestContext.WriteLine($"BASELINE_STATE_RETRIEVAL: {averageTime:F2}ms avg, {p95Time}ms p95");
@@ -268,7 +264,7 @@ public class PerformanceBenchmarkTests : Phase1IntegrationTestBase
         GC.Collect();
         GC.WaitForPendingFinalizers();
         GC.Collect();
-        
+
         var initialMemory = GC.GetTotalMemory(false);
         const int grainCount = 1000;
 
@@ -285,7 +281,7 @@ public class PerformanceBenchmarkTests : Phase1IntegrationTestBase
         GC.Collect();
         GC.WaitForPendingFinalizers();
         GC.Collect();
-        
+
         var peakMemory = GC.GetTotalMemory(false);
         var memoryPerGrain = (peakMemory - initialMemory) / grainCount;
 
@@ -316,19 +312,19 @@ public class PerformanceBenchmarkTests : Phase1IntegrationTestBase
 
         // 1. User connects
         await grain.RecordActivity(ActivityType.Connected, "user connected");
-        
+
         // 2. User sends multiple messages
         for (int i = 0; i < 20; i++)
         {
             await grain.RecordActivity(ActivityType.MessageSent, $"message-{i}");
         }
-        
+
         // 3. Health check
         var health = await grain.CheckHealth();
-        
+
         // 4. Get state
         var state = await grain.GetState();
-        
+
         // 5. User disconnects
         await grain.RecordActivity(ActivityType.Disconnected, "user disconnected");
 
@@ -342,7 +338,7 @@ public class PerformanceBenchmarkTests : Phase1IntegrationTestBase
         Console.WriteLine($"  Total Time: {totalTime:N0} ms");
         Console.WriteLine($"  Average Time per Operation: {(double)totalTime / 23:F2} ms");
 
-        Assert.That(totalTime, Is.LessThan(5000), 
+        Assert.That(totalTime, Is.LessThan(5000),
             $"Complete user journey should take < 5 seconds, actual: {totalTime}ms");
         Assert.That(health.IsHealthy, Is.True, "User should be healthy after journey");
         Assert.That(state.Metrics.TotalActivities, Is.GreaterThanOrEqualTo(21), "Should have at least 21 activities");

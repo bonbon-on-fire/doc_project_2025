@@ -25,16 +25,21 @@ public abstract class OrleansTestBase : IClassFixture<OrleansTestFixture>
     /// <summary>
     /// Creates an HTTP client configured for SSE testing.
     /// </summary>
-    protected HttpClient CreateSseClient() => Fixture.CreateSseClient();
+    protected HttpClient CreateSseClient()
+    {
+        return Fixture.CreateSseClient();
+    }
 
     /// <summary>
     /// Creates a standard HTTP client from the WebApplicationFactory.
     /// </summary>
-    protected HttpClient CreateStandardClient() => 
-        Fixture.WebAppFactory.CreateClient(new WebApplicationFactoryClientOptions
+    protected HttpClient CreateStandardClient()
+    {
+        return Fixture.WebAppFactory.CreateClient(new WebApplicationFactoryClientOptions
         {
             AllowAutoRedirect = false
         });
+    }
 
     /// <summary>
     /// Makes a stream request with the provided request data.
@@ -61,11 +66,7 @@ public abstract class OrleansTestBase : IClassFixture<OrleansTestFixture>
     /// </summary>
     protected string? GetHeaderValue(HttpResponseMessage response, string headerName)
     {
-        if (response.Headers.TryGetValues(headerName, out var values))
-        {
-            return values.FirstOrDefault();
-        }
-        return null;
+        return response.Headers.TryGetValues(headerName, out var values) ? values.FirstOrDefault() : null;
     }
 
     /// <summary>
@@ -114,18 +115,18 @@ public abstract class OrleansTestBase : IClassFixture<OrleansTestFixture>
     protected async Task WarmupSystemAsync(int requestCount = 3)
     {
         LogTestStep("Warming up system with {0} requests", requestCount);
-        
+
         for (int i = 0; i < requestCount; i++)
         {
             var request = CreateChatRequestBuilder.Create()
                 .WithUserId($"warmup-{i}")
                 .WithMessage("Warmup request")
                 .Build();
-                
+
             using var response = await MakeStreamRequestAsync(request);
-            response.EnsureSuccessStatusCode();
+            _ = response.EnsureSuccessStatusCode();
         }
-        
+
         LogTestStep("Warmup complete");
     }
 
@@ -136,10 +137,10 @@ public abstract class OrleansTestBase : IClassFixture<OrleansTestFixture>
     {
         var orleansRouted = GetHeaderValue(response, "X-Orleans-Routed");
         var processingMode = GetHeaderValue(response, "X-Processing-Mode");
-        
+
         Assert.Equal("true", orleansRouted);
         Assert.Equal("orleans", processingMode);
-        
+
         LogTestStep("Verified Orleans routing: routed={0}, mode={1}", orleansRouted, processingMode);
     }
 
@@ -150,10 +151,10 @@ public abstract class OrleansTestBase : IClassFixture<OrleansTestFixture>
     {
         var orleansRouted = GetHeaderValue(response, "X-Orleans-Routed");
         var processingMode = GetHeaderValue(response, "X-Processing-Mode");
-        
+
         Assert.Equal("false", orleansRouted);
         Assert.Equal("direct", processingMode);
-        
+
         LogTestStep("Verified direct processing: routed={0}, mode={1}", orleansRouted, processingMode);
     }
 }

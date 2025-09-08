@@ -1,7 +1,6 @@
 using AIChat.LoadTesting.Configuration;
 using AIChat.LoadTesting.Models;
 using AIChat.LoadTesting.Services;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -68,7 +67,7 @@ public class ConnectionLoadScenario : LoadTestScenarioBase
     public override async Task<ScenarioResult> ExecuteAsync(IProgress<TestProgress>? progress = null, CancellationToken cancellationToken = default)
     {
         var startTime = DateTime.UtcNow;
-        _logger.LogInformation("Starting Connection Load Test: {MaxUsers:N0} users, {RampUpSeconds}s ramp-up, {StableSeconds}s stable", 
+        _logger.LogInformation("Starting Connection Load Test: {MaxUsers:N0} users, {RampUpSeconds}s ramp-up, {StableSeconds}s stable",
             _config.MaxUsers, _config.RampUpSeconds, _config.StableSeconds);
 
         try
@@ -94,7 +93,7 @@ public class ConnectionLoadScenario : LoadTestScenarioBase
             // Phase 3: Collect final results
             var endTime = DateTime.UtcNow;
             var result = CreateResult(startTime, endTime, true);
-            
+
             await PopulateResultMetricsAsync(result);
 
             _logger.LogInformation("Connection Load Test completed successfully in {Duration}", endTime - startTime);
@@ -117,8 +116,8 @@ public class ConnectionLoadScenario : LoadTestScenarioBase
         var rampUpInterval = TimeSpan.FromMilliseconds(_config.RampUpSeconds * 1000.0 / _config.MaxUsers);
         var connectionsPerBatch = Math.Max(1, _config.MaxUsers / (_config.RampUpSeconds * 10)); // 10 batches per second
         var batchInterval = TimeSpan.FromMilliseconds(100); // 100ms between batches
-        
-        _logger.LogDebug("Ramp-up strategy: {ConnectionsPerBatch} connections per batch, {BatchInterval}ms interval", 
+
+        _logger.LogDebug("Ramp-up strategy: {ConnectionsPerBatch} connections per batch, {BatchInterval}ms interval",
             connectionsPerBatch, batchInterval.TotalMilliseconds);
 
         var connectedUsers = 0;
@@ -133,24 +132,24 @@ public class ConnectionLoadScenario : LoadTestScenarioBase
             }
 
             var connectionsInThisBatch = Math.Min(connectionsPerBatch, _config.MaxUsers - connectedUsers);
-            
+
             // Create connection tasks for this batch
             var connectionTasks = new List<Task>();
-            
+
             for (var i = 0; i < connectionsInThisBatch; i++)
             {
                 var userId = GenerateTestUserId();
-                
+
                 connectionTasks.Add(Task.Run(async () =>
                 {
                     try
                     {
-                        await _connectionManager.CreateConnectionAsync(userId, cancellationToken);
-                        Interlocked.Increment(ref connectedUsers);
+                        _ = await _connectionManager.CreateConnectionAsync(userId, cancellationToken);
+                        _ = Interlocked.Increment(ref connectedUsers);
                     }
                     catch (Exception ex)
                     {
-                        Interlocked.Increment(ref failedConnections);
+                        _ = Interlocked.Increment(ref failedConnections);
                         _logger.LogWarning(ex, "Failed to connect user {UserId}", userId);
                     }
                 }, cancellationToken));
@@ -161,7 +160,7 @@ public class ConnectionLoadScenario : LoadTestScenarioBase
             {
                 using var batchTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(_config.ConnectionTimeoutSeconds));
                 using var combinedToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, batchTimeout.Token);
-                
+
                 await Task.WhenAll(connectionTasks);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -176,7 +175,7 @@ public class ConnectionLoadScenario : LoadTestScenarioBase
             // Report progress
             var progressPercent = (double)connectedUsers / _config.MaxUsers * 50; // 50% for ramp-up phase
             var metrics = _metricsCollector.GetLatestMetrics();
-            
+
             ReportProgress(progress, new TestProgress
             {
                 CurrentScenario = "Connection Ramp-Up",
@@ -231,7 +230,7 @@ public class ConnectionLoadScenario : LoadTestScenarioBase
             // Check connection health
             var activeConnections = _connectionManager.ActiveConnectionCount;
             var connectionMetrics = _connectionManager.GetConnectionMetrics();
-            
+
             // Log periodic status
             if (DateTime.UtcNow - lastReportTime >= reportInterval)
             {
@@ -300,15 +299,14 @@ public class ConnectionLoadScenario : LoadTestScenarioBase
         result.ResourceStats = resourceStats;
 
         // Error collection
-        result.Errors = users
+        result.Errors = [.. users
             .Where(u => !string.IsNullOrEmpty(u.Metrics.LastErrorMessage))
             .Select(u => $"User {u.UserId}: {u.Metrics.LastErrorMessage}")
-            .Take(10) // Limit to first 10 errors
-            .ToList();
+            .Take(10)];
 
         _logger.LogInformation("Connection Load Test Results: {SuccessfulConnections}/{TotalUsers} connected ({SuccessRate:P2}), Avg connection time: {AvgConnectionTime:F1}ms",
             result.SuccessfulConnections, result.TotalUsers, result.ConnectionSuccessRate, result.LatencyStats.AverageMs);
-        
+
         return Task.CompletedTask;
     }
 }

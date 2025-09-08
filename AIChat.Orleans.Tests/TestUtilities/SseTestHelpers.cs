@@ -30,7 +30,7 @@ public static class SseTestHelpers
     {
         var events = new List<SseEvent>();
         using var reader = new StreamReader(stream, Encoding.UTF8);
-        
+
         SseEvent? currentEvent = null;
         var dataLines = new List<string>();
 
@@ -45,7 +45,7 @@ public static class SseTestHelpers
                 if (currentEvent != null && dataLines.Count > 0)
                 {
                     currentEvent.Data = string.Join("\n", dataLines);
-                    
+
                     // Try to parse as SSEEnvelope
                     if (!string.IsNullOrEmpty(currentEvent.Data))
                     {
@@ -60,7 +60,7 @@ public static class SseTestHelpers
                             // Not all data is JSON envelope
                         }
                     }
-                    
+
                     events.Add(currentEvent);
                     currentEvent = null;
                     dataLines.Clear();
@@ -107,27 +107,27 @@ public static class SseTestHelpers
     public static Stream CreateSseStream(params SseEvent[] events)
     {
         var sb = new StringBuilder();
-        
+
         foreach (var evt in events)
         {
             if (!string.IsNullOrEmpty(evt.EventType))
-                sb.AppendLine($"event: {evt.EventType}");
-            
+                _ = sb.AppendLine($"event: {evt.EventType}");
+
             if (!string.IsNullOrEmpty(evt.Id))
-                sb.AppendLine($"id: {evt.Id}");
-            
+                _ = sb.AppendLine($"id: {evt.Id}");
+
             if (evt.Retry.HasValue)
-                sb.AppendLine($"retry: {evt.Retry}");
-            
+                _ = sb.AppendLine($"retry: {evt.Retry}");
+
             if (!string.IsNullOrEmpty(evt.Data))
             {
                 foreach (var line in evt.Data.Split('\n'))
                 {
-                    sb.AppendLine($"data: {line}");
+                    _ = sb.AppendLine($"data: {line}");
                 }
             }
-            
-            sb.AppendLine(); // Empty line to signal end of event
+
+            _ = sb.AppendLine(); // Empty line to signal end of event
         }
 
         return new MemoryStream(Encoding.UTF8.GetBytes(sb.ToString()));
@@ -141,7 +141,7 @@ public static class SseTestHelpers
         params string[] expectedEventTypes)
     {
         var actualTypes = actualEvents.Select(e => e.EventType).ToList();
-        
+
         if (actualTypes.Count != expectedEventTypes.Length)
         {
             throw new AssertionException(
@@ -186,7 +186,7 @@ public static class SseTestHelpers
             MessageId = messageId,
             Content = content,
             Timestamp = DateTime.UtcNow,
-            Metadata = new Dictionary<string, object?>()
+            Metadata = []
         };
     }
 

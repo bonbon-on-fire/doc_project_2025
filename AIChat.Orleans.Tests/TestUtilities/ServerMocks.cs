@@ -4,61 +4,61 @@ using Microsoft.Extensions.DependencyInjection;
 namespace AIChat.Server.Services.Streaming
 {
 
-// Minimal interfaces for testing - actual implementations are in server project
-public interface IStreamingBridge : IAsyncDisposable
-{
-    Task ConvertGrainToHttpStreamAsync<T>(
-        IAsyncEnumerable<T> grainStream,
-        HttpResponse httpResponse,
-        Func<T, string> formatter,
-        CancellationToken cancellationToken = default);
-        
-    Task<bool> HandleBackpressureAsync(
-        float bufferUtilization,
-        CancellationToken cancellationToken = default);
-        
-    Task PropagateErrorAsync(
-        Exception exception,
-        HttpResponse httpResponse,
-        CancellationToken cancellationToken = default);
-        
-    BufferStatistics GetBufferStatistics();
-}
+    // Minimal interfaces for testing - actual implementations are in server project
+    public interface IStreamingBridge : IAsyncDisposable
+    {
+        Task ConvertGrainToHttpStreamAsync<T>(
+            IAsyncEnumerable<T> grainStream,
+            HttpResponse httpResponse,
+            Func<T, string> formatter,
+            CancellationToken cancellationToken = default);
 
-public interface IStreamingBridgeFactory
-{
-    IStreamingBridge CreateBridge();
-}
+        Task<bool> HandleBackpressureAsync(
+            float bufferUtilization,
+            CancellationToken cancellationToken = default);
 
-public interface IResilientStreamManager : IAsyncDisposable
-{
-    Task<T> ProcessStreamWithRecoveryAsync<T>(
-        string streamId,
-        string userId,
-        Func<IStreamingBridge, CancellationToken, Task<T>> streamProcessor,
-        CancellationToken cancellationToken = default);
-        
-    Task<StreamMetrics> GetMetricsAsync();
-}
+        Task PropagateErrorAsync(
+            Exception exception,
+            HttpResponse httpResponse,
+            CancellationToken cancellationToken = default);
 
-public record BufferStatistics
-{
-    public int Capacity { get; init; }
-    public int CurrentSize { get; init; }
-    public float UtilizationPercentage { get; init; }
-    public long ItemsProcessed { get; init; }
-    public long BackpressureEvents { get; init; }
-    public double AverageProcessingTimeMs { get; init; }
-}
+        BufferStatistics GetBufferStatistics();
+    }
 
-public record StreamMetrics
-{
-    public long TotalStreamsProcessed { get; init; }
-    public long TotalRecoveryAttempts { get; init; }
-    public long SuccessfulRecoveries { get; init; }
-    public long TotalMessagesProcessed { get; init; }
-    public TimeSpan Uptime { get; init; }
-}
+    public interface IStreamingBridgeFactory
+    {
+        IStreamingBridge CreateBridge();
+    }
+
+    public interface IResilientStreamManager : IAsyncDisposable
+    {
+        Task<T> ProcessStreamWithRecoveryAsync<T>(
+            string streamId,
+            string userId,
+            Func<IStreamingBridge, CancellationToken, Task<T>> streamProcessor,
+            CancellationToken cancellationToken = default);
+
+        Task<StreamMetrics> GetMetricsAsync();
+    }
+
+    public record BufferStatistics
+    {
+        public int Capacity { get; init; }
+        public int CurrentSize { get; init; }
+        public float UtilizationPercentage { get; init; }
+        public long ItemsProcessed { get; init; }
+        public long BackpressureEvents { get; init; }
+        public double AverageProcessingTimeMs { get; init; }
+    }
+
+    public record StreamMetrics
+    {
+        public long TotalStreamsProcessed { get; init; }
+        public long TotalRecoveryAttempts { get; init; }
+        public long SuccessfulRecoveries { get; init; }
+        public long TotalMessagesProcessed { get; init; }
+        public TimeSpan Uptime { get; init; }
+    }
 
 } // End namespace AIChat.Server.Services.Streaming
 
@@ -72,16 +72,16 @@ namespace AIChat.Server.Configuration
         public int BackpressureThreshold { get; set; } = 80;
         public bool Enabled { get; set; } = true;
         public int TimeoutMs { get; set; } = 30000;
-        
+
         public bool Validate(out List<string> errors)
         {
-            errors = new List<string>();
+            errors = [];
             if (BufferSize <= 0) errors.Add("BufferSize must be positive");
             if (FlushIntervalMs <= 0) errors.Add("FlushIntervalMs must be positive");
             return errors.Count == 0;
         }
     }
-    
+
     public class ResilientStreamingConfiguration
     {
         public bool Enabled { get; set; }
@@ -92,10 +92,10 @@ namespace AIChat.Server.Configuration
         public int PartialMessageBufferSize { get; set; } = 100;
         public int MessageTimeoutMs { get; set; } = 30000;
         public int HealthCheckIntervalMs { get; set; } = 10000;
-        
+
         public bool Validate(out List<string> errors)
         {
-            errors = new List<string>();
+            errors = [];
             if (MaxRetryAttempts < 0) errors.Add("MaxRetryAttempts must be non-negative");
             if (RetryDelayMs <= 0) errors.Add("RetryDelayMs must be positive");
             return errors.Count == 0;
@@ -125,7 +125,7 @@ namespace AIChat.Server.Models.SSE
         public DateTime Timestamp { get; set; }
         public Dictionary<string, object?>? Metadata { get; set; }
     }
-    
+
     public static class SSEEventExtensions
     {
         public static SSEEnvelope CreateInitEnvelope(
@@ -146,7 +146,7 @@ namespace AIChat.Server.Models.SSE
                 }
             };
         }
-        
+
         public static SSEEnvelope CreateStreamCompleteEnvelope(string chatId)
         {
             return new SSEEnvelope
@@ -159,7 +159,7 @@ namespace AIChat.Server.Models.SSE
                 }
             };
         }
-        
+
         public static SSEEnvelope CreateErrorEnvelope(
             string chatId,
             string? messageId,
@@ -189,15 +189,15 @@ public partial class Program { }
 // Minimal implementations for testing
 namespace AIChat.Server.Services.Streaming
 {
+    using AIChat.Server.Configuration;
     using Microsoft.Extensions.Logging;
     using Microsoft.Extensions.Options;
-    using AIChat.Server.Configuration;
-    
+
     public class StreamingBridge : IStreamingBridge
     {
         private readonly ILogger<StreamingBridge> _logger;
         private readonly StreamingConfiguration _configuration;
-        
+
         public StreamingBridge(
             ILogger<StreamingBridge> logger,
             IOptions<StreamingConfiguration> configuration)
@@ -205,7 +205,7 @@ namespace AIChat.Server.Services.Streaming
             _logger = logger;
             _configuration = configuration.Value;
         }
-        
+
         public Task ConvertGrainToHttpStreamAsync<T>(
             IAsyncEnumerable<T> grainStream,
             HttpResponse httpResponse,
@@ -214,14 +214,14 @@ namespace AIChat.Server.Services.Streaming
         {
             return Task.CompletedTask;
         }
-        
+
         public Task<bool> HandleBackpressureAsync(
             float bufferUtilization,
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult(true);
         }
-        
+
         public Task PropagateErrorAsync(
             Exception exception,
             HttpResponse httpResponse,
@@ -229,27 +229,27 @@ namespace AIChat.Server.Services.Streaming
         {
             return Task.CompletedTask;
         }
-        
+
         public BufferStatistics GetBufferStatistics()
         {
             return new BufferStatistics();
         }
-        
+
         public ValueTask DisposeAsync()
         {
             return ValueTask.CompletedTask;
         }
     }
-    
+
     public class StreamingBridgeFactory : IStreamingBridgeFactory
     {
         private readonly IServiceProvider _serviceProvider;
-        
+
         public StreamingBridgeFactory(IServiceProvider serviceProvider)
         {
             _serviceProvider = serviceProvider;
         }
-        
+
         public IStreamingBridge CreateBridge()
         {
             var logger = _serviceProvider.GetService<ILogger<StreamingBridge>>()!;
@@ -257,13 +257,13 @@ namespace AIChat.Server.Services.Streaming
             return new StreamingBridge(logger, config);
         }
     }
-    
+
     public class ResilientStreamManager : IResilientStreamManager
     {
         private readonly ILogger<ResilientStreamManager> _logger;
         private readonly IStreamingBridgeFactory _bridgeFactory;
         private readonly ResilientStreamingConfiguration _configuration;
-        
+
         public ResilientStreamManager(
             ILogger<ResilientStreamManager> logger,
             IStreamingBridgeFactory bridgeFactory,
@@ -273,7 +273,7 @@ namespace AIChat.Server.Services.Streaming
             _bridgeFactory = bridgeFactory;
             _configuration = configuration.Value;
         }
-        
+
         public async Task<T> ProcessStreamWithRecoveryAsync<T>(
             string streamId,
             string userId,
@@ -283,7 +283,7 @@ namespace AIChat.Server.Services.Streaming
             var bridge = _bridgeFactory.CreateBridge();
             return await streamProcessor(bridge, cancellationToken);
         }
-        
+
         public Task<StreamMetrics> GetMetricsAsync()
         {
             return Task.FromResult(new StreamMetrics
@@ -295,7 +295,7 @@ namespace AIChat.Server.Services.Streaming
                 Uptime = TimeSpan.Zero
             });
         }
-        
+
         public ValueTask DisposeAsync()
         {
             return ValueTask.CompletedTask;

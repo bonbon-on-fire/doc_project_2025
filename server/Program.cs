@@ -17,9 +17,8 @@ using AIChat.Server.Services.TestMode;
 using AIChat.Server.Storage;
 using AIChat.Server.Storage.Sqlite;
 using Lib.AspNetCore.ServerSentEvents;
-using Microsoft.FeatureManagement;
 using Microsoft.Extensions.Options;
-using OpenTelemetry;
+using Microsoft.FeatureManagement;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Serilog;
@@ -124,18 +123,18 @@ builder.Services.AddScoped<ITaskManagerService, ImprovedTaskManagerService>();
 builder.Services.AddSignalR(hubOptions =>
 {
     var signalRConfig = builder.Configuration.GetSection("SignalR:HubOptions");
-    
+
     // Configure hub options from appsettings or use defaults
     hubOptions.ClientTimeoutInterval = signalRConfig.GetValue<TimeSpan?>("ClientTimeoutInterval") ?? TimeSpan.FromMinutes(10);
     hubOptions.KeepAliveInterval = signalRConfig.GetValue<TimeSpan?>("KeepAliveInterval") ?? TimeSpan.FromMinutes(4);
     hubOptions.EnableDetailedErrors = signalRConfig.GetValue("EnableDetailedErrors", builder.Environment.IsDevelopment());
-    hubOptions.MaximumReceiveMessageSize = signalRConfig.GetValue<long?>("MaximumReceiveMessageSize") ?? 32 * 1024; // 32KB default
+    hubOptions.MaximumReceiveMessageSize = signalRConfig.GetValue<long?>("MaximumReceiveMessageSize") ?? (32 * 1024); // 32KB default
     hubOptions.StreamBufferCapacity = signalRConfig.GetValue("StreamBufferCapacity", 10);
-    
+
     // Configure for sticky sessions if needed
     if (builder.Configuration.GetValue("SignalR:StickySessions:Enabled", false))
     {
-        hubOptions.SupportedProtocols = new List<string> { "json" }; // JSON protocol for better debugging
+        hubOptions.SupportedProtocols = ["json"]; // JSON protocol for better debugging
     }
 });
 
@@ -146,22 +145,22 @@ builder.Services.AddFeatureManagement(builder.Configuration.GetSection("FeatureM
 builder.Services.AddOpenTelemetry()
     .WithTracing(tracing =>
     {
-        tracing
+        _ = tracing
             .AddSource(OrleansActivitySource.ActivitySourceName)
             .SetResourceBuilder(ResourceBuilder.CreateDefault()
                 .AddService("AIChat.Server", "1.0.0")
-                .AddAttributes(new[]
-                {
+                .AddAttributes(
+                [
                     new KeyValuePair<string, object>("environment", builder.Environment.EnvironmentName),
                     new KeyValuePair<string, object>("version", "1.0.0")
-                }))
+                ]))
             .AddAspNetCoreInstrumentation()
             .AddHttpClientInstrumentation();
 
         // Configure exporters based on environment
         if (builder.Environment.IsDevelopment())
         {
-            tracing.AddConsoleExporter();
+            _ = tracing.AddConsoleExporter();
         }
         else
         {
@@ -169,21 +168,18 @@ builder.Services.AddOpenTelemetry()
             var otlpEndpoint = builder.Configuration["OpenTelemetry:Otlp:Endpoint"];
             if (!string.IsNullOrEmpty(otlpEndpoint))
             {
-                tracing.AddOtlpExporter(options =>
-                {
-                    options.Endpoint = new Uri(otlpEndpoint);
-                });
+                _ = tracing.AddOtlpExporter(options => options.Endpoint = new Uri(otlpEndpoint));
             }
             else
             {
                 // Fallback to console in production if no OTLP endpoint configured
-                tracing.AddConsoleExporter();
+                _ = tracing.AddConsoleExporter();
             }
         }
 
         // Configure sampling - more aggressive in development, conservative in production
-        tracing.SetSampler(builder.Environment.IsDevelopment() 
-            ? new AlwaysOnSampler() 
+        _ = tracing.SetSampler(builder.Environment.IsDevelopment()
+            ? new AlwaysOnSampler()
             : new TraceIdRatioBasedSampler(0.1)); // Sample 10% in production
     });
 
@@ -204,7 +200,7 @@ if (!isTestEnvironment && !orleansDisabled)
         _ = builder.Services.AddHealthChecks()
             .AddCheck<OrleansClientHealthCheck>("orleans-client")
             .AddCheck<OrleansHealthCheck>("orleans")
-            .AddResilientStreamingHealthCheck("resilient-streaming", tags: new[] { "streaming" });
+            .AddResilientStreamingHealthCheck("resilient-streaming", tags: tags);
     }
     catch (Exception ex)
     {
@@ -390,8 +386,8 @@ builder.Services.AddSingleton<IOperationTrackingService, InMemoryOperationTracki
 // Configure StreamingBridge for Orleans-to-SSE conversion (Phase 4)
 builder.Services.Configure<AIChat.Server.Configuration.StreamingConfiguration>(
     builder.Configuration.GetSection(AIChat.Server.Configuration.StreamingConfiguration.SectionName));
-builder.Services.AddScoped<AIChat.Server.Services.Streaming.IStreamingBridge, AIChat.Server.Services.Streaming.StreamingBridge>();
-builder.Services.AddScoped<AIChat.Server.Services.Streaming.IStreamingBridgeFactory, AIChat.Server.Services.Streaming.StreamingBridgeFactory>();
+builder.Services.AddSingleton<AIChat.Server.Services.Streaming.IStreamingBridge, AIChat.Server.Services.Streaming.StreamingBridge>();
+builder.Services.AddSingleton<AIChat.Server.Services.Streaming.IStreamingBridgeFactory, AIChat.Server.Services.Streaming.StreamingBridgeFactory>();
 
 // Configure Resilient Streaming services (Phase 4 - ORL-P4-004)
 builder.Services.Configure<AIChat.Server.Configuration.ResilientStreamingConfiguration>(
@@ -405,19 +401,18 @@ builder.Services.Configure<AIChat.Server.Services.Streaming.Implementations.Buff
     builder.Configuration.GetSection("BufferManagement"));
 
 // Register buffer management components
-builder.Services.AddSingleton<AIChat.Server.Services.Streaming.Abstractions.IPersistentBufferStore, 
+builder.Services.AddSingleton<AIChat.Server.Services.Streaming.Abstractions.IPersistentBufferStore,
     AIChat.Server.Services.Streaming.Implementations.FileBasedBufferStore>();
-builder.Services.AddSingleton<AIChat.Server.Services.Streaming.Abstractions.IStreamBuffer, 
-    AIChat.Server.Services.Streaming.Implementations.InMemoryStreamBuffer>();
-builder.Services.AddSingleton<AIChat.Server.Services.Streaming.Abstractions.IConnectionStateTracker, 
+// Note: IStreamBuffer instances are created by BufferManagementService, not injected directly
+builder.Services.AddSingleton<AIChat.Server.Services.Streaming.Abstractions.IConnectionStateTracker,
     AIChat.Server.Services.Streaming.Implementations.ConnectionStateTracker>();
-builder.Services.AddSingleton<AIChat.Server.Services.Streaming.Abstractions.IBufferReplayService, 
+builder.Services.AddSingleton<AIChat.Server.Services.Streaming.Abstractions.IBufferReplayService,
     AIChat.Server.Services.Streaming.Implementations.BufferReplayService>();
-builder.Services.AddSingleton<AIChat.Server.Services.Streaming.Abstractions.IBufferManagementService, 
+builder.Services.AddSingleton<AIChat.Server.Services.Streaming.Abstractions.IBufferManagementService,
     AIChat.Server.Services.Streaming.Implementations.BufferManagementService>();
 
 // Register BufferManagementService as hosted service for lifecycle management
-builder.Services.AddHostedService<AIChat.Server.Services.Streaming.Implementations.BufferManagementService>(
+builder.Services.AddHostedService(
     provider => (AIChat.Server.Services.Streaming.Implementations.BufferManagementService)
         provider.GetRequiredService<AIChat.Server.Services.Streaming.Abstractions.IBufferManagementService>());
 
@@ -437,13 +432,13 @@ builder.Services.AddHostedService(provider => provider.GetRequiredService<Backgr
 
 // Add Production Monitoring Service (Phase 3)
 builder.Services.Configure<ProductionMonitoringOptions>(builder.Configuration.GetSection("ProductionMonitoring"));
-builder.Services.AddSingleton<ProductionMonitoringService>(provider =>
+builder.Services.AddSingleton(provider =>
 {
     var logger = provider.GetRequiredService<ILogger<ProductionMonitoringService>>();
     var orleansService = provider.GetService<IOrleansIntegrationService>(); // Can be null
     var grainFactory = provider.GetService<IGrainFactory>(); // Can be null
     var options = provider.GetRequiredService<IOptions<ProductionMonitoringOptions>>();
-    
+
     return new ProductionMonitoringService(logger, orleansService, grainFactory, provider, options);
 });
 builder.Services.AddHostedService(provider => provider.GetRequiredService<ProductionMonitoringService>());
@@ -547,8 +542,8 @@ app.MapGet(
                     kvp => new
                     {
                         Status = kvp.Value.Status.ToString(),
-                        Description = kvp.Value.Description,
-                        Data = kvp.Value.Data,
+                        kvp.Value.Description,
+                        kvp.Value.Data,
                     }
                 ),
             }
@@ -558,4 +553,7 @@ app.MapGet(
 
 app.Run();
 
-public partial class Program { }
+public partial class Program
+{
+    private static readonly string[] tags = ["streaming"];
+}

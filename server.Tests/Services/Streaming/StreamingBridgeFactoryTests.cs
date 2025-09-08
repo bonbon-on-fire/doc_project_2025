@@ -19,7 +19,7 @@ public class StreamingBridgeFactoryTests
     {
         _loggerMock = new Mock<ILogger<StreamingBridge>>();
         _loggerFactoryMock = new Mock<ILoggerFactory>();
-        _loggerFactoryMock
+        _ = _loggerFactoryMock
             .Setup(x => x.CreateLogger(It.IsAny<string>()))
             .Returns(_loggerMock.Object);
 
@@ -45,7 +45,7 @@ public class StreamingBridgeFactoryTests
 
         // Assert
         Assert.NotNull(bridge);
-        Assert.IsType<StreamingBridge>(bridge);
+        _ = Assert.IsType<StreamingBridge>(bridge);
     }
 
     [Fact]
@@ -111,7 +111,7 @@ public class StreamingBridgeFactoryTests
     public void CreateBridge_WithNullConfigureAction_ThrowsException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() =>
+        _ = Assert.Throws<ArgumentNullException>(() =>
             _factory.CreateBridge(null!));
     }
 
@@ -119,7 +119,7 @@ public class StreamingBridgeFactoryTests
     public void Constructor_WithNullLoggerFactory_ThrowsException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() =>
+        _ = Assert.Throws<ArgumentNullException>(() =>
             new StreamingBridgeFactory(null!, _configurationOptions));
     }
 
@@ -127,7 +127,7 @@ public class StreamingBridgeFactoryTests
     public void Constructor_WithNullConfiguration_ThrowsException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() =>
+        _ = Assert.Throws<ArgumentNullException>(() =>
             new StreamingBridgeFactory(_loggerFactoryMock.Object, null!));
     }
 
@@ -163,7 +163,7 @@ public class StreamingBridgeFactoryTests
 
         // Act & Assert
         await bridge.DisposeAsync();
-        
+
         // Should not throw
         await bridge.DisposeAsync(); // Double dispose should be safe
     }

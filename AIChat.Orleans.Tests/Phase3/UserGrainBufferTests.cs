@@ -1,12 +1,10 @@
 using AIChat.Orleans.Configuration;
 using AIChat.Orleans.Contracts;
-using AIChat.Orleans.Grains;
 using AIChat.Orleans.Metrics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 using Orleans.TestingHost;
-using Orleans.Hosting;
 
 namespace AIChat.Orleans.Tests.Phase3;
 
@@ -26,11 +24,11 @@ public class UserGrainBufferTests
     public async Task Setup()
     {
         var builder = new TestClusterBuilder();
-        builder.AddSiloBuilderConfigurator<TestSiloConfigurator>();
-        
+        _ = builder.AddSiloBuilderConfigurator<TestSiloConfigurator>();
+
         _cluster = builder.Build();
         await _cluster.DeployAsync();
-        
+
         _grain = _cluster.GrainFactory.GetGrain<IUserGrain>(TestUserId);
     }
 
@@ -95,8 +93,8 @@ public class UserGrainBufferTests
         var normalMessage = CreateTestMessage("Normal priority message");
         var highMessage = CreateTestMessage("High priority message");
 
-        await _grain.BufferMessageAsync(normalMessage, BufferPriority.Normal);
-        await _grain.BufferMessageAsync(highMessage, BufferPriority.High);
+        _ = await _grain.BufferMessageAsync(normalMessage, BufferPriority.Normal);
+        _ = await _grain.BufferMessageAsync(highMessage, BufferPriority.High);
 
         // Act
         var highPriorityMessages = await _grain.GetBufferedMessagesAsync(TestChatId, null, true);
@@ -113,12 +111,12 @@ public class UserGrainBufferTests
     {
         // Arrange
         Assert.That(_grain, Is.Not.Null);
-        
+
         // Buffer 3 messages
         for (int i = 0; i < 3; i++)
         {
             var message = CreateTestMessage($"Test message {i}");
-            await _grain.BufferMessageAsync(message, BufferPriority.Normal);
+            _ = await _grain.BufferMessageAsync(message, BufferPriority.Normal);
         }
 
         // Act
@@ -211,7 +209,7 @@ public class UserGrainBufferTests
         // Arrange
         Assert.That(_grain, Is.Not.Null);
         var message = CreateTestMessage();
-        await _grain.BufferMessageAsync(message);
+        _ = await _grain.BufferMessageAsync(message);
 
         // Act
         var buffer = await _grain.GetChatBufferAsync(TestChatId);
@@ -228,12 +226,12 @@ public class UserGrainBufferTests
     {
         // Arrange
         Assert.That(_grain, Is.Not.Null);
-        
+
         // Buffer some messages
         var normalMessage = CreateTestMessage("Normal message");
         var highMessage = CreateTestMessage("High priority message");
-        await _grain.BufferMessageAsync(normalMessage, BufferPriority.Normal);
-        await _grain.BufferMessageAsync(highMessage, BufferPriority.High);
+        _ = await _grain.BufferMessageAsync(normalMessage, BufferPriority.Normal);
+        _ = await _grain.BufferMessageAsync(highMessage, BufferPriority.High);
 
         // Act
         var summary = await _grain.GetBufferSummaryAsync();
@@ -241,7 +239,7 @@ public class UserGrainBufferTests
         // Assert
         Assert.That(summary, Is.Not.Null);
         Assert.That(summary.ContainsKey(TestChatId), Is.True);
-        
+
         var chatSummary = summary[TestChatId];
         Assert.That(chatSummary.CurrentMessageCount, Is.EqualTo(2));
         Assert.That(chatSummary.HighPriorityCount, Is.EqualTo(1));
@@ -253,12 +251,12 @@ public class UserGrainBufferTests
     {
         // Arrange
         Assert.That(_grain, Is.Not.Null);
-        
+
         // Buffer multiple messages
         for (int i = 0; i < 3; i++)
         {
             var message = CreateTestMessage($"Message {i}");
-            await _grain.BufferMessageAsync(message);
+            _ = await _grain.BufferMessageAsync(message);
         }
 
         // Act
@@ -282,7 +280,7 @@ public class UserGrainBufferTests
         Assert.That(_grain, Is.Not.Null);
 
         // Act & Assert
-        Assert.ThrowsAsync<ArgumentNullException>(
+        _ = Assert.ThrowsAsync<ArgumentNullException>(
             async () => await _grain.BufferMessageAsync(null!, BufferPriority.Normal));
     }
 
@@ -295,7 +293,7 @@ public class UserGrainBufferTests
         message.ChatId = "";
 
         // Act & Assert
-        Assert.ThrowsAsync<ArgumentException>(
+        _ = Assert.ThrowsAsync<ArgumentException>(
             async () => await _grain.BufferMessageAsync(message, BufferPriority.Normal));
     }
 
@@ -349,19 +347,19 @@ public class TestSiloConfigurator : ISiloConfigurator
 {
     public void Configure(ISiloBuilder siloBuilder)
     {
-        siloBuilder
+        _ = siloBuilder
             .AddMemoryGrainStorageAsDefault()
             .AddMemoryGrainStorage("UserGrainStorage")
             .AddMemoryGrainStorage("PubSubStore")
-            
+
             // Configure services required by grains
             .ConfigureServices(services =>
             {
                 // Add Orleans metrics collector (required by UserGrain)
-                services.AddSingleton<IOrleansMetricsCollector, OrleansMetricsCollector>();
-                
+                _ = services.AddSingleton<IOrleansMetricsCollector, OrleansMetricsCollector>();
+
                 // Add Orleans grain configuration with test-friendly settings
-                services.Configure<OrleansGrainConfiguration>(config =>
+                _ = services.Configure<OrleansGrainConfiguration>(config =>
                 {
                     config.UserGrain.MaxActivityBufferSize = 50;
                     config.UserGrain.CleanupIntervalMinutes = 1;
@@ -370,16 +368,16 @@ public class TestSiloConfigurator : ISiloConfigurator
                     config.Persistence.ActivityPersistenceInterval = 5;
                 });
             })
-            
+
             .ConfigureLogging(logging =>
             {
-                logging.AddConsole();
-                logging.SetMinimumLevel(LogLevel.Warning);
+                _ = logging.AddConsole();
+                _ = logging.SetMinimumLevel(LogLevel.Warning);
                 // Only show errors for Orleans runtime during tests
-                logging.AddFilter("Orleans", LogLevel.Error);
-                logging.AddFilter("Microsoft", LogLevel.Error);
+                _ = logging.AddFilter("Orleans", LogLevel.Error);
+                _ = logging.AddFilter("Microsoft", LogLevel.Error);
                 // But allow our Orleans components to log at Debug level
-                logging.AddFilter("AIChat.Orleans", LogLevel.Debug);
+                _ = logging.AddFilter("AIChat.Orleans", LogLevel.Debug);
             });
     }
 }

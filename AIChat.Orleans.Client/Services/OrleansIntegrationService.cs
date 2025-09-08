@@ -4,8 +4,6 @@ using AIChat.Orleans.Contracts;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.FeatureManagement;
-using Orleans;
-using Orleans.Runtime;
 using Polly;
 using Polly.CircuitBreaker;
 using Polly.Retry;
@@ -159,12 +157,12 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
         if (string.IsNullOrEmpty(userId))
         {
             _logger.LogWarning("CheckUserHealthAsync called with empty userId");
-            return new HealthCheckResult 
-            { 
-                IsHealthy = false, 
+            return new HealthCheckResult
+            {
+                IsHealthy = false,
                 GrainId = userId,
                 CheckedAt = DateTime.UtcNow,
-                Warnings = new List<string> { "Invalid user ID provided" }
+                Warnings = ["Invalid user ID provided"]
             };
         }
 
@@ -172,12 +170,12 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
         {
             if (!await _featureManager.IsEnabledAsync("OrleansIntegration"))
             {
-                return new HealthCheckResult 
-                { 
-                    IsHealthy = false, 
+                return new HealthCheckResult
+                {
+                    IsHealthy = false,
                     GrainId = userId,
                     CheckedAt = DateTime.UtcNow,
-                    Warnings = new List<string> { "Orleans integration disabled" }
+                    Warnings = ["Orleans integration disabled"]
                 };
             }
 
@@ -192,12 +190,12 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to check health for {UserId}: {Error}", userId, ex.Message);
-            return new HealthCheckResult 
-            { 
-                IsHealthy = false, 
+            return new HealthCheckResult
+            {
+                IsHealthy = false,
                 GrainId = userId,
                 CheckedAt = DateTime.UtcNow,
-                Warnings = new List<string> { $"Orleans health check failed: {ex.Message}" }
+                Warnings = [$"Orleans health check failed: {ex.Message}"]
             };
         }
     }
@@ -322,7 +320,7 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
         // Add timeout strategy first (innermost)
         if (_resilienceConfig.Timeout.Enabled)
         {
-            pipelineBuilder.AddTimeout(new TimeoutStrategyOptions
+            _ = pipelineBuilder.AddTimeout(new TimeoutStrategyOptions
             {
                 Timeout = TimeSpan.FromSeconds(_resilienceConfig.Timeout.DefaultTimeoutSeconds),
                 OnTimeout = args =>
@@ -337,7 +335,7 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
         // Add retry strategy
         if (_resilienceConfig.RetryPolicy.Enabled)
         {
-            pipelineBuilder.AddRetry(new RetryStrategyOptions
+            _ = pipelineBuilder.AddRetry(new RetryStrategyOptions
             {
                 ShouldHandle = new PredicateBuilder().Handle<Exception>(ex =>
                 {
@@ -365,7 +363,7 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
         // Add circuit breaker strategy (outermost)
         if (_resilienceConfig.CircuitBreaker.Enabled)
         {
-            pipelineBuilder.AddCircuitBreaker(new CircuitBreakerStrategyOptions
+            _ = pipelineBuilder.AddCircuitBreaker(new CircuitBreakerStrategyOptions
             {
                 ShouldHandle = new PredicateBuilder().Handle<Exception>(),
                 FailureRatio = (double)_resilienceConfig.CircuitBreaker.FailureThreshold / 100.0,

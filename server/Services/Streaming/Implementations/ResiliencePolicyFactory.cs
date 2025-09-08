@@ -1,7 +1,5 @@
 using AIChat.Server.Services.Streaming.Abstractions;
 using Polly;
-using Polly.CircuitBreaker;
-using Polly.Extensions.Http;
 
 namespace AIChat.Server.Services.Streaming.Implementations;
 
@@ -54,7 +52,7 @@ public class ResiliencePolicyFactory : IResiliencePolicyFactory
         ArgumentNullException.ThrowIfNull(options);
 
         return Policy
-            .Handle<Exception>(ex => !(ex is OperationCanceledException))
+            .Handle<Exception>(ex => ex is not OperationCanceledException)
             .WaitAndRetryAsync(
                 options.MaxAttempts,
                 retryAttempt => CalculateRetryDelay(retryAttempt, options),
@@ -79,7 +77,7 @@ public class ResiliencePolicyFactory : IResiliencePolicyFactory
 
         // For Polly v8, using the advanced circuit breaker with sampling
         return Policy
-            .Handle<Exception>(ex => !(ex is OperationCanceledException))
+            .Handle<Exception>(ex => ex is not OperationCanceledException)
             .AdvancedCircuitBreakerAsync(
                 failureThreshold: 0.5, // 50% failure rate
                 samplingDuration: TimeSpan.FromSeconds(options.RecoveryTimeoutSeconds / 2),
@@ -134,7 +132,7 @@ public class ResiliencePolicyFactory : IResiliencePolicyFactory
         return TimeSpan.FromMilliseconds(delayMs);
     }
 
-    private IAsyncPolicy WrapWithStateCallback(
+    private static IAsyncPolicy WrapWithStateCallback(
         IAsyncPolicy policy,
         string streamId,
         Action<string, ResilienceState> onStateChange,
@@ -145,7 +143,7 @@ public class ResiliencePolicyFactory : IResiliencePolicyFactory
         return policy;
     }
 
-    private IAsyncPolicy WrapWithCircuitStateCallback(
+    private static IAsyncPolicy WrapWithCircuitStateCallback(
         IAsyncPolicy policy,
         string streamId,
         Action<string, ResilienceState> onStateChange)

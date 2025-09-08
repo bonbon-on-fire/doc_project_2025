@@ -90,7 +90,7 @@ public sealed class ResilientStreamManager : IResilientStreamManager
         ArgumentNullException.ThrowIfNull(formatter);
 
         var context = CreateStreamContext(streamId, httpResponse);
-        
+
         if (!_activeStreams.TryAdd(streamId, context))
         {
             throw new InvalidOperationException($"Stream {streamId} is already active");
@@ -99,10 +99,10 @@ public sealed class ResilientStreamManager : IResilientStreamManager
         try
         {
             _logger.LogInformation("Starting resilient stream processing for {StreamId}", streamId);
-            
+
             // Create resilience pipeline with Polly
             var resiliencePipeline = CreateResiliencePipeline(context);
-            
+
             // Process stream with resilience
             await resiliencePipeline.ExecuteAsync(async (ct) =>
             {
@@ -114,8 +114,8 @@ public sealed class ResilientStreamManager : IResilientStreamManager
             }, cancellationToken);
 
             context.State = StreamState.Completed;
-            Interlocked.Increment(ref _totalStreamsProcessed);
-            
+            _ = Interlocked.Increment(ref _totalStreamsProcessed);
+
             _logger.LogInformation("Stream {StreamId} completed successfully", streamId);
         }
         catch (OperationCanceledException)
@@ -135,7 +135,7 @@ public sealed class ResilientStreamManager : IResilientStreamManager
         {
             // Cleanup
             await CleanupStreamContextAsync(context);
-            _activeStreams.TryRemove(streamId, out _);
+            _ = _activeStreams.TryRemove(streamId, out _);
         }
     }
 
@@ -155,11 +155,11 @@ public sealed class ResilientStreamManager : IResilientStreamManager
         {
             _logger.LogInformation("Attempting to recover stream {StreamId}", streamId);
             context.State = StreamState.Recovering;
-            Interlocked.Increment(ref _totalRecoveryAttempts);
+            _ = Interlocked.Increment(ref _totalRecoveryAttempts);
 
             // Replay buffered messages
             var replayedCount = await ReplayBufferedMessagesAsync(context, cancellationToken);
-            
+
             // Recover partial messages if enabled
             if (_configuration.PartialRecovery.Enabled)
             {
@@ -167,12 +167,12 @@ public sealed class ResilientStreamManager : IResilientStreamManager
             }
 
             context.State = StreamState.Active;
-            Interlocked.Increment(ref _successfulRecoveries);
-            
+            _ = Interlocked.Increment(ref _successfulRecoveries);
+
             _logger.LogInformation(
                 "Successfully recovered stream {StreamId}, replayed {Count} messages",
                 streamId, replayedCount);
-            
+
             return true;
         }
         catch (Exception ex)
@@ -184,7 +184,7 @@ public sealed class ResilientStreamManager : IResilientStreamManager
         }
         finally
         {
-            _recoveryLock.Release();
+            _ = _recoveryLock.Release();
         }
     }
 
@@ -248,9 +248,9 @@ public sealed class ResilientStreamManager : IResilientStreamManager
         context.CircuitState = CircuitState.Closed;
         context.ConsecutiveFailures = 0;
         context.ConsecutiveSuccesses = 0;
-        
+
         _logger.LogInformation("Circuit breaker reset for stream {StreamId}", streamId);
-        
+
         return await Task.FromResult(true);
     }
 
@@ -269,7 +269,7 @@ public sealed class ResilientStreamManager : IResilientStreamManager
         }
 
         _logger.LogInformation("Cleared {Count} buffered messages for stream {StreamId}", count, streamId);
-        
+
         return await Task.FromResult(count);
     }
 
@@ -349,7 +349,7 @@ public sealed class ResilientStreamManager : IResilientStreamManager
     {
         // Create retry policy with exponential backoff
         var retryPolicy = Policy
-            .Handle<Exception>(ex => !(ex is OperationCanceledException))
+            .Handle<Exception>(ex => ex is not OperationCanceledException)
             .WaitAndRetryAsync(
                 _configuration.Reconnection.MaxAttempts,
                 retryAttempt => CalculateRetryDelay(retryAttempt),
@@ -363,7 +363,7 @@ public sealed class ResilientStreamManager : IResilientStreamManager
 
         // Create circuit breaker policy
         var circuitBreakerPolicy = Policy
-            .Handle<Exception>(ex => !(ex is OperationCanceledException))
+            .Handle<Exception>(ex => ex is not OperationCanceledException)
             .CircuitBreakerAsync(
                 _configuration.CircuitBreaker.FailureThreshold,
                 TimeSpan.FromSeconds(_configuration.CircuitBreaker.RecoveryTimeoutSeconds),
@@ -402,7 +402,7 @@ public sealed class ResilientStreamManager : IResilientStreamManager
 
         // Add jitter
         var jitter = Random.Shared.Next(0, _configuration.Reconnection.JitterMs);
-        
+
         return TimeSpan.FromMilliseconds(exponentialDelay + jitter);
     }
 
@@ -413,11 +413,11 @@ public sealed class ResilientStreamManager : IResilientStreamManager
         CancellationToken cancellationToken)
     {
         var bridge = _bridgeFactory.CreateBridge();
-        
+
         try
         {
             var processingStopwatch = Stopwatch.StartNew();
-            
+
             // Create a wrapper stream that handles buffering and recovery
             var resilientStream = CreateResilientStream(
                 context,
@@ -434,7 +434,7 @@ public sealed class ResilientStreamManager : IResilientStreamManager
 
             context.TotalProcessingTimeMs += processingStopwatch.ElapsedMilliseconds;
             context.ConsecutiveSuccesses++;
-            
+
             // Reset circuit breaker state on success
             if (context.ConsecutiveSuccesses >= _configuration.CircuitBreaker.SuccessThreshold &&
                 context.CircuitState == CircuitState.HalfOpen)
@@ -474,14 +474,14 @@ public sealed class ResilientStreamManager : IResilientStreamManager
                 {
                     throw;
                 }
-                
+
                 string? formattedData = null;
                 bool shouldYield = false;
-                
+
                 try
                 {
                     formattedData = formatter(item);
-                    
+
                     // Buffer the message for potential recovery
                     if (_configuration.Buffer.Size > 0)
                     {
@@ -503,7 +503,7 @@ public sealed class ResilientStreamManager : IResilientStreamManager
 
                     context.MessagesProcessed++;
                     context.LastActivityTime = DateTime.UtcNow;
-                    Interlocked.Increment(ref _totalMessagesProcessed);
+                    _ = Interlocked.Increment(ref _totalMessagesProcessed);
 
                     shouldYield = true;
                 }
@@ -514,7 +514,7 @@ public sealed class ResilientStreamManager : IResilientStreamManager
                     context.LastError = ex.Message;
                     lastException = ex;
 
-                    _logger.LogError(ex, 
+                    _logger.LogError(ex,
                         "Error processing stream item for {StreamId}, sequence: {Sequence}",
                         context.StreamId, chunkSequence);
 
@@ -532,7 +532,7 @@ public sealed class ResilientStreamManager : IResilientStreamManager
                         break; // Exit the loop to throw the exception
                     }
                 }
-                
+
                 // Yield outside of try-catch
                 if (shouldYield && formattedData != null)
                 {
@@ -544,7 +544,7 @@ public sealed class ResilientStreamManager : IResilientStreamManager
         {
             await enumerator.DisposeAsync();
         }
-        
+
         // Throw any pending exception after the loop
         if (lastException != null && !_configuration.CircuitBreaker.UseFallback)
         {
@@ -559,11 +559,11 @@ public sealed class ResilientStreamManager : IResilientStreamManager
     {
         // Check TTL and remove expired messages
         var expiryTime = DateTime.UtcNow.AddMinutes(-_configuration.Buffer.TTLMinutes);
-        
+
         while (context.MessageBuffer.Reader.TryPeek(out var oldMessage) &&
                oldMessage.Timestamp < expiryTime)
         {
-            context.MessageBuffer.Reader.TryRead(out _);
+            _ = context.MessageBuffer.Reader.TryRead(out _);
         }
 
         // Try to write to buffer
@@ -573,7 +573,7 @@ public sealed class ResilientStreamManager : IResilientStreamManager
                 "Buffer full for stream {StreamId}, applying overflow strategy: {Strategy}",
                 context.StreamId, _configuration.Buffer.OverflowStrategy);
         }
-        
+
         // Add await to make the method actually async
         await Task.CompletedTask;
     }
@@ -585,7 +585,7 @@ public sealed class ResilientStreamManager : IResilientStreamManager
         {
             // Remove oldest partial message
             var oldestKey = context.PartialMessages.Keys.OrderBy(k => k).FirstOrDefault();
-            context.PartialMessages.TryRemove(oldestKey, out _);
+            _ = context.PartialMessages.TryRemove(oldestKey, out _);
         }
 
         var partialMessage = new PartialMessage
@@ -624,7 +624,7 @@ public sealed class ResilientStreamManager : IResilientStreamManager
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, 
+                _logger.LogError(ex,
                     "Failed to replay message {Sequence} for stream {StreamId}",
                     message.SequenceNumber, context.StreamId);
                 break;
@@ -655,7 +655,7 @@ public sealed class ResilientStreamManager : IResilientStreamManager
             var age = DateTime.UtcNow - partial.Timestamp;
             if (age.TotalSeconds > _configuration.PartialRecovery.ChunkTimeoutSeconds)
             {
-                context.PartialMessages.TryRemove(partial.SequenceNumber, out _);
+                _ = context.PartialMessages.TryRemove(partial.SequenceNumber, out _);
                 continue;
             }
 
@@ -664,12 +664,12 @@ public sealed class ResilientStreamManager : IResilientStreamManager
                 // Send partial message with recovery marker
                 var recoveryData = $"data: {{\"recovery\":true,\"sequence\":{partial.SequenceNumber},\"data\":{partial.Data}}}\n\n";
                 var bytes = System.Text.Encoding.UTF8.GetBytes(recoveryData);
-                
+
                 await context.HttpResponse.Body.WriteAsync(bytes, cancellationToken);
                 await context.HttpResponse.Body.FlushAsync(cancellationToken);
 
                 // Remove successfully recovered message
-                context.PartialMessages.TryRemove(partial.SequenceNumber, out _);
+                _ = context.PartialMessages.TryRemove(partial.SequenceNumber, out _);
             }
             catch (Exception ex)
             {
@@ -686,7 +686,7 @@ public sealed class ResilientStreamManager : IResilientStreamManager
         try
         {
             // Complete the buffer channel
-            context.MessageBuffer.Writer.TryComplete();
+            _ = context.MessageBuffer.Writer.TryComplete();
 
             // Clear partial messages
             context.PartialMessages.Clear();
@@ -712,12 +712,12 @@ public sealed class ResilientStreamManager : IResilientStreamManager
         try
         {
             var unhealthyStreams = _activeStreams.Values
-                .Where(s => s.State == StreamState.Failed || 
+                .Where(s => s.State == StreamState.Failed ||
                            s.CircuitState == CircuitState.Open ||
                            (DateTime.UtcNow - s.LastActivityTime).TotalMinutes > 5)
                 .ToList();
 
-            if (unhealthyStreams.Any())
+            if (unhealthyStreams.Count != 0)
             {
                 _logger.LogWarning(
                     "Health check found {Count} unhealthy streams",
@@ -737,9 +737,9 @@ public sealed class ResilientStreamManager : IResilientStreamManager
         }
     }
 
-    private bool DetermineHealthStatus(List<StreamContext> streams)
+    private static bool DetermineHealthStatus(List<StreamContext> streams)
     {
-        if (!streams.Any())
+        if (streams.Count == 0)
             return true;
 
         var failedPercentage = (double)streams.Count(s => s.State == StreamState.Failed) / streams.Count * 100;
@@ -764,7 +764,7 @@ public sealed class ResilientStreamManager : IResilientStreamManager
 
         var failedStreams = _activeStreams.Values.Count(s => s.State == StreamState.Failed);
         var totalAttempted = _totalStreamsProcessed + failedStreams;
-        
+
         return ((double)_totalStreamsProcessed / totalAttempted) * 100;
     }
 
@@ -779,10 +779,10 @@ public sealed class ResilientStreamManager : IResilientStreamManager
             messages.Add($"Recovery success rate: {(_successfulRecoveries / (double)Math.Max(1, _totalRecoveryAttempts) * 100):F1}%");
         }
 
-        var inactiveStreams = streams.Where(s => 
+        var inactiveStreams = streams.Where(s =>
             (DateTime.UtcNow - s.LastActivityTime).TotalMinutes > 1).ToList();
-        
-        if (inactiveStreams.Any())
+
+        if (inactiveStreams.Count != 0)
         {
             messages.Add($"Warning: {inactiveStreams.Count} inactive streams detected");
         }
@@ -792,18 +792,17 @@ public sealed class ResilientStreamManager : IResilientStreamManager
 
     private PartialRecoveryStats? GetPartialRecoveryStats(StreamContext context)
     {
-        if (!_configuration.PartialRecovery.Enabled || context.PartialMessages.IsEmpty)
-            return null;
-
-        return new PartialRecoveryStats
-        {
-            PartialMessagesStored = context.PartialMessages.Count,
-            SuccessfulRecoveries = 0, // Would need to track this per context
-            TotalSizeBytes = context.PartialMessages.Values.Sum(m => m.SizeBytes),
-            LastChunkSequence = context.PartialMessages.Values
+        return !_configuration.PartialRecovery.Enabled || context.PartialMessages.IsEmpty
+            ? null
+            : new PartialRecoveryStats
+            {
+                PartialMessagesStored = context.PartialMessages.Count,
+                SuccessfulRecoveries = 0, // Would need to track this per context
+                TotalSizeBytes = context.PartialMessages.Values.Sum(m => m.SizeBytes),
+                LastChunkSequence = context.PartialMessages.Values
                 .OrderByDescending(m => m.SequenceNumber)
                 .FirstOrDefault()?.SequenceNumber
-        };
+            };
     }
 
     #endregion

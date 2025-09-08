@@ -1,4 +1,3 @@
-using AIChat.Orleans.Contracts;
 using Orleans;
 
 namespace AIChat.Orleans.Contracts;

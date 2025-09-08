@@ -60,9 +60,9 @@ public abstract class OperationCommandBase : IOperationCommand
         }
 
         return errors.Count > 0
-            ? CommandValidationResult.Failed(errors.ToArray())
+            ? CommandValidationResult.Failed([.. errors])
             : customValidation.IsValid && customValidation.Warnings.Count > 0
-                ? CommandValidationResult.WithWarnings(customValidation.Warnings.ToArray())
+                ? CommandValidationResult.WithWarnings([.. customValidation.Warnings])
                 : CommandValidationResult.Success();
     }
 

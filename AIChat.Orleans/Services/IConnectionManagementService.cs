@@ -113,13 +113,13 @@ public interface IConnectionManagementService
 /// </summary>
 public class ConnectionManagementService : IConnectionManagementService
 {
-    private readonly Microsoft.Extensions.Logging.ILogger<ConnectionManagementService> _logger;
+    private readonly ILogger<ConnectionManagementService> _logger;
 
     /// <summary>
     /// Initializes a new instance of the ConnectionManagementService.
     /// </summary>
     /// <param name="logger">Logger for service operations</param>
-    public ConnectionManagementService(Microsoft.Extensions.Logging.ILogger<ConnectionManagementService> logger)
+    public ConnectionManagementService(ILogger<ConnectionManagementService> logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -159,7 +159,7 @@ public class ConnectionManagementService : IConnectionManagementService
                     ClientId = clientId,
                     ConnectedAt = now,
                     LastActivity = now,
-                    SubscribedChatIds = new HashSet<string>()
+                    SubscribedChatIds = []
                 };
 
                 state.Connections[connectionId] = connectionInfo;
@@ -242,7 +242,7 @@ public class ConnectionManagementService : IConnectionManagementService
 
                     if (subscription.ConnectionCount <= 0)
                     {
-                        state.ActiveChats.Remove(chatId);
+                        _ = state.ActiveChats.Remove(chatId);
                         _logger.LogDebug(
                             "Removed chat subscription {ChatId} for user {UserId} (no remaining connections)",
                             chatId, state.UserId);
@@ -262,7 +262,7 @@ public class ConnectionManagementService : IConnectionManagementService
             }
 
             // Remove the connection
-            state.Connections.Remove(connectionId);
+            _ = state.Connections.Remove(connectionId);
 
             // Update metrics
             state.Metrics.ActiveConnections = state.Connections.Count;
@@ -275,7 +275,7 @@ public class ConnectionManagementService : IConnectionManagementService
                 Metadata = JsonSerializer.Serialize(new
                 {
                     ConnectionId = connectionId,
-                    ClientId = connectionInfo.ClientId,
+                    connectionInfo.ClientId,
                     SubscribedChats = affectedChatIds,
                     ConnectedDuration = (now - connectionInfo.ConnectedAt).TotalMinutes
                 }),
@@ -431,7 +431,7 @@ public class ConnectionManagementService : IConnectionManagementService
 
                     if (subscription.ConnectionCount <= 0)
                     {
-                        state.ActiveChats.Remove(chatId);
+                        _ = state.ActiveChats.Remove(chatId);
                         _logger.LogDebug(
                             "Removed chat subscription {ChatId} for user {UserId} (no remaining connections)",
                             chatId, state.UserId);
@@ -613,11 +613,11 @@ public class ConnectionManagementService : IConnectionManagementService
                 ClientId = clientId,
                 ConnectedAt = now,
                 LastActivity = now,
-                SubscribedChatIds = new HashSet<string>(oldConnection.SubscribedChatIds)
+                SubscribedChatIds = [.. oldConnection.SubscribedChatIds]
             };
 
             // Remove old connection and add new one
-            state.Connections.Remove(oldConnectionId);
+            _ = state.Connections.Remove(oldConnectionId);
             state.Connections[newConnectionId] = newConnection;
 
             // Update metrics (connection count should remain the same)

@@ -16,7 +16,10 @@ public class LoadTestingConfiguration
     public int StableDurationSeconds { get; set; } = 600;
     public int RampDownDurationSeconds { get; set; } = 60;
 
-    public string GetFullSignalRUrl() => ServerBaseUrl.TrimEnd('/') + SignalRHubUrl;
+    public string GetFullSignalRUrl()
+    {
+        return ServerBaseUrl.TrimEnd('/') + SignalRHubUrl;
+    }
 }
 
 /// <summary>

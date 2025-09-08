@@ -48,7 +48,10 @@ public class SystemClock : ISystemClock
     public DateOnly UtcToday => DateOnly.FromDateTime(DateTime.UtcNow);
 
     /// <inheritdoc />
-    public long GetTimestamp() => Environment.TickCount64;
+    public long GetTimestamp()
+    {
+        return Environment.TickCount64;
+    }
 
     /// <inheritdoc />
     public TimeSpan GetElapsedTime(long startTimestamp)

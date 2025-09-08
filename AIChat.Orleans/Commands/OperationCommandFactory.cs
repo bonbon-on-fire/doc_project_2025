@@ -237,7 +237,7 @@ public class OperationCommandFactory : IOperationCommandFactory
         }
 
         return errors.Count > 0
-            ? CommandValidationResult.Failed(errors.ToArray())
+            ? CommandValidationResult.Failed([.. errors])
             : CommandValidationResult.Success();
     }
 
@@ -246,12 +246,9 @@ public class OperationCommandFactory : IOperationCommandFactory
     /// </summary>
     private ProcessMessageCommand CreateProcessMessageCommandFromParameters(string operationId, string chatId, string userId, object parameters)
     {
-        if (parameters is not ChatMessage message)
-        {
-            throw new ArgumentException("Parameters must be a ChatMessage for message processing operations", nameof(parameters));
-        }
-
-        return CreateProcessMessageCommand(operationId, chatId, userId, message);
+        return parameters is not ChatMessage message
+            ? throw new ArgumentException("Parameters must be a ChatMessage for message processing operations", nameof(parameters))
+            : CreateProcessMessageCommand(operationId, chatId, userId, message);
     }
 
     /// <summary>

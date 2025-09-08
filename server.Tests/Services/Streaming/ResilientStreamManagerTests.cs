@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Threading.Channels;
 using AIChat.Server.Configuration;
 using AIChat.Server.HealthChecks;
 using AIChat.Server.Services.Streaming;
@@ -21,6 +20,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
     private readonly ResilientStreamManager _manager;
     private readonly Mock<HttpResponse> _httpResponseMock;
     private readonly Mock<HttpContext> _httpContextMock;
+    private static readonly string[] stringArray = new[] { "data" };
 
     public ResilientStreamManagerTests()
     {
@@ -29,7 +29,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
         _bridgeMock = new Mock<IStreamingBridge>();
         _httpResponseMock = new Mock<HttpResponse>();
         _httpContextMock = new Mock<HttpContext>();
-        
+
         _configuration = new ResilientStreamingConfiguration
         {
             Enabled = true,
@@ -73,10 +73,10 @@ public class ResilientStreamManagerTests : IAsyncDisposable
             }
         };
 
-        _bridgeFactoryMock.Setup(f => f.CreateBridge()).Returns(_bridgeMock.Object);
-        
+        _ = _bridgeFactoryMock.Setup(f => f.CreateBridge()).Returns(_bridgeMock.Object);
+
         // Setup the bridge mock to properly handle the stream
-        _bridgeMock.Setup(b => b.ConvertGrainToHttpStreamAsync(
+        _ = _bridgeMock.Setup(b => b.ConvertGrainToHttpStreamAsync(
             It.IsAny<IAsyncEnumerable<string>>(),
             It.IsAny<HttpResponse>(),
             It.IsAny<Func<string, string>>(),
@@ -91,17 +91,17 @@ public class ResilientStreamManagerTests : IAsyncDisposable
                         await Task.Delay(1, ct);
                     }
                 });
-        
-        _bridgeMock.Setup(b => b.DisposeAsync()).Returns(ValueTask.CompletedTask);
-        
+
+        _ = _bridgeMock.Setup(b => b.DisposeAsync()).Returns(ValueTask.CompletedTask);
+
         var options = Options.Create(_configuration);
         _manager = new ResilientStreamManager(_loggerMock.Object, _bridgeFactoryMock.Object, options);
-        
+
         // Setup HTTP response mock
         var bodyStream = new MemoryStream();
-        _httpResponseMock.Setup(r => r.Body).Returns(bodyStream);
-        _httpResponseMock.Setup(r => r.HttpContext).Returns(_httpContextMock.Object);
-        _httpContextMock.Setup(c => c.RequestAborted).Returns(CancellationToken.None);
+        _ = _httpResponseMock.Setup(r => r.Body).Returns(bodyStream);
+        _ = _httpResponseMock.Setup(r => r.HttpContext).Returns(_httpContextMock.Object);
+        _ = _httpContextMock.Setup(c => c.RequestAborted).Returns(CancellationToken.None);
     }
 
     [Fact]
@@ -128,7 +128,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
             _httpResponseMock.Object,
             It.IsAny<Func<string, string>>(),
             It.IsAny<CancellationToken>()), Times.Once);
-        
+
         var metrics = await _manager.GetStreamMetricsAsync(streamId);
         Assert.Null(metrics); // Stream should be cleaned up after completion
     }
@@ -138,7 +138,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
     {
         // Arrange
         var streamId = "test-stream-2";
-        var grainStream = CreateAsyncEnumerable(new[] { "data" });
+        var grainStream = CreateAsyncEnumerable(stringArray);
         var formatter = new Func<string, string>(s => s);
         var cts = new CancellationTokenSource();
 
@@ -163,14 +163,14 @@ public class ResilientStreamManagerTests : IAsyncDisposable
         }
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        _ = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await _manager.ProcessResilientStreamAsync(
                 streamId,
                 grainStream,
                 _httpResponseMock.Object,
                 formatter,
                 CancellationToken.None));
-        
+
         // Cleanup
         cts.Cancel();
         try { await firstStreamTask; } catch { }
@@ -238,7 +238,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
         Assert.Equal(streamId, metrics.StreamId);
         Assert.Equal(StreamState.Active, metrics.State);
         Assert.Equal(CircuitState.Closed, metrics.CircuitState);
-        
+
         // Cleanup
         cts.Cancel();
         try { await streamTask; } catch { }
@@ -274,7 +274,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
 
         // Assert
         Assert.True(result);
-        
+
         // Cleanup
         cts.Cancel();
         try { await streamTask; } catch { }
@@ -310,7 +310,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
 
         // Assert
         Assert.True(count >= 0);
-        
+
         // Cleanup
         cts.Cancel();
         try { await streamTask; } catch { }
@@ -357,7 +357,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
         {
             Assert.Contains(id, activeIds);
         }
-        
+
         // Cleanup
         foreach (var cts in cancellationTokens)
         {
@@ -394,12 +394,12 @@ public class ResilientStreamManagerTests : IAsyncDisposable
             }
             await Task.Delay(50);
         }
-        
+
         cts.Cancel();
 
         // Assert
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await streamTask);
-        
+        _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await streamTask);
+
         // Verify stream is cleaned up
         var metrics = await _manager.GetStreamMetricsAsync(streamId);
         Assert.Null(metrics);
@@ -422,7 +422,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
         };
 
         // Act & Assert
-        Assert.Throws<InvalidOperationException>(() =>
+        _ = Assert.Throws<InvalidOperationException>(() =>
             new ResilientStreamManager(
                 _loggerMock.Object,
                 _bridgeFactoryMock.Object,
@@ -485,7 +485,7 @@ public class ResilientStreamingHealthCheckTests
             SuccessRatePercentage = 95
         };
 
-        _streamManagerMock.Setup(m => m.GetHealthStatusAsync())
+        _ = _streamManagerMock.Setup(m => m.GetHealthStatusAsync())
             .ReturnsAsync(healthStatus);
 
         // Act
@@ -512,7 +512,7 @@ public class ResilientStreamingHealthCheckTests
             SuccessRatePercentage = 60 // Below threshold
         };
 
-        _streamManagerMock.Setup(m => m.GetHealthStatusAsync())
+        _ = _streamManagerMock.Setup(m => m.GetHealthStatusAsync())
             .ReturnsAsync(healthStatus);
 
         // Act
@@ -538,7 +538,7 @@ public class ResilientStreamingHealthCheckTests
             SuccessRatePercentage = 85
         };
 
-        _streamManagerMock.Setup(m => m.GetHealthStatusAsync())
+        _ = _streamManagerMock.Setup(m => m.GetHealthStatusAsync())
             .ReturnsAsync(healthStatus);
 
         // Act
@@ -553,7 +553,7 @@ public class ResilientStreamingHealthCheckTests
     public async Task CheckHealthAsync_ExceptionThrown_ReturnsUnhealthy()
     {
         // Arrange
-        _streamManagerMock.Setup(m => m.GetHealthStatusAsync())
+        _ = _streamManagerMock.Setup(m => m.GetHealthStatusAsync())
             .ThrowsAsync(new InvalidOperationException("Test exception"));
 
         // Act

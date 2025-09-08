@@ -1,12 +1,5 @@
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using AIChat.Server.Services.Streaming.Abstractions;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace AIChat.Server.Services.Streaming.Implementations;
@@ -18,7 +11,7 @@ namespace AIChat.Server.Services.Streaming.Implementations;
 public sealed class BufferManagementService : IBufferManagementService, IHostedService, IDisposable
 {
     private readonly ILogger<BufferManagementService> _logger;
-    private readonly IStreamBuffer _defaultBuffer;
+    private readonly ILoggerFactory _loggerFactory;
     private readonly IConnectionStateTracker _connectionTracker;
     private readonly IBufferReplayService _replayService;
     private readonly IPersistentBufferStore _persistentStore;
@@ -39,19 +32,19 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
     /// </summary>
     public BufferManagementService(
         ILogger<BufferManagementService> logger,
-        IStreamBuffer defaultBuffer,
+        ILoggerFactory loggerFactory,
         IConnectionStateTracker connectionTracker,
         IBufferReplayService replayService,
         IPersistentBufferStore persistentStore,
         IOptions<BufferManagementOptions> options)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _defaultBuffer = defaultBuffer ?? throw new ArgumentNullException(nameof(defaultBuffer));
+        _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
         _connectionTracker = connectionTracker ?? throw new ArgumentNullException(nameof(connectionTracker));
         _replayService = replayService ?? throw new ArgumentNullException(nameof(replayService));
         _persistentStore = persistentStore ?? throw new ArgumentNullException(nameof(persistentStore));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
-        
+
         _buffers = new ConcurrentDictionary<string, IStreamBuffer>();
         _configurations = new ConcurrentDictionary<string, BufferConfiguration>();
         _recoveryLock = new SemaphoreSlim(1, 1);
@@ -126,17 +119,17 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
         var config = configuration ?? GetDefaultConfiguration();
         _configurations[streamId] = config;
 
-        // For now, use the default in-memory buffer
-        // In a full implementation, could create different buffer types based on config
-        var newBuffer = _defaultBuffer;
-        
+        // Create a new InMemoryStreamBuffer instance for this stream
+        var bufferLogger = _loggerFactory.CreateLogger<InMemoryStreamBuffer>();
+        var newBuffer = new InMemoryStreamBuffer(streamId, config, bufferLogger);
+
         if (_buffers.TryAdd(streamId, newBuffer))
         {
             _logger.LogInformation("Created new buffer for stream {StreamId}", streamId);
-            
+
             // Initialize connection tracking
             await _connectionTracker.RecordConnectionAsync(streamId, cancellationToken).ConfigureAwait(false);
-            
+
             return newBuffer;
         }
 
@@ -262,12 +255,12 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
                 if (persistedBuffer != null && !persistedBuffer.IsCorrupted)
                 {
                     messagesFromPersistence = persistedBuffer.Messages.Count;
-                    
+
                     // Add messages back to buffer
                     var buffer = await GetOrCreateBufferAsync(streamId, null, cancellationToken).ConfigureAwait(false);
                     foreach (var message in persistedBuffer.Messages)
                     {
-                        await buffer.AddMessageAsync(message, cancellationToken).ConfigureAwait(false);
+                        _ = await buffer.AddMessageAsync(message, cancellationToken).ConfigureAwait(false);
                     }
                 }
             }
@@ -277,26 +270,26 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
             {
                 var buffer = await GetOrCreateBufferAsync(streamId, null, cancellationToken).ConfigureAwait(false);
                 var stats = await buffer.GetStatisticsAsync().ConfigureAwait(false);
-                
+
                 if (stats.MessageCount > 0)
                 {
                     var messages = await buffer.GetMessagesAsync(cancellationToken).ConfigureAwait(false);
-                    
+
                     // Filter by age if specified
                     var cutoffTime = DateTime.UtcNow - options.MaxMessageAge;
                     var validMessages = messages.Where(m => m.Timestamp >= cutoffTime).ToList();
-                    
+
                     // Replay messages
                     replayResult = await _replayService.ReplayMessagesAsync(
                         streamId, validMessages, httpResponse, options.ReplayOptions, cancellationToken).ConfigureAwait(false);
-                    
+
                     messagesReplayed = replayResult.MessagesReplayed;
                     duplicatesAvoided = replayResult.DuplicatesSkipped;
-                    
+
                     // Update metrics
-                    Interlocked.Increment(ref _totalReplayOperations);
-                    Interlocked.Add(ref _totalMessagesReplayed, messagesReplayed);
-                    Interlocked.Add(ref _totalDuplicatesDetected, duplicatesAvoided);
+                    _ = Interlocked.Increment(ref _totalReplayOperations);
+                    _ = Interlocked.Add(ref _totalMessagesReplayed, messagesReplayed);
+                    _ = Interlocked.Add(ref _totalDuplicatesDetected, duplicatesAvoided);
                 }
             }
 
@@ -381,12 +374,12 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
         var stats = await buffer.GetStatisticsAsync().ConfigureAwait(false);
         var messageCount = stats.MessageCount;
 
-        await buffer.ClearAsync(cancellationToken).ConfigureAwait(false);
+        _ = await buffer.ClearAsync(cancellationToken).ConfigureAwait(false);
 
         // Also clear from persistence if enabled
         if (_options.EnablePersistence)
         {
-            await _persistentStore.DeleteBufferAsync(streamId, cancellationToken).ConfigureAwait(false);
+            _ = await _persistentStore.DeleteBufferAsync(streamId, cancellationToken).ConfigureAwait(false);
         }
 
         _logger.LogInformation("Cleared {MessageCount} messages from buffer for stream {StreamId}", messageCount, streamId);
@@ -438,9 +431,9 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
             streamId, messages, httpResponse, options, cancellationToken).ConfigureAwait(false);
 
         // Update metrics
-        Interlocked.Increment(ref _totalReplayOperations);
-        Interlocked.Add(ref _totalMessagesReplayed, result.MessagesReplayed);
-        Interlocked.Add(ref _totalDuplicatesDetected, result.DuplicatesSkipped);
+        _ = Interlocked.Increment(ref _totalReplayOperations);
+        _ = Interlocked.Add(ref _totalMessagesReplayed, result.MessagesReplayed);
+        _ = Interlocked.Add(ref _totalDuplicatesDetected, result.DuplicatesSkipped);
 
         _logger.LogInformation(
             "Force replayed {MessageCount} messages for stream {StreamId}",
@@ -457,7 +450,7 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
         {
             var startTime = DateTime.UtcNow;
             var streamIds = await _persistentStore.ListPersistedBuffersAsync(cancellationToken).ConfigureAwait(false);
-            
+
             if (streamIds.Count == 0)
             {
                 return new ServiceRecoveryResult
@@ -494,9 +487,9 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
                             var buffer = await GetOrCreateBufferAsync(streamId, null, cancellationToken).ConfigureAwait(false);
                             foreach (var message in persistedBuffer.Messages)
                             {
-                                await buffer.AddMessageAsync(message, cancellationToken).ConfigureAwait(false);
+                                _ = await buffer.AddMessageAsync(message, cancellationToken).ConfigureAwait(false);
                             }
-                            
+
                             buffersRecovered++;
                             totalMessages += persistedBuffer.Messages.Count;
                             recoveredStreamIds.Add(streamId);
@@ -523,7 +516,7 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
         }
         finally
         {
-            _recoveryLock.Release();
+            _ = _recoveryLock.Release();
         }
     }
 
@@ -610,8 +603,8 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
                     expiredMessagesRemoved += stats.MessageCount;
                     spaceReclaimed += stats.TotalSizeBytes;
                     expiredBuffersRemoved++;
-                    
-                    await buffer.ClearAsync(cancellationToken).ConfigureAwait(false);
+
+                    _ = await buffer.ClearAsync(cancellationToken).ConfigureAwait(false);
                 }
             }
 
@@ -648,7 +641,7 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
         {
             _logger.LogError(ex, "Cleanup operation failed");
             errors.Add(ex.Message);
-            
+
             return new CleanupResult
             {
                 Success = false,
@@ -672,7 +665,7 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
         ArgumentNullException.ThrowIfNull(configuration);
 
         _configurations[streamId] = configuration;
-        
+
         // If buffer exists, update its configuration
         if (_buffers.TryGetValue(streamId, out var buffer))
         {
@@ -697,7 +690,7 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
                 if (stats.MessageCount > 0)
                 {
                     var messages = await kvp.Value.GetMessagesAsync(cancellationToken).ConfigureAwait(false);
-                    await _persistentStore.PersistBufferAsync(kvp.Key, messages, null, cancellationToken).ConfigureAwait(false);
+                    _ = await _persistentStore.PersistBufferAsync(kvp.Key, messages, null, cancellationToken).ConfigureAwait(false);
                 }
             }
             catch (Exception ex)

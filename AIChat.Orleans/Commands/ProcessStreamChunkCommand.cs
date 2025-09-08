@@ -80,13 +80,10 @@ public class ProcessStreamChunkCommand : OperationCommandBase<StreamChunk, bool>
             }
         }
 
-        if (errors.Count > 0)
-        {
-            return CommandValidationResult.Failed(errors.ToArray());
-        }
-
-        return warnings.Count > 0
-            ? CommandValidationResult.WithWarnings(warnings.ToArray())
+        return errors.Count > 0
+            ? CommandValidationResult.Failed([.. errors])
+            : warnings.Count > 0
+            ? CommandValidationResult.WithWarnings([.. warnings])
             : CommandValidationResult.Success();
     }
 
@@ -153,7 +150,7 @@ public class ProcessStreamChunkCommand : OperationCommandBase<StreamChunk, bool>
     public override Dictionary<string, object> GetMetadata()
     {
         var metadata = base.GetMetadata();
-        
+
         if (Request != null)
         {
             metadata["StreamOperationId"] = Request.OperationId ?? "null";

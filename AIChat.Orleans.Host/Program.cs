@@ -1,12 +1,7 @@
 using AIChat.Orleans.Configuration;
-using AIChat.Orleans.Contracts;
-using AIChat.Orleans.Grains;
 using AIChat.Orleans.Metrics;
 using Microsoft.ApplicationInsights.AspNetCore.Extensions;
-using Orleans;
 using Orleans.Configuration;
-using Orleans.Hosting;
-using Orleans.Runtime;
 using Serilog;
 using Serilog.Events;
 
@@ -56,23 +51,24 @@ public class Program
     /// </summary>
     /// <param name="args">Command line arguments</param>
     /// <returns>Configured host builder</returns>
-    public static IHostBuilder CreateHostBuilder(string[] args) =>
-        Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder(args)
+    public static IHostBuilder CreateHostBuilder(string[] args)
+    {
+        return Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder(args)
             .ConfigureWebHostDefaults(webBuilder =>
             {
-                webBuilder.Configure(app =>
+                _ = webBuilder.Configure(app =>
                 {
                     // Minimal web host for health checks and dashboard
-                    app.UseRouting();
-                    app.UseEndpoints(endpoints =>
+                    _ = app.UseRouting();
+                    _ = app.UseEndpoints(endpoints =>
                     {
-                        endpoints.MapGet("/health", async context =>
+                        _ = endpoints.MapGet("/health", async context =>
                         {
                             await context.Response.WriteAsync("Orleans Host is running");
                         });
 
                         // Phase 4: Orleans Metrics API endpoint
-                        endpoints.MapGet("/api/orleans/metrics", async context =>
+                        _ = endpoints.MapGet("/api/orleans/metrics", async context =>
                         {
                             var metricsCollector = context.RequestServices.GetRequiredService<IOrleansMetricsCollector>();
                             var summary = await metricsCollector.GetMetricsSummaryAsync();
@@ -85,7 +81,7 @@ public class Program
                             }));
                         });
 
-                        endpoints.MapGet("/api/orleans/metrics/{grainType}", async context =>
+                        _ = endpoints.MapGet("/api/orleans/metrics/{grainType}", async context =>
                         {
                             var grainType = context.Request.RouteValues["grainType"]?.ToString();
                             if (string.IsNullOrEmpty(grainType))
@@ -110,7 +106,7 @@ public class Program
             })
             .UseSerilog((context, configuration) =>
             {
-                configuration
+                _ = configuration
                     .ReadFrom.Configuration(context.Configuration)
                     .MinimumLevel.Information()
                     .MinimumLevel.Override("Orleans", LogEventLevel.Warning)
@@ -129,37 +125,38 @@ public class Program
                 var appInsightsKey = context.Configuration.GetConnectionString("ApplicationInsights");
                 if (!string.IsNullOrEmpty(appInsightsKey))
                 {
-                    configuration.WriteTo.ApplicationInsights(appInsightsKey, TelemetryConverter.Traces);
+                    _ = configuration.WriteTo.ApplicationInsights(appInsightsKey, TelemetryConverter.Traces);
                 }
             })
             .UseOrleans(ConfigureOrleans)
             .ConfigureServices((context, services) =>
             {
                 // Configure Orleans grain settings
-                services.Configure<OrleansGrainConfiguration>(
+                _ = services.Configure<OrleansGrainConfiguration>(
                     context.Configuration.GetSection(OrleansGrainConfiguration.SectionName));
 
                 // Add Application Insights if configured
                 var appInsightsKey = context.Configuration.GetConnectionString("ApplicationInsights");
                 if (!string.IsNullOrEmpty(appInsightsKey))
                 {
-                    services.AddApplicationInsightsTelemetry(new ApplicationInsightsServiceOptions
+                    _ = services.AddApplicationInsightsTelemetry(new ApplicationInsightsServiceOptions
                     {
                         ConnectionString = appInsightsKey
                     });
                 }
 
                 // Add Phase 4: Orleans Metrics Collection
-                services.AddSingleton<IOrleansMetricsCollector, OrleansMetricsCollector>();
+                _ = services.AddSingleton<IOrleansMetricsCollector, OrleansMetricsCollector>();
 
                 // Add ChatServiceProxy for grain LLM processing
                 // Default implementation provides simulated responses
                 // In production, this should be replaced with actual ChatService integration
-                services.AddSingleton<AIChat.Orleans.Services.IChatServiceProxy, AIChat.Orleans.Services.DefaultChatServiceProxy>();
+                _ = services.AddSingleton<AIChat.Orleans.Services.IChatServiceProxy, AIChat.Orleans.Services.DefaultChatServiceProxy>();
 
                 // Add health checks
-                services.AddHealthChecks();
+                _ = services.AddHealthChecks();
             });
+    }
 
     /// <summary>
     /// Configures Orleans silo with environment-specific settings.
@@ -172,7 +169,7 @@ public class Program
         var environment = context.HostingEnvironment;
 
         // Basic silo configuration
-        siloBuilder
+        _ = siloBuilder
             .Configure<ClusterOptions>(options =>
             {
                 options.ClusterId = configuration.GetValue<string>("Orleans:ClusterId") ?? "doc-chat-cluster";
@@ -205,20 +202,20 @@ public class Program
         }
 
         // Add startup task for initialization
-        siloBuilder.AddStartupTask<OrleansStartupTask>();
+        _ = siloBuilder.AddStartupTask<OrleansStartupTask>();
 
         // Configure logging
-        siloBuilder.ConfigureLogging(logging =>
+        _ = siloBuilder.ConfigureLogging(logging =>
         {
-            logging.ClearProviders();
-            logging.AddSerilog();
+            _ = logging.ClearProviders();
+            _ = logging.AddSerilog();
         });
 
         // Note: GrainPlacementOptions configuration updated for Orleans 9.x
         // ResourceOptimizedPlacement is used by default
 
         // Configure grain collection
-        siloBuilder.Configure<GrainCollectionOptions>(options =>
+        _ = siloBuilder.Configure<GrainCollectionOptions>(options =>
         {
             options.CollectionAge = TimeSpan.FromMinutes(30);
             options.DeactivationTimeout = TimeSpan.FromMinutes(5);
@@ -235,7 +232,7 @@ public class Program
     {
         Log.Information("Configuring Orleans for Development environment");
 
-        siloBuilder
+        _ = siloBuilder
             .UseLocalhostClustering()
             .AddMemoryGrainStorage("UserGrainStorage")
             .AddMemoryGrainStorage("PubSubStore");
@@ -257,11 +254,11 @@ public class Program
         // Phase 1: Use localhost clustering and memory storage for simplicity
         // TODO: Implement Azure storage configuration for Orleans 9.x in later phases
         Log.Information("Phase 1 configuration: Using localhost clustering and memory storage");
-        siloBuilder.UseLocalhostClustering();
-        siloBuilder.AddMemoryGrainStorage("UserGrainStorage");
+        _ = siloBuilder.UseLocalhostClustering();
+        _ = siloBuilder.AddMemoryGrainStorage("UserGrainStorage");
 
         // Always use memory for PubSub in this phase
-        siloBuilder.AddMemoryGrainStorage("PubSubStore");
+        _ = siloBuilder.AddMemoryGrainStorage("PubSubStore");
     }
 }
 

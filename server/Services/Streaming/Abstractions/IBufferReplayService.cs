@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace AIChat.Server.Services.Streaming.Abstractions;
 
 /// <summary>
@@ -163,8 +158,8 @@ public record ReplayResult
     /// <summary>
     /// Gets the throughput in messages per second.
     /// </summary>
-    public double MessageThroughput => Duration.TotalSeconds > 0 
-        ? MessagesReplayed / Duration.TotalSeconds 
+    public double MessageThroughput => Duration.TotalSeconds > 0
+        ? MessagesReplayed / Duration.TotalSeconds
         : 0;
 }
 
@@ -257,7 +252,7 @@ public record ReplayStatistics
     /// <summary>
     /// Gets the duplicate detection rate.
     /// </summary>
-    public double DuplicateRate => TotalMessagesReplayed > 0 
-        ? (double)TotalDuplicatesDetected / (TotalMessagesReplayed + TotalDuplicatesDetected) * 100 
+    public double DuplicateRate => TotalMessagesReplayed > 0
+        ? (double)TotalDuplicatesDetected / (TotalMessagesReplayed + TotalDuplicatesDetected) * 100
         : 0;
 }

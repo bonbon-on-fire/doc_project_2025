@@ -1,10 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using AIChat.Server.Services.Streaming.Abstractions;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 
 namespace AIChat.Server.Controllers;
 
@@ -66,11 +61,7 @@ public class BufferManagementController : ControllerBase
         try
         {
             var status = await _bufferService.GetBufferStatusAsync(streamId);
-            if (status == null)
-            {
-                return NotFound(new { error = $"Buffer not found for stream {streamId}" });
-            }
-            return Ok(status);
+            return status == null ? NotFound(new { error = $"Buffer not found for stream {streamId}" }) : Ok(status);
         }
         catch (Exception ex)
         {
@@ -106,7 +97,7 @@ public class BufferManagementController : ControllerBase
                 }
             }
 
-            _logger.LogInformation("Cleared {MessageCount} messages from buffer for stream {StreamId}", 
+            _logger.LogInformation("Cleared {MessageCount} messages from buffer for stream {StreamId}",
                 clearedCount, streamId);
 
             return Ok(new ClearBufferResponse
@@ -178,7 +169,7 @@ public class BufferManagementController : ControllerBase
         {
             // Return the default configuration from statistics
             var stats = await _bufferService.GetStatisticsAsync();
-            
+
             return Ok(new BufferConfigurationResponse
             {
                 DefaultMaxMessages = 1000,
@@ -213,7 +204,7 @@ public class BufferManagementController : ControllerBase
     [ProducesResponseType(typeof(ConfigureBufferResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ConfigureBuffer(
-        string streamId, 
+        string streamId,
         [FromBody] ConfigureBufferRequest request,
         CancellationToken cancellationToken)
     {
@@ -300,8 +291,8 @@ public class BufferManagementController : ControllerBase
             // In a real implementation, this would need to be handled differently
             _logger.LogWarning("Force replay requested for stream {StreamId} but requires HTTP response context", streamId);
 
-            return BadRequest(new 
-            { 
+            return BadRequest(new
+            {
                 error = "Force replay requires an active SSE/streaming connection",
                 message = "Please use the streaming endpoint to replay messages"
             });
@@ -329,7 +320,7 @@ public class BufferManagementController : ControllerBase
         try
         {
             var result = await _bufferService.PerformCleanupAsync(cancellationToken);
-            
+
             _logger.LogInformation(
                 "Cleanup completed. Buffers removed: {BuffersRemoved}, Messages removed: {MessagesRemoved}",
                 result.ExpiredBuffersRemoved, result.ExpiredMessagesRemoved);
@@ -359,7 +350,7 @@ public class BufferManagementController : ControllerBase
         try
         {
             var result = await _bufferService.RecoverFromPersistenceAsync(cancellationToken);
-            
+
             _logger.LogInformation(
                 "Recovery completed. Buffers recovered: {BuffersRecovered}, Messages recovered: {MessagesRecovered}",
                 result.BuffersRecovered, result.TotalMessagesRecovered);
@@ -382,18 +373,15 @@ public class BufferManagementController : ControllerBase
     /// </summary>
     private static OverflowStrategy ParseOverflowStrategy(string? strategy)
     {
-        if (string.IsNullOrEmpty(strategy))
-        {
-            return OverflowStrategy.DropOldest;
-        }
-
-        return strategy.ToLowerInvariant() switch
-        {
-            "dropoldest" => OverflowStrategy.DropOldest,
-            "dropnewest" => OverflowStrategy.DropNewest,
-            "rejectnew" => OverflowStrategy.RejectNew,
-            _ => OverflowStrategy.DropOldest
-        };
+        return string.IsNullOrEmpty(strategy)
+            ? OverflowStrategy.DropOldest
+            : strategy.ToLowerInvariant() switch
+            {
+                "dropoldest" => OverflowStrategy.DropOldest,
+                "dropnewest" => OverflowStrategy.DropNewest,
+                "rejectnew" => OverflowStrategy.RejectNew,
+                _ => OverflowStrategy.DropOldest
+            };
     }
 }
 

@@ -1,12 +1,10 @@
 using AIChat.Orleans.Configuration;
 using AIChat.Orleans.Contracts;
-using AIChat.Orleans.Grains;
 using AIChat.Orleans.Metrics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 using Orleans.TestingHost;
-using Orleans.Hosting;
 
 namespace AIChat.Orleans.Tests.Phase1;
 
@@ -23,8 +21,8 @@ public class UserGrainTests
     public async Task Setup()
     {
         var builder = new TestClusterBuilder();
-        builder.AddSiloBuilderConfigurator<TestSiloConfigurator>();
-        
+        _ = builder.AddSiloBuilderConfigurator<TestSiloConfigurator>();
+
         _cluster = builder.Build();
         await _cluster.DeployAsync();
     }
@@ -93,7 +91,7 @@ public class UserGrainTests
         // Assert
         Assert.That(state.RecentActivity.Count, Is.EqualTo(50)); // Should cap at 50 (test config)
         Assert.That(state.Metrics.TotalActivities, Is.EqualTo(52)); // Total should be accurate
-        
+
         // Should contain the last 50 activities
         var activities = state.RecentActivity.ToList();
         Assert.That(activities[0].Metadata, Is.EqualTo("activity-2")); // First two were removed
@@ -133,14 +131,14 @@ public class UserGrainTests
         await grain.SubscribeToChat("conn-1", "chat-1");
         await grain.UnsubscribeFromChat("conn-1", "chat-1");
         await grain.UnregisterConnection("conn-1");
-        
+
         // Register a new connection for the rest of the tests
         await grain.RegisterConnection("conn-2", "client-1");
 
         // These should work with the implemented methods
         var message = new ChatMessage { Id = "msg-1", ChatId = "chat-1", UserId = "test-user-5", Content = "test" };
         await grain.RelayMessage(message);
-        
+
         var chunk = new StreamChunk { OperationId = "op-1", ChatId = "chat-1", Content = "chunk" };
         await grain.RelayStreamChunk(chunk);
 
@@ -150,10 +148,10 @@ public class UserGrainTests
 
         await grain.NotifyOperationStarted(operationId, "chat-1");
         await grain.NotifyOperationCompleted(operationId, true);
-        
+
         // Wait a bit for background operation to complete
         await Task.Delay(100);
-        
+
         // Clean up conn-2
         await grain.UnregisterConnection("conn-2");
 
@@ -204,7 +202,7 @@ public class UserGrainTests
         // Act - Record some activities and force deactivation
         await grain1.RecordActivity(ActivityType.Connected, "first connection");
         await grain1.RecordActivity(ActivityType.MessageSent, "first message");
-        
+
         // Get the grain again (may be different instance)
         var grain2 = _cluster.GrainFactory.GetGrain<IUserGrain>(userId);
         var state = await grain2.GetState();
@@ -213,7 +211,7 @@ public class UserGrainTests
         Assert.That(state.UserId, Is.EqualTo(userId));
         Assert.That(state.Metrics.TotalActivities, Is.EqualTo(2));
         Assert.That(state.RecentActivity.Count, Is.EqualTo(2));
-        
+
         var activities = state.RecentActivity.ToList();
         Assert.That(activities[0].Type, Is.EqualTo(ActivityType.Connected));
         Assert.That(activities[1].Type, Is.EqualTo(ActivityType.MessageSent));
@@ -227,19 +225,19 @@ public class TestSiloConfigurator : ISiloConfigurator
 {
     public void Configure(ISiloBuilder siloBuilder)
     {
-        siloBuilder
+        _ = siloBuilder
             .AddMemoryGrainStorageAsDefault()
             .AddMemoryGrainStorage("UserGrainStorage")
             .AddMemoryGrainStorage("PubSubStore")
-            
+
             // Configure services required by grains
             .ConfigureServices(services =>
             {
                 // Add Orleans metrics collector (required by UserGrain)
-                services.AddSingleton<IOrleansMetricsCollector, OrleansMetricsCollector>();
-                
+                _ = services.AddSingleton<IOrleansMetricsCollector, OrleansMetricsCollector>();
+
                 // Add Orleans grain configuration with test-friendly settings
-                services.Configure<OrleansGrainConfiguration>(config =>
+                _ = services.Configure<OrleansGrainConfiguration>(config =>
                 {
                     config.UserGrain.MaxActivityBufferSize = 50;
                     config.UserGrain.CleanupIntervalMinutes = 1;
@@ -248,16 +246,16 @@ public class TestSiloConfigurator : ISiloConfigurator
                     config.Persistence.ActivityPersistenceInterval = 5;
                 });
             })
-            
+
             .ConfigureLogging(logging =>
             {
-                logging.AddConsole();
-                logging.SetMinimumLevel(LogLevel.Warning);
+                _ = logging.AddConsole();
+                _ = logging.SetMinimumLevel(LogLevel.Warning);
                 // Only show errors for Orleans runtime during tests
-                logging.AddFilter("Orleans", LogLevel.Error);
-                logging.AddFilter("Microsoft", LogLevel.Error);
+                _ = logging.AddFilter("Orleans", LogLevel.Error);
+                _ = logging.AddFilter("Microsoft", LogLevel.Error);
                 // But allow our Orleans components to log at Debug level
-                logging.AddFilter("AIChat.Orleans", LogLevel.Debug);
+                _ = logging.AddFilter("AIChat.Orleans", LogLevel.Debug);
             });
     }
 }

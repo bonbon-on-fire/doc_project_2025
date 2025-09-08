@@ -62,13 +62,10 @@ public class ProcessMessageCommand : OperationCommandBase<ChatMessage, string>
             }
         }
 
-        if (errors.Count > 0)
-        {
-            return CommandValidationResult.Failed(errors.ToArray());
-        }
-
-        return warnings.Count > 0
-            ? CommandValidationResult.WithWarnings(warnings.ToArray())
+        return errors.Count > 0
+            ? CommandValidationResult.Failed([.. errors])
+            : warnings.Count > 0
+            ? CommandValidationResult.WithWarnings([.. warnings])
             : CommandValidationResult.Success();
     }
 
@@ -89,7 +86,7 @@ public class ProcessMessageCommand : OperationCommandBase<ChatMessage, string>
 
             // TODO: This will be replaced with actual background service integration
             // For now, we simulate the processing and return the operation ID
-            
+
             // Ensure message has an ID
             if (string.IsNullOrWhiteSpace(Request.Id))
             {
@@ -111,7 +108,7 @@ public class ProcessMessageCommand : OperationCommandBase<ChatMessage, string>
             // 2. Coordinate with BackgroundChatService
             // 3. Handle streaming responses
             // 4. Manage operation lifecycle
-            
+
             // Simulate processing delay
             await Task.Delay(100, cancellationToken);
 
@@ -141,7 +138,7 @@ public class ProcessMessageCommand : OperationCommandBase<ChatMessage, string>
     public override Dictionary<string, object> GetMetadata()
     {
         var metadata = base.GetMetadata();
-        
+
         if (Request != null)
         {
             metadata["MessageId"] = Request.Id ?? "null";
@@ -160,7 +157,7 @@ public class ProcessMessageCommand : OperationCommandBase<ChatMessage, string>
                 try
                 {
                     var messageMetadata = JsonSerializer.Deserialize<Dictionary<string, object>>(Request.Metadata);
-                    metadata["MessageMetadata"] = messageMetadata ?? new Dictionary<string, object>();
+                    metadata["MessageMetadata"] = messageMetadata ?? [];
                 }
                 catch
                 {

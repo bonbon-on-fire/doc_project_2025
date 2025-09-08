@@ -89,8 +89,8 @@ public interface IOperationCommand<TRequest, TResponse> : IOperationCommand
 /// Result of command validation.
 /// </summary>
 [Serializable]
-[global::Orleans.GenerateSerializer]
-[global::Orleans.Alias("AIChat.Orleans.Commands.CommandValidationResult")]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Commands.CommandValidationResult")]
 public sealed class CommandValidationResult
 {
     /// <summary>
@@ -103,44 +103,53 @@ public sealed class CommandValidationResult
     /// List of validation errors if any.
     /// </summary>
     [Id(1)]
-    public List<string> Errors { get; set; } = new();
+    public List<string> Errors { get; set; } = [];
 
     /// <summary>
     /// List of validation warnings if any.
     /// </summary>
     [Id(2)]
-    public List<string> Warnings { get; set; } = new();
+    public List<string> Warnings { get; set; } = [];
 
     /// <summary>
     /// Creates a successful validation result.
     /// </summary>
-    public static CommandValidationResult Success() => new() { IsValid = true };
+    public static CommandValidationResult Success()
+    {
+        return new() { IsValid = true };
+    }
 
     /// <summary>
     /// Creates a failed validation result with errors.
     /// </summary>
-    public static CommandValidationResult Failed(params string[] errors) => new()
+    public static CommandValidationResult Failed(params string[] errors)
     {
-        IsValid = false,
-        Errors = errors.ToList()
-    };
+        return new()
+        {
+            IsValid = false,
+            Errors = [.. errors]
+        };
+    }
 
     /// <summary>
     /// Creates a validation result with warnings but still valid.
     /// </summary>
-    public static CommandValidationResult WithWarnings(params string[] warnings) => new()
+    public static CommandValidationResult WithWarnings(params string[] warnings)
     {
-        IsValid = true,
-        Warnings = warnings.ToList()
-    };
+        return new()
+        {
+            IsValid = true,
+            Warnings = [.. warnings]
+        };
+    }
 }
 
 /// <summary>
 /// Result of command execution.
 /// </summary>
 [Serializable]
-[global::Orleans.GenerateSerializer]
-[global::Orleans.Alias("AIChat.Orleans.Commands.CommandExecutionResult")]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Commands.CommandExecutionResult")]
 public class CommandExecutionResult
 {
     /// <summary>
@@ -171,7 +180,7 @@ public class CommandExecutionResult
     /// Additional result metadata.
     /// </summary>
     [Id(4)]
-    public Dictionary<string, object> Metadata { get; set; } = new();
+    public Dictionary<string, object> Metadata { get; set; } = [];
 
     /// <summary>
     /// Timestamp when execution completed.
@@ -182,29 +191,35 @@ public class CommandExecutionResult
     /// <summary>
     /// Creates a successful execution result.
     /// </summary>
-    public static CommandExecutionResult Success(long durationMs = 0) => new()
+    public static CommandExecutionResult Success(long durationMs = 0)
     {
-        IsSuccess = true,
-        ExecutionDurationMs = durationMs
-    };
+        return new()
+        {
+            IsSuccess = true,
+            ExecutionDurationMs = durationMs
+        };
+    }
 
     /// <summary>
     /// Creates a failed execution result.
     /// </summary>
-    public static CommandExecutionResult Failed(string errorMessage, string? exceptionDetails = null) => new()
+    public static CommandExecutionResult Failed(string errorMessage, string? exceptionDetails = null)
     {
-        IsSuccess = false,
-        ErrorMessage = errorMessage,
-        ExceptionDetails = exceptionDetails
-    };
+        return new()
+        {
+            IsSuccess = false,
+            ErrorMessage = errorMessage,
+            ExceptionDetails = exceptionDetails
+        };
+    }
 }
 
 /// <summary>
 /// Typed result of command execution.
 /// </summary>
 [Serializable]
-[global::Orleans.GenerateSerializer]
-[global::Orleans.Alias("AIChat.Orleans.Commands.CommandExecutionResult`1")]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Commands.CommandExecutionResult`1")]
 public class CommandExecutionResult<T> : CommandExecutionResult
 {
     /// <summary>
@@ -216,22 +231,28 @@ public class CommandExecutionResult<T> : CommandExecutionResult
     /// <summary>
     /// Creates a successful execution result with data.
     /// </summary>
-    public static CommandExecutionResult<T> Success(T data, long durationMs = 0) => new()
+    public static CommandExecutionResult<T> Success(T data, long durationMs = 0)
     {
-        IsSuccess = true,
-        Data = data,
-        ExecutionDurationMs = durationMs
-    };
+        return new()
+        {
+            IsSuccess = true,
+            Data = data,
+            ExecutionDurationMs = durationMs
+        };
+    }
 
     /// <summary>
     /// Creates a failed execution result.
     /// </summary>
-    public static new CommandExecutionResult<T> Failed(string errorMessage, string? exceptionDetails = null) => new()
+    public static new CommandExecutionResult<T> Failed(string errorMessage, string? exceptionDetails = null)
     {
-        IsSuccess = false,
-        ErrorMessage = errorMessage,
-        ExceptionDetails = exceptionDetails
-    };
+        return new()
+        {
+            IsSuccess = false,
+            ErrorMessage = errorMessage,
+            ExceptionDetails = exceptionDetails
+        };
+    }
 }
 
 /// <summary>

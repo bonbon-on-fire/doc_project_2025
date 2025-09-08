@@ -177,6 +177,10 @@ dotnet_code_quality_unused_parameters = all:suggestion
 dotnet_remove_unnecessary_suppression_exclusions = none
 
 # Naming conventions
+
+# IDE0290: Use primary constructor
+csharp_style_prefer_primary_constructors = false
+
 [*.{cs,vb}]
 
 # Naming rules

@@ -27,7 +27,7 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
     {
         // Arrange
         await _fixture.InitializeAsync();
-        
+
         var orleansTimings = new List<long>();
         var directTimings = new List<long>();
         var iterations = 10;
@@ -38,7 +38,7 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
         // Act - Measure Orleans routing
         _fixture.OrleansEnabled = true;
         await _fixture.InitializeAsync();
-        
+
         for (int i = 0; i < iterations; i++)
         {
             var sw = Stopwatch.StartNew();
@@ -50,7 +50,7 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
         // Measure direct routing
         _fixture.OrleansEnabled = false;
         await _fixture.InitializeAsync();
-        
+
         for (int i = 0; i < iterations; i++)
         {
             var sw = Stopwatch.StartNew();
@@ -65,8 +65,8 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
         var overhead = orleansAvg - directAvg;
         var overheadPercent = (overhead / directAvg) * 100;
 
-        orleansAvg.Should().BeLessThan(5000, "Orleans routing should complete within 5 seconds");
-        overheadPercent.Should().BeLessThan(50, "Orleans overhead should be less than 50%");
+        _ = orleansAvg.Should().BeLessThan(5000, "Orleans routing should complete within 5 seconds");
+        _ = overheadPercent.Should().BeLessThan(50, "Orleans overhead should be less than 50%");
 
         _output.WriteLine($"Orleans avg: {orleansAvg}ms, Direct avg: {directAvg}ms");
         _output.WriteLine($"Routing overhead: {overhead}ms ({overheadPercent:F2}%)");
@@ -78,7 +78,7 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
         // Arrange
         _fixture.OrleansEnabled = true;
         await _fixture.InitializeAsync();
-        
+
         var userCount = 50;
         var successCount = 0;
         var failureCount = 0;
@@ -98,13 +98,13 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
                     var userSw = Stopwatch.StartNew();
                     await MakeStreamRequest(userId);
                     userSw.Stop();
-                    
-                    Interlocked.Add(ref totalDuration, userSw.ElapsedMilliseconds);
-                    Interlocked.Increment(ref successCount);
+
+                    _ = Interlocked.Add(ref totalDuration, userSw.ElapsedMilliseconds);
+                    _ = Interlocked.Increment(ref successCount);
                 }
                 catch
                 {
-                    Interlocked.Increment(ref failureCount);
+                    _ = Interlocked.Increment(ref failureCount);
                 }
             });
             tasks.Add(task);
@@ -114,14 +114,14 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
         sw.Stop();
 
         // Assert
-        successCount.Should().BeGreaterThan((int)(userCount * 0.95), "At least 95% success rate");
-        failureCount.Should().BeLessThan((int)(userCount * 0.05), "Less than 5% failure rate");
-        
+        _ = successCount.Should().BeGreaterThan((int)(userCount * 0.95), "At least 95% success rate");
+        _ = failureCount.Should().BeLessThan((int)(userCount * 0.05), "Less than 5% failure rate");
+
         var avgDuration = totalDuration / (double)successCount;
-        avgDuration.Should().BeLessThan(10000, "Average request should complete within 10 seconds");
-        
+        _ = avgDuration.Should().BeLessThan(10000, "Average request should complete within 10 seconds");
+
         var throughput = successCount / (sw.ElapsedMilliseconds / 1000.0);
-        throughput.Should().BeGreaterThan(1, "Should handle at least 1 request per second");
+        _ = throughput.Should().BeGreaterThan(1, "Should handle at least 1 request per second");
 
         _output.WriteLine($"Concurrency test: {successCount}/{userCount} successful");
         _output.WriteLine($"Average duration: {avgDuration}ms");
@@ -134,7 +134,7 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
         // Arrange
         _fixture.OrleansEnabled = true;
         await _fixture.InitializeAsync();
-        
+
         var initialMemory = GC.GetTotalMemory(true);
         var peakMemory = initialMemory;
         var memoryMeasurements = new List<long>();
@@ -166,17 +166,17 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
         GC.Collect();
         GC.WaitForPendingFinalizers();
         GC.Collect();
-        
+
         var finalMemory = GC.GetTotalMemory(true);
 
         // Assert
         var memoryIncrease = peakMemory - initialMemory;
         var memoryIncreaseMB = memoryIncrease / (1024.0 * 1024.0);
-        memoryIncreaseMB.Should().BeLessThan(100, "Memory increase should be less than 100MB");
+        _ = memoryIncreaseMB.Should().BeLessThan(100, "Memory increase should be less than 100MB");
 
         var memoryLeak = finalMemory - initialMemory;
         var memoryLeakMB = memoryLeak / (1024.0 * 1024.0);
-        memoryLeakMB.Should().BeLessThan(10, "Memory should be released after streams complete");
+        _ = memoryLeakMB.Should().BeLessThan(10, "Memory should be released after streams complete");
 
         _output.WriteLine($"Initial memory: {initialMemory / 1024.0 / 1024.0:F2}MB");
         _output.WriteLine($"Peak memory: {peakMemory / 1024.0 / 1024.0:F2}MB");
@@ -190,7 +190,7 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
         // Arrange
         _fixture.OrleansEnabled = true;
         await _fixture.InitializeAsync();
-        
+
         var duration = TimeSpan.FromSeconds(10);
         var completedRequests = 0;
         var errors = 0;
@@ -201,7 +201,7 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
         var loadTask = Task.Run(async () =>
         {
             var tasks = new List<Task>();
-            
+
             while (!cts.Token.IsCancellationRequested)
             {
                 var task = Task.Run(async () =>
@@ -211,24 +211,24 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
                         var sw = Stopwatch.StartNew();
                         await MakeStreamRequest($"load-test-{Guid.NewGuid()}");
                         sw.Stop();
-                        
+
                         lock (latencies)
                         {
                             latencies.Add(sw.ElapsedMilliseconds);
                         }
-                        
-                        Interlocked.Increment(ref completedRequests);
+
+                        _ = Interlocked.Increment(ref completedRequests);
                     }
                     catch
                     {
-                        Interlocked.Increment(ref errors);
+                        _ = Interlocked.Increment(ref errors);
                     }
                 });
-                
+
                 tasks.Add(task);
                 await Task.Delay(100); // 10 requests per second target
             }
-            
+
             await Task.WhenAll(tasks);
         });
 
@@ -243,10 +243,10 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
 
         // Assert
         var throughput = completedRequests / duration.TotalSeconds;
-        throughput.Should().BeGreaterThan(5, "Should maintain at least 5 requests/sec");
+        _ = throughput.Should().BeGreaterThan(5, "Should maintain at least 5 requests/sec");
 
         var errorRate = errors / (double)(completedRequests + errors);
-        errorRate.Should().BeLessThan(0.05, "Error rate should be less than 5%");
+        _ = errorRate.Should().BeLessThan(0.05, "Error rate should be less than 5%");
 
         if (latencies.Any())
         {
@@ -254,9 +254,9 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
             var p95 = GetPercentile(latencies, 95);
             var p99 = GetPercentile(latencies, 99);
 
-            p50.Should().BeLessThan(2000, "P50 latency should be under 2 seconds");
-            p95.Should().BeLessThan(5000, "P95 latency should be under 5 seconds");
-            p99.Should().BeLessThan(10000, "P99 latency should be under 10 seconds");
+            _ = p50.Should().BeLessThan(2000, "P50 latency should be under 2 seconds");
+            _ = p95.Should().BeLessThan(5000, "P95 latency should be under 5 seconds");
+            _ = p99.Should().BeLessThan(10000, "P99 latency should be under 10 seconds");
 
             _output.WriteLine($"Throughput: {throughput:F2} req/sec");
             _output.WriteLine($"Completed: {completedRequests}, Errors: {errors}");
@@ -270,15 +270,15 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
         // Arrange
         _fixture.OrleansEnabled = true;
         await _fixture.InitializeAsync();
-        
+
         var messageCount = 100;
         var streamingTimes = new List<long>();
-        
+
         // Act - Measure streaming overhead
         for (int i = 0; i < 5; i++)
         {
             var sw = Stopwatch.StartNew();
-            
+
             using var client = _fixture.CreateSseClient();
             var request = new CreateChatRequest
             {
@@ -289,23 +289,23 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
             };
 
             var response = await client.PostAsJsonAsync("/api/chat/stream-sse", request);
-            response.EnsureSuccessStatusCode();
-            
+            _ = response.EnsureSuccessStatusCode();
+
             using var stream = await response.Content.ReadAsStreamAsync();
             var events = await SseTestHelpers.ParseSseStreamAsync(stream);
-            
+
             sw.Stop();
             streamingTimes.Add(sw.ElapsedMilliseconds);
-            
+
             _output.WriteLine($"Iteration {i + 1}: {sw.ElapsedMilliseconds}ms for {events.Count} events");
         }
 
         // Assert
         var avgTime = streamingTimes.Average();
         var timePerMessage = avgTime / messageCount;
-        
-        timePerMessage.Should().BeLessThan(100, "Should process each message in under 100ms");
-        
+
+        _ = timePerMessage.Should().BeLessThan(100, "Should process each message in under 100ms");
+
         _output.WriteLine($"Average streaming time: {avgTime}ms");
         _output.WriteLine($"Time per message: {timePerMessage:F2}ms");
     }
@@ -316,7 +316,7 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
         // Arrange
         _fixture.OrleansEnabled = true;
         await _fixture.InitializeAsync();
-        
+
         var coldStartTimes = new List<long>();
         var warmStartTimes = new List<long>();
 
@@ -343,13 +343,13 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
         // Assert
         var avgColdStart = coldStartTimes.Average();
         var avgWarmStart = warmStartTimes.Average();
-        
-        avgColdStart.Should().BeLessThan(3000, "Cold start should be under 3 seconds");
-        avgWarmStart.Should().BeLessThan(avgColdStart * 0.5, "Warm start should be at least 50% faster");
+
+        _ = avgColdStart.Should().BeLessThan(3000, "Cold start should be under 3 seconds");
+        _ = avgWarmStart.Should().BeLessThan(avgColdStart * 0.5, "Warm start should be at least 50% faster");
 
         _output.WriteLine($"Average cold start: {avgColdStart}ms");
         _output.WriteLine($"Average warm start: {avgWarmStart}ms");
-        _output.WriteLine($"Improvement: {(1 - avgWarmStart / avgColdStart) * 100:F2}%");
+        _output.WriteLine($"Improvement: {(1 - (avgWarmStart / avgColdStart)) * 100:F2}%");
     }
 
     private async Task WarmupSystem()
@@ -373,11 +373,11 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
         };
 
         var response = await client.PostAsJsonAsync("/api/chat/stream-sse", request);
-        response.EnsureSuccessStatusCode();
-        
+        _ = response.EnsureSuccessStatusCode();
+
         // Consume the stream
         using var stream = await response.Content.ReadAsStreamAsync();
-        await SseTestHelpers.ParseSseStreamAsync(stream);
+        _ = await SseTestHelpers.ParseSseStreamAsync(stream);
     }
 
     private static long GetPercentile(List<long> values, int percentile)

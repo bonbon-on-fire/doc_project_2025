@@ -1,12 +1,5 @@
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using AIChat.Server.Services.Streaming.Abstractions;
-using Microsoft.Extensions.Logging;
 
 namespace AIChat.Server.Services.Streaming.Implementations;
 
@@ -67,8 +60,7 @@ public class InMemoryStreamBuffer : IStreamBuffer
     /// <inheritdoc />
     public async Task<bool> AddMessageAsync(BufferedStreamMessage message, CancellationToken cancellationToken = default)
     {
-        if (message == null)
-            throw new ArgumentNullException(nameof(message));
+        ArgumentNullException.ThrowIfNull(message);
 
         await _semaphore.WaitAsync(cancellationToken);
         try
@@ -83,7 +75,7 @@ public class InMemoryStreamBuffer : IStreamBuffer
             }
 
             // Remove expired messages first
-            await RemoveExpiredMessagesInternalAsync();
+            _ = await RemoveExpiredMessagesInternalAsync();
 
             // Check if buffer is full
             if (_messages.Count >= Configuration.MaxSize)
@@ -91,14 +83,14 @@ public class InMemoryStreamBuffer : IStreamBuffer
                 bool handled = await HandleOverflowAsync(message);
                 if (!handled)
                 {
-                    Interlocked.Increment(ref _totalMessagesDropped);
+                    _ = Interlocked.Increment(ref _totalMessagesDropped);
                     return false;
                 }
             }
 
             // Add the message
             _messages.Enqueue(message);
-            Interlocked.Increment(ref _totalMessagesAdded);
+            _ = Interlocked.Increment(ref _totalMessagesAdded);
 
             _logger.LogDebug(
                 "Message {Sequence} added to buffer {BufferId}, current count: {Count}",
@@ -108,7 +100,7 @@ public class InMemoryStreamBuffer : IStreamBuffer
         }
         finally
         {
-            _semaphore.Release();
+            _ = _semaphore.Release();
         }
     }
 
@@ -119,14 +111,14 @@ public class InMemoryStreamBuffer : IStreamBuffer
         try
         {
             // Remove expired messages first
-            await RemoveExpiredMessagesInternalAsync();
+            _ = await RemoveExpiredMessagesInternalAsync();
 
             // Return a snapshot of current messages
             return _messages.ToList();
         }
         finally
         {
-            _semaphore.Release();
+            _ = _semaphore.Release();
         }
     }
 
@@ -137,7 +129,7 @@ public class InMemoryStreamBuffer : IStreamBuffer
         try
         {
             // Remove expired messages first
-            await RemoveExpiredMessagesInternalAsync();
+            _ = await RemoveExpiredMessagesInternalAsync();
 
             var drainedMessages = new List<BufferedStreamMessage>();
             int messagesToDrain = maxMessages > 0 ? Math.Min(maxMessages, _messages.Count) : _messages.Count;
@@ -158,7 +150,7 @@ public class InMemoryStreamBuffer : IStreamBuffer
         }
         finally
         {
-            _semaphore.Release();
+            _ = _semaphore.Release();
         }
     }
 
@@ -169,7 +161,7 @@ public class InMemoryStreamBuffer : IStreamBuffer
         try
         {
             int count = _messages.Count;
-            
+
             // Clear all messages
             while (_messages.TryDequeue(out _))
             {
@@ -184,7 +176,7 @@ public class InMemoryStreamBuffer : IStreamBuffer
         }
         finally
         {
-            _semaphore.Release();
+            _ = _semaphore.Release();
         }
     }
 
@@ -198,7 +190,7 @@ public class InMemoryStreamBuffer : IStreamBuffer
         }
         finally
         {
-            _semaphore.Release();
+            _ = _semaphore.Release();
         }
     }
 
@@ -225,7 +217,7 @@ public class InMemoryStreamBuffer : IStreamBuffer
         }
         finally
         {
-            _semaphore.Release();
+            _ = _semaphore.Release();
         }
     }
 
@@ -234,7 +226,7 @@ public class InMemoryStreamBuffer : IStreamBuffer
     /// </summary>
     public void IncrementReplayCount(int count)
     {
-        Interlocked.Add(ref _totalMessagesReplayed, count);
+        _ = Interlocked.Add(ref _totalMessagesReplayed, count);
     }
 
     /// <summary>
@@ -270,7 +262,7 @@ public class InMemoryStreamBuffer : IStreamBuffer
                 // Remove oldest message to make room
                 if (_messages.TryDequeue(out var oldestMessage))
                 {
-                    Interlocked.Increment(ref _totalMessagesDropped);
+                    _ = Interlocked.Increment(ref _totalMessagesDropped);
                     _logger.LogDebug(
                         "Dropped oldest message {Sequence} from buffer {BufferId} due to overflow",
                         oldestMessage.SequenceNumber, BufferId);
@@ -296,7 +288,7 @@ public class InMemoryStreamBuffer : IStreamBuffer
                 // Default to dropping oldest
                 if (_messages.TryDequeue(out var defaultOldest))
                 {
-                    Interlocked.Increment(ref _totalMessagesDropped);
+                    _ = Interlocked.Increment(ref _totalMessagesDropped);
                     return Task.FromResult(true);
                 }
                 return Task.FromResult(false);
@@ -315,7 +307,7 @@ public class InMemoryStreamBuffer : IStreamBuffer
             if (message.IsExpired(Configuration.MessageTTL))
             {
                 expiredCount++;
-                Interlocked.Increment(ref _totalMessagesExpired);
+                _ = Interlocked.Increment(ref _totalMessagesExpired);
                 _logger.LogDebug(
                     "Expired message {Sequence} from buffer {BufferId}, age: {Age}",
                     message.SequenceNumber, BufferId, now - message.Timestamp);

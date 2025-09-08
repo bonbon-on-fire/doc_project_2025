@@ -1,5 +1,3 @@
-using Orleans;
-
 namespace AIChat.Orleans.Metrics;
 
 /// <summary>
@@ -100,7 +98,7 @@ public class OrleansMetricsSummary
     /// <summary>
     /// Metrics by grain type.
     /// </summary>
-    public Dictionary<string, GrainTypeMetrics> GrainTypeMetrics { get; set; } = new();
+    public Dictionary<string, GrainTypeMetrics> GrainTypeMetrics { get; set; } = [];
 
     /// <summary>
     /// Timestamp when these metrics were collected.
@@ -151,12 +149,12 @@ public class GrainTypeMetrics
     /// <summary>
     /// Operation counts by operation type.
     /// </summary>
-    public Dictionary<string, long> OperationCounts { get; set; } = new();
+    public Dictionary<string, long> OperationCounts { get; set; } = [];
 
     /// <summary>
     /// Recent performance samples for trending.
     /// </summary>
-    public List<MetricSample> RecentSamples { get; set; } = new();
+    public List<MetricSample> RecentSamples { get; set; } = [];
 }
 
 /// <summary>

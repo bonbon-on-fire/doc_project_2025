@@ -77,7 +77,7 @@ public sealed class StreamContext
     /// </summary>
     public void IncrementMessagesProcessed()
     {
-        Interlocked.Increment(ref _messagesProcessed);
+        _ = Interlocked.Increment(ref _messagesProcessed);
     }
 
     /// <summary>
@@ -93,7 +93,7 @@ public sealed class StreamContext
     /// </summary>
     public void IncrementReconnectionAttempts()
     {
-        Interlocked.Increment(ref _reconnectionAttempts);
+        _ = Interlocked.Increment(ref _reconnectionAttempts);
     }
 
     /// <summary>
@@ -109,7 +109,7 @@ public sealed class StreamContext
     /// </summary>
     public void IncrementFailureCount()
     {
-        Interlocked.Increment(ref _failureCount);
+        _ = Interlocked.Increment(ref _failureCount);
     }
 
     /// <summary>
@@ -182,7 +182,7 @@ public sealed class StreamContext
         HttpResponse = httpResponse ?? throw new ArgumentNullException(nameof(httpResponse));
         MessageBuffer = messageBuffer ?? throw new ArgumentNullException(nameof(messageBuffer));
         PartialMessages = partialMessages ?? throw new ArgumentNullException(nameof(partialMessages));
-        
+
         StartTime = systemClock.UtcNow;
         _lastActivityTime = StartTime;
         _state = StreamState.Active;

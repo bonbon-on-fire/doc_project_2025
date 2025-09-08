@@ -99,14 +99,14 @@ public abstract class LoadTestScenarioBase : ILoadTestScenario
     protected LatencyStatistics CalculateLatencyStatistics(IEnumerable<double> latencies)
     {
         var latencyList = latencies.Where(l => l > 0).ToList();
-        
+
         if (!latencyList.Any())
         {
             return new LatencyStatistics();
         }
 
         latencyList.Sort();
-        
+
         return new LatencyStatistics
         {
             AverageMs = latencyList.Average(),
@@ -125,22 +125,28 @@ public abstract class LoadTestScenarioBase : ILoadTestScenario
     protected double GetPercentile(List<double> sortedValues, double percentile)
     {
         if (!sortedValues.Any()) return 0;
-        
+
         var index = (int)Math.Ceiling(percentile * sortedValues.Count) - 1;
         index = Math.Max(0, Math.Min(index, sortedValues.Count - 1));
-        
+
         return sortedValues[index];
     }
 
     /// <summary>
     /// Generates a random chat ID for testing
     /// </summary>
-    protected string GenerateTestChatId() => $"test-chat-{Guid.NewGuid():N}";
+    protected string GenerateTestChatId()
+    {
+        return $"test-chat-{Guid.NewGuid():N}";
+    }
 
     /// <summary>
     /// Generates a random user ID for testing
     /// </summary>
-    protected string GenerateTestUserId() => $"test-user-{Guid.NewGuid():N}";
+    protected string GenerateTestUserId()
+    {
+        return $"test-user-{Guid.NewGuid():N}";
+    }
 
     /// <summary>
     /// Generates random message content for testing
@@ -171,9 +177,9 @@ public abstract class LoadTestScenarioBase : ILoadTestScenario
     protected async Task RandomDelayAsync(TimeSpan baseDelay, double variationPercent = 0.2, CancellationToken cancellationToken = default)
     {
         var random = new Random();
-        var variation = 1.0 + (random.NextDouble() - 0.5) * 2 * variationPercent;
+        var variation = 1.0 + ((random.NextDouble() - 0.5) * 2 * variationPercent);
         var actualDelay = TimeSpan.FromMilliseconds(baseDelay.TotalMilliseconds * variation);
-        
+
         await Task.Delay(actualDelay, cancellationToken);
     }
 
@@ -198,7 +204,7 @@ public abstract class LoadTestScenarioBase : ILoadTestScenario
             try
             {
                 results[index] = await taskFactory();
-                
+
                 var current = Interlocked.Increment(ref completed);
                 ReportProgress(progress, new TestProgress
                 {
@@ -209,7 +215,7 @@ public abstract class LoadTestScenarioBase : ILoadTestScenario
             }
             finally
             {
-                semaphore.Release();
+                _ = semaphore.Release();
             }
         });
 

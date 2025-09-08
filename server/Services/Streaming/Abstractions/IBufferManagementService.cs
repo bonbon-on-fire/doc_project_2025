@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace AIChat.Server.Services.Streaming.Abstractions;
 
 /// <summary>
@@ -309,7 +304,7 @@ public record ServiceRecoveryResult
     /// <summary>
     /// Gets any error messages.
     /// </summary>
-    public List<string> Errors { get; init; } = new();
+    public List<string> Errors { get; init; } = [];
 }
 
 /// <summary>
@@ -406,5 +401,5 @@ public record CleanupResult
     /// <summary>
     /// Gets any error messages.
     /// </summary>
-    public List<string> Errors { get; init; } = new();
+    public List<string> Errors { get; init; } = [];
 }

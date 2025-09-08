@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Threading.Channels;
 using AchieveAi.LmDotnetTools.LmCore.Agents;
 using AIChat.Orleans.Client.Services;
@@ -8,8 +7,6 @@ using AIChat.Orleans.Tracing;
 using AIChat.Server.Models;
 using AIChat.Server.Storage;
 using Microsoft.Extensions.Options;
-using Orleans;
-using static AchieveAi.LmDotnetTools.Misc.Utils.TaskManager;
 
 // Alias to resolve OperationStatus ambiguity between AIChat.Server.Models.OperationStatus and AIChat.Orleans.Contracts.OperationStatus
 using ServerOperationStatus = AIChat.Server.Models.OperationStatus;
@@ -18,7 +15,7 @@ namespace AIChat.Server.Services;
 
 /// <summary>
 /// Background service that processes chat operations asynchronously.
-/// 
+///
 /// KEY ARCHITECTURAL DECISION: This service uses the existing ChatService internally
 /// to leverage all existing functionality:
 /// - Agentic loop and LLM processing
@@ -26,7 +23,7 @@ namespace AIChat.Server.Services;
 /// - Mode-based system prompts
 /// - Message persistence and validation
 /// - Stream processing capabilities
-/// 
+///
 /// BackgroundChatService handles:
 /// - Queueing and worker pool management
 /// - Operation lifecycle tracking
@@ -86,7 +83,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
         _failedOperations = new ConcurrentDictionary<string, (DateTime, string)>();
         _processingTimes = new ConcurrentQueue<double>();
 
-        _logger.LogInformation("BackgroundChatService initialized with max concurrency: {MaxConcurrency}", 
+        _logger.LogInformation("BackgroundChatService initialized with max concurrency: {MaxConcurrency}",
             _options.MaxConcurrentOperations);
     }
 
@@ -102,53 +99,53 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
             {
                 operation.Id = Guid.NewGuid().ToString();
             }
-            
+
             // Add tracing tags
-            activity?.SetTag("operation.type", operation.Type.ToString());
-            activity?.SetTag("operation.chat_id", operation.ChatId);
-            activity?.SetTag("operation.user_id", operation.UserId);
+            _ = (activity?.SetTag("operation.type", operation.Type.ToString()));
+            _ = (activity?.SetTag("operation.chat_id", operation.ChatId));
+            _ = (activity?.SetTag("operation.user_id", operation.UserId));
 
-        // Set queued timestamp
-        operation.QueuedAt = DateTime.UtcNow;
+            // Set queued timestamp
+            operation.QueuedAt = DateTime.UtcNow;
 
-        // Create operation state
-        var operationState = new OperationState
-        {
-            Operation = operation,
-            Status = ServerOperationStatus.Queued,
-            QueuedAt = operation.QueuedAt
-        };
+            // Create operation state
+            var operationState = new OperationState
+            {
+                Operation = operation,
+                Status = ServerOperationStatus.Queued,
+                QueuedAt = operation.QueuedAt
+            };
 
-        // Track the operation
-        _activeOperations[operation.Id] = operationState;
+            // Track the operation
+            _activeOperations[operation.Id] = operationState;
 
-        try
-        {
-            // Enqueue the operation
-            await _queueWriter.WriteAsync(operation, cancellationToken);
+            try
+            {
+                // Enqueue the operation
+                await _queueWriter.WriteAsync(operation, cancellationToken);
 
-            _logger.LogInformation("Enqueued operation {OperationId} of type {OperationType} for chat {ChatId} and user {UserId}", 
-                operation.Id, operation.Type, operation.ChatId, operation.UserId);
+                _logger.LogInformation("Enqueued operation {OperationId} of type {OperationType} for chat {ChatId} and user {UserId}",
+                    operation.Id, operation.Type, operation.ChatId, operation.UserId);
 
-            // Mark activity as successful
-            OrleansActivitySource.SetSuccess(activity, new Dictionary<string, object>
+                // Mark activity as successful
+                OrleansActivitySource.SetSuccess(activity, new Dictionary<string, object>
             {
                 {"queue.size", _operationQueue.Reader.CanCount ? _operationQueue.Reader.Count : -1},
                 {"active.operations", _activeOperations.Count}
             });
 
-            return operation.Id;
-        }
-        catch (Exception ex)
-        {
-            // Set activity error
-            OrleansActivitySource.SetError(activity, ex);
-            
-            // Remove from tracking if enqueue failed
-            _activeOperations.TryRemove(operation.Id, out _);
-            _logger.LogError(ex, "Failed to enqueue operation {OperationId}", operation.Id);
-            throw;
-        }
+                return operation.Id;
+            }
+            catch (Exception ex)
+            {
+                // Set activity error
+                OrleansActivitySource.SetError(activity, ex);
+
+                // Remove from tracking if enqueue failed
+                _ = _activeOperations.TryRemove(operation.Id, out _);
+                _logger.LogError(ex, "Failed to enqueue operation {OperationId}", operation.Id);
+                throw;
+            }
         }
         catch (Exception outerEx)
         {
@@ -171,7 +168,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
             try
             {
                 cts.Cancel();
-                
+
                 // Update operation status
                 if (_activeOperations.TryGetValue(operationId, out var state))
                 {
@@ -191,13 +188,13 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
         }
 
         // Operation might be in queue but not started yet
-        if (_activeOperations.TryGetValue(operationId, out var queuedState) && 
+        if (_activeOperations.TryGetValue(operationId, out var queuedState) &&
             queuedState.Status == ServerOperationStatus.Queued)
         {
             queuedState.Status = ServerOperationStatus.Cancelled;
             queuedState.CompletedAt = DateTime.UtcNow;
             queuedState.Error = "Operation was cancelled before processing started";
-            
+
             _logger.LogInformation("Cancelled queued operation {OperationId}", operationId);
             return Task.FromResult(true);
         }
@@ -265,7 +262,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
 
         var operations = _activeOperations.Values
             .Where(state => state.Operation.UserId == userId)
-            .Where(state => state.Status == ServerOperationStatus.Queued || state.Status == ServerOperationStatus.InProgress)
+            .Where(state => state.Status is ServerOperationStatus.Queued or ServerOperationStatus.InProgress)
             .Select(state => new OperationStatusInfo
             {
                 OperationId = state.Operation.Id,
@@ -288,7 +285,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
 
         var operations = _activeOperations.Values
             .Where(state => state.Operation.ChatId == chatId)
-            .Where(state => state.Status == ServerOperationStatus.Queued || state.Status == ServerOperationStatus.InProgress)
+            .Where(state => state.Status is ServerOperationStatus.Queued or ServerOperationStatus.InProgress)
             .Select(state => new OperationStatusInfo
             {
                 OperationId = state.Operation.Id,
@@ -376,7 +373,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
                     cancellationToken, timeoutCts.Token).Token;
 
                 // Wait for all operations to complete
-                while (_activeOperations.Values.Any(s => s.Status == ServerOperationStatus.InProgress) && 
+                while (_activeOperations.Values.Any(s => s.Status == ServerOperationStatus.InProgress) &&
                        !combinedToken.IsCancellationRequested)
                 {
                     await Task.Delay(100, combinedToken);
@@ -390,7 +387,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
 
         // Dispose resources
         _workerSemaphore?.Dispose();
-        
+
         foreach (var cts in _operationCancellations.Values)
         {
             cts?.Dispose();
@@ -414,7 +411,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
         try
         {
             // Skip if operation was cancelled while waiting
-            if (!_activeOperations.TryGetValue(operation.Id, out state) || 
+            if (!_activeOperations.TryGetValue(operation.Id, out state) ||
                 state.Status == ServerOperationStatus.Cancelled)
             {
                 _logger.LogInformation("Operation {OperationId} was cancelled before processing", operation.Id);
@@ -424,10 +421,10 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
             // Create cancellation token for this operation
             using var operationCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
             var operationToken = operationCts.Token;
-            
+
             // Set timeout
             operationCts.CancelAfter(operation.TimeoutMs);
-            
+
             // Track cancellation token for external cancellation
             _operationCancellations[operation.Id] = operationCts;
 
@@ -436,7 +433,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
             state.StartedAt = startTime;
             state.ProgressDescription = "Starting operation processing";
 
-            _logger.LogInformation("Started processing operation {OperationId} of type {OperationType} for chat {ChatId}", 
+            _logger.LogInformation("Started processing operation {OperationId} of type {OperationType} for chat {ChatId}",
                 operation.Id, operation.Type, operation.ChatId);
 
             // Process the operation based on its type
@@ -452,10 +449,10 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
             _completedOperations[operation.Id] = DateTime.UtcNow;
             _processingTimes.Enqueue(stopwatch.Elapsed.TotalMilliseconds);
 
-            _logger.LogInformation("Completed operation {OperationId} in {Duration}ms", 
+            _logger.LogInformation("Completed operation {OperationId} in {Duration}ms",
                 operation.Id, stopwatch.ElapsedMilliseconds);
         }
-        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested || 
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested ||
                                                  (state?.Status == ServerOperationStatus.Cancelled))
         {
             if (state != null)
@@ -464,7 +461,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
                 state.CompletedAt = DateTime.UtcNow;
                 state.Error = "Operation was cancelled";
             }
-            
+
             _logger.LogInformation("Operation {OperationId} was cancelled", operation.Id);
         }
         catch (Exception ex)
@@ -480,19 +477,19 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
             // Record failure statistics
             _failedOperations[operation.Id] = (DateTime.UtcNow, ex.Message);
 
-            _logger.LogError(ex, "Operation {OperationId} failed after {Duration}ms", 
+            _logger.LogError(ex, "Operation {OperationId} failed after {Duration}ms",
                 operation.Id, stopwatch.ElapsedMilliseconds);
         }
         finally
         {
             // Cleanup
-            _operationCancellations.TryRemove(operation.Id, out _);
-            
+            _ = _operationCancellations.TryRemove(operation.Id, out _);
+
             // Clean up old tracking data periodically
             CleanupOldOperations();
-            
+
             // Release worker slot
-            _workerSemaphore.Release();
+            _ = _workerSemaphore.Release();
         }
     }
 
@@ -521,7 +518,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
             {
                 case OperationType.SendMessage:
                     await ProcessSendMessageOperationAsync(
-                        operation, state, chatService, storage, streamingAgent, 
+                        operation, state, chatService, storage, streamingAgent,
                         toolingService, modeService, orleansService, cancellationToken);
                     break;
 
@@ -605,8 +602,8 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
             try
             {
                 state.ProgressDescription = $"Processing {messageEvent.GetType().Name}";
-                
-                _logger.LogDebug("Message event for operation {OperationId}: {EventType}", 
+
+                _logger.LogDebug("Message event for operation {OperationId}: {EventType}",
                     operation.Id, messageEvent.GetType().Name);
 
                 // Convert MessageEvent to ChatMessage and relay through UserGrain
@@ -629,11 +626,11 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
         {
             try
             {
-                // Update progress based on chunk 
+                // Update progress based on chunk
                 state.Progress = Math.Min(0.9, state.Progress + 0.01); // Gradually increase progress
                 state.ProgressDescription = "Streaming AI response";
 
-                _logger.LogTrace("Chunk event for operation {OperationId}: {EventType}", 
+                _logger.LogTrace("Chunk event for operation {OperationId}: {EventType}",
                     operation.Id, chunkEvent.GetType().Name);
 
                 // Convert StreamChunkEvent to StreamChunk and relay through UserGrain
@@ -665,15 +662,15 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
 
             foreach (var operationId in toRemove)
             {
-                _activeOperations.TryRemove(operationId, out _);
-                _completedOperations.TryRemove(operationId, out _);
-                _failedOperations.TryRemove(operationId, out _);
+                _ = _activeOperations.TryRemove(operationId, out _);
+                _ = _completedOperations.TryRemove(operationId, out _);
+                _ = _failedOperations.TryRemove(operationId, out _);
             }
 
             // Limit processing times queue size
             while (_processingTimes.Count > 1000)
             {
-                _processingTimes.TryDequeue(out _);
+                _ = _processingTimes.TryDequeue(out _);
             }
 
             if (toRemove.Count > 0)
@@ -713,7 +710,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
         // For now, we'll implement a simplified regenerate by just re-processing the most recent user message
         // A more complete implementation would need to look up the specific message in the chat history
         // and find the preceding user message, but that requires more complex chat storage integration
-        
+
         // Extract message content from payload for regeneration
         var messageContent = operation.Payload?.ToString();
         if (string.IsNullOrEmpty(messageContent))
@@ -775,7 +772,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
 
         // For now, we'll treat edit as adding a new user message with the edited content
         // A more sophisticated implementation would involve message history management
-        
+
         // Create callbacks for streaming updates
         var messageCallback = CreateMessageCallback(operation, state);
         var chunkCallback = CreateChunkCallback(operation, state);
@@ -816,8 +813,8 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
         {
             var userGrain = GetUserGrainFromOrleansService(orleansService, operation.UserId);
             await userGrain.NotifyOperationStarted(operation.Id, operation.ChatId);
-            
-            _logger.LogDebug("Notified UserGrain of operation start: {OperationId} for user {UserId}", 
+
+            _logger.LogDebug("Notified UserGrain of operation start: {OperationId} for user {UserId}",
                 operation.Id, operation.UserId);
         }
         catch (Exception ex)
@@ -835,8 +832,8 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
         {
             var userGrain = GetUserGrainFromOrleansService(orleansService, operation.UserId);
             await userGrain.NotifyOperationCompleted(operation.Id, success, error);
-            
-            _logger.LogDebug("Notified UserGrain of operation completion: {OperationId} success={Success} for user {UserId}", 
+
+            _logger.LogDebug("Notified UserGrain of operation completion: {OperationId} success={Success} for user {UserId}",
                 operation.Id, success, operation.UserId);
         }
         catch (Exception ex)
@@ -852,13 +849,13 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
         {
             using var scope = _serviceProvider.CreateScope();
             var orleansService = scope.ServiceProvider.GetService<IOrleansIntegrationService>();
-            
+
             if (orleansService == null) return;
 
             var userGrain = GetUserGrainFromOrleansService(orleansService, operation.UserId);
             await userGrain.RelayMessage(chatMessage);
-            
-            _logger.LogTrace("Relayed message through UserGrain: {MessageId} for user {UserId}", 
+
+            _logger.LogTrace("Relayed message through UserGrain: {MessageId} for user {UserId}",
                 chatMessage.Id, operation.UserId);
         }
         catch (Exception ex)
@@ -874,13 +871,13 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
         {
             using var scope = _serviceProvider.CreateScope();
             var orleansService = scope.ServiceProvider.GetService<IOrleansIntegrationService>();
-            
+
             if (orleansService == null) return;
 
             var userGrain = GetUserGrainFromOrleansService(orleansService, operation.UserId);
             await userGrain.RelayStreamChunk(streamChunk);
-            
-            _logger.LogTrace("Relayed stream chunk through UserGrain: operation {OperationId} chunk {ChunkIndex} for user {UserId}", 
+
+            _logger.LogTrace("Relayed stream chunk through UserGrain: operation {OperationId} chunk {ChunkIndex} for user {UserId}",
                 operation.Id, streamChunk.ChunkIndex, operation.UserId);
         }
         catch (Exception ex)
@@ -908,7 +905,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
                 Timestamp = DateTime.UtcNow,
                 IsStreaming = false
             },
-            
+
             ReasoningEvent reasoningEvent => new AIChat.Orleans.Contracts.ChatMessage
             {
                 Id = messageEvent.MessageId ?? Guid.NewGuid().ToString(),
@@ -918,9 +915,9 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
                 Role = "assistant",
                 Timestamp = DateTime.UtcNow,
                 IsStreaming = false,
-                Metadata = System.Text.Json.JsonSerializer.Serialize(new { Type = "reasoning", Visibility = reasoningEvent.Visibility })
+                Metadata = System.Text.Json.JsonSerializer.Serialize(new { Type = "reasoning", reasoningEvent.Visibility })
             },
-            
+
             ToolCallEvent toolCallEvent => new AIChat.Orleans.Contracts.ChatMessage
             {
                 Id = messageEvent.MessageId ?? Guid.NewGuid().ToString(),
@@ -932,7 +929,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
                 IsStreaming = false,
                 Metadata = System.Text.Json.JsonSerializer.Serialize(new { Type = "tool_call" })
             },
-            
+
             // Add more event type conversions as needed
             _ => null // Skip unknown event types
         };
@@ -949,18 +946,18 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
             _ => null
         };
 
-        if (content == null) return null;
-
-        return new AIChat.Orleans.Contracts.StreamChunk
-        {
-            OperationId = operation.Id,
-            ChatId = operation.ChatId,
-            Content = content,
-            ChunkIndex = state.ChunkIndex++, // Increment chunk counter
-            IsComplete = chunkEvent is MessageStreamCompleteEvent,
-            Timestamp = DateTime.UtcNow,
-            MessageId = chunkEvent.MessageId
-        };
+        return content == null
+            ? null
+            : new AIChat.Orleans.Contracts.StreamChunk
+            {
+                OperationId = operation.Id,
+                ChatId = operation.ChatId,
+                Content = content,
+                ChunkIndex = state.ChunkIndex++, // Increment chunk counter
+                IsComplete = chunkEvent is MessageStreamCompleteEvent,
+                Timestamp = DateTime.UtcNow,
+                MessageId = chunkEvent.MessageId
+            };
     }
 
     #endregion
@@ -970,24 +967,21 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
     private string? ExtractMessageIdFromPayload(object? payload)
     {
         if (payload == null) return null;
-        
+
         try
         {
             if (payload is string directString)
                 return directString;
-                
+
             var json = payload.ToString();
             if (string.IsNullOrEmpty(json)) return null;
-            
+
             var jsonDoc = System.Text.Json.JsonDocument.Parse(json);
             if (jsonDoc.RootElement.TryGetProperty("messageId", out var messageIdElement))
                 return messageIdElement.GetString();
-                
+
             // Also try "id" property
-            if (jsonDoc.RootElement.TryGetProperty("id", out var idElement))
-                return idElement.GetString();
-                
-            return null;
+            return jsonDoc.RootElement.TryGetProperty("id", out var idElement) ? idElement.GetString() : null;
         }
         catch (Exception ex)
         {
@@ -999,13 +993,11 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
     private EditMessagePayload? ExtractEditPayloadFromOperation(object? payload)
     {
         if (payload == null) return null;
-        
+
         try
         {
             var json = payload.ToString();
-            if (string.IsNullOrEmpty(json)) return null;
-            
-            return System.Text.Json.JsonSerializer.Deserialize<EditMessagePayload>(json);
+            return string.IsNullOrEmpty(json) ? null : System.Text.Json.JsonSerializer.Deserialize<EditMessagePayload>(json);
         }
         catch (Exception ex)
         {
@@ -1020,13 +1012,10 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
         // For now, we'll use a workaround to get the grain factory
         var serviceType = orleansService.GetType();
         var grainFactoryField = serviceType.GetField("_grainFactory", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        
-        if (grainFactoryField?.GetValue(orleansService) is IGrainFactory grainFactory)
-        {
-            return grainFactory.GetGrain<IUserGrain>(userId);
-        }
-        
-        throw new InvalidOperationException("Could not access grain factory from Orleans integration service");
+
+        return grainFactoryField?.GetValue(orleansService) is IGrainFactory grainFactory
+            ? grainFactory.GetGrain<IUserGrain>(userId)
+            : throw new InvalidOperationException("Could not access grain factory from Orleans integration service");
     }
 
     #endregion

@@ -1,10 +1,7 @@
 using AIChat.Orleans.Client.Services;
 using AIChat.Orleans.Contracts;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Logging;
-using Orleans;
 using AspNetHealthCheckResult = Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult;
-using OrleansHealthCheckResult = AIChat.Orleans.Contracts.HealthCheckResult;
 
 namespace AIChat.Server.Services;
 

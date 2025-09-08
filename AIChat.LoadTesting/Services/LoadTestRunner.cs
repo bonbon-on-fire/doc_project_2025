@@ -36,7 +36,7 @@ public class LoadTestRunner
     public async Task<LoadTestReport> ExecuteLoadTestsAsync(CommandLineOptions options)
     {
         var testStartTime = DateTime.UtcNow;
-        
+
         _logger.LogInformation("Starting AIChat Orleans Load Testing");
         _logger.LogInformation("Target: 10,000 concurrent users with <100ms message latency");
 
@@ -61,13 +61,13 @@ public class LoadTestRunner
             foreach (var scenario in scenarios)
             {
                 _logger.LogInformation("=== Starting {ScenarioName} ===", scenario.Name);
-                
+
                 var progress = new Progress<TestProgress>(p => ReportProgress(scenario.Name, p));
                 var scenarioResult = await ExecuteScenarioWithRetryAsync(scenario, progress);
-                
+
                 scenarioResults.Add(scenarioResult);
 
-                _logger.LogInformation("=== {ScenarioName} completed: {Status} ===", 
+                _logger.LogInformation("=== {ScenarioName} completed: {Status} ===",
                     scenario.Name, scenarioResult.Success ? "SUCCESS" : "FAILED");
 
                 if (!scenarioResult.Success)
@@ -94,11 +94,11 @@ public class LoadTestRunner
         catch (Exception ex)
         {
             _logger.LogError(ex, "Load testing failed with unexpected error");
-            
+
             report.TestEndTime = DateTime.UtcNow;
             report.Summary.TestPassed = false;
             report.Summary.CriticalIssues.Add($"Unexpected failure: {ex.Message}");
-            
+
             return report;
         }
     }
@@ -116,7 +116,7 @@ public class LoadTestRunner
 
             if (!requestedScenarios.Any())
             {
-                _logger.LogWarning("No matching scenarios found for: {RequestedScenarios}", 
+                _logger.LogWarning("No matching scenarios found for: {RequestedScenarios}",
                     string.Join(", ", options.SpecificScenarios));
             }
 
@@ -124,40 +124,40 @@ public class LoadTestRunner
         }
 
         // Return all enabled scenarios
-        return allScenarios.Where(s => s.IsEnabled).ToList();
+        return [.. allScenarios.Where(s => s.IsEnabled)];
     }
 
     private async Task<ScenarioResult> ExecuteScenarioWithRetryAsync(ILoadTestScenario scenario, IProgress<TestProgress> progress)
     {
         const int maxRetries = 1; // Allow one retry for transient failures
-        
+
         for (int attempt = 1; attempt <= maxRetries + 1; attempt++)
         {
             try
             {
                 if (attempt > 1)
                 {
-                    _logger.LogInformation("Retrying {ScenarioName} (attempt {Attempt}/{MaxAttempts})", 
+                    _logger.LogInformation("Retrying {ScenarioName} (attempt {Attempt}/{MaxAttempts})",
                         scenario.Name, attempt, maxRetries + 1);
-                    
+
                     // Wait before retry
                     await Task.Delay(TimeSpan.FromSeconds(10));
                 }
 
                 var result = await scenario.ExecuteAsync(progress);
-                
+
                 if (result.Success || attempt == maxRetries + 1)
                 {
                     return result;
                 }
-                
-                _logger.LogWarning("Scenario {ScenarioName} failed on attempt {Attempt}: {FailureReason}. Retrying...", 
+
+                _logger.LogWarning("Scenario {ScenarioName} failed on attempt {Attempt}: {FailureReason}. Retrying...",
                     scenario.Name, attempt, result.FailureReason);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Scenario {ScenarioName} threw exception on attempt {Attempt}", scenario.Name, attempt);
-                
+
                 if (attempt == maxRetries + 1)
                 {
                     return new ScenarioResult
@@ -188,10 +188,10 @@ public class LoadTestRunner
             TotalScenarios = scenarioResults.Count,
             SuccessfulScenarios = scenarioResults.Count(r => r.Success),
             FailedScenarios = scenarioResults.Count(r => !r.Success),
-            
+
             TotalConnections = scenarioResults.Sum(r => r.TotalUsers),
             SuccessfulConnections = scenarioResults.Sum(r => r.SuccessfulConnections),
-            
+
             TotalMessages = scenarioResults.Sum(r => r.TotalMessages),
             DeliveredMessages = scenarioResults.Sum(r => r.DeliveredMessages)
         };
@@ -260,7 +260,7 @@ public class LoadTestRunner
     private ValidationResults ValidateAcceptanceCriteria(List<ScenarioResult> scenarioResults)
     {
         var validation = new ValidationResults();
-        
+
         // Find relevant scenario results
         var connectionLoadResult = scenarioResults.FirstOrDefault(r => r.ScenarioName.Contains("Connection Load"));
         var messageLatencyResult = scenarioResults.FirstOrDefault(r => r.ScenarioName.Contains("Message Latency"));
@@ -294,10 +294,9 @@ public class LoadTestRunner
         validation.AllCriteriaPass = criteriaResults.All(c => c.Pass);
 
         // Collect failure reasons
-        validation.FailureReasons = criteriaResults
+        validation.FailureReasons = [.. criteriaResults
             .Where(c => !c.Pass)
-            .Select(c => $"{c.Name}: {c.FailureReason}")
-            .ToList();
+            .Select(c => $"{c.Name}: {c.FailureReason}")];
 
         return validation;
     }
@@ -321,7 +320,7 @@ public class LoadTestRunner
 
         var minRequired = 9900; // 99% of 10,000
         criterion.ActualValue = $"{connectionResult.SuccessfulConnections:N0} connections ({connectionResult.ConnectionSuccessRate:P2})";
-        
+
         if (connectionResult.SuccessfulConnections >= minRequired)
         {
             criterion.Pass = true;
@@ -345,8 +344,8 @@ public class LoadTestRunner
         };
 
         // Use latency-specific result if available, otherwise use all scenarios with messages
-        var resultsWithMessages = latencyResult != null 
-            ? new[] { latencyResult } 
+        var resultsWithMessages = latencyResult != null
+            ? new[] { latencyResult }
             : allResults.Where(r => r.TotalMessages > 0);
 
         if (!resultsWithMessages.Any())
@@ -394,7 +393,7 @@ public class LoadTestRunner
             return criterion;
         }
 
-        var overallDeliveryRate = resultsWithMessages.Sum(r => r.DeliveredMessages) / 
+        var overallDeliveryRate = resultsWithMessages.Sum(r => r.DeliveredMessages) /
                                  (double)resultsWithMessages.Sum(r => r.TotalMessages);
 
         criterion.ActualValue = $"{overallDeliveryRate:P2} delivery rate";
@@ -468,10 +467,10 @@ public class LoadTestRunner
         {
             criterion.Pass = false;
             var issues = new List<string>();
-            
+
             if (!cpuOk)
                 issues.Add($"CPU {resourceStats.MaxCpuPercent:F1}% > {_validationConfig.MaxCpuUsagePercent}%");
-            
+
             if (!memoryOk)
                 issues.Add($"Memory {resourceStats.MaxMemoryMB:N0}MB > {_validationConfig.MaxMemoryUsageMB}MB");
 

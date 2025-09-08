@@ -23,14 +23,14 @@ public sealed class BufferManager<T> : IBufferManager<T>
             throw new ArgumentOutOfRangeException(nameof(capacity), "Capacity must be at least 1");
 
         _capacity = capacity;
-        
+
         var options = new BoundedChannelOptions(capacity)
         {
             FullMode = BoundedChannelFullMode.Wait,
             SingleWriter = false,
             SingleReader = false
         };
-        
+
         _channel = Channel.CreateBounded<T>(options);
     }
 
@@ -59,7 +59,7 @@ public sealed class BufferManager<T> : IBufferManager<T>
     public void Complete()
     {
         ThrowIfDisposed();
-        _channel.Writer.TryComplete();
+        _ = _channel.Writer.TryComplete();
     }
 
     /// <inheritdoc />
@@ -102,11 +102,11 @@ public sealed class BufferManager<T> : IBufferManager<T>
             return;
 
         _disposed = true;
-        _channel.Writer.TryComplete();
-        
+        _ = _channel.Writer.TryComplete();
+
         // Wait for reader to complete
         await _channel.Reader.Completion.ConfigureAwait(false);
-        
+
         GC.SuppressFinalize(this);
     }
 

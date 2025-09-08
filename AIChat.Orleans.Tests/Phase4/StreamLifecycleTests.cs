@@ -1,5 +1,4 @@
 using System.Net.Http.Json;
-using System.Text;
 using AIChat.Orleans.Contracts;
 using AIChat.Orleans.Tests.TestUtilities;
 using AIChat.Server.Configuration;
@@ -10,7 +9,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
-using Orleans;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -36,7 +34,7 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
         // Arrange
         _fixture.OrleansEnabled = true;
         await _fixture.InitializeAsync();
-        
+
         using var client = _fixture.CreateSseClient();
         var request = new CreateChatRequest
         {
@@ -48,20 +46,20 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
 
         // Act
         var response = await client.PostAsJsonAsync("/api/chat/stream-sse", request);
-        
+
         // Assert
-        response.EnsureSuccessStatusCode();
-        
+        _ = response.EnsureSuccessStatusCode();
+
         // Parse SSE stream to verify initialization
         using var stream = await response.Content.ReadAsStreamAsync();
         var events = await SseTestHelpers.ParseSseStreamAsync(stream);
-        
+
         // Should have init event
         var initEvent = events.FirstOrDefault(e => e.EventType == "init");
-        initEvent.Should().NotBeNull();
-        initEvent!.Envelope.Should().NotBeNull();
-        initEvent.Envelope!.ChatId.Should().NotBeNullOrEmpty();
-        
+        _ = initEvent.Should().NotBeNull();
+        _ = initEvent!.Envelope.Should().NotBeNull();
+        _ = initEvent.Envelope!.ChatId.Should().NotBeNullOrEmpty();
+
         _output.WriteLine($"Stream initialized with ChatId: {initEvent.Envelope.ChatId}");
     }
 
@@ -71,7 +69,7 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
         // Arrange
         _fixture.OrleansEnabled = true;
         await _fixture.InitializeAsync();
-        
+
         using var client = _fixture.CreateSseClient();
         var request = new CreateChatRequest
         {
@@ -83,18 +81,18 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
 
         // Act
         var response = await client.PostAsJsonAsync("/api/chat/stream-sse", request);
-        
+
         // Assert
-        response.EnsureSuccessStatusCode();
-        
+        _ = response.EnsureSuccessStatusCode();
+
         using var stream = await response.Content.ReadAsStreamAsync();
         var events = await SseTestHelpers.ParseSseStreamAsync(stream);
-        
+
         // Should have complete event
         var completeEvent = events.LastOrDefault(e => e.EventType == "complete");
-        completeEvent.Should().NotBeNull();
-        completeEvent!.Envelope.Should().NotBeNull();
-        
+        _ = completeEvent.Should().NotBeNull();
+        _ = completeEvent!.Envelope.Should().NotBeNull();
+
         _output.WriteLine($"Stream completed with {events.Count} total events");
     }
 
@@ -104,7 +102,7 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
         // Arrange
         _fixture.OrleansEnabled = true;
         await _fixture.InitializeAsync();
-        
+
         var userId = "test-user-concurrent";
         var tasks = new List<Task<List<SseTestHelpers.SseEvent>>>();
 
@@ -123,24 +121,24 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
                 };
 
                 var response = await client.PostAsJsonAsync("/api/chat/stream-sse", request);
-                response.EnsureSuccessStatusCode();
-                
+                _ = response.EnsureSuccessStatusCode();
+
                 using var stream = await response.Content.ReadAsStreamAsync();
                 return await SseTestHelpers.ParseSseStreamAsync(stream);
             });
-            
+
             tasks.Add(task);
         }
 
         var results = await Task.WhenAll(tasks);
 
         // Assert - All streams should complete successfully
-        results.Should().HaveCount(3);
+        _ = results.Should().HaveCount(3);
         foreach (var events in results)
         {
-            events.Should().NotBeEmpty();
-            events.Should().Contain(e => e.EventType == "init");
-            events.Should().Contain(e => e.EventType == "complete");
+            _ = events.Should().NotBeEmpty();
+            _ = events.Should().Contain(e => e.EventType == "init");
+            _ = events.Should().Contain(e => e.EventType == "complete");
         }
 
         _output.WriteLine($"Successfully handled {results.Length} concurrent streams for user {userId}");
@@ -152,10 +150,10 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
         // Arrange
         _fixture.OrleansEnabled = true;
         await _fixture.InitializeAsync();
-        
+
         using var cts = new CancellationTokenSource();
         using var client = _fixture.CreateSseClient();
-        
+
         var request = new CreateChatRequest
         {
             UserId = "test-user-cancel",
@@ -174,17 +172,17 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
             cts.Token);
 
         var response = await responseTask;
-        response.EnsureSuccessStatusCode();
+        _ = response.EnsureSuccessStatusCode();
 
         // Cancel after receiving initial response
         await Task.Delay(100);
         cts.Cancel();
 
         // Assert - Stream should be cancelled without errors
-        await Assert.ThrowsAsync<TaskCanceledException>(async () =>
+        _ = await Assert.ThrowsAsync<TaskCanceledException>(async () =>
         {
             using var stream = await response.Content.ReadAsStreamAsync();
-            await SseTestHelpers.ParseSseStreamAsync(stream, cts.Token);
+            _ = await SseTestHelpers.ParseSseStreamAsync(stream, cts.Token);
         });
 
         _output.WriteLine("Stream cancelled successfully");
@@ -196,7 +194,7 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
         // Arrange
         _fixture.OrleansEnabled = true;
         await _fixture.InitializeAsync();
-        
+
         // Configure a short timeout for testing
         var services = _fixture.WebAppFactory.Services;
         var streamingConfig = services.GetRequiredService<IOptions<StreamingConfiguration>>();
@@ -204,7 +202,7 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
 
         using var client = _fixture.CreateSseClient();
         client.Timeout = TimeSpan.FromSeconds(5); // Client timeout longer than stream timeout
-        
+
         var request = new CreateChatRequest
         {
             UserId = "test-user-timeout",
@@ -215,16 +213,16 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
 
         // Act
         var response = await client.PostAsJsonAsync("/api/chat/stream-sse", request);
-        
+
         // Assert
-        response.EnsureSuccessStatusCode();
-        
+        _ = response.EnsureSuccessStatusCode();
+
         using var stream = await response.Content.ReadAsStreamAsync();
         var events = await SseTestHelpers.ParseSseStreamAsync(stream);
-        
+
         // Should complete or error within timeout
-        events.Should().NotBeEmpty();
-        
+        _ = events.Should().NotBeEmpty();
+
         _output.WriteLine($"Stream handled timeout with {events.Count} events");
     }
 
@@ -234,7 +232,7 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
         // Arrange
         _fixture.OrleansEnabled = true;
         await _fixture.InitializeAsync();
-        
+
         var loggerMock = new Mock<ILogger<StreamingBridge>>();
         var config = new StreamingConfiguration
         {
@@ -243,13 +241,13 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
             FlushIntervalMs = 100,
             Enabled = true
         };
-        
+
         var bridgeMock = new Mock<ITestStreamingBridge>();
         var messageCount = 0;
         var backpressureDetected = false;
 
         // Setup bridge mock
-        bridgeMock.Setup(x => x.ConvertToSseAsync(It.IsAny<IAsyncEnumerable<ChatStreamItem>>(), It.IsAny<CancellationToken>()))
+        _ = bridgeMock.Setup(x => x.ConvertToSseAsync(It.IsAny<IAsyncEnumerable<ChatStreamItem>>(), It.IsAny<CancellationToken>()))
             .Returns((IAsyncEnumerable<ChatStreamItem> items, CancellationToken ct) =>
                 ConvertToSseSimple(items, ct));
 
@@ -264,7 +262,7 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
         });
 
         // Monitor for backpressure
-        loggerMock.Setup(x => x.Log(
+        _ = loggerMock.Setup(x => x.Log(
             It.Is<LogLevel>(l => l == LogLevel.Warning),
             It.IsAny<EventId>(),
             It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("backpressure")),
@@ -275,7 +273,7 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
         await processingTask;
 
         // Assert
-        messageCount.Should().BeGreaterThan(0);
+        _ = messageCount.Should().BeGreaterThan(0);
         _output.WriteLine($"Processed {messageCount} messages, backpressure: {backpressureDetected}");
     }
 
@@ -285,10 +283,10 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
         // Arrange
         _fixture.OrleansEnabled = true;
         await _fixture.InitializeAsync();
-        
+
         var userId = "test-user-cleanup";
         var grain = _fixture.Cluster.Client.GetGrain<IUserGrain>(userId);
-        
+
         // Act - Create and complete a stream
         using (var client = _fixture.CreateSseClient())
         {
@@ -301,16 +299,16 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
             };
 
             var response = await client.PostAsJsonAsync("/api/chat/stream-sse", request);
-            response.EnsureSuccessStatusCode();
-            
+            _ = response.EnsureSuccessStatusCode();
+
             using var stream = await response.Content.ReadAsStreamAsync();
-            await SseTestHelpers.ParseSseStreamAsync(stream);
+            _ = await SseTestHelpers.ParseSseStreamAsync(stream);
         }
 
         // Assert - Verify cleanup
         var state = await grain.GetState();
-        state.ActiveStreams.Count.Should().Be(0, "All streams should be cleaned up after completion");
-        
+        _ = state.ActiveStreams.Count.Should().Be(0, "All streams should be cleaned up after completion");
+
         _output.WriteLine($"Stream cleanup verified for user {userId}");
     }
 
@@ -320,21 +318,21 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
         // Arrange
         _fixture.OrleansEnabled = true;
         await _fixture.InitializeAsync();
-        
+
         var user1 = "test-user-isolation-1";
         var user2 = "test-user-isolation-2";
-        
+
         // Act - Create streams for different users
         var task1 = CreateAndVerifyStream(user1, "User 1 message");
         var task2 = CreateAndVerifyStream(user2, "User 2 message");
-        
+
         var results = await Task.WhenAll(task1, task2);
-        
+
         // Assert - Each user should have independent streams
-        results[0].ChatId.Should().NotBe(results[1].ChatId);
-        results[0].UserId.Should().Be(user1);
-        results[1].UserId.Should().Be(user2);
-        
+        _ = results[0].ChatId.Should().NotBe(results[1].ChatId);
+        _ = results[0].UserId.Should().Be(user1);
+        _ = results[1].UserId.Should().Be(user2);
+
         _output.WriteLine($"Stream isolation verified: User1 ChatId={results[0].ChatId}, User2 ChatId={results[1].ChatId}");
     }
 
@@ -350,11 +348,11 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
         };
 
         var response = await client.PostAsJsonAsync("/api/chat/stream-sse", request);
-        response.EnsureSuccessStatusCode();
-        
+        _ = response.EnsureSuccessStatusCode();
+
         using var stream = await response.Content.ReadAsStreamAsync();
         var events = await SseTestHelpers.ParseSseStreamAsync(stream);
-        
+
         var initEvent = events.First(e => e.EventType == "init");
         return (initEvent.Envelope!.ChatId!, userId);
     }

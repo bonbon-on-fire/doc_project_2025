@@ -14,33 +14,33 @@ public class OrleansTestFixture : IAsyncLifetime
     private TestClusterManager? _clusterManager;
     private TestWebApplicationManager? _webAppManager;
     private TestConfiguration _configuration = TestConfiguration.Default;
-    
+
     /// <summary>
     /// Gets the test cluster for Orleans grain interactions.
     /// </summary>
-    public TestCluster Cluster => _clusterManager?.Cluster 
+    public TestCluster Cluster => _clusterManager?.Cluster
         ?? throw new InvalidOperationException("Cluster not initialized");
-    
+
     /// <summary>
     /// Gets the WebApplicationFactory for HTTP testing.
     /// </summary>
-    public WebApplicationFactory<Program> WebAppFactory => _webAppManager?.Factory 
+    public WebApplicationFactory<Program> WebAppFactory => _webAppManager?.Factory
         ?? throw new InvalidOperationException("WebApp not initialized");
-    
+
     /// <summary>
     /// Gets or sets whether Orleans is enabled for the test.
     /// </summary>
-    public bool OrleansEnabled 
-    { 
+    public bool OrleansEnabled
+    {
         get => _configuration.OrleansEnabled;
         set => _configuration.OrleansEnabled = value;
     }
-    
+
     /// <summary>
     /// Gets or sets whether resilient streaming is enabled.
     /// </summary>
-    public bool ResilientStreamingEnabled 
-    { 
+    public bool ResilientStreamingEnabled
+    {
         get => _configuration.ResilientStreamingEnabled;
         set => _configuration.ResilientStreamingEnabled = value;
     }
@@ -71,7 +71,7 @@ public class OrleansTestFixture : IAsyncLifetime
     public async Task DisposeAsync()
     {
         _webAppManager?.Dispose();
-        
+
         if (_clusterManager != null)
         {
             await _clusterManager.DisposeAsync();
@@ -83,10 +83,9 @@ public class OrleansTestFixture : IAsyncLifetime
     /// </summary>
     public HttpClient CreateSseClient()
     {
-        if (_webAppManager == null)
-            throw new InvalidOperationException("WebAppManager not initialized. Call InitializeAsync first.");
-            
-        return _webAppManager.CreateSseClient();
+        return _webAppManager == null
+            ? throw new InvalidOperationException("WebAppManager not initialized. Call InitializeAsync first.")
+            : _webAppManager.CreateSseClient();
     }
 
     /// <summary>
@@ -94,10 +93,9 @@ public class OrleansTestFixture : IAsyncLifetime
     /// </summary>
     public HttpClient CreateStandardClient()
     {
-        if (_webAppManager == null)
-            throw new InvalidOperationException("WebAppManager not initialized. Call InitializeAsync first.");
-            
-        return _webAppManager.CreateStandardClient();
+        return _webAppManager == null
+            ? throw new InvalidOperationException("WebAppManager not initialized. Call InitializeAsync first.")
+            : _webAppManager.CreateStandardClient();
     }
 
     /// <summary>

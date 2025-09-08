@@ -1,9 +1,7 @@
-using System.Diagnostics;
 using AIChat.Orleans.Contracts;
 using AIChat.Orleans.Tracing;
 using Microsoft.Extensions.Logging;
 using Orleans;
-using Orleans.Runtime;
 
 namespace AIChat.Orleans.Grains;
 
@@ -33,65 +31,65 @@ public sealed class HealthCheckGrain : Grain, IHealthCheckGrain
             var result = new HealthCheckResult
             {
                 GrainId = this.GetPrimaryKeyString(),
-            CheckedAt = DateTime.UtcNow
-        };
+                CheckedAt = DateTime.UtcNow
+            };
 
-        try
-        {
-            _logger.LogDebug("Starting comprehensive health check for Orleans cluster");
+            try
+            {
+                _logger.LogDebug("Starting comprehensive health check for Orleans cluster");
 
-            // Test grain activation and basic functionality
-            var activationTest = await TestGrainActivationAsync();
-            if (!activationTest.Success)
-            {
-                result.IsHealthy = false;
-                result.Warnings.Add($"Grain activation test failed: {activationTest.Message}");
-            }
+                // Test grain activation and basic functionality
+                var activationTest = await TestGrainActivationAsync();
+                if (!activationTest.Success)
+                {
+                    result.IsHealthy = false;
+                    result.Warnings.Add($"Grain activation test failed: {activationTest.Message}");
+                }
 
-            // Test cluster connectivity
-            var clusterTest = await TestClusterConnectivityAsync();
-            if (!clusterTest.Success)
-            {
-                result.IsHealthy = false;
-                result.Warnings.Add($"Cluster connectivity test failed: {clusterTest.Message}");
-            }
+                // Test cluster connectivity
+                var clusterTest = await TestClusterConnectivityAsync();
+                if (!clusterTest.Success)
+                {
+                    result.IsHealthy = false;
+                    result.Warnings.Add($"Cluster connectivity test failed: {clusterTest.Message}");
+                }
 
-            // Get basic metrics
-            result.LastActivity = DateTime.UtcNow;
-            
-            // If we got this far without major failures, we're healthy
-            if (result.Warnings.Count == 0)
-            {
-                result.IsHealthy = true;
-                result.AdditionalInfo = "All health checks passed successfully";
-                _logger.LogDebug("Orleans health check completed successfully");
-            }
-            else
-            {
-                result.AdditionalInfo = $"Health check completed with {result.Warnings.Count} warnings";
-                _logger.LogWarning("Orleans health check completed with warnings: {Warnings}", string.Join(", ", result.Warnings));
-            }
-            
-            // Mark activity as successful
-            OrleansActivitySource.SetSuccess(activity, new Dictionary<string, object>
+                // Get basic metrics
+                result.LastActivity = DateTime.UtcNow;
+
+                // If we got this far without major failures, we're healthy
+                if (result.Warnings.Count == 0)
+                {
+                    result.IsHealthy = true;
+                    result.AdditionalInfo = "All health checks passed successfully";
+                    _logger.LogDebug("Orleans health check completed successfully");
+                }
+                else
+                {
+                    result.AdditionalInfo = $"Health check completed with {result.Warnings.Count} warnings";
+                    _logger.LogWarning("Orleans health check completed with warnings: {Warnings}", string.Join(", ", result.Warnings));
+                }
+
+                // Mark activity as successful
+                OrleansActivitySource.SetSuccess(activity, new Dictionary<string, object>
             {
                 {"health.status", result.IsHealthy},
                 {"warnings.count", result.Warnings.Count}
             });
-        }
-        catch (Exception ex)
-        {
-            result.IsHealthy = false;
-            result.AdditionalInfo = $"Health check failed with exception: {ex.Message}";
-            result.Warnings.Add($"Unhandled exception during health check: {ex.GetType().Name}");
-            
-            // Set activity error
-            OrleansActivitySource.SetError(activity, ex);
-            
-            _logger.LogError(ex, "Orleans health check failed with exception");
-        }
+            }
+            catch (Exception ex)
+            {
+                result.IsHealthy = false;
+                result.AdditionalInfo = $"Health check failed with exception: {ex.Message}";
+                result.Warnings.Add($"Unhandled exception during health check: {ex.GetType().Name}");
 
-        return result;
+                // Set activity error
+                OrleansActivitySource.SetError(activity, ex);
+
+                _logger.LogError(ex, "Orleans health check failed with exception");
+            }
+
+            return result;
         }
         catch (Exception outerEx)
         {

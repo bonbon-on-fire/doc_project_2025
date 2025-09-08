@@ -1,13 +1,10 @@
 using AIChat.Orleans.Client.Services;
 using AIChat.Server.Configuration;
 using AIChat.Server.Services.Streaming;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-using Orleans;
 using Moq;
 
 namespace AIChat.Orleans.Tests.TestUtilities.Infrastructure;
@@ -29,7 +26,7 @@ public class TestWebApplicationManager : IDisposable
     /// <summary>
     /// Gets the WebApplicationFactory instance.
     /// </summary>
-    public WebApplicationFactory<Program> Factory => 
+    public WebApplicationFactory<Program> Factory =>
         _factory ?? throw new InvalidOperationException("Factory not initialized");
 
     /// <summary>
@@ -40,14 +37,14 @@ public class TestWebApplicationManager : IDisposable
         _factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
-                builder.ConfigureTestServices(services =>
+                _ = builder.ConfigureTestServices(services =>
                 {
                     ConfigureOrleansServices(services, orleansClient);
                     ConfigureStreamingServices(services);
                     ConfigureFeatureManagement(services);
                 });
 
-                builder.ConfigureAppConfiguration((context, config) =>
+                _ = builder.ConfigureAppConfiguration((context, config) =>
                 {
                     ConfigureTestSettings(config);
                 });
@@ -63,11 +60,11 @@ public class TestWebApplicationManager : IDisposable
         {
             AllowAutoRedirect = false
         });
-        
+
         // Set SSE headers
         client.DefaultRequestHeaders.Add("Accept", "text/event-stream");
         client.DefaultRequestHeaders.Add("Cache-Control", "no-cache");
-        
+
         return client;
     }
 
@@ -88,21 +85,21 @@ public class TestWebApplicationManager : IDisposable
         var existingClient = services.FirstOrDefault(d => d.ServiceType == typeof(IClusterClient));
         if (existingClient != null)
         {
-            services.Remove(existingClient);
+            _ = services.Remove(existingClient);
         }
 
         // Add test Orleans client if enabled
         if (_configuration.OrleansEnabled && orleansClient != null)
         {
-            services.AddSingleton(orleansClient);
-            services.AddSingleton<IOrleansIntegrationService, OrleansIntegrationService>();
+            _ = services.AddSingleton(orleansClient);
+            _ = services.AddSingleton<IOrleansIntegrationService, OrleansIntegrationService>();
         }
     }
 
     private void ConfigureStreamingServices(IServiceCollection services)
     {
         // Configure streaming configuration
-        services.Configure<StreamingConfiguration>(options =>
+        _ = services.Configure<StreamingConfiguration>(options =>
         {
             options.BufferSize = _configuration.StreamingConfig.BufferSize;
             options.FlushIntervalMs = _configuration.StreamingConfig.FlushIntervalMs;
@@ -112,7 +109,7 @@ public class TestWebApplicationManager : IDisposable
         });
 
         // Configure resilient streaming
-        services.Configure<ResilientStreamingConfiguration>(options =>
+        _ = services.Configure<ResilientStreamingConfiguration>(options =>
         {
             options.Enabled = _configuration.ResilientStreamingEnabled;
             options.MaxRetryAttempts = _configuration.ResilientConfig.MaxRetryAttempts;
@@ -125,23 +122,23 @@ public class TestWebApplicationManager : IDisposable
         });
 
         // Add streaming services
-        services.AddScoped<IStreamingBridge, StreamingBridge>();
-        services.AddScoped<IStreamingBridgeFactory, StreamingBridgeFactory>();
-        
+        _ = services.AddScoped<IStreamingBridge, StreamingBridge>();
+        _ = services.AddScoped<IStreamingBridgeFactory, StreamingBridgeFactory>();
+
         if (_configuration.ResilientStreamingEnabled)
         {
-            services.AddScoped<IResilientStreamManager, ResilientStreamManager>();
+            _ = services.AddScoped<IResilientStreamManager, ResilientStreamManager>();
         }
     }
 
     private void ConfigureFeatureManagement(IServiceCollection services)
     {
-        services.AddSingleton<Microsoft.FeatureManagement.IFeatureManager>(sp =>
+        _ = services.AddSingleton<Microsoft.FeatureManagement.IFeatureManager>(sp =>
         {
             var mock = new Mock<Microsoft.FeatureManagement.IFeatureManager>();
-            mock.Setup(x => x.IsEnabledAsync("ResilientStreaming"))
+            _ = mock.Setup(x => x.IsEnabledAsync("ResilientStreaming"))
                 .ReturnsAsync(_configuration.ResilientStreamingEnabled);
-            mock.Setup(x => x.IsEnabledAsync("OrleansIntegration"))
+            _ = mock.Setup(x => x.IsEnabledAsync("OrleansIntegration"))
                 .ReturnsAsync(_configuration.OrleansEnabled);
             return mock.Object;
         });
@@ -149,7 +146,7 @@ public class TestWebApplicationManager : IDisposable
 
     private void ConfigureTestSettings(IConfigurationBuilder config)
     {
-        config.AddInMemoryCollection(new Dictionary<string, string?>
+        _ = config.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["Orleans:Enabled"] = _configuration.OrleansEnabled.ToString(),
             ["Features:ResilientStreaming"] = _configuration.ResilientStreamingEnabled.ToString(),

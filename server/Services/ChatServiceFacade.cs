@@ -1,7 +1,6 @@
 using AchieveAi.LmDotnetTools.LmCore.Agents;
 using AIChat.Orleans.Client.Services;
 using AIChat.Server.Storage;
-using static AchieveAi.LmDotnetTools.Misc.Utils.TaskManager;
 
 namespace AIChat.Server.Services;
 
@@ -10,7 +9,7 @@ namespace AIChat.Server.Services;
 /// for backward compatibility with existing controllers
 /// </summary>
 public class ChatServiceFacade(
-    ChatService chatService, 
+    ChatService chatService,
     ILogger<ChatServiceFacade> logger,
     IChatStorage storage,
     IStreamingAgent streamingAgent,
@@ -21,11 +20,11 @@ public class ChatServiceFacade(
     : IChatServiceFacade, IChatService
 {
     // Events for real-time notifications (backward compatibility)
-    #pragma warning disable CS0067 // Event is never used - reserved for future implementations
+#pragma warning disable CS0067 // Event is never used - reserved for future implementations
     public event Func<MessageCreatedEvent, Task>? MessageCreated;
     public event Func<StreamChunkEvent, Task>? StreamChunkReceived;
     public event Func<MessageEvent, Task>? MessageReceived;
-    #pragma warning restore CS0067
+#pragma warning restore CS0067
     public async Task<ChatResult> CreateChatAsync(CreateChatRequest request)
     {
         logger.LogInformation("Creating new chat for user {UserId}", request.UserId);
@@ -101,7 +100,7 @@ public class ChatServiceFacade(
     public async Task StreamAssistantResponseAsync(string chatId, CancellationToken cancellationToken = default)
     {
         logger.LogInformation("Streaming assistant response for chat {ChatId}", chatId);
-        
+
         // Create callbacks that fire events
         async Task MessageEventCallback(MessageEvent evt)
         {
@@ -110,7 +109,7 @@ public class ChatServiceFacade(
                 await MessageReceived(evt);
             }
         }
-        
+
         async Task ChunkEventCallback(StreamChunkEvent evt)
         {
             if (StreamChunkReceived != null)
@@ -118,13 +117,13 @@ public class ChatServiceFacade(
                 await StreamChunkReceived(evt);
             }
         }
-        
+
         await chatService.StreamAssistantResponseAsync(
-            chatId, 
-            storage, 
-            modeService, 
-            streamingAgent, 
-            toolingService, 
+            chatId,
+            storage,
+            modeService,
+            streamingAgent,
+            toolingService,
             orleansService,
             MessageEventCallback,
             ChunkEventCallback,

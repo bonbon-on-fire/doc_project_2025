@@ -1,13 +1,6 @@
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using AIChat.Server.Services.Streaming.Abstractions;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 
 namespace AIChat.Server.Services.Streaming.Implementations;
 
@@ -40,14 +33,12 @@ public class BufferReplayService : IBufferReplayService
     {
         if (string.IsNullOrEmpty(streamId))
             throw new ArgumentNullException(nameof(streamId));
-        if (messages == null)
-            throw new ArgumentNullException(nameof(messages));
-        if (httpResponse == null)
-            throw new ArgumentNullException(nameof(httpResponse));
+        ArgumentNullException.ThrowIfNull(messages);
+        ArgumentNullException.ThrowIfNull(httpResponse);
 
         options ??= new ReplayOptions();
         var startTime = DateTime.UtcNow;
-        
+
         // Track statistics with mutable variables
         var messagesReplayed = 0;
         var duplicatesSkipped = 0;
@@ -73,20 +64,20 @@ public class BufferReplayService : IBufferReplayService
             // Apply max message limit if specified
             if (options.MaxMessages > 0 && sortedMessages.Count > options.MaxMessages)
             {
-                sortedMessages = sortedMessages.Take(options.MaxMessages).ToList();
+                sortedMessages = [.. sortedMessages.Take(options.MaxMessages)];
             }
 
             // Process messages in batches if specified
             var batchSize = options.BatchSize > 0 ? options.BatchSize : sortedMessages.Count;
-            
+
             for (int i = 0; i < sortedMessages.Count; i += batchSize)
             {
                 var batch = sortedMessages.Skip(i).Take(batchSize).ToList();
-                
+
                 foreach (var message in batch)
                 {
                     // Check for duplicates unless skipped
-                    if (!options.SkipDuplicateDetection && 
+                    if (!options.SkipDuplicateDetection &&
                         await IsDuplicateMessageAsync(streamId, message.SequenceNumber))
                     {
                         duplicatesSkipped++;
@@ -101,13 +92,13 @@ public class BufferReplayService : IBufferReplayService
                     {
                         var replayData = PrepareReplayData(message, options.IncludeReplayMetadata);
                         var bytes = Encoding.UTF8.GetBytes(replayData);
-                        
+
                         await httpResponse.Body.WriteAsync(bytes, cancellationToken);
                         await httpResponse.Body.FlushAsync(cancellationToken);
 
                         // Record successful delivery
                         await RecordMessageDeliveryAsync(streamId, message.SequenceNumber, cancellationToken);
-                        
+
                         messagesReplayed++;
                         bytesReplayed += bytes.Length;
                         replayedSequenceNumbers.Add(message.SequenceNumber);
@@ -128,7 +119,7 @@ public class BufferReplayService : IBufferReplayService
                         _logger.LogError(ex,
                             "Failed to replay message {Sequence} for stream {StreamId}",
                             message.SequenceNumber, streamId);
-                        
+
                         if (messagesFailed > 5) // Fail fast after too many errors
                         {
                             success = false;
@@ -146,7 +137,7 @@ public class BufferReplayService : IBufferReplayService
 
             _logger.LogInformation(
                 "Replay completed for stream {StreamId}: {Replayed} replayed, {Duplicates} duplicates, {Failed} failed in {Duration}ms",
-                streamId, messagesReplayed, duplicatesSkipped, 
+                streamId, messagesReplayed, duplicatesSkipped,
                 messagesFailed, duration.TotalMilliseconds);
 
             return new ReplayResult
@@ -165,9 +156,9 @@ public class BufferReplayService : IBufferReplayService
         catch (Exception ex)
         {
             var duration = DateTime.UtcNow - startTime;
-            
+
             _logger.LogError(ex, "Replay failed for stream {StreamId}", streamId);
-            
+
             return new ReplayResult
             {
                 Success = false,
@@ -201,7 +192,7 @@ public class BufferReplayService : IBufferReplayService
 
         var tracker = GetOrCreateTracker(streamId);
         tracker.RecordDelivery(sequenceNumber);
-        
+
         await Task.CompletedTask;
     }
 
@@ -213,8 +204,7 @@ public class BufferReplayService : IBufferReplayService
     {
         if (string.IsNullOrEmpty(streamId))
             throw new ArgumentNullException(nameof(streamId));
-        if (partialMessages == null)
-            throw new ArgumentNullException(nameof(partialMessages));
+        ArgumentNullException.ThrowIfNull(partialMessages);
 
         var collector = _partialCollectors.GetOrAdd(streamId, _ => new PartialMessageCollector());
         var mergedMessages = new List<BufferedStreamMessage>();
@@ -222,7 +212,7 @@ public class BufferReplayService : IBufferReplayService
         foreach (var partial in partialMessages)
         {
             collector.AddPartial(partial);
-            
+
             // Check if we have all chunks for this sequence
             if (collector.IsComplete(partial.SequenceNumber))
             {
@@ -293,7 +283,7 @@ public class BufferReplayService : IBufferReplayService
         return _deliveryTrackers.GetOrAdd(streamId, _ => new DeliveryTracker());
     }
 
-    private string PrepareReplayData(BufferedStreamMessage message, bool includeMetadata)
+    private static string PrepareReplayData(BufferedStreamMessage message, bool includeMetadata)
     {
         if (includeMetadata)
         {
@@ -312,7 +302,7 @@ public class BufferReplayService : IBufferReplayService
     /// </summary>
     private class DeliveryTracker
     {
-        private readonly HashSet<long> _deliveredSequences = new();
+        private readonly HashSet<long> _deliveredSequences = [];
         private readonly object _lock = new();
 
         public int DeliveredCount => _deliveredSequences.Count;
@@ -342,10 +332,10 @@ public class BufferReplayService : IBufferReplayService
         {
             lock (_lock)
             {
-                _deliveredSequences.Add(sequenceNumber);
+                _ = _deliveredSequences.Add(sequenceNumber);
                 TotalMessagesReplayed++;
                 LastReplayTime = DateTime.UtcNow;
-                
+
                 if (sequenceNumber > HighestSequenceDelivered)
                     HighestSequenceDelivered = sequenceNumber;
             }
@@ -366,8 +356,8 @@ public class BufferReplayService : IBufferReplayService
 
         public void AddPartial(PartialMessage partial)
         {
-            _partials.AddOrUpdate(partial.SequenceNumber,
-                _ => new List<PartialMessage> { partial },
+            _ = _partials.AddOrUpdate(partial.SequenceNumber,
+                _ => [partial],
                 (_, list) =>
                 {
                     list.Add(partial);
@@ -381,10 +371,9 @@ public class BufferReplayService : IBufferReplayService
                 return false;
 
             var firstPartial = partials.FirstOrDefault();
-            if (firstPartial == null)
-                return false;
-
-            return partials.Count == firstPartial.TotalChunks &&
+            return firstPartial == null
+                ? false
+                : partials.Count == firstPartial.TotalChunks &&
                    partials.Select(p => p.ChunkIndex).Distinct().Count() == firstPartial.TotalChunks;
         }
 
@@ -414,7 +403,7 @@ public class BufferReplayService : IBufferReplayService
 
         public void RemoveSequence(long sequenceNumber)
         {
-            _partials.TryRemove(sequenceNumber, out _);
+            _ = _partials.TryRemove(sequenceNumber, out _);
         }
     }
 }

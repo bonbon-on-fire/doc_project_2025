@@ -3,7 +3,6 @@ using System.Text;
 using System.Threading.Channels;
 using AIChat.Server.Configuration;
 using AIChat.Server.Extensions;
-using AIChat.Server.Models.SSE;
 using Microsoft.Extensions.Options;
 
 namespace AIChat.Server.Services.Streaming;
@@ -19,7 +18,7 @@ public sealed class StreamingBridge : IStreamingBridge
     private readonly Channel<StreamItem> _buffer;
     private readonly SemaphoreSlim _writeSemaphore;
     private readonly object _statsLock = new();
-    
+
     private long _itemsProcessed;
     private long _backpressureEvents;
     private long _totalProcessingTimeMs;
@@ -54,10 +53,10 @@ public sealed class StreamingBridge : IStreamingBridge
             SingleReader = false
         };
         _buffer = Channel.CreateBounded<StreamItem>(channelOptions);
-        
+
         _writeSemaphore = new SemaphoreSlim(1, 1);
         _stopwatch = Stopwatch.StartNew();
-        
+
         _logger.LogInformation(
             "StreamingBridge initialized with buffer size: {BufferSize}, backpressure threshold: {Threshold}%",
             _configuration.BufferSize,
@@ -122,16 +121,16 @@ public sealed class StreamingBridge : IStreamingBridge
             return false; // No backpressure needed
         }
 
-        Interlocked.Increment(ref _backpressureEvents);
-        
+        _ = Interlocked.Increment(ref _backpressureEvents);
+
         var delay = _configuration.BackpressureDelayMs;
-        
+
         if (_configuration.EnableAdaptiveBackpressure)
         {
             // Adaptive delay based on utilization
-            var utilizationFactor = (bufferUtilization - _configuration.BackpressureThreshold) / 
+            var utilizationFactor = (bufferUtilization - _configuration.BackpressureThreshold) /
                                    (100 - _configuration.BackpressureThreshold);
-            delay = (int)(delay * (1 + utilizationFactor * 2)); // Up to 3x delay at 100% utilization
+            delay = (int)(delay * (1 + (utilizationFactor * 2))); // Up to 3x delay at 100% utilization
         }
 
         _logger.LogWarning(
@@ -181,7 +180,7 @@ public sealed class StreamingBridge : IStreamingBridge
         }
         finally
         {
-            _writeSemaphore.Release();
+            _ = _writeSemaphore.Release();
         }
     }
 
@@ -192,8 +191,8 @@ public sealed class StreamingBridge : IStreamingBridge
         {
             var currentSize = _buffer.Reader.Count;
             var utilization = (float)currentSize / _configuration.BufferSize * 100;
-            var avgProcessingTime = _itemsProcessed > 0 
-                ? (double)_totalProcessingTimeMs / _itemsProcessed 
+            var avgProcessingTime = _itemsProcessed > 0
+                ? (double)_totalProcessingTimeMs / _itemsProcessed
                 : 0;
 
             return new BufferStatistics
@@ -218,7 +217,7 @@ public sealed class StreamingBridge : IStreamingBridge
 
         try
         {
-            _buffer.Writer.TryComplete();
+            _ = _buffer.Writer.TryComplete();
             _writeSemaphore?.Dispose();
             _stopwatch?.Stop();
 
@@ -257,14 +256,14 @@ public sealed class StreamingBridge : IStreamingBridge
                 var stats = GetBufferStatistics();
                 if (stats.UtilizationPercentage >= _configuration.BackpressureThreshold)
                 {
-                    await HandleBackpressureAsync(stats.UtilizationPercentage, cancellationToken);
+                    _ = await HandleBackpressureAsync(stats.UtilizationPercentage, cancellationToken);
                 }
 
                 // Try to write to buffer
                 while (!_buffer.Writer.TryWrite(streamItem))
                 {
                     // Buffer is full, apply backpressure
-                    await HandleBackpressureAsync(100, cancellationToken);
+                    _ = await HandleBackpressureAsync(100, cancellationToken);
                 }
 
                 if (_configuration.EnableTelemetry)
@@ -275,7 +274,7 @@ public sealed class StreamingBridge : IStreamingBridge
         }
         finally
         {
-            _buffer.Writer.TryComplete();
+            _ = _buffer.Writer.TryComplete();
             _logger.LogInformation("Producer completed");
         }
     }
@@ -303,7 +302,7 @@ public sealed class StreamingBridge : IStreamingBridge
                     using var cts = new CancellationTokenSource(_configuration.WriteTimeoutMs);
                     using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
                         cancellationToken, cts.Token);
-                    
+
                     await httpResponse.Body.WriteAsync(bytes, linkedCts.Token);
 
                     // Flush periodically
@@ -315,7 +314,7 @@ public sealed class StreamingBridge : IStreamingBridge
                 }
                 finally
                 {
-                    _writeSemaphore.Release();
+                    _ = _writeSemaphore.Release();
                 }
 
                 // Update statistics

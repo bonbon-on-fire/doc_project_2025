@@ -1,11 +1,5 @@
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using AIChat.Server.Services.Streaming.Abstractions;
-using Microsoft.Extensions.Logging;
 
 namespace AIChat.Server.Services.Streaming.Implementations;
 
@@ -45,12 +39,7 @@ public class ConnectionStateTracker : IConnectionStateTracker
         if (string.IsNullOrEmpty(streamId))
             throw new ArgumentNullException(nameof(streamId));
 
-        if (_connectionStates.TryGetValue(streamId, out var data))
-        {
-            return await Task.FromResult(data.ToConnectionState());
-        }
-
-        return null;
+        return _connectionStates.TryGetValue(streamId, out var data) ? await Task.FromResult(data.ToConnectionState()) : null;
     }
 
     /// <inheritdoc />
@@ -58,11 +47,10 @@ public class ConnectionStateTracker : IConnectionStateTracker
     {
         if (string.IsNullOrEmpty(streamId))
             throw new ArgumentNullException(nameof(streamId));
-        if (state == null)
-            throw new ArgumentNullException(nameof(state));
+        ArgumentNullException.ThrowIfNull(state);
 
         var data = ConnectionStateData.FromConnectionState(state);
-        _connectionStates.AddOrUpdate(streamId, data, (key, existing) => data);
+        _ = _connectionStates.AddOrUpdate(streamId, data, (key, existing) => data);
 
         _logger.LogDebug(
             "Updated connection state for {StreamId}: Status={Status}, ReconnectionAttempts={Attempts}",
@@ -126,7 +114,7 @@ public class ConnectionStateTracker : IConnectionStateTracker
                 {
                     var connectionDuration = now - existing.ConnectedAt.Value;
                     existing.TotalConnectionTime = existing.TotalConnectionTime.Add(connectionDuration);
-                    
+
                     if (connectionDuration > existing.LongestConnectionDuration)
                         existing.LongestConnectionDuration = connectionDuration;
                 }
@@ -167,13 +155,13 @@ public class ConnectionStateTracker : IConnectionStateTracker
             {
                 existing.ReconnectionAttempts++;
                 existing.LastActivityAt = now;
-                
+
                 if (success)
                 {
                     existing.SuccessfulReconnections++;
                     existing.Status = ConnectionStatus.Connected;
                     existing.ConnectedAt = now;
-                    
+
                     // Track reconnection time
                     if (existing.DisconnectionStartTime.HasValue)
                     {
@@ -182,7 +170,7 @@ public class ConnectionStateTracker : IConnectionStateTracker
                         existing.ReconnectionTimes.Add(reconnectionTime);
                         existing.DisconnectionStartTime = null;
                     }
-                    
+
                     // Update disconnection time tracking
                     if (existing.DisconnectedAt.HasValue)
                     {
@@ -194,7 +182,7 @@ public class ConnectionStateTracker : IConnectionStateTracker
                 {
                     existing.Status = ConnectionStatus.Reconnecting;
                 }
-                
+
                 return existing;
             });
 
@@ -238,12 +226,12 @@ public class ConnectionStateTracker : IConnectionStateTracker
             return null;
 
         var now = DateTime.UtcNow;
-        
+
         // Calculate current session times
         var currentConnectionTime = data.Status == ConnectionStatus.Connected && data.ConnectedAt.HasValue
             ? now - data.ConnectedAt.Value
             : TimeSpan.Zero;
-            
+
         var currentDisconnectionTime = data.Status == ConnectionStatus.Disconnected && data.DisconnectedAt.HasValue
             ? now - data.DisconnectedAt.Value
             : TimeSpan.Zero;
@@ -260,11 +248,11 @@ public class ConnectionStateTracker : IConnectionStateTracker
             DisconnectionCount = data.DisconnectionCount,
             ReconnectionAttempts = data.ReconnectionAttempts,
             SuccessfulReconnections = data.SuccessfulReconnections,
-            AverageReconnectionTime = data.ReconnectionTimes.Any() 
+            AverageReconnectionTime = data.ReconnectionTimes.Count != 0
                 ? TimeSpan.FromMilliseconds(data.ReconnectionTimes.Average(t => t.TotalMilliseconds))
                 : TimeSpan.Zero,
-            UptimePercentage = totalTime.TotalSeconds > 0 
-                ? (totalConnectionTime.TotalSeconds / totalTime.TotalSeconds) * 100 
+            UptimePercentage = totalTime.TotalSeconds > 0
+                ? (totalConnectionTime.TotalSeconds / totalTime.TotalSeconds) * 100
                 : 100,
             LongestConnectionDuration = data.LongestConnectionDuration
         };
@@ -403,7 +391,7 @@ public class ConnectionStateTracker : IConnectionStateTracker
         public string? LastDisconnectionReason { get; set; }
         public int DisconnectionCount { get; set; }
         public int RecentFailureCount { get; set; }
-        
+
         // Time tracking
         public DateTime ConnectionStartTime { get; set; }
         public DateTime? DisconnectionStartTime { get; set; }
@@ -411,7 +399,7 @@ public class ConnectionStateTracker : IConnectionStateTracker
         public TimeSpan TotalDisconnectionTime { get; set; } = TimeSpan.Zero;
         public TimeSpan TotalReconnectionTime { get; set; } = TimeSpan.Zero;
         public TimeSpan LongestConnectionDuration { get; set; } = TimeSpan.Zero;
-        public List<TimeSpan> ReconnectionTimes { get; set; } = new();
+        public List<TimeSpan> ReconnectionTimes { get; set; } = [];
 
         public ConnectionState ToConnectionState()
         {

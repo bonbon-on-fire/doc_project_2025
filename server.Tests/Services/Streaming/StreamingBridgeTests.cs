@@ -15,6 +15,7 @@ public class StreamingBridgeTests : IDisposable
     private readonly StreamingConfiguration _configuration;
     private readonly IOptions<StreamingConfiguration> _configurationOptions;
     private readonly StreamingBridge _streamingBridge;
+    private static readonly string[] stringArray = new[] { "test" };
 
     public StreamingBridgeTests()
     {
@@ -48,7 +49,7 @@ public class StreamingBridgeTests : IDisposable
         var httpContext = new DefaultHttpContext();
         var memoryStream = new MemoryStream();
         httpContext.Response.Body = memoryStream;
-        
+
         string formatter(string s) => $"formatted_{s}";
 
         // Act
@@ -61,7 +62,7 @@ public class StreamingBridgeTests : IDisposable
         // Assert
         memoryStream.Position = 0;
         var result = Encoding.UTF8.GetString(memoryStream.ToArray());
-        
+
         Assert.Contains("formatted_chunk1", result);
         Assert.Contains("formatted_chunk2", result);
         Assert.Contains("formatted_chunk3", result);
@@ -76,10 +77,10 @@ public class StreamingBridgeTests : IDisposable
         var grainStream = GenerateInfiniteAsyncEnumerable(cts.Token);
         var httpContext = new DefaultHttpContext();
         httpContext.Response.Body = new MemoryStream();
-        
+
         // Act & Assert
         cts.CancelAfter(100);
-        
+
         // Both OperationCanceledException and TaskCanceledException are valid
         // since TaskCanceledException derives from OperationCanceledException
         var exception = await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
@@ -88,7 +89,7 @@ public class StreamingBridgeTests : IDisposable
                 httpContext.Response,
                 s => s,
                 cts.Token));
-        
+
         // Verify it's a cancellation-related exception
         Assert.True(exception is OperationCanceledException);
     }
@@ -106,7 +107,7 @@ public class StreamingBridgeTests : IDisposable
 
         // Assert
         Assert.True(result);
-        
+
         // Verify backpressure event was logged
         _loggerMock.Verify(
             x => x.Log(
@@ -152,7 +153,7 @@ public class StreamingBridgeTests : IDisposable
         // Assert
         memoryStream.Position = 0;
         var result = Encoding.UTF8.GetString(memoryStream.ToArray());
-        
+
         Assert.Contains("Test error", result);
         Assert.Contains("error", result);
         Assert.Contains("data:", result); // SSE format
@@ -181,7 +182,7 @@ public class StreamingBridgeTests : IDisposable
         httpContext.Response.Body = new MemoryStream();
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        _ = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await _streamingBridge.ConvertGrainToHttpStreamAsync(
                 grainStream,
                 httpContext.Response,
@@ -200,7 +201,7 @@ public class StreamingBridgeTests : IDisposable
         };
 
         // Act & Assert
-        Assert.Throws<InvalidOperationException>(() =>
+        _ = Assert.Throws<InvalidOperationException>(() =>
             new StreamingBridge(_loggerMock.Object, Options.Create(invalidConfig)));
     }
 
@@ -208,26 +209,26 @@ public class StreamingBridgeTests : IDisposable
     public async Task ConvertGrainToHttpStreamAsync_ThrowsOnNullArguments()
     {
         // Arrange
-        var grainStream = GenerateAsyncEnumerable(new[] { "test" });
+        var grainStream = GenerateAsyncEnumerable(stringArray);
         var httpContext = new DefaultHttpContext();
         httpContext.Response.Body = new MemoryStream();
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(async () =>
+        _ = await Assert.ThrowsAsync<ArgumentNullException>(async () =>
             await _streamingBridge.ConvertGrainToHttpStreamAsync<string>(
                 null!,
                 httpContext.Response,
                 s => s,
                 CancellationToken.None));
 
-        await Assert.ThrowsAsync<ArgumentNullException>(async () =>
+        _ = await Assert.ThrowsAsync<ArgumentNullException>(async () =>
             await _streamingBridge.ConvertGrainToHttpStreamAsync(
                 grainStream,
                 null!,
                 s => s,
                 CancellationToken.None));
 
-        await Assert.ThrowsAsync<ArgumentNullException>(async () =>
+        _ = await Assert.ThrowsAsync<ArgumentNullException>(async () =>
             await _streamingBridge.ConvertGrainToHttpStreamAsync<string>(
                 grainStream,
                 httpContext.Response,

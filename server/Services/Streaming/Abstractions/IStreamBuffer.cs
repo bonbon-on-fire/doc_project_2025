@@ -1,7 +1,3 @@
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace AIChat.Server.Services.Streaming.Abstractions;
 
 /// <summary>
@@ -118,7 +114,10 @@ public record BufferedStreamMessage
     /// </summary>
     /// <param name="ttl">Time to live duration</param>
     /// <returns>True if expired, false otherwise</returns>
-    public bool IsExpired(TimeSpan ttl) => DateTime.UtcNow - Timestamp > ttl;
+    public bool IsExpired(TimeSpan ttl)
+    {
+        return DateTime.UtcNow - Timestamp > ttl;
+    }
 }
 
 /// <summary>

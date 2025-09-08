@@ -1,4 +1,3 @@
-using AIChat.Orleans.Contracts;
 using Microsoft.Extensions.Logging;
 
 namespace AIChat.Orleans.Commands;
@@ -43,13 +42,10 @@ public class CancelOperationCommand : OperationCommandBase<string, bool>
         // accessing the grain state, which should happen during execution, not validation.
         // The validation phase should only check the command structure, not external state.
 
-        if (errors.Count > 0)
-        {
-            return CommandValidationResult.Failed(errors.ToArray());
-        }
-
-        return warnings.Count > 0
-            ? CommandValidationResult.WithWarnings(warnings.ToArray())
+        return errors.Count > 0
+            ? CommandValidationResult.Failed([.. errors])
+            : warnings.Count > 0
+            ? CommandValidationResult.WithWarnings([.. warnings])
             : CommandValidationResult.Success();
     }
 
@@ -117,7 +113,7 @@ public class CancelOperationCommand : OperationCommandBase<string, bool>
     public override Dictionary<string, object> GetMetadata()
     {
         var metadata = base.GetMetadata();
-        
+
         metadata["TargetOperationId"] = TargetOperationId ?? "null";
         metadata["CommandType"] = "CancelOperation";
         metadata["Action"] = "Cancel";
@@ -143,7 +139,7 @@ public class CancelOperationCommand : OperationCommandBase<string, bool>
             "Undo operation is not supported for cancellation commands. Operation {TargetOperationId} cannot be un-cancelled.",
             TargetOperationId);
 
-        // Cancellation is a terminal operation. Once something is cancelled, 
+        // Cancellation is a terminal operation. Once something is cancelled,
         // it cannot be "un-cancelled" back to its previous state.
         // If you need to restart the operation, it would be a new operation entirely.
 

@@ -11,13 +11,13 @@ namespace AIChat.Orleans.Metrics;
 public class OrleansMetricsCollector : IOrleansMetricsCollector
 {
     private readonly ILogger<OrleansMetricsCollector> _logger;
-    
+
     // Thread-safe collections for metrics storage
     private readonly ConcurrentDictionary<string, GrainInstanceMetrics> _grainMetrics = new();
     private readonly ConcurrentQueue<GrainActivationEvent> _recentActivations = new();
     private readonly ConcurrentQueue<GrainDeactivationEvent> _recentDeactivations = new();
     private readonly ConcurrentQueue<OperationMetrics> _recentOperations = new();
-    
+
     // Configuration
     private const int MAX_RECENT_EVENTS = 1000;
     private const int METRICS_RETENTION_HOURS = 24;
@@ -29,7 +29,7 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
     public OrleansMetricsCollector(ILogger<OrleansMetricsCollector> logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        
+
         // Start background cleanup task
         _ = Task.Run(async () => await PeriodicCleanupAsync());
     }
@@ -49,15 +49,15 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
             };
 
             _recentActivations.Enqueue(activation);
-            
+
             // Limit queue size
             while (_recentActivations.Count > MAX_RECENT_EVENTS)
             {
-                _recentActivations.TryDequeue(out _);
+                _ = _recentActivations.TryDequeue(out _);
             }
 
             // Update grain instance metrics
-            _grainMetrics.AddOrUpdate(key, 
+            _ = _grainMetrics.AddOrUpdate(key,
                 _ => new GrainInstanceMetrics
                 {
                     GrainType = grainType,
@@ -75,7 +75,7 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
                     return existing;
                 });
 
-            _logger.LogDebug("Recorded grain activation: {GrainType}:{GrainId} in {ActivationTime}ms", 
+            _logger.LogDebug("Recorded grain activation: {GrainType}:{GrainId} in {ActivationTime}ms",
                 grainType, grainId, activationTime);
         }
         catch (Exception ex)
@@ -101,11 +101,11 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
             };
 
             _recentDeactivations.Enqueue(deactivation);
-            
+
             // Limit queue size
             while (_recentDeactivations.Count > MAX_RECENT_EVENTS)
             {
-                _recentDeactivations.TryDequeue(out _);
+                _ = _recentDeactivations.TryDequeue(out _);
             }
 
             // Update grain instance metrics
@@ -116,7 +116,7 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
                 metrics.TotalLifetimeMinutes += lifetimeMinutes;
             }
 
-            _logger.LogDebug("Recorded grain deactivation: {GrainType}:{GrainId} after {LifetimeMinutes} minutes", 
+            _logger.LogDebug("Recorded grain deactivation: {GrainType}:{GrainId} after {LifetimeMinutes} minutes",
                 grainType, grainId, lifetimeMinutes);
         }
         catch (Exception ex)
@@ -142,14 +142,14 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
             };
 
             _recentOperations.Enqueue(operation);
-            
+
             // Limit queue size
             while (_recentOperations.Count > MAX_RECENT_EVENTS)
             {
-                _recentOperations.TryDequeue(out _);
+                _ = _recentOperations.TryDequeue(out _);
             }
 
-            _logger.LogTrace("Recorded operation: {GrainType}.{OperationType} - {Duration}ms (Success: {Success})", 
+            _logger.LogTrace("Recorded operation: {GrainType}.{OperationType} - {Duration}ms (Success: {Success})",
                 grainType, operationType, duration, success);
         }
         catch (Exception ex)
@@ -166,8 +166,8 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
         try
         {
             var key = $"{grainType}:{grainId}";
-            
-            _grainMetrics.AddOrUpdate(key, 
+
+            _ = _grainMetrics.AddOrUpdate(key,
                 _ => new GrainInstanceMetrics
                 {
                     GrainType = grainType,
@@ -186,7 +186,7 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
                     return existing;
                 });
 
-            _logger.LogTrace("Recorded state metrics: {GrainType}:{GrainId} - Size: {StateSize}B, Connections: {Connections}, Operations: {Operations}", 
+            _logger.LogTrace("Recorded state metrics: {GrainType}:{GrainId} - Size: {StateSize}B, Connections: {Connections}, Operations: {Operations}",
                 grainType, grainId, stateSize, connectionCount, operationCount);
         }
         catch (Exception ex)
@@ -272,7 +272,7 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
                 {
                     metrics.AverageOperationDuration = operations.Average(o => o.Duration);
                     metrics.OperationSuccessRate = (double)operations.Count(o => o.Success) / operations.Count * 100;
-                    
+
                     // Operation counts by type
                     metrics.OperationCounts = operations.GroupBy(o => o.OperationType)
                         .ToDictionary(g => g.Key, g => (long)g.Count());
@@ -311,7 +311,7 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
         try
         {
             _grainMetrics.Clear();
-            
+
             while (_recentActivations.TryDequeue(out _)) { }
             while (_recentDeactivations.TryDequeue(out _)) { }
             while (_recentOperations.TryDequeue(out _)) { }
@@ -336,9 +336,9 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
             try
             {
                 await Task.Delay(TimeSpan.FromHours(1));
-                
+
                 var cutoffTime = DateTime.UtcNow.AddHours(-METRICS_RETENTION_HOURS);
-                
+
                 // Remove old inactive grain metrics
                 var keysToRemove = _grainMetrics
                     .Where(kvp => !kvp.Value.IsActive && kvp.Value.DeactivatedAt < cutoffTime)
@@ -347,7 +347,7 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
 
                 foreach (var key in keysToRemove)
                 {
-                    _grainMetrics.TryRemove(key, out _);
+                    _ = _grainMetrics.TryRemove(key, out _);
                 }
 
                 _logger.LogDebug("Cleaned up {Count} old grain metrics", keysToRemove.Count);

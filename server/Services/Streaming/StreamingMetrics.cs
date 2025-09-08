@@ -39,9 +39,9 @@ public sealed class StreamingMetrics : IStreamingMetrics
         if (processingTimeMs < 0)
             throw new ArgumentOutOfRangeException(nameof(processingTimeMs), "Processing time cannot be negative");
 
-        Interlocked.Increment(ref _itemsProcessed);
-        Interlocked.Add(ref _totalProcessingTimeMs, processingTimeMs);
-        
+        _ = Interlocked.Increment(ref _itemsProcessed);
+        _ = Interlocked.Add(ref _totalProcessingTimeMs, processingTimeMs);
+
         // Update max processing time
         long currentMax;
         do
@@ -50,7 +50,7 @@ public sealed class StreamingMetrics : IStreamingMetrics
             if (processingTimeMs <= currentMax)
                 break;
         } while (Interlocked.CompareExchange(ref _maxProcessingTimeMs, processingTimeMs, currentMax) != currentMax);
-        
+
         // Update min processing time
         long currentMin;
         do
@@ -75,18 +75,18 @@ public sealed class StreamingMetrics : IStreamingMetrics
         if (delayMs < 0)
             throw new ArgumentOutOfRangeException(nameof(delayMs), "Delay cannot be negative");
 
-        Interlocked.Increment(ref _backpressureEvents);
-        Interlocked.Add(ref _totalBackpressureDelayMs, delayMs);
+        _ = Interlocked.Increment(ref _backpressureEvents);
+        _ = Interlocked.Add(ref _totalBackpressureDelayMs, delayMs);
     }
 
     /// <inheritdoc />
     public void RecordError(string errorType)
     {
         ArgumentNullException.ThrowIfNull(errorType);
-        
-        Interlocked.Increment(ref _errorCount);
-        _errorsByType.AddOrUpdate(errorType, 1, (_, count) => count + 1);
-        
+
+        _ = Interlocked.Increment(ref _errorCount);
+        _ = _errorsByType.AddOrUpdate(errorType, 1, (_, count) => count + 1);
+
         _logger?.LogWarning("Error recorded: {ErrorType}. Total errors: {Count}", errorType, _errorCount);
     }
 
@@ -96,7 +96,7 @@ public sealed class StreamingMetrics : IStreamingMetrics
         if (bytes < 0)
             throw new ArgumentOutOfRangeException(nameof(bytes), "Bytes cannot be negative");
 
-        Interlocked.Add(ref _totalBytesWritten, bytes);
+        _ = Interlocked.Add(ref _totalBytesWritten, bytes);
     }
 
     /// <inheritdoc />
@@ -105,13 +105,13 @@ public sealed class StreamingMetrics : IStreamingMetrics
         var itemsProcessed = Interlocked.Read(ref _itemsProcessed);
         var totalProcessingTime = Interlocked.Read(ref _totalProcessingTimeMs);
         var duration = _stopwatch.Elapsed;
-        
-        var avgProcessingTime = itemsProcessed > 0 
-            ? (double)totalProcessingTime / itemsProcessed 
+
+        var avgProcessingTime = itemsProcessed > 0
+            ? (double)totalProcessingTime / itemsProcessed
             : 0;
-        
-        var throughput = duration.TotalSeconds > 0 
-            ? itemsProcessed / duration.TotalSeconds 
+
+        var throughput = duration.TotalSeconds > 0
+            ? itemsProcessed / duration.TotalSeconds
             : 0;
 
         var minTime = Interlocked.Read(ref _minProcessingTimeMs);
@@ -138,17 +138,17 @@ public sealed class StreamingMetrics : IStreamingMetrics
     /// <inheritdoc />
     public void Reset()
     {
-        Interlocked.Exchange(ref _itemsProcessed, 0);
-        Interlocked.Exchange(ref _totalProcessingTimeMs, 0);
-        Interlocked.Exchange(ref _maxProcessingTimeMs, 0);
-        Interlocked.Exchange(ref _minProcessingTimeMs, long.MaxValue);
-        Interlocked.Exchange(ref _backpressureEvents, 0);
-        Interlocked.Exchange(ref _totalBackpressureDelayMs, 0);
-        Interlocked.Exchange(ref _totalBytesWritten, 0);
-        Interlocked.Exchange(ref _errorCount, 0);
+        _ = Interlocked.Exchange(ref _itemsProcessed, 0);
+        _ = Interlocked.Exchange(ref _totalProcessingTimeMs, 0);
+        _ = Interlocked.Exchange(ref _maxProcessingTimeMs, 0);
+        _ = Interlocked.Exchange(ref _minProcessingTimeMs, long.MaxValue);
+        _ = Interlocked.Exchange(ref _backpressureEvents, 0);
+        _ = Interlocked.Exchange(ref _totalBackpressureDelayMs, 0);
+        _ = Interlocked.Exchange(ref _totalBytesWritten, 0);
+        _ = Interlocked.Exchange(ref _errorCount, 0);
         _errorsByType.Clear();
         _stopwatch.Restart();
-        
+
         _logger?.LogInformation("Streaming metrics reset");
     }
 }

@@ -1,11 +1,8 @@
 using System.Net.Http.Json;
-using System.Text.Json;
 using AIChat.Orleans.Contracts;
 using AIChat.Orleans.Tests.TestUtilities;
 using AIChat.Server.Models;
-using AIChat.Server.Models.SSE;
 using FluentAssertions;
-using Orleans;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -31,10 +28,10 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
         // Arrange
         _fixture.OrleansEnabled = true;
         await _fixture.InitializeAsync();
-        
+
         var userId = "e2e-test-user";
         var chatId = Guid.NewGuid().ToString();
-        
+
         using var client = _fixture.CreateSseClient();
 
         // Act - Send initial message
@@ -47,15 +44,15 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
         };
 
         var response1 = await client.PostAsJsonAsync("/api/chat/stream-sse", request1);
-        response1.EnsureSuccessStatusCode();
-        
+        _ = response1.EnsureSuccessStatusCode();
+
         using var stream1 = await response1.Content.ReadAsStreamAsync();
         var events1 = await SseTestHelpers.ParseSseStreamAsync(stream1);
-        
+
         // Extract chat ID from init event
         var initEvent = events1.First(e => e.EventType == "init");
         var actualChatId = initEvent.Envelope!.ChatId;
-        
+
         // Send follow-up message in same chat
         var request2 = new CreateChatRequest
         {
@@ -67,27 +64,27 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
         };
 
         var response2 = await client.PostAsJsonAsync("/api/chat/stream-sse", request2);
-        response2.EnsureSuccessStatusCode();
-        
+        _ = response2.EnsureSuccessStatusCode();
+
         using var stream2 = await response2.Content.ReadAsStreamAsync();
         var events2 = await SseTestHelpers.ParseSseStreamAsync(stream2);
 
         // Assert
         // First message flow
-        events1.Should().Contain(e => e.EventType == "init");
-        events1.Should().Contain(e => e.EventType == "message");
-        events1.Should().Contain(e => e.EventType == "complete");
-        
+        _ = events1.Should().Contain(e => e.EventType == "init");
+        _ = events1.Should().Contain(e => e.EventType == "message");
+        _ = events1.Should().Contain(e => e.EventType == "complete");
+
         // Second message flow (continuation)
-        events2.Should().Contain(e => e.EventType == "init");
-        events2.First(e => e.EventType == "init").Envelope!.ChatId.Should().Be(actualChatId);
-        events2.Should().Contain(e => e.EventType == "complete");
+        _ = events2.Should().Contain(e => e.EventType == "init");
+        _ = events2.First(e => e.EventType == "init").Envelope!.ChatId.Should().Be(actualChatId);
+        _ = events2.Should().Contain(e => e.EventType == "complete");
 
         // Verify Orleans grain state
         var grain = _fixture.Cluster.Client.GetGrain<IUserGrain>(userId);
         var state = await grain.GetState();
-        state.Should().NotBeNull();
-        state.LastActivity.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(1));
+        _ = state.Should().NotBeNull();
+        _ = state.LastActivity.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(1));
 
         _output.WriteLine($"Full chat flow completed with {events1.Count + events2.Count} total events");
         _output.WriteLine($"ChatId: {actualChatId}, Last activity: {state.LastActivity}");
@@ -99,7 +96,7 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
         // Arrange
         _fixture.OrleansEnabled = true;
         await _fixture.InitializeAsync();
-        
+
         var user1 = "multi-user-1";
         var user2 = "multi-user-2";
         var user3 = "multi-user-3";
@@ -115,17 +112,17 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
         var results = await Task.WhenAll(tasks);
 
         // Assert
-        results.Should().HaveCount(3);
-        results.Select(r => r.ChatId).Should().OnlyHaveUniqueItems();
-        results.Select(r => r.UserId).Should().BeEquivalentTo(new[] { user1, user2, user3 });
+        _ = results.Should().HaveCount(3);
+        _ = results.Select(r => r.ChatId).Should().OnlyHaveUniqueItems();
+        _ = results.Select(r => r.UserId).Should().BeEquivalentTo(new[] { user1, user2, user3 });
 
         // Verify each user's grain has separate state
         foreach (var result in results)
         {
             var grain = _fixture.Cluster.Client.GetGrain<IUserGrain>(result.UserId);
             var state = await grain.GetState();
-            state.Should().NotBeNull();
-            state.LastActivity.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(1));
+            _ = state.Should().NotBeNull();
+            _ = state.LastActivity.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(1));
             // Verify the user processed messages for their chat
         }
 
@@ -142,7 +139,7 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
         // Arrange
         _fixture.OrleansEnabled = true;
         await _fixture.InitializeAsync();
-        
+
         var userId = "ordering-test-user";
         var messages = new[] { "First", "Second", "Third", "Fourth", "Fifth" };
         var chatId = string.Empty;
@@ -161,11 +158,11 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
             };
 
             var response = await client.PostAsJsonAsync("/api/chat/stream-sse", request);
-            response.EnsureSuccessStatusCode();
-            
+            _ = response.EnsureSuccessStatusCode();
+
             using var stream = await response.Content.ReadAsStreamAsync();
             var events = await SseTestHelpers.ParseSseStreamAsync(stream);
-            
+
             if (string.IsNullOrEmpty(chatId))
             {
                 var initEvent = events.First(e => e.EventType == "init");
@@ -176,10 +173,10 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
         // Assert - Verify message ordering in grain
         var grain = _fixture.Cluster.Client.GetGrain<IUserGrain>(userId);
         var state = await grain.GetState();
-        
-        state.Should().NotBeNull();
+
+        _ = state.Should().NotBeNull();
         // Since GetChatHistoryAsync is not available, we can verify the state was updated
-        state.LastActivity.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(1));
+        _ = state.LastActivity.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(1));
 
         // Message ordering is verified through SSE events already
         _output.WriteLine($"Stream processing verified for {messages.Length} messages");
@@ -192,9 +189,9 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
         // Arrange
         _fixture.OrleansEnabled = true;
         await _fixture.InitializeAsync();
-        
+
         using var client = _fixture.CreateSseClient();
-        
+
         // Invalid request to trigger error
         var request = new CreateChatRequest
         {
@@ -212,18 +209,18 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
         {
             using var stream = await response.Content.ReadAsStreamAsync();
             var events = await SseTestHelpers.ParseSseStreamAsync(stream);
-            
+
             // Should contain error event
-            var errorEvent = events.FirstOrDefault(e => 
-                e.EventType == "error" || 
+            var errorEvent = events.FirstOrDefault(e =>
+                e.EventType == "error" ||
                 (e.Envelope?.Metadata?.ContainsKey("error") ?? false));
-            
-            errorEvent.Should().NotBeNull("Error should be propagated to client");
+
+            _ = errorEvent.Should().NotBeNull("Error should be propagated to client");
         }
         else
         {
             // Validation might fail at API level
-            response.StatusCode.Should().Be(System.Net.HttpStatusCode.BadRequest);
+            _ = response.StatusCode.Should().Be(System.Net.HttpStatusCode.BadRequest);
         }
 
         _output.WriteLine("Error propagation test completed");
@@ -236,14 +233,14 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
         _fixture.OrleansEnabled = true;
         _fixture.ResilientStreamingEnabled = true;
         await _fixture.InitializeAsync();
-        
+
         var userId = "recovery-test-user";
         var chatId = Guid.NewGuid().ToString();
-        
+
         // Act - Start stream and interrupt
         using var cts = new CancellationTokenSource();
         using var client = _fixture.CreateSseClient();
-        
+
         var request = new CreateChatRequest
         {
             UserId = userId,
@@ -261,7 +258,7 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
             cts.Token);
 
         var response = await responseTask;
-        response.EnsureSuccessStatusCode();
+        _ = response.EnsureSuccessStatusCode();
 
         // Simulate interruption
         cts.Cancel();
@@ -278,14 +275,14 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
         };
 
         var recoveryResponse = await client2.PostAsJsonAsync("/api/chat/stream-sse", recoveryRequest);
-        
+
         // Assert
-        recoveryResponse.EnsureSuccessStatusCode();
-        
+        _ = recoveryResponse.EnsureSuccessStatusCode();
+
         using var stream = await recoveryResponse.Content.ReadAsStreamAsync();
         var events = await SseTestHelpers.ParseSseStreamAsync(stream);
-        
-        events.Should().Contain(e => e.EventType == "complete");
+
+        _ = events.Should().Contain(e => e.EventType == "complete");
 
         _output.WriteLine("Stream interruption and recovery test completed");
     }
@@ -296,7 +293,7 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
         // Arrange
         _fixture.OrleansEnabled = true;
         await _fixture.InitializeAsync();
-        
+
         var userId = "context-test-user";
         var conversation = new[]
         {
@@ -323,11 +320,11 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
             };
 
             var response = await client.PostAsJsonAsync("/api/chat/stream-sse", request);
-            response.EnsureSuccessStatusCode();
-            
+            _ = response.EnsureSuccessStatusCode();
+
             using var stream = await response.Content.ReadAsStreamAsync();
             var events = await SseTestHelpers.ParseSseStreamAsync(stream);
-            
+
             if (chatId == null)
             {
                 var initEvent = events.First(e => e.EventType == "init");
@@ -340,12 +337,12 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
         // Assert - Verify conversation state in grain
         var grain = _fixture.Cluster.Client.GetGrain<IUserGrain>(userId);
         var state = await grain.GetState();
-        state.Should().NotBeNull();
-        state.LastActivity.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(1));
-        
+        _ = state.Should().NotBeNull();
+        _ = state.LastActivity.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(1));
+
         // Verify the grain processed the conversation
         // The actual message count verification is done through SSE events
-        
+
         _output.WriteLine($"Complex conversation completed with {conversation.Length} exchanges");
     }
 
@@ -355,7 +352,7 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
         // Arrange
         _fixture.OrleansEnabled = true;
         await _fixture.InitializeAsync();
-        
+
         var userId = "concurrent-chat-user";
         var chatCount = 3;
         var chatIds = new List<string>();
@@ -377,33 +374,33 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
                 };
 
                 var response = await client.PostAsJsonAsync("/api/chat/stream-sse", request);
-                response.EnsureSuccessStatusCode();
-                
+                _ = response.EnsureSuccessStatusCode();
+
                 using var stream = await response.Content.ReadAsStreamAsync();
                 var events = await SseTestHelpers.ParseSseStreamAsync(stream);
-                
+
                 var initEvent = events.First(e => e.EventType == "init");
                 return initEvent.Envelope!.ChatId!;
             });
-            
+
             tasks.Add(task);
         }
 
         chatIds.AddRange(await Task.WhenAll(tasks));
 
         // Assert
-        chatIds.Should().HaveCount(chatCount);
-        chatIds.Should().OnlyHaveUniqueItems();
+        _ = chatIds.Should().HaveCount(chatCount);
+        _ = chatIds.Should().OnlyHaveUniqueItems();
 
         // Verify all chats exist in grain
         var grain = _fixture.Cluster.Client.GetGrain<IUserGrain>(userId);
         var state = await grain.GetState();
-        state.Should().NotBeNull();
-        
+        _ = state.Should().NotBeNull();
+
         // Check that the grain has active chats
         foreach (var chatId in chatIds)
         {
-            state.ActiveChats.Should().ContainKey(chatId);
+            _ = state.ActiveChats.Should().ContainKey(chatId);
         }
 
         _output.WriteLine($"Created {chatCount} concurrent chats for user {userId}");
@@ -422,14 +419,14 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
         };
 
         var response = await client.PostAsJsonAsync("/api/chat/stream-sse", request);
-        response.EnsureSuccessStatusCode();
-        
+        _ = response.EnsureSuccessStatusCode();
+
         using var stream = await response.Content.ReadAsStreamAsync();
         var events = await SseTestHelpers.ParseSseStreamAsync(stream);
-        
+
         var initEvent = events.First(e => e.EventType == "init");
         var chatId = initEvent.Envelope!.ChatId!;
-        
+
         return (chatId, userId, events.Count);
     }
 }

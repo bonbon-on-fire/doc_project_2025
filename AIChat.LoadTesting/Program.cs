@@ -7,7 +7,6 @@ using AIChat.LoadTesting.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace AIChat.LoadTesting;
 
@@ -34,7 +33,7 @@ class Program
 
             // Parse command line arguments
             var options = ParseCommandLineOptions(args);
-            
+
             if (options.ShowHelp)
             {
                 ShowHelp();
@@ -68,7 +67,7 @@ class Program
 
             // Determine exit code based on test results
             var exitCode = report.Summary.TestPassed ? 0 : 1;
-            
+
             _logger.LogInformation("Load testing completed. Exit code: {ExitCode}", exitCode);
             return exitCode;
         }
@@ -103,39 +102,39 @@ class Program
         var services = new ServiceCollection();
 
         // Configuration
-        services.Configure<LoadTestingConfiguration>(configuration.GetSection(LoadTestingConfiguration.SectionName));
-        services.Configure<ScenariosConfiguration>(configuration.GetSection(ScenariosConfiguration.SectionName));
-        services.Configure<MonitoringConfiguration>(configuration.GetSection(MonitoringConfiguration.SectionName));
-        services.Configure<ValidationConfiguration>(configuration.GetSection(ValidationConfiguration.SectionName));
-        services.Configure<OrleansConfiguration>(configuration.GetSection(OrleansConfiguration.SectionName));
+        _ = services.Configure<LoadTestingConfiguration>(configuration.GetSection(LoadTestingConfiguration.SectionName));
+        _ = services.Configure<ScenariosConfiguration>(configuration.GetSection(ScenariosConfiguration.SectionName));
+        _ = services.Configure<MonitoringConfiguration>(configuration.GetSection(MonitoringConfiguration.SectionName));
+        _ = services.Configure<ValidationConfiguration>(configuration.GetSection(ValidationConfiguration.SectionName));
+        _ = services.Configure<OrleansConfiguration>(configuration.GetSection(OrleansConfiguration.SectionName));
 
         // Logging
-        services.AddLogging(builder =>
+        _ = services.AddLogging(builder =>
         {
-            builder.ClearProviders();
-            builder.AddSimpleConsole(options =>
+            _ = builder.ClearProviders();
+            _ = builder.AddSimpleConsole(options =>
             {
                 options.IncludeScopes = true;
                 options.TimestampFormat = "yyyy-MM-dd HH:mm:ss.fff ";
             });
-            
+
             // Add file logging for detailed logs
             var logLevel = configuration.GetValue("Logging:LogLevel:Default", "Information");
-            builder.SetMinimumLevel(Enum.Parse<LogLevel>(logLevel));
+            _ = builder.SetMinimumLevel(Enum.Parse<LogLevel>(logLevel));
         });
 
         // HTTP Client
-        services.AddHttpClient();
+        _ = services.AddHttpClient();
 
         // Core services
-        services.AddSingleton<SignalRConnectionManager>();
-        services.AddSingleton<SystemMetricsCollector>();
-        services.AddSingleton<LoadTestRunner>();
+        _ = services.AddSingleton<SignalRConnectionManager>();
+        _ = services.AddSingleton<SystemMetricsCollector>();
+        _ = services.AddSingleton<LoadTestRunner>();
 
         // Scenarios
-        services.AddScoped<ILoadTestScenario, ConnectionLoadScenario>();
-        services.AddScoped<ILoadTestScenario, MessageLatencyScenario>();
-        services.AddScoped<ILoadTestScenario, GrainScalingScenario>();
+        _ = services.AddScoped<ILoadTestScenario, ConnectionLoadScenario>();
+        _ = services.AddScoped<ILoadTestScenario, MessageLatencyScenario>();
+        _ = services.AddScoped<ILoadTestScenario, GrainScalingScenario>();
 
         return services.BuildServiceProvider();
     }
@@ -147,7 +146,7 @@ class Program
         try
         {
             var scenarios = _serviceProvider!.GetServices<ILoadTestScenario>();
-            
+
             foreach (var scenario in scenarios.Where(s => s.IsEnabled))
             {
                 var scenarioErrors = await scenario.ValidateConfigurationAsync();
@@ -165,10 +164,10 @@ class Program
     private static async Task GenerateReportsAsync(LoadTestReport report, CommandLineOptions options)
     {
         var reportDir = Path.Combine(Directory.GetCurrentDirectory(), "load-test-reports");
-        Directory.CreateDirectory(reportDir);
+        _ = Directory.CreateDirectory(reportDir);
 
         var timestamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
-        
+
         // Generate JSON report
         var jsonReportPath = Path.Combine(reportDir, $"load-test-report-{timestamp}.json");
         var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
@@ -202,72 +201,72 @@ class Program
     private static string GenerateSummaryReport(LoadTestReport report)
     {
         var summary = new System.Text.StringBuilder();
-        
-        summary.AppendLine("AIChat Orleans Load Testing Report");
-        summary.AppendLine("================================");
-        summary.AppendLine($"Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
-        summary.AppendLine($"Test Duration: {report.TotalDuration}");
-        summary.AppendLine($"Version: {Version}");
-        summary.AppendLine();
 
-        summary.AppendLine("OVERALL RESULTS");
-        summary.AppendLine("--------------");
-        summary.AppendLine($"Test Status: {(report.Summary.TestPassed ? "PASSED" : "FAILED")}");
-        summary.AppendLine($"Scenarios: {report.Summary.SuccessfulScenarios}/{report.Summary.TotalScenarios} passed");
-        summary.AppendLine($"Connections: {report.Summary.SuccessfulConnections:N0}/{report.Summary.TotalConnections:N0} ({report.Summary.OverallConnectionSuccessRate:P2})");
-        summary.AppendLine($"Messages: {report.Summary.DeliveredMessages:N0}/{report.Summary.TotalMessages:N0} ({report.Summary.OverallMessageDeliveryRate:P2})");
-        summary.AppendLine($"Average Latency: {report.Summary.AverageLatencyMs:F1}ms");
-        summary.AppendLine($"P95 Latency: {report.Summary.P95LatencyMs:F1}ms");
-        summary.AppendLine($"Peak CPU: {report.Summary.PeakCpuPercent:F1}%");
-        summary.AppendLine($"Peak Memory: {report.Summary.PeakMemoryMB:N0}MB");
-        summary.AppendLine($"Max Concurrent Users: {report.Summary.MaxConcurrentUsers:N0}");
-        summary.AppendLine();
+        _ = summary.AppendLine("AIChat Orleans Load Testing Report");
+        _ = summary.AppendLine("================================");
+        _ = summary.AppendLine($"Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
+        _ = summary.AppendLine($"Test Duration: {report.TotalDuration}");
+        _ = summary.AppendLine($"Version: {Version}");
+        _ = summary.AppendLine();
 
-        summary.AppendLine("ACCEPTANCE CRITERIA VALIDATION");
-        summary.AppendLine("----------------------------");
-        summary.AppendLine($"All Criteria Pass: {(report.ValidationResults.AllCriteriaPass ? "YES" : "NO")}");
-        summary.AppendLine($"10K Users Connected: {(report.ValidationResults.Users10kConnected.Pass ? "PASS" : "FAIL")} - {report.ValidationResults.Users10kConnected.ActualValue}");
-        summary.AppendLine($"Messages < 100ms: {(report.ValidationResults.MessagesUnder100ms.Pass ? "PASS" : "FAIL")} - {report.ValidationResults.MessagesUnder100ms.ActualValue}");
-        summary.AppendLine($"No Messages Lost: {(report.ValidationResults.NoMessagesLost.Pass ? "PASS" : "FAIL")} - {report.ValidationResults.NoMessagesLost.ActualValue}");
-        summary.AppendLine($"System Scales: {(report.ValidationResults.SystemScales.Pass ? "PASS" : "FAIL")} - {report.ValidationResults.SystemScales.ActualValue}");
-        summary.AppendLine($"Resources Within Limits: {(report.ValidationResults.ResourcesWithinLimits.Pass ? "PASS" : "FAIL")} - {report.ValidationResults.ResourcesWithinLimits.ActualValue}");
-        summary.AppendLine();
+        _ = summary.AppendLine("OVERALL RESULTS");
+        _ = summary.AppendLine("--------------");
+        _ = summary.AppendLine($"Test Status: {(report.Summary.TestPassed ? "PASSED" : "FAILED")}");
+        _ = summary.AppendLine($"Scenarios: {report.Summary.SuccessfulScenarios}/{report.Summary.TotalScenarios} passed");
+        _ = summary.AppendLine($"Connections: {report.Summary.SuccessfulConnections:N0}/{report.Summary.TotalConnections:N0} ({report.Summary.OverallConnectionSuccessRate:P2})");
+        _ = summary.AppendLine($"Messages: {report.Summary.DeliveredMessages:N0}/{report.Summary.TotalMessages:N0} ({report.Summary.OverallMessageDeliveryRate:P2})");
+        _ = summary.AppendLine($"Average Latency: {report.Summary.AverageLatencyMs:F1}ms");
+        _ = summary.AppendLine($"P95 Latency: {report.Summary.P95LatencyMs:F1}ms");
+        _ = summary.AppendLine($"Peak CPU: {report.Summary.PeakCpuPercent:F1}%");
+        _ = summary.AppendLine($"Peak Memory: {report.Summary.PeakMemoryMB:N0}MB");
+        _ = summary.AppendLine($"Max Concurrent Users: {report.Summary.MaxConcurrentUsers:N0}");
+        _ = summary.AppendLine();
 
-        summary.AppendLine("SCENARIO RESULTS");
-        summary.AppendLine("---------------");
+        _ = summary.AppendLine("ACCEPTANCE CRITERIA VALIDATION");
+        _ = summary.AppendLine("----------------------------");
+        _ = summary.AppendLine($"All Criteria Pass: {(report.ValidationResults.AllCriteriaPass ? "YES" : "NO")}");
+        _ = summary.AppendLine($"10K Users Connected: {(report.ValidationResults.Users10kConnected.Pass ? "PASS" : "FAIL")} - {report.ValidationResults.Users10kConnected.ActualValue}");
+        _ = summary.AppendLine($"Messages < 100ms: {(report.ValidationResults.MessagesUnder100ms.Pass ? "PASS" : "FAIL")} - {report.ValidationResults.MessagesUnder100ms.ActualValue}");
+        _ = summary.AppendLine($"No Messages Lost: {(report.ValidationResults.NoMessagesLost.Pass ? "PASS" : "FAIL")} - {report.ValidationResults.NoMessagesLost.ActualValue}");
+        _ = summary.AppendLine($"System Scales: {(report.ValidationResults.SystemScales.Pass ? "PASS" : "FAIL")} - {report.ValidationResults.SystemScales.ActualValue}");
+        _ = summary.AppendLine($"Resources Within Limits: {(report.ValidationResults.ResourcesWithinLimits.Pass ? "PASS" : "FAIL")} - {report.ValidationResults.ResourcesWithinLimits.ActualValue}");
+        _ = summary.AppendLine();
+
+        _ = summary.AppendLine("SCENARIO RESULTS");
+        _ = summary.AppendLine("---------------");
         foreach (var scenario in report.ScenarioResults)
         {
-            summary.AppendLine($"{scenario.ScenarioName}: {(scenario.Success ? "PASSED" : "FAILED")}");
-            summary.AppendLine($"  Duration: {scenario.Duration}");
-            summary.AppendLine($"  Users: {scenario.SuccessfulConnections:N0}/{scenario.TotalUsers:N0}");
-            summary.AppendLine($"  Messages: {scenario.DeliveredMessages:N0}/{scenario.TotalMessages:N0}");
-            summary.AppendLine($"  Latency: avg {scenario.LatencyStats.AverageMs:F1}ms, p95 {scenario.LatencyStats.P95Ms:F1}ms");
-            
+            _ = summary.AppendLine($"{scenario.ScenarioName}: {(scenario.Success ? "PASSED" : "FAILED")}");
+            _ = summary.AppendLine($"  Duration: {scenario.Duration}");
+            _ = summary.AppendLine($"  Users: {scenario.SuccessfulConnections:N0}/{scenario.TotalUsers:N0}");
+            _ = summary.AppendLine($"  Messages: {scenario.DeliveredMessages:N0}/{scenario.TotalMessages:N0}");
+            _ = summary.AppendLine($"  Latency: avg {scenario.LatencyStats.AverageMs:F1}ms, p95 {scenario.LatencyStats.P95Ms:F1}ms");
+
             if (!scenario.Success)
             {
-                summary.AppendLine($"  Failure: {scenario.FailureReason}");
+                _ = summary.AppendLine($"  Failure: {scenario.FailureReason}");
             }
-            
+
             if (scenario.Errors.Any())
             {
-                summary.AppendLine($"  Errors: {scenario.Errors.Count} (showing first 3)");
+                _ = summary.AppendLine($"  Errors: {scenario.Errors.Count} (showing first 3)");
                 foreach (var error in scenario.Errors.Take(3))
                 {
-                    summary.AppendLine($"    - {error}");
+                    _ = summary.AppendLine($"    - {error}");
                 }
             }
-            summary.AppendLine();
+            _ = summary.AppendLine();
         }
 
         if (report.Summary.CriticalIssues.Any())
         {
-            summary.AppendLine("CRITICAL ISSUES");
-            summary.AppendLine("--------------");
+            _ = summary.AppendLine("CRITICAL ISSUES");
+            _ = summary.AppendLine("--------------");
             foreach (var issue in report.Summary.CriticalIssues)
             {
-                summary.AppendLine($"- {issue}");
+                _ = summary.AppendLine($"- {issue}");
             }
-            summary.AppendLine();
+            _ = summary.AppendLine();
         }
 
         return summary.ToString();
@@ -276,39 +275,39 @@ class Program
     private static string GenerateMetricsCsv(LoadTestReport report)
     {
         var csv = new System.Text.StringBuilder();
-        
+
         // CSV Header
-        csv.AppendLine("Scenario,Duration_Seconds,Total_Users,Successful_Connections,Connection_Success_Rate,Total_Messages,Delivered_Messages,Message_Delivery_Rate,Avg_Latency_Ms,P95_Latency_Ms,Max_Latency_Ms,Messages_Per_Second,Avg_CPU_Percent,Max_CPU_Percent,Avg_Memory_MB,Max_Memory_MB,Success");
-        
+        _ = csv.AppendLine("Scenario,Duration_Seconds,Total_Users,Successful_Connections,Connection_Success_Rate,Total_Messages,Delivered_Messages,Message_Delivery_Rate,Avg_Latency_Ms,P95_Latency_Ms,Max_Latency_Ms,Messages_Per_Second,Avg_CPU_Percent,Max_CPU_Percent,Avg_Memory_MB,Max_Memory_MB,Success");
+
         // Data rows
         foreach (var scenario in report.ScenarioResults)
         {
-            csv.AppendLine($"{scenario.ScenarioName},{scenario.Duration.TotalSeconds:F1},{scenario.TotalUsers},{scenario.SuccessfulConnections},{scenario.ConnectionSuccessRate:F4},{scenario.TotalMessages},{scenario.DeliveredMessages},{scenario.MessageDeliveryRate:F4},{scenario.LatencyStats.AverageMs:F2},{scenario.LatencyStats.P95Ms:F2},{scenario.LatencyStats.MaxMs:F2},{scenario.ThroughputStats.MessagesPerSecond:F2},{scenario.ResourceStats.AverageCpuPercent:F1},{scenario.ResourceStats.MaxCpuPercent:F1},{scenario.ResourceStats.AverageMemoryMB},{scenario.ResourceStats.MaxMemoryMB},{scenario.Success}");
+            _ = csv.AppendLine($"{scenario.ScenarioName},{scenario.Duration.TotalSeconds:F1},{scenario.TotalUsers},{scenario.SuccessfulConnections},{scenario.ConnectionSuccessRate:F4},{scenario.TotalMessages},{scenario.DeliveredMessages},{scenario.MessageDeliveryRate:F4},{scenario.LatencyStats.AverageMs:F2},{scenario.LatencyStats.P95Ms:F2},{scenario.LatencyStats.MaxMs:F2},{scenario.ThroughputStats.MessagesPerSecond:F2},{scenario.ResourceStats.AverageCpuPercent:F1},{scenario.ResourceStats.MaxCpuPercent:F1},{scenario.ResourceStats.AverageMemoryMB},{scenario.ResourceStats.MaxMemoryMB},{scenario.Success}");
         }
-        
+
         return csv.ToString();
     }
 
     private static string GenerateConsoleSummary(LoadTestReport report)
     {
         var summary = new System.Text.StringBuilder();
-        
-        summary.AppendLine($"Test Status: {(report.Summary.TestPassed ? "✅ PASSED" : "❌ FAILED")}");
-        summary.AppendLine($"Duration: {report.TotalDuration}");
-        summary.AppendLine($"Scenarios: {report.Summary.SuccessfulScenarios}/{report.Summary.TotalScenarios}");
-        summary.AppendLine($"Max Concurrent Users: {report.Summary.MaxConcurrentUsers:N0}");
-        summary.AppendLine($"Connection Success Rate: {report.Summary.OverallConnectionSuccessRate:P2}");
-        summary.AppendLine($"Message Delivery Rate: {report.Summary.OverallMessageDeliveryRate:P2}");
-        summary.AppendLine($"Average Latency: {report.Summary.AverageLatencyMs:F1}ms");
-        summary.AppendLine($"Peak Resources: {report.Summary.PeakCpuPercent:F1}% CPU, {report.Summary.PeakMemoryMB:N0}MB Memory");
-        
-        summary.AppendLine();
-        summary.AppendLine("Acceptance Criteria:");
-        summary.AppendLine($"  10K Users Connected: {(report.ValidationResults.Users10kConnected.Pass ? "✅" : "❌")} {report.ValidationResults.Users10kConnected.ActualValue}");
-        summary.AppendLine($"  Messages < 100ms: {(report.ValidationResults.MessagesUnder100ms.Pass ? "✅" : "❌")} {report.ValidationResults.MessagesUnder100ms.ActualValue}");
-        summary.AppendLine($"  No Messages Lost: {(report.ValidationResults.NoMessagesLost.Pass ? "✅" : "❌")} {report.ValidationResults.NoMessagesLost.ActualValue}");
-        summary.AppendLine($"  System Scales: {(report.ValidationResults.SystemScales.Pass ? "✅" : "❌")} {report.ValidationResults.SystemScales.ActualValue}");
-        summary.AppendLine($"  Resources Within Limits: {(report.ValidationResults.ResourcesWithinLimits.Pass ? "✅" : "❌")} {report.ValidationResults.ResourcesWithinLimits.ActualValue}");
+
+        _ = summary.AppendLine($"Test Status: {(report.Summary.TestPassed ? "✅ PASSED" : "❌ FAILED")}");
+        _ = summary.AppendLine($"Duration: {report.TotalDuration}");
+        _ = summary.AppendLine($"Scenarios: {report.Summary.SuccessfulScenarios}/{report.Summary.TotalScenarios}");
+        _ = summary.AppendLine($"Max Concurrent Users: {report.Summary.MaxConcurrentUsers:N0}");
+        _ = summary.AppendLine($"Connection Success Rate: {report.Summary.OverallConnectionSuccessRate:P2}");
+        _ = summary.AppendLine($"Message Delivery Rate: {report.Summary.OverallMessageDeliveryRate:P2}");
+        _ = summary.AppendLine($"Average Latency: {report.Summary.AverageLatencyMs:F1}ms");
+        _ = summary.AppendLine($"Peak Resources: {report.Summary.PeakCpuPercent:F1}% CPU, {report.Summary.PeakMemoryMB:N0}MB Memory");
+
+        _ = summary.AppendLine();
+        _ = summary.AppendLine("Acceptance Criteria:");
+        _ = summary.AppendLine($"  10K Users Connected: {(report.ValidationResults.Users10kConnected.Pass ? "✅" : "❌")} {report.ValidationResults.Users10kConnected.ActualValue}");
+        _ = summary.AppendLine($"  Messages < 100ms: {(report.ValidationResults.MessagesUnder100ms.Pass ? "✅" : "❌")} {report.ValidationResults.MessagesUnder100ms.ActualValue}");
+        _ = summary.AppendLine($"  No Messages Lost: {(report.ValidationResults.NoMessagesLost.Pass ? "✅" : "❌")} {report.ValidationResults.NoMessagesLost.ActualValue}");
+        _ = summary.AppendLine($"  System Scales: {(report.ValidationResults.SystemScales.Pass ? "✅" : "❌")} {report.ValidationResults.SystemScales.ActualValue}");
+        _ = summary.AppendLine($"  Resources Within Limits: {(report.ValidationResults.ResourcesWithinLimits.Pass ? "✅" : "❌")} {report.ValidationResults.ResourcesWithinLimits.ActualValue}");
 
         return summary.ToString();
     }
@@ -316,7 +315,7 @@ class Program
     private static CommandLineOptions ParseCommandLineOptions(string[] args)
     {
         var options = new CommandLineOptions();
-        
+
         for (int i = 0; i < args.Length; i++)
         {
             switch (args[i].ToLowerInvariant())
@@ -347,7 +346,7 @@ class Program
                     break;
             }
         }
-        
+
         return options;
     }
 
@@ -394,6 +393,6 @@ public class CommandLineOptions
     public bool ShowHelp { get; set; }
     public bool ShowVersion { get; set; }
     public bool Quiet { get; set; }
-    public List<string> SpecificScenarios { get; set; } = new();
+    public List<string> SpecificScenarios { get; set; } = [];
     public string? OutputDirectory { get; set; }
 }

@@ -1,7 +1,5 @@
-using Orleans;
-using AIChat.Server.Services.Streaming;
 using AIChat.Server.Configuration;
-using Microsoft.AspNetCore.Http;
+using AIChat.Server.Services.Streaming;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -58,7 +56,7 @@ public interface ITestStreamingBridgeFactory : IStreamingBridgeFactory
 public class TestResilientStreamManager : IResilientStreamManager
 {
     private readonly ResilientStreamManager _inner;
-    
+
     public TestResilientStreamManager(
         ILogger<ResilientStreamManager> logger,
         ITestStreamingBridgeFactory bridgeFactory,
@@ -68,28 +66,38 @@ public class TestResilientStreamManager : IResilientStreamManager
         var wrappedFactory = new StreamingBridgeFactoryWrapper(bridgeFactory);
         _inner = new ResilientStreamManager(logger, wrappedFactory, configuration);
     }
-    
+
     public Task<T> ProcessStreamWithRecoveryAsync<T>(
         string streamId,
         string userId,
         Func<IStreamingBridge, CancellationToken, Task<T>> streamProcessor,
         CancellationToken cancellationToken = default)
-        => _inner.ProcessStreamWithRecoveryAsync(streamId, userId, streamProcessor, cancellationToken);
-    
+    {
+        return _inner.ProcessStreamWithRecoveryAsync(streamId, userId, streamProcessor, cancellationToken);
+    }
+
     public Task<StreamMetrics> GetMetricsAsync()
-        => _inner.GetMetricsAsync();
-    
-    public ValueTask DisposeAsync() => _inner.DisposeAsync();
-    
+    {
+        return _inner.GetMetricsAsync();
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        return _inner.DisposeAsync();
+    }
+
     private class StreamingBridgeFactoryWrapper : IStreamingBridgeFactory
     {
         private readonly ITestStreamingBridgeFactory _testFactory;
-        
+
         public StreamingBridgeFactoryWrapper(ITestStreamingBridgeFactory testFactory)
         {
             _testFactory = testFactory;
         }
-        
-        public IStreamingBridge CreateBridge() => _testFactory.CreateBridge();
+
+        public IStreamingBridge CreateBridge()
+        {
+            return _testFactory.CreateBridge();
+        }
     }
 }

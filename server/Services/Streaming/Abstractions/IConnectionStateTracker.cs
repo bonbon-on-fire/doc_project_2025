@@ -1,7 +1,3 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace AIChat.Server.Services.Streaming.Abstractions;
 
 /// <summary>
@@ -130,7 +126,7 @@ public record ConnectionState
     /// <summary>
     /// Gets whether the connection is considered stable.
     /// </summary>
-    public bool IsStable => Status == ConnectionStatus.Connected && 
+    public bool IsStable => Status == ConnectionStatus.Connected &&
                             LastActivityAt > DateTime.UtcNow.AddSeconds(-30);
 
     /// <summary>
@@ -235,8 +231,8 @@ public record ConnectionMetrics
     /// <summary>
     /// Gets the reconnection success rate.
     /// </summary>
-    public double ReconnectionSuccessRate => ReconnectionAttempts > 0 
-        ? (double)SuccessfulReconnections / ReconnectionAttempts * 100 
+    public double ReconnectionSuccessRate => ReconnectionAttempts > 0
+        ? (double)SuccessfulReconnections / ReconnectionAttempts * 100
         : 0;
 }
 
@@ -283,8 +279,8 @@ public record ConnectionHealthReport
     /// <summary>
     /// Gets the overall health percentage.
     /// </summary>
-    public double HealthPercentage => TotalConnections > 0 
-        ? (double)HealthyConnections / TotalConnections * 100 
+    public double HealthPercentage => TotalConnections > 0
+        ? (double)HealthyConnections / TotalConnections * 100
         : 100;
 
     /// <summary>

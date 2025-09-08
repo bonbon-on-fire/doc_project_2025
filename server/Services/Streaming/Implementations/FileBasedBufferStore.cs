@@ -1,13 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 using AIChat.Server.Services.Streaming.Abstractions;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace AIChat.Server.Services.Streaming.Implementations;
@@ -69,7 +62,7 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
 
             // Create stream directory if it doesn't exist
             var streamDir = GetStreamDirectory(streamId);
-            Directory.CreateDirectory(streamDir);
+            _ = Directory.CreateDirectory(streamDir);
 
             // Generate file name with timestamp
             var fileName = $"{DateTime.UtcNow:yyyyMMdd_HHmmss}_{Guid.NewGuid():N}.json";
@@ -113,7 +106,7 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
         }
         finally
         {
-            _accessLock.Release();
+            _ = _accessLock.Release();
         }
     }
 
@@ -201,8 +194,8 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
                 Messages = uniqueMessages,
                 Metadata = latestMetadata ?? CreateMetadata(streamId, uniqueMessages),
                 IsCorrupted = corruptedFiles.Count > 0,
-                CorruptionDetails = corruptedFiles.Count > 0 
-                    ? $"{corruptedFiles.Count} corrupted files detected" 
+                CorruptionDetails = corruptedFiles.Count > 0
+                    ? $"{corruptedFiles.Count} corrupted files detected"
                     : null
             };
         }
@@ -213,7 +206,7 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
         }
         finally
         {
-            _accessLock.Release();
+            _ = _accessLock.Release();
         }
     }
 
@@ -242,7 +235,7 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
         }
         finally
         {
-            _accessLock.Release();
+            _ = _accessLock.Release();
         }
     }
 
@@ -272,7 +265,7 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
         }
         finally
         {
-            _accessLock.Release();
+            _ = _accessLock.Release();
         }
     }
 
@@ -320,7 +313,7 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
         }
         finally
         {
-            _accessLock.Release();
+            _ = _accessLock.Release();
         }
     }
 
@@ -341,7 +334,7 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
             foreach (var streamDir in Directory.GetDirectories(_options.StoragePath))
             {
                 var dirInfo = new DirectoryInfo(streamDir);
-                
+
                 // Check if all files in the directory are expired
                 var files = dirInfo.GetFiles("*.json");
                 if (files.Length > 0 && files.All(f => f.LastWriteTimeUtc < cutoffTime))
@@ -368,7 +361,7 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
         }
         finally
         {
-            _accessLock.Release();
+            _ = _accessLock.Release();
         }
     }
 
@@ -414,7 +407,7 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
                 foreach (var file in files)
                 {
                     stats = stats with { TotalSizeBytes = stats.TotalSizeBytes + file.Length };
-                    
+
                     if (file.Length > largestSize)
                     {
                         largestSize = file.Length;
@@ -449,7 +442,7 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
 
             // Get available storage space
             var driveInfo = new DriveInfo(Path.GetPathRoot(_options.StoragePath)!);
-            
+
             return stats with
             {
                 OldestBufferTimestamp = oldestTimestamp,
@@ -473,7 +466,7 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
         }
         finally
         {
-            _accessLock.Release();
+            _ = _accessLock.Release();
         }
     }
 
@@ -485,7 +478,7 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
             // Check if storage path exists and is writable
             if (!Directory.Exists(_options.StoragePath))
             {
-                Directory.CreateDirectory(_options.StoragePath);
+                _ = Directory.CreateDirectory(_options.StoragePath);
             }
 
             // Try to write a test file
@@ -521,7 +514,7 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
         {
             if (!Directory.Exists(_options.StoragePath))
             {
-                Directory.CreateDirectory(_options.StoragePath);
+                _ = Directory.CreateDirectory(_options.StoragePath);
                 _logger.LogInformation("Created storage directory at {Path}", _options.StoragePath);
             }
         }
@@ -549,7 +542,7 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
     {
         var now = DateTime.UtcNow;
         var totalSize = messages.Sum(m => (long)m.SizeBytes);
-        
+
         return new BufferMetadata
         {
             StreamId = streamId,

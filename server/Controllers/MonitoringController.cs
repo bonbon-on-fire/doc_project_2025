@@ -1,7 +1,5 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using AIChat.Server.Services;
-using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
 
 namespace AIChat.Server.Controllers;
 
@@ -96,9 +94,9 @@ public class MonitoringController : ControllerBase
                 summary = new
                 {
                     count = historicalData.Count,
-                    average = historicalData.Any() ? historicalData.Average(h => h.Value) : 0,
-                    min = historicalData.Any() ? historicalData.Min(h => h.Value) : 0,
-                    max = historicalData.Any() ? historicalData.Max(h => h.Value) : 0,
+                    average = historicalData.Count != 0 ? historicalData.Average(h => h.Value) : 0,
+                    min = historicalData.Count != 0 ? historicalData.Min(h => h.Value) : 0,
+                    max = historicalData.Count != 0 ? historicalData.Max(h => h.Value) : 0,
                     latest = historicalData.LastOrDefault()?.Value ?? 0
                 }
             };
@@ -124,16 +122,16 @@ public class MonitoringController : ControllerBase
             var alertStates = _monitoringService.GetAlertStates();
 
             // Determine overall system health
-            var criticalAlerts = alertStates.Where(a => 
-                a.Value.IsActive && 
-                (a.Key.ToLower().Contains("critical") || a.Key.ToLower().Contains("silo down"))).ToList();
+            var criticalAlerts = alertStates.Where(a =>
+                a.Value.IsActive &&
+                (a.Key.Contains("critical", StringComparison.CurrentCultureIgnoreCase) || a.Key.Contains("silo down", StringComparison.CurrentCultureIgnoreCase))).ToList();
 
-            var warningAlerts = alertStates.Where(a => 
-                a.Value.IsActive && 
+            var warningAlerts = alertStates.Where(a =>
+                a.Value.IsActive &&
                 !criticalAlerts.Any(c => c.Key == a.Key)).ToList();
 
-            var healthStatus = criticalAlerts.Any() ? "Critical" 
-                : warningAlerts.Any() ? "Warning" 
+            var healthStatus = criticalAlerts.Count != 0 ? "Critical"
+                : warningAlerts.Count != 0 ? "Warning"
                 : "Healthy";
 
             var response = new
@@ -199,7 +197,7 @@ public class MonitoringController : ControllerBase
                 {
                     memoryUsageMB = memoryUsage,
                     cpuUsagePercent = cpuUsage,
-                    activeGrains = activeGrains,
+                    activeGrains,
                     backgroundQueueDepth = queueDepth
                 },
                 trends = new
@@ -217,7 +215,7 @@ public class MonitoringController : ControllerBase
                     queueWarning = 100,
                     queueCritical = 500
                 },
-                recommendations = recommendations
+                recommendations
             };
 
             return Ok(response);
@@ -279,7 +277,7 @@ public class MonitoringController : ControllerBase
         {
             var metrics = _monitoringService.GetCurrentMetrics();
             var prometheusFormat = ConvertToPrometheusFormat(metrics);
-            
+
             return Content(prometheusFormat, "text/plain; version=0.0.4; charset=utf-8");
         }
         catch (Exception ex)
@@ -291,11 +289,11 @@ public class MonitoringController : ControllerBase
 
     #region Private Helper Methods
 
-    private object GetComponentHealth(Dictionary<string, MetricValue> metrics, string component)
+    private static object GetComponentHealth(Dictionary<string, MetricValue> metrics, string component)
     {
         var componentMetrics = metrics.Where(m => m.Key.StartsWith(component)).ToList();
-        
-        if (!componentMetrics.Any())
+
+        if (componentMetrics.Count == 0)
         {
             return new { status = "Unknown", lastUpdate = (DateTime?)null };
         }
@@ -316,12 +314,12 @@ public class MonitoringController : ControllerBase
         };
     }
 
-    private double GetMetricValue(Dictionary<string, MetricValue> metrics, string metricName, double defaultValue)
+    private static double GetMetricValue(Dictionary<string, MetricValue> metrics, string metricName, double defaultValue)
     {
         return metrics.TryGetValue(metricName, out var metric) ? metric.Value : defaultValue;
     }
 
-    private object CalculateTrend(List<HistoricalMetric> historicalData)
+    private static object CalculateTrend(List<HistoricalMetric> historicalData)
     {
         if (historicalData.Count < 2)
         {
@@ -331,10 +329,10 @@ public class MonitoringController : ControllerBase
         var values = historicalData.Select(h => h.Value).ToList();
         var recent = values.TakeLast(values.Count / 3).Average();
         var older = values.Take(values.Count / 3).Average();
-        
+
         var change = recent - older;
-        var direction = Math.Abs(change) < 0.1 ? "stable" 
-            : change > 0 ? "increasing" 
+        var direction = Math.Abs(change) < 0.1 ? "stable"
+            : change > 0 ? "increasing"
             : "decreasing";
 
         return new
@@ -345,7 +343,7 @@ public class MonitoringController : ControllerBase
         };
     }
 
-    private List<string> GenerateCapacityRecommendations(double memory, double cpu, double grains, double queue)
+    private static List<string> GenerateCapacityRecommendations(double memory, double cpu, double grains, double queue)
     {
         var recommendations = new List<string>();
 
@@ -369,7 +367,7 @@ public class MonitoringController : ControllerBase
             recommendations.Add("High grain count detected - monitor for potential memory pressure");
         }
 
-        if (!recommendations.Any())
+        if (recommendations.Count == 0)
         {
             recommendations.Add("System is operating within normal parameters");
         }
@@ -377,7 +375,7 @@ public class MonitoringController : ControllerBase
         return recommendations;
     }
 
-    private string ConvertToPrometheusFormat(Dictionary<string, MetricValue> metrics)
+    private static string ConvertToPrometheusFormat(Dictionary<string, MetricValue> metrics)
     {
         var prometheusMetrics = new List<string>();
 

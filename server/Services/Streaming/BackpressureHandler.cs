@@ -29,10 +29,10 @@ public sealed class BackpressureHandler : IBackpressureHandler
         bool isAdaptive = true)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        
-        if (threshold < 0 || threshold > 100)
+
+        if (threshold is < 0 or > 100)
             throw new ArgumentOutOfRangeException(nameof(threshold), "Threshold must be between 0 and 100");
-        
+
         if (baseDelayMs < 0)
             throw new ArgumentOutOfRangeException(nameof(baseDelayMs), "Base delay must be non-negative");
 
@@ -45,10 +45,9 @@ public sealed class BackpressureHandler : IBackpressureHandler
     /// <inheritdoc />
     public bool ShouldApplyBackpressure(float utilization)
     {
-        if (utilization < 0 || utilization > 100)
-            throw new ArgumentOutOfRangeException(nameof(utilization), "Utilization must be between 0 and 100");
-
-        return utilization >= _threshold;
+        return utilization is < 0 or > 100
+            ? throw new ArgumentOutOfRangeException(nameof(utilization), "Utilization must be between 0 and 100")
+            : utilization >= _threshold;
     }
 
     /// <inheritdoc />
@@ -60,9 +59,9 @@ public sealed class BackpressureHandler : IBackpressureHandler
             return 0;
 
         var delay = CalculateDelay(utilization);
-        
-        Interlocked.Increment(ref _eventCount);
-        Interlocked.Add(ref _totalDelayMs, delay);
+
+        _ = Interlocked.Increment(ref _eventCount);
+        _ = Interlocked.Add(ref _totalDelayMs, delay);
 
         _logger.LogWarning(
             "Backpressure applied. Utilization: {Utilization:F1}%, Delay: {Delay}ms, Total events: {Count}",
@@ -95,11 +94,11 @@ public sealed class BackpressureHandler : IBackpressureHandler
         var utilizationAboveThreshold = utilization - _threshold;
         var maxUtilizationAboveThreshold = 100 - _threshold;
         var utilizationFactor = utilizationAboveThreshold / maxUtilizationAboveThreshold;
-        
+
         // Exponential scaling: delay increases more rapidly as utilization approaches 100%
         var scaleFactor = Math.Pow(utilizationFactor, 2) * 3; // Up to 3x at 100%
         var adaptiveDelay = (int)(_baseDelayMs * (1 + scaleFactor));
-        
+
         // Cap the maximum delay at 10x base delay
         return Math.Min(adaptiveDelay, _baseDelayMs * 10);
     }
@@ -107,10 +106,10 @@ public sealed class BackpressureHandler : IBackpressureHandler
     /// <inheritdoc />
     public void Reset()
     {
-        Interlocked.Exchange(ref _eventCount, 0);
-        Interlocked.Exchange(ref _totalDelayMs, 0);
+        _ = Interlocked.Exchange(ref _eventCount, 0);
+        _ = Interlocked.Exchange(ref _totalDelayMs, 0);
         _stopwatch.Restart();
-        
+
         _logger.LogInformation("Backpressure handler reset");
     }
 
