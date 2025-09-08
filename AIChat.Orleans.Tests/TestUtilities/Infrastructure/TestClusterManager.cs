@@ -89,11 +89,7 @@ public class TestClusterManager : IAsyncDisposable
         public void Configure(ISiloBuilder siloBuilder)
         {
             siloBuilder
-                .Configure<ClusterOptions>(options =>
-                {
-                    options.ClusterId = "test-cluster";
-                    options.ServiceId = "test-service";
-                })
+                // Let TestClusterBuilder handle the ClusterId to avoid conflicts
                 .Configure<EndpointOptions>(options =>
                 {
                     options.AdvertisedIPAddress = System.Net.IPAddress.Loopback;

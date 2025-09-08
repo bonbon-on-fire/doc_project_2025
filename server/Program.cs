@@ -398,6 +398,29 @@ builder.Services.Configure<AIChat.Server.Configuration.ResilientStreamingConfigu
     builder.Configuration.GetSection("ResilientStreaming"));
 builder.Services.AddSingleton<AIChat.Server.Services.Streaming.IResilientStreamManager, AIChat.Server.Services.Streaming.ResilientStreamManager>();
 
+// Configure Buffer Management services (Phase 4 - ORL-P4-007)
+builder.Services.Configure<AIChat.Server.Services.Streaming.Implementations.FileBasedBufferStoreOptions>(
+    builder.Configuration.GetSection("BufferStore"));
+builder.Services.Configure<AIChat.Server.Services.Streaming.Implementations.BufferManagementOptions>(
+    builder.Configuration.GetSection("BufferManagement"));
+
+// Register buffer management components
+builder.Services.AddSingleton<AIChat.Server.Services.Streaming.Abstractions.IPersistentBufferStore, 
+    AIChat.Server.Services.Streaming.Implementations.FileBasedBufferStore>();
+builder.Services.AddSingleton<AIChat.Server.Services.Streaming.Abstractions.IStreamBuffer, 
+    AIChat.Server.Services.Streaming.Implementations.InMemoryStreamBuffer>();
+builder.Services.AddSingleton<AIChat.Server.Services.Streaming.Abstractions.IConnectionStateTracker, 
+    AIChat.Server.Services.Streaming.Implementations.ConnectionStateTracker>();
+builder.Services.AddSingleton<AIChat.Server.Services.Streaming.Abstractions.IBufferReplayService, 
+    AIChat.Server.Services.Streaming.Implementations.BufferReplayService>();
+builder.Services.AddSingleton<AIChat.Server.Services.Streaming.Abstractions.IBufferManagementService, 
+    AIChat.Server.Services.Streaming.Implementations.BufferManagementService>();
+
+// Register BufferManagementService as hosted service for lifecycle management
+builder.Services.AddHostedService<AIChat.Server.Services.Streaming.Implementations.BufferManagementService>(
+    provider => (AIChat.Server.Services.Streaming.Implementations.BufferManagementService)
+        provider.GetRequiredService<AIChat.Server.Services.Streaming.Abstractions.IBufferManagementService>());
+
 // Configure Background Chat Service options
 builder.Services.Configure<BackgroundServiceOptions>(options =>
 {
