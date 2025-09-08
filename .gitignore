@@ -154,6 +154,14 @@ msbuild.log
 msbuild.err
 msbuild.wrn
 
+# Test results and outputs
+TestResults/
+*test-output.txt
+*test-build.txt
+*build-output.txt
+orleans-*.txt
+nul
+
 # NuGet
 *.nupkg
 **/packages/*
