@@ -4,23 +4,23 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "server", "server", "{DAD03CFC-D5FA-AC94-41C7-9ABAB326F09E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIChat.Server", "server\AIChat.Server.csproj", "{56DDCA94-6E12-4111-A5DA-464E17C4F994}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIChat.Server", "server\AIChat.Server\AIChat.Server.csproj", "{56DDCA94-6E12-4111-A5DA-464E17C4F994}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "server.Tests", "server.Tests\server.Tests.csproj", "{67587DD0-5863-4EF8-B934-FAC3CF6BA98B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIChat.Server.Tests", "server\AIChat.Server.Tests\AIChat.Server.Tests.csproj", "{67587DD0-5863-4EF8-B934-FAC3CF6BA98B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "orleans", "orleans", "{8B6C4F7A-9E2D-4A5B-8F3C-1D2E3F4A5B6C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIChat.Orleans", "AIChat.Orleans\AIChat.Orleans.csproj", "{7A5B6C8D-9E0F-4A1B-8C2D-3E4F5A6B7C8D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIChat.Orleans", "server\AIChat.Orleans\AIChat.Orleans.csproj", "{7A5B6C8D-9E0F-4A1B-8C2D-3E4F5A6B7C8D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIChat.Orleans.Client", "AIChat.Orleans.Client\AIChat.Orleans.Client.csproj", "{8B6C7D9E-0F1A-4B2C-8D3E-4F5A6B7C8D9E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIChat.Orleans.Client", "server\AIChat.Orleans.Client\AIChat.Orleans.Client.csproj", "{8B6C7D9E-0F1A-4B2C-8D3E-4F5A6B7C8D9E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIChat.Orleans.Host", "AIChat.Orleans.Host\AIChat.Orleans.Host.csproj", "{9C7D8E0F-1A2B-4C3D-8E4F-5A6B7C8D9E0F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIChat.Orleans.Host", "server\AIChat.Orleans.Host\AIChat.Orleans.Host.csproj", "{9C7D8E0F-1A2B-4C3D-8E4F-5A6B7C8D9E0F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIChat.Orleans.Tests", "AIChat.Orleans.Tests\AIChat.Orleans.Tests.csproj", "{0D8E9F1A-2B3C-4D4E-9F5A-6B7C8D9E0F1A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIChat.Orleans.Tests", "server\AIChat.Orleans.Tests\AIChat.Orleans.Tests.csproj", "{0D8E9F1A-2B3C-4D4E-9F5A-6B7C8D9E0F1A}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "testing", "testing", "{1E9F0A2B-3C4D-5E6F-0A1B-7C8D9E0F1A2B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIChat.LoadTesting", "AIChat.LoadTesting\AIChat.LoadTesting.csproj", "{2F0A1B3C-4D5E-6F7A-1B2C-8D9E0F1A2B3C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIChat.LoadTesting", "server\AIChat.LoadTesting\AIChat.LoadTesting.csproj", "{2F0A1B3C-4D5E-6F7A-1B2C-8D9E0F1A2B3C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -143,14 +143,14 @@ try {
 Write-Status $securitySuccess "Package security scan"
 
 # 5. ORLEANS RUNTIME VALIDATION (if Orleans projects exist)
-if (Test-Path "AIChat.Orleans.Host") {
+if (Test-Path "server/AIChat.Orleans.Host") {
     Write-Section "Orleans Runtime Validation"
     
     Write-Host "Testing Orleans silo startup..."
     
     try {
         # Start Orleans silo in background
-        Push-Location "AIChat.Orleans.Host"
+        Push-Location "server/AIChat.Orleans.Host"
         $siloProcess = Start-Process "dotnet" "run" -PassThru -NoNewWindow
         
         # Wait for startup

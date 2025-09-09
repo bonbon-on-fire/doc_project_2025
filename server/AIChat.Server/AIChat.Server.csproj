@@ -48,16 +48,16 @@
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.10.0" />
   </ItemGroup>
   <!-- Conditional references for LmDotnetTools: use local projects if available, otherwise NuGet packages -->
-  <ItemGroup Condition="Exists('../submodules/LmDotnetTools/src/LmCore/AchieveAi.LmDotnetTools.LmCore.csproj')">
-    <ProjectReference Include="../submodules/LmDotnetTools/src/LmCore/AchieveAi.LmDotnetTools.LmCore.csproj" />
-    <ProjectReference Include="../submodules/LmDotnetTools/src/Misc/AchieveAi.LmDotnetTools.Misc.csproj" />
+  <ItemGroup Condition="Exists('../../submodules/LmDotnetTools/src/LmCore/AchieveAi.LmDotnetTools.LmCore.csproj')">
+    <ProjectReference Include="../../submodules/LmDotnetTools/src/LmCore/AchieveAi.LmDotnetTools.LmCore.csproj" />
+    <ProjectReference Include="../../submodules/LmDotnetTools/src/Misc/AchieveAi.LmDotnetTools.Misc.csproj" />
     <ProjectReference
-      Include="../submodules/LmDotnetTools/src/McpMiddleware/AchieveAi.LmDotnetTools.McpMiddleware.csproj" />
+      Include="../../submodules/LmDotnetTools/src/McpMiddleware/AchieveAi.LmDotnetTools.McpMiddleware.csproj" />
     <ProjectReference
-      Include="../submodules/LmDotnetTools/src/OpenAiProvider/AchieveAi.LmDotnetTools.OpenAiProvider.csproj" />
-    <ProjectReference Include="../submodules/LmDotnetTools/src/LmConfig/AchieveAi.LmDotnetTools.LmConfig.csproj" />
+      Include="../../submodules/LmDotnetTools/src/OpenAiProvider/AchieveAi.LmDotnetTools.OpenAiProvider.csproj" />
+    <ProjectReference Include="../../submodules/LmDotnetTools/src/LmConfig/AchieveAi.LmDotnetTools.LmConfig.csproj" />
   </ItemGroup>
-  <ItemGroup Condition="!Exists('../submodules/LmDotnetTools/src/LmCore/AchieveAi.LmDotnetTools.LmCore.csproj')">
+  <ItemGroup Condition="!Exists('../../submodules/LmDotnetTools/src/LmCore/AchieveAi.LmDotnetTools.LmCore.csproj')">
     <PackageReference Include="AchieveAi.LmDotnetTools.LmCore" Version="1.0.20" />
     <PackageReference Include="AchieveAi.LmDotnetTools.Misc" Version="1.0.20" />
     <PackageReference Include="AchieveAi.LmDotnetTools.McpMiddleware" Version="1.0.20" />

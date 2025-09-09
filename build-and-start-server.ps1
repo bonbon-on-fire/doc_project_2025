@@ -115,7 +115,7 @@ Get-ChildItem -Path $logsDir -Filter "*.jsonl" -ErrorAction SilentlyContinue | R
 Write-Host "Building server project..." -ForegroundColor Yellow
 try {
     # Build and log output to build.log
-    dotnet build server/AIChat.Server.csproj --configuration Debug --verbosity minimal 2>&1 | Tee-Object -FilePath "$logsDir/build.log"
+    dotnet build server/AIChat.Server/AIChat.Server.csproj --configuration Debug --verbosity minimal 2>&1 | Tee-Object -FilePath "$logsDir/build.log"
     if ($LASTEXITCODE -ne 0) {
         throw "Build failed with exit code $LASTEXITCODE"
     }
@@ -133,7 +133,7 @@ if ($UseOrleans) {
     Write-Host "Building Orleans Host..." -ForegroundColor Yellow
     try {
         # Build Orleans Host project
-        dotnet build AIChat.Orleans.Host/AIChat.Orleans.Host.csproj --configuration Debug --verbosity minimal 2>&1 | Tee-Object -FilePath "$logsDir/orleans-build.log"
+        dotnet build server/AIChat.Orleans.Host/AIChat.Orleans.Host.csproj --configuration Debug --verbosity minimal 2>&1 | Tee-Object -FilePath "$logsDir/orleans-build.log"
         if ($LASTEXITCODE -ne 0) {
             throw "Orleans Host build failed with exit code $LASTEXITCODE"
         }
@@ -141,7 +141,7 @@ if ($UseOrleans) {
         
         # Start Orleans Host in background
         Write-Host "Starting Orleans Host in background..." -ForegroundColor Yellow
-        $orleansProcess = Start-Process -FilePath "dotnet" -ArgumentList "run", "--project", "AIChat.Orleans.Host/AIChat.Orleans.Host.csproj", "--no-build" -WorkingDirectory (Get-Location) -PassThru -NoNewWindow -RedirectStandardOutput "$logsDir/orleans-output.log" -RedirectStandardError "$logsDir/orleans-error.log"
+        $orleansProcess = Start-Process -FilePath "dotnet" -ArgumentList "run", "--project", "server/AIChat.Orleans.Host/AIChat.Orleans.Host.csproj", "--no-build" -WorkingDirectory (Get-Location) -PassThru -NoNewWindow -RedirectStandardOutput "$logsDir/orleans-output.log" -RedirectStandardError "$logsDir/orleans-error.log"
         
         # Wait a moment for Orleans to start
         Write-Host "Waiting for Orleans Silo to initialize..." -ForegroundColor Yellow
@@ -181,7 +181,7 @@ trap {
 }
 
 # Change to server directory and run the server with logging
-Set-Location server
+Set-Location server/AIChat.Server
 try {
     Write-Host ""
     Write-Host "============================================================" -ForegroundColor Green

@@ -194,7 +194,7 @@ rm -f "$LOGS_DIR"/*.jsonl 2>/dev/null || true
 
 # 2. Build the server project
 print_color $YELLOW "Building server project..."
-if dotnet build server/AIChat.Server.csproj --configuration Debug --verbosity minimal 2>&1 | tee "$LOGS_DIR/build.log"; then
+if dotnet build server/AIChat.Server/AIChat.Server.csproj --configuration Debug --verbosity minimal 2>&1 | tee "$LOGS_DIR/build.log"; then
     print_color $GREEN "Server build completed successfully"
 else
     print_color $RED "Failed to build server"
@@ -208,12 +208,12 @@ if [ "$USE_ORLEANS" = true ]; then
     print_color $YELLOW "Building Orleans Host..."
     
     # Build Orleans Host project
-    if dotnet build AIChat.Orleans.Host/AIChat.Orleans.Host.csproj --configuration Debug --verbosity minimal 2>&1 | tee "$LOGS_DIR/orleans-build.log"; then
+    if dotnet build server/AIChat.Orleans.Host/AIChat.Orleans.Host.csproj --configuration Debug --verbosity minimal 2>&1 | tee "$LOGS_DIR/orleans-build.log"; then
         print_color $GREEN "Orleans Host build completed successfully"
         
         # Start Orleans Host in background
         print_color $YELLOW "Starting Orleans Host in background..."
-        dotnet run --project AIChat.Orleans.Host/AIChat.Orleans.Host.csproj --no-build > "$LOGS_DIR/orleans-output.log" 2> "$LOGS_DIR/orleans-error.log" &
+        dotnet run --project server/AIChat.Orleans.Host/AIChat.Orleans.Host.csproj --no-build > "$LOGS_DIR/orleans-output.log" 2> "$LOGS_DIR/orleans-error.log" &
         ORLEANS_PID=$!
         
         # Wait a moment for Orleans to start
@@ -297,7 +297,7 @@ print_color $YELLOW "Press Ctrl+C to stop the server"
 echo ""
 
 # Run the server and append output to the same log file (after build output)
-if ! dotnet run --project AIChat.Server.csproj --urls "http://localhost:$PORT" 2>&1 | tee -a "../logs/server/build.log"; then
+if ! dotnet run --project server/AIChat.Server/AIChat.Server.csproj --urls "http://localhost:$PORT" 2>&1 | tee -a "logs/server/build.log"; then
     print_color $RED "Failed to start server"
     exit 1
 fi

@@ -34,7 +34,7 @@
       "prettier --write"
     ],
     "server/**/*.cs": [
-      "dotnet format server/AIChat.Server.csproj --include"
+      "dotnet format server/AIChat.Server/AIChat.Server.csproj --include"
     ]
   }
 }

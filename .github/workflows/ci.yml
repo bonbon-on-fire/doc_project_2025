@@ -52,11 +52,11 @@ jobs:
           dotnet-version: '9.0.x'
 
       - name: Restore
-        run: dotnet restore ./server
+        run: dotnet restore ./server/AIChat.Server
 
       - name: Build (Release)
-        run: dotnet build ./server --configuration Release --no-restore
+        run: dotnet build ./server/AIChat.Server --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test ./server.Tests --configuration Release --no-build --verbosity normal
+        run: dotnet test ./server/AIChat.Server.Tests --configuration Release --no-build --verbosity normal
 

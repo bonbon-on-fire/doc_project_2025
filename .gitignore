@@ -189,7 +189,7 @@ server/aichat_dev.db-shm
 
 .fake
 launchsettings.json
-server/llm-cache/*.json
+**/llm-cache/*.json
 
 # MCP configuration (contains sensitive data)
 .mcp.json

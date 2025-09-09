@@ -24,6 +24,6 @@
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.7" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\server\AIChat.Server.csproj" />
+    <ProjectReference Include="..\AIChat.Server\AIChat.Server.csproj" />
   </ItemGroup>
 </Project>

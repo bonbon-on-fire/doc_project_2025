@@ -73,7 +73,7 @@ function Format-RootProject {
             # Check Roslynator issues if available
             if (Test-ToolInstalled "roslynator" "Roslynator CLI") {
                 Write-Host "Checking Roslynator issues..."
-                roslynator analyze server/AIChat.Server.csproj --severity-level info --verbosity minimal
+                roslynator analyze server/AIChat.Server/AIChat.Server.csproj --severity-level info --verbosity minimal
             }
 
             Write-Host "Note: ReSharper CLT doesn't support check-only mode. Use git diff after running format." -ForegroundColor Yellow
@@ -90,16 +90,16 @@ function Format-RootProject {
 
                 # Build projects first (required for Roslynator)
                 Write-Host "  - Building projects (required for Roslynator)..."
-                dotnet build server/AIChat.Server.csproj --verbosity minimal --nologo
-                dotnet build server.Tests/server.Tests.csproj --verbosity minimal --nologo
+                dotnet build server/AIChat.Server/AIChat.Server.csproj --verbosity minimal --nologo
+                dotnet build server/AIChat.Server.Tests/AIChat.Server.Tests.csproj --verbosity minimal --nologo
 
                 # Fix server project
                 Write-Host "  - Fixing server project with Roslynator..."
-                roslynator fix server/AIChat.Server.csproj --severity-level info --verbosity minimal --ignore-compiler-errors --fix-scope project
+                roslynator fix server/AIChat.Server/AIChat.Server.csproj --severity-level info --verbosity minimal --ignore-compiler-errors --fix-scope project
 
                 # Fix test project
                 Write-Host "  - Fixing test project with Roslynator..."
-                roslynator fix server.Tests/server.Tests.csproj --severity-level info --verbosity minimal --ignore-compiler-errors --fix-scope project
+                roslynator fix server/AIChat.Server.Tests/AIChat.Server.Tests.csproj --severity-level info --verbosity minimal --ignore-compiler-errors --fix-scope project
             }
             else {
                 Write-Host "Step 2/4: Roslynator not installed, skipping advanced fixes" -ForegroundColor Yellow
@@ -108,11 +108,11 @@ function Format-RootProject {
 
             # Step 3: Format server project with ReSharper
             Write-Host "Step 3/4: Formatting server project with ReSharper CLT..." -ForegroundColor Cyan
-            jb cleanupcode server/AIChat.Server.csproj
+            jb cleanupcode server/AIChat.Server/AIChat.Server.csproj
 
             # Step 4: Format test project with ReSharper
             Write-Host "Step 4/4: Formatting test project with ReSharper CLT..." -ForegroundColor Cyan
-            jb cleanupcode server.Tests/server.Tests.csproj
+            jb cleanupcode server/AIChat.Server.Tests/AIChat.Server.Tests.csproj
 
             Write-Host "Root project formatting completed!" -ForegroundColor Green
             return $true

@@ -39,13 +39,13 @@ if (!$SkipBuild) {
     # Build Orleans projects
     Write-Info "Building Orleans projects..."
     try {
-        dotnet build AIChat.Orleans/AIChat.Orleans.csproj --configuration Debug --verbosity minimal
+        dotnet build server/AIChat.Orleans/AIChat.Orleans.csproj --configuration Debug --verbosity minimal
         if ($LASTEXITCODE -ne 0) { throw "Orleans build failed" }
         
-        dotnet build AIChat.Orleans.Client/AIChat.Orleans.Client.csproj --configuration Debug --verbosity minimal
+        dotnet build server/AIChat.Orleans.Client/AIChat.Orleans.Client.csproj --configuration Debug --verbosity minimal
         if ($LASTEXITCODE -ne 0) { throw "Orleans.Client build failed" }
         
-        dotnet build AIChat.Orleans.Host/AIChat.Orleans.Host.csproj --configuration Debug --verbosity minimal
+        dotnet build server/AIChat.Orleans.Host/AIChat.Orleans.Host.csproj --configuration Debug --verbosity minimal
         if ($LASTEXITCODE -ne 0) { throw "Orleans.Host build failed" }
         
         Write-Success "✓ Orleans projects built successfully"
@@ -58,7 +58,7 @@ if (!$SkipBuild) {
     # Build server
     Write-Info "Building server project..."
     try {
-        dotnet build server/AIChat.Server.csproj --configuration Debug --verbosity minimal
+        dotnet build server/AIChat.Server/AIChat.Server.csproj --configuration Debug --verbosity minimal
         if ($LASTEXITCODE -ne 0) { throw "Server build failed" }
         Write-Success "✓ Server built successfully"
     }
@@ -101,7 +101,7 @@ if (!$SkipTests) {
     # Test Orleans (foundation layer)
     Write-Info "`nLevel 1: Testing Orleans..."
     try {
-        $testResult = dotnet test AIChat.Orleans.Tests/AIChat.Orleans.Tests.csproj `
+        $testResult = dotnet test server/AIChat.Orleans.Tests/AIChat.Orleans.Tests.csproj `
             --no-build `
             --configuration Debug `
             --verbosity $(if ($Verbose) { "normal" } else { "minimal" })
@@ -121,7 +121,7 @@ if (!$SkipTests) {
     if (!$script:hasErrors) {
         Write-Info "`nLevel 2: Testing Server..."
         try {
-            $testResult = dotnet test server.Tests/server.Tests.csproj `
+            $testResult = dotnet test server/AIChat.Server.Tests/AIChat.Server.Tests.csproj `
                 --no-build `
                 --configuration Debug `
                 --verbosity $(if ($Verbose) { "normal" } else { "minimal" })
