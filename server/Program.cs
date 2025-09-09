@@ -42,7 +42,7 @@ Directory.CreateDirectory(Path.GetDirectoryName(logFileName)!);
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Verbose()
-    .WriteTo.Console()
+    .WriteTo.Console(formatProvider: System.Globalization.CultureInfo.InvariantCulture)
     .WriteTo.File(
         new CompactJsonFormatter(),
         logFileName,

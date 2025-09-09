@@ -14,7 +14,7 @@ namespace AIChat.Server.Services;
 public class ImprovedTaskManagerService(
     ITaskStorage taskStorage,
     ILogger<ImprovedTaskManagerService> logger
-) : ITaskManagerService
+) : ITaskManagerService, IDisposable
 {
     private readonly ConcurrentDictionary<string, CachedTaskManager> _taskManagers =
         new();
@@ -23,7 +23,7 @@ public class ImprovedTaskManagerService(
     /// <summary>
     /// Cached state for a chat's TaskManager
     /// </summary>
-    private class CachedTaskManager
+    private sealed class CachedTaskManager
     {
         public TaskManager Manager { get; set; } = new();
         public int Version { get; set; }
@@ -185,5 +185,11 @@ public class ImprovedTaskManagerService(
         _ = registry.AddFunctionsFromObject(taskManager, "TaskManager");
 
         return registry;
+    }
+
+    public void Dispose()
+    {
+        // TODO: Implement proper disposal logic
+        GC.SuppressFinalize(this);
     }
 }

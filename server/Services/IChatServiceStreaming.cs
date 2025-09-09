@@ -19,6 +19,11 @@ public interface IChatServiceStreaming
     /// <param name="chatId">The chat ID to process the message for</param>
     /// <param name="message">User message content</param>
     /// <param name="userId">User ID for context and authorization</param>
+    /// <param name="storage">Chat storage service</param>
+    /// <param name="streamingAgent">Streaming agent for AI responses</param>
+    /// <param name="toolingService">Service for handling tool calls</param>
+    /// <param name="modeService">Service for handling mode-specific behavior</param>
+    /// <param name="orleansService">Optional Orleans integration service</param>
     /// <param name="modeId">Optional mode ID for specialized behavior</param>
     /// <param name="systemPrompt">Optional system prompt override</param>
     /// <param name="messageCallback">Callback for complete messages (tool calls, text, reasoning)</param>

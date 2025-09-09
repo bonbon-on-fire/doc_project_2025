@@ -1,3 +1,4 @@
+using System.Globalization;
 using AIChat.Orleans.Configuration;
 using AIChat.Orleans.Metrics;
 using Microsoft.ApplicationInsights.AspNetCore.Extensions;
@@ -13,6 +14,12 @@ namespace AIChat.Orleans.Host;
 /// </summary>
 public class Program
 {
+    private static readonly System.Text.Json.JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+        WriteIndented = true
+    };
+
     /// <summary>
     /// Entry point for the Orleans silo host application.
     /// </summary>
@@ -24,7 +31,7 @@ public class Program
             .MinimumLevel.Information()
             .MinimumLevel.Override("Orleans", LogEventLevel.Warning)
             .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
-            .WriteTo.Console()
+            .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
             .CreateBootstrapLogger();
 
         try
@@ -69,16 +76,11 @@ public class Program
                             var summary = await metricsCollector.GetMetricsSummaryAsync();
 
                             context.Response.ContentType = "application/json";
-                            await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(summary, new System.Text.Json.JsonSerializerOptions
-                            {
-                                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
-                                WriteIndented = true
-                            }));
+                            await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(summary, JsonOptions));
                         });
 
-                        _ = endpoints.MapGet("/api/orleans/metrics/{grainType}", async context =>
+                        _ = endpoints.MapGet("/api/orleans/metrics/{grainType}", async (string grainType, HttpContext context, IOrleansMetricsCollector metricsCollector) =>
                         {
-                            var grainType = context.Request.RouteValues["grainType"]?.ToString();
                             if (string.IsNullOrEmpty(grainType))
                             {
                                 context.Response.StatusCode = 400;
@@ -86,15 +88,10 @@ public class Program
                                 return;
                             }
 
-                            var metricsCollector = context.RequestServices.GetRequiredService<IOrleansMetricsCollector>();
                             var grainMetrics = await metricsCollector.GetGrainTypeMetricsAsync(grainType);
 
                             context.Response.ContentType = "application/json";
-                            await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(grainMetrics, new System.Text.Json.JsonSerializerOptions
-                            {
-                                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
-                                WriteIndented = true
-                            }));
+                            await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(grainMetrics, JsonOptions));
                         });
                     });
                 }))
@@ -107,13 +104,14 @@ public class Program
                     .MinimumLevel.Override("Orleans.Runtime", LogEventLevel.Warning)
                     .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
                     .MinimumLevel.Override("AIChat.Orleans", LogEventLevel.Debug)
-                    .WriteTo.Console(outputTemplate:
-                        "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}")
+                    .WriteTo.Console(
+                        outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}",
+                        formatProvider: CultureInfo.InvariantCulture)
                     .WriteTo.File(
                         path: "logs/orleans-host-.log",
                         rollingInterval: RollingInterval.Day,
-                        outputTemplate:
-                            "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {SourceContext} - {Message:lj}{NewLine}{Exception}");
+                        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {SourceContext} - {Message:lj}{NewLine}{Exception}",
+                        formatProvider: CultureInfo.InvariantCulture);
 
                 // Add Application Insights if configured
                 var appInsightsKey = context.Configuration.GetConnectionString("ApplicationInsights");

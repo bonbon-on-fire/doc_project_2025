@@ -43,13 +43,13 @@ public interface ILoadTestScenario
 /// </summary>
 public abstract class LoadTestScenarioBase : ILoadTestScenario
 {
-    protected readonly ILogger _logger;
-    protected readonly IServiceProvider _serviceProvider;
+    protected ILogger Logger { get; }
+    protected IServiceProvider ServiceProvider { get; }
 
     protected LoadTestScenarioBase(ILogger logger, IServiceProvider serviceProvider)
     {
-        _logger = logger;
-        _serviceProvider = serviceProvider;
+        Logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        ServiceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
     }
 
     public abstract string Name { get; }
@@ -74,7 +74,7 @@ public abstract class LoadTestScenarioBase : ILoadTestScenario
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to report progress for scenario {ScenarioName}", Name);
+            Logger.LogWarning(ex, "Failed to report progress for scenario {ScenarioName}", Name);
         }
     }
 
@@ -100,7 +100,7 @@ public abstract class LoadTestScenarioBase : ILoadTestScenario
     {
         var latencyList = latencies.Where(l => l > 0).ToList();
 
-        if (!latencyList.Any())
+        if (latencyList.Count == 0)
         {
             return new LatencyStatistics();
         }
@@ -124,7 +124,10 @@ public abstract class LoadTestScenarioBase : ILoadTestScenario
     /// </summary>
     protected double GetPercentile(List<double> sortedValues, double percentile)
     {
-        if (!sortedValues.Any()) return 0;
+        if (sortedValues.Count == 0)
+        {
+            return 0;
+        }
 
         var index = (int)Math.Ceiling(percentile * sortedValues.Count) - 1;
         index = Math.Max(0, Math.Min(index, sortedValues.Count - 1));

@@ -100,7 +100,7 @@ public class MixedWorkloadScenarioConfig
 /// </summary>
 public class EnduranceTestScenarioConfig
 {
-    public bool Enabled { get; set; } = false;
+    public bool Enabled { get; set; }
     public int MaxUsers { get; set; } = 5000;
     public int TestDurationSeconds { get; set; } = 7200;
     public double MessageRate { get; set; } = 0.5;

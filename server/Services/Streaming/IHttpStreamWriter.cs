@@ -17,12 +17,12 @@ public interface IHttpStreamWriter : IAsyncDisposable
     /// <summary>
     /// Writes an error to the HTTP stream in SSE format.
     /// </summary>
-    /// <param name="error">The error information to write</param>
+    /// <param name="exception">The error information to write</param>
     /// <param name="traceId">The trace identifier for correlation</param>
     /// <param name="cancellationToken">Cancellation token for the operation</param>
     /// <returns>A task representing the async write operation</returns>
     Task WriteErrorAsync(
-        Exception error,
+        Exception exception,
         string traceId,
         CancellationToken cancellationToken = default);
 

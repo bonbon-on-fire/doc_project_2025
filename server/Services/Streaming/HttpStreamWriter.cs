@@ -51,19 +51,19 @@ public sealed class HttpStreamWriter : IHttpStreamWriter
 
     /// <inheritdoc />
     public async Task WriteErrorAsync(
-        Exception error,
+        Exception exception,
         string traceId,
         CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();
-        ArgumentNullException.ThrowIfNull(error);
+        ArgumentNullException.ThrowIfNull(exception);
 
         var errorEnvelope = SSEEventExtensions.CreateErrorEnvelope(
             traceId ?? "unknown",
             null,
             null,
-            error.Message,
-            error.GetType().Name);
+            exception.Message,
+            exception.GetType().Name);
 
         var errorData = $"data: {System.Text.Json.JsonSerializer.Serialize(errorEnvelope)}\n\n";
         var bytes = Encoding.UTF8.GetBytes(errorData);
@@ -184,9 +184,6 @@ public sealed class HttpStreamWriter : IHttpStreamWriter
 
     private void ThrowIfDisposed()
     {
-        if (_disposed)
-        {
-            throw new ObjectDisposedException(nameof(HttpStreamWriter));
-        }
+        ObjectDisposedException.ThrowIf(_disposed, nameof(HttpStreamWriter));
     }
 }

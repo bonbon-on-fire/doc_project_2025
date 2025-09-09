@@ -178,7 +178,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             if (!createModeResponse.IsSuccessStatusCode)
             {
                 var errorContent = await createModeResponse.Content.ReadAsStringAsync();
-                throw new Exception(
+                throw new InvalidOperationException(
                     $"Failed to create mode. Status: {createModeResponse.StatusCode}, Error: {errorContent}"
                 );
             }
@@ -515,7 +515,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             if (!createModeResponse.IsSuccessStatusCode)
             {
                 var errorContent = await createModeResponse.Content.ReadAsStringAsync();
-                throw new Exception(
+                throw new InvalidOperationException(
                     $"Failed to create mode after retry. Status: {createModeResponse.StatusCode}, Error: {errorContent}"
                 );
             }

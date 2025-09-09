@@ -122,6 +122,7 @@ public class OrleansTestFixture : IAsyncLifetime, IDisposable
 
     public void Dispose()
     {
-        throw new NotImplementedException();
+        // TODO: Implement disposal logic
+        GC.SuppressFinalize(this);
     }
 }

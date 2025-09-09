@@ -15,7 +15,7 @@ public abstract class TracedGrainBase<TGrainState> : Grain<TGrainState> where TG
     /// <summary>
     /// Logger instance for diagnostics and tracing information.
     /// </summary>
-    protected readonly ILogger Logger;
+    protected ILogger Logger { get; }
 
     /// <summary>
     /// Initializes a new instance of the TracedGrainBase.

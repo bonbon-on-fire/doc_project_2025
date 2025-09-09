@@ -451,6 +451,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         await _manager.DisposeAsync();
+        GC.SuppressFinalize(this);
     }
 }
 

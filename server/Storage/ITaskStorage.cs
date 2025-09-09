@@ -24,7 +24,7 @@ public interface ITaskStorage
     /// Saves or updates the task state for a chat.
     /// </summary>
     /// <param name="chatId">The chat ID</param>
-    /// <param name="tasks">The tasks as a JSON element</param>
+    /// <param name="taskManager">The task manager containing tasks to save</param>
     /// <param name="expectedVersion">Expected version for optimistic concurrency</param>
     /// <param name="ct">Cancellation token</param>
     /// <returns>The updated task state with new version</returns>

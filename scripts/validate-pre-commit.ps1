@@ -105,6 +105,29 @@ try {
         Write-Host "   🌐 Integration tests passed" -ForegroundColor Green
     }
     
+    # Check for critical warnings before approving commit
+    Write-Host ""
+    Write-Host "Checking for critical code quality warnings..." -ForegroundColor Cyan
+    $warningsScript = Join-Path $PSScriptRoot "check-critical-warnings.ps1"
+    if (Test-Path $warningsScript) {
+        & $warningsScript | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host ""
+            Write-Host "❌ COMMIT BLOCKED: Critical warnings must be fixed" -ForegroundColor Red
+            Write-Host ""
+            Write-Host "The following warnings MUST be fixed before checkin:" -ForegroundColor Yellow
+            Write-Host "  • CA1310: Specify StringComparison" -ForegroundColor White
+            Write-Host "  • CA1826: Use property instead of LINQ" -ForegroundColor White
+            Write-Host "  • CA1513: Use ObjectDisposedException.ThrowIf" -ForegroundColor White
+            Write-Host "  • CA1859: Use concrete types for performance" -ForegroundColor White
+            Write-Host "  • IDE0052: Remove unread private members" -ForegroundColor White
+            Write-Host ""
+            Write-Host "Run for details: .\scripts\check-critical-warnings.ps1 -Detailed" -ForegroundColor Yellow
+            exit 1
+        }
+        Write-Host "   ⚡ No critical warnings found" -ForegroundColor Green
+    }
+    
     Write-Host "" -ForegroundColor Green
     Write-Host "✅ COMMIT APPROVED - All quality gates satisfied" -ForegroundColor Green
     

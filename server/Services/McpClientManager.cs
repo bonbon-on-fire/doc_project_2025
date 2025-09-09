@@ -116,7 +116,7 @@ public class McpClientManager(
             default:
                 var errorMsg =
                     $"Transport type '{config.Type}' is not supported. Supported types: stdio, sse, http";
-                logger.LogError(errorMsg + " for server: {ServerName}", serverName);
+                logger.LogError("Transport type '{TransportType}' is not supported for server: {ServerName}. Supported types: stdio, sse, http", config.Type, serverName);
                 throw new McpTransportException(errorMsg, serverName, config.Type);
         }
 
@@ -168,7 +168,7 @@ public class McpClientManager(
         }
     }
 
-    private IClientTransport CreateStdioTransport(string serverName, McpServerConfig config)
+    private StdioClientTransport CreateStdioTransport(string serverName, McpServerConfig config)
     {
         if (string.IsNullOrEmpty(config.Command))
         {
@@ -224,7 +224,7 @@ public class McpClientManager(
         {
             var expandedValue = value;
 
-            if (value.StartsWith("${input:") && value.EndsWith("}"))
+            if (value.StartsWith("${input:", StringComparison.Ordinal) && value.EndsWith('}'))
             {
                 // Handle input references
                 var inputId = value[8..^1];
@@ -233,7 +233,7 @@ public class McpClientManager(
                 if (inputConfig != null)
                 {
                     var envVarName =
-                        inputConfig.DefaultValue ?? inputId.ToUpper().Replace("-", "_");
+                        inputConfig.DefaultValue ?? inputId.ToUpper(System.Globalization.CultureInfo.CurrentCulture).Replace("-", "_");
 
                     // Try User Secrets/IConfiguration first, then environment variable
                     expandedValue =
@@ -250,7 +250,7 @@ public class McpClientManager(
                     }
                 }
             }
-            else if (value.StartsWith("${") && value.EndsWith("}"))
+            else if (value.StartsWith("${", StringComparison.Ordinal) && value.EndsWith('}'))
             {
                 // Handle variable references with optional defaults
                 var variableExpression = value[2..^1];

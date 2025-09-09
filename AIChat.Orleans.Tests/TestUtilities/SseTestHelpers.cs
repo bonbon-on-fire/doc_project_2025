@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using AIChat.Server.Models.SSE;
@@ -9,6 +10,10 @@ namespace AIChat.Orleans.Tests.TestUtilities;
 /// </summary>
 public static class SseTestHelpers
 {
+    private static readonly JsonSerializerOptions s_jsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
     /// <summary>
     /// Represents a parsed SSE event.
     /// </summary>
@@ -56,7 +61,7 @@ public static class SseTestHelpers
                         {
                             currentEvent.Envelope = JsonSerializer.Deserialize<SSEEnvelope>(
                                 currentEvent.Data,
-                                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                                s_jsonOptions);
                         }
                         catch
                         {
@@ -73,19 +78,19 @@ public static class SseTestHelpers
 
             currentEvent ??= new SseEvent();
 
-            if (line.StartsWith("event:"))
+            if (line.StartsWith("event:", StringComparison.Ordinal))
             {
                 currentEvent.EventType = line[6..].Trim();
             }
-            else if (line.StartsWith("data:"))
+            else if (line.StartsWith("data:", StringComparison.Ordinal))
             {
                 dataLines.Add(line[5..].Trim());
             }
-            else if (line.StartsWith("id:"))
+            else if (line.StartsWith("id:", StringComparison.Ordinal))
             {
                 currentEvent.Id = line[3..].Trim();
             }
-            else if (line.StartsWith("retry:"))
+            else if (line.StartsWith("retry:", StringComparison.Ordinal))
             {
                 if (int.TryParse(line[6..].Trim(), out var retry))
                 {
@@ -115,24 +120,24 @@ public static class SseTestHelpers
         {
             if (!string.IsNullOrEmpty(evt.EventType))
             {
-                _ = sb.AppendLine($"event: {evt.EventType}");
+                _ = sb.AppendLine(CultureInfo.InvariantCulture, $"event: {evt.EventType}");
             }
 
             if (!string.IsNullOrEmpty(evt.Id))
             {
-                _ = sb.AppendLine($"id: {evt.Id}");
+                _ = sb.AppendLine(CultureInfo.InvariantCulture, $"id: {evt.Id}");
             }
 
             if (evt.Retry.HasValue)
             {
-                _ = sb.AppendLine($"retry: {evt.Retry}");
+                _ = sb.AppendLine(CultureInfo.InvariantCulture, $"retry: {evt.Retry}");
             }
 
             if (!string.IsNullOrEmpty(evt.Data))
             {
                 foreach (var line in evt.Data.Split('\n'))
                 {
-                    _ = sb.AppendLine($"data: {line}");
+                    _ = sb.AppendLine(CultureInfo.InvariantCulture, $"data: {line}");
                 }
             }
 

@@ -293,7 +293,7 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
 
             // Fall back to loading from buffer files
             var files = Directory.GetFiles(streamDir, "*.json")
-                .Where(f => !f.EndsWith("metadata.json"))
+                .Where(f => !f.EndsWith("metadata.json", StringComparison.OrdinalIgnoreCase))
                 .OrderByDescending(f => new FileInfo(f).CreationTimeUtc)
                 .FirstOrDefault();
 
@@ -538,7 +538,7 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
     /// <summary>
     /// Creates metadata for a buffer.
     /// </summary>
-    private static BufferMetadata CreateMetadata(string streamId, IReadOnlyList<BufferedStreamMessage> messages)
+    private static BufferMetadata CreateMetadata(string streamId, List<BufferedStreamMessage> messages)
     {
         var now = DateTime.UtcNow;
         var totalSize = messages.Sum(m => (long)m.SizeBytes);
@@ -550,8 +550,8 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
             LastUpdatedAt = now,
             MessageCount = messages.Count,
             TotalSizeBytes = totalSize,
-            FirstSequenceNumber = messages.FirstOrDefault()?.SequenceNumber,
-            LastSequenceNumber = messages.LastOrDefault()?.SequenceNumber,
+            FirstSequenceNumber = messages.Count > 0 ? messages[0].SequenceNumber : null,
+            LastSequenceNumber = messages.Count > 0 ? messages[^1].SequenceNumber : null,
             FormatVersion = "1.0",
             IsCompressed = false,
             IsEncrypted = false
@@ -647,7 +647,7 @@ public sealed class FileBasedBufferStoreOptions
     /// <summary>
     /// Gets or sets whether to compress old files.
     /// </summary>
-    public bool EnableCompression { get; set; } = false;
+    public bool EnableCompression { get; set; }
 
     /// <summary>
     /// Gets or sets the compression threshold in days.

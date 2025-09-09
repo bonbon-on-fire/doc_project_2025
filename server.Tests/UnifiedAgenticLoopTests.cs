@@ -110,23 +110,6 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// Helper method to extract all JSON lines from SSE response.
-    /// </summary>
-    private static IEnumerable<string> GetAllJsonLines(string response)
-    {
-        foreach (var line in response.Split('\n'))
-        {
-            if (
-                line.StartsWith("data: ", StringComparison.Ordinal)
-                && !line.Contains("[DONE]", StringComparison.Ordinal)
-            )
-            {
-                yield return line[6..].Trim();
-            }
-        }
-    }
-
-    /// <summary>
     /// Creates a configured OpenClientAgent for integration testing.
     /// </summary>
     private OpenClientAgent CreateTestAgent(TestSseMessageHandler handler)

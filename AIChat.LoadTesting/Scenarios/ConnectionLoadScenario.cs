@@ -67,13 +67,13 @@ public class ConnectionLoadScenario : LoadTestScenarioBase
     public override async Task<ScenarioResult> ExecuteAsync(IProgress<TestProgress>? progress = null, CancellationToken cancellationToken = default)
     {
         var startTime = DateTime.UtcNow;
-        _logger.LogInformation("Starting Connection Load Test: {MaxUsers:N0} users, {RampUpSeconds}s ramp-up, {StableSeconds}s stable",
+        Logger.LogInformation("Starting Connection Load Test: {MaxUsers:N0} users, {RampUpSeconds}s ramp-up, {StableSeconds}s stable",
             _config.MaxUsers, _config.RampUpSeconds, _config.StableSeconds);
 
         try
         {
             // Phase 1: Ramp up connections
-            _logger.LogInformation("Phase 1: Ramping up {MaxUsers:N0} connections over {RampUpSeconds} seconds", _config.MaxUsers, _config.RampUpSeconds);
+            Logger.LogInformation("Phase 1: Ramping up {MaxUsers:N0} connections over {RampUpSeconds} seconds", _config.MaxUsers, _config.RampUpSeconds);
             var rampUpResult = await RampUpConnectionsAsync(progress, cancellationToken);
 
             if (!rampUpResult.Success)
@@ -82,7 +82,7 @@ public class ConnectionLoadScenario : LoadTestScenarioBase
             }
 
             // Phase 2: Maintain stable connections
-            _logger.LogInformation("Phase 2: Maintaining connections for {StableSeconds} seconds", _config.StableSeconds);
+            Logger.LogInformation("Phase 2: Maintaining connections for {StableSeconds} seconds", _config.StableSeconds);
             var stableResult = await MaintainStableConnectionsAsync(progress, cancellationToken);
 
             if (!stableResult.Success)
@@ -96,12 +96,12 @@ public class ConnectionLoadScenario : LoadTestScenarioBase
 
             await PopulateResultMetricsAsync(result);
 
-            _logger.LogInformation("Connection Load Test completed successfully in {Duration}", endTime - startTime);
+            Logger.LogInformation("Connection Load Test completed successfully in {Duration}", endTime - startTime);
             return result;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Connection Load Test failed");
+            Logger.LogError(ex, "Connection Load Test failed");
             return CreateResult(startTime, DateTime.UtcNow, false, ex.Message);
         }
         finally
@@ -117,7 +117,7 @@ public class ConnectionLoadScenario : LoadTestScenarioBase
         var connectionsPerBatch = Math.Max(1, _config.MaxUsers / (_config.RampUpSeconds * 10)); // 10 batches per second
         var batchInterval = TimeSpan.FromMilliseconds(100); // 100ms between batches
 
-        _logger.LogDebug("Ramp-up strategy: {ConnectionsPerBatch} connections per batch, {BatchInterval}ms interval",
+        Logger.LogDebug("Ramp-up strategy: {ConnectionsPerBatch} connections per batch, {BatchInterval}ms interval",
             connectionsPerBatch, batchInterval.TotalMilliseconds);
 
         var connectedUsers = 0;
@@ -150,7 +150,7 @@ public class ConnectionLoadScenario : LoadTestScenarioBase
                     catch (Exception ex)
                     {
                         _ = Interlocked.Increment(ref failedConnections);
-                        _logger.LogWarning(ex, "Failed to connect user {UserId}", userId);
+                        Logger.LogWarning(ex, "Failed to connect user {UserId}", userId);
                     }
                 }, cancellationToken));
             }
@@ -169,7 +169,7 @@ public class ConnectionLoadScenario : LoadTestScenarioBase
             }
             catch (OperationCanceledException)
             {
-                _logger.LogWarning("Batch {BatchNumber} timed out after {TimeoutSeconds} seconds", batch, _config.ConnectionTimeoutSeconds);
+                Logger.LogWarning("Batch {BatchNumber} timed out after {TimeoutSeconds} seconds", batch, _config.ConnectionTimeoutSeconds);
             }
 
             // Report progress
@@ -185,7 +185,7 @@ public class ConnectionLoadScenario : LoadTestScenarioBase
                 LastUpdated = DateTime.UtcNow
             });
 
-            _logger.LogDebug("Batch {BatchNumber}: {ConnectedUsers}/{MaxUsers} users connected ({FailedConnections} failures)",
+            Logger.LogDebug("Batch {BatchNumber}: {ConnectedUsers}/{MaxUsers} users connected ({FailedConnections} failures)",
                 batch, connectedUsers, _config.MaxUsers, failedConnections);
 
             // Wait before next batch (unless this was the last batch)
@@ -198,7 +198,7 @@ public class ConnectionLoadScenario : LoadTestScenarioBase
         var rampUpDuration = DateTime.UtcNow - startTime;
         var connectionSuccessRate = connectedUsers / (double)_config.MaxUsers;
 
-        _logger.LogInformation("Ramp-up completed: {ConnectedUsers}/{MaxUsers} connected ({SuccessRate:P2}) in {Duration}",
+        Logger.LogInformation("Ramp-up completed: {ConnectedUsers}/{MaxUsers} connected ({SuccessRate:P2}) in {Duration}",
             connectedUsers, _config.MaxUsers, connectionSuccessRate, rampUpDuration);
 
         // Check if we met the minimum success rate (99%)
@@ -217,7 +217,7 @@ public class ConnectionLoadScenario : LoadTestScenarioBase
         var reportInterval = TimeSpan.FromSeconds(10); // Report every 10 seconds
         var lastReportTime = stablePhaseStart;
 
-        _logger.LogInformation("Maintaining {ActiveConnections} connections for {Duration} seconds",
+        Logger.LogInformation("Maintaining {ActiveConnections} connections for {Duration} seconds",
             _connectionManager.ActiveConnectionCount, _config.StableSeconds);
 
         while (DateTime.UtcNow < stablePhaseEnd)
@@ -234,7 +234,7 @@ public class ConnectionLoadScenario : LoadTestScenarioBase
             // Log periodic status
             if (DateTime.UtcNow - lastReportTime >= reportInterval)
             {
-                _logger.LogInformation("Stable phase: {ActiveConnections} active connections, {ErrorCount} errors",
+                Logger.LogInformation("Stable phase: {ActiveConnections} active connections, {ErrorCount} errors",
                     activeConnections, connectionMetrics.ErrorCount);
                 lastReportTime = DateTime.UtcNow;
             }
@@ -265,7 +265,7 @@ public class ConnectionLoadScenario : LoadTestScenarioBase
         }
 
         var stableDuration = DateTime.UtcNow - stablePhaseStart;
-        _logger.LogInformation("Stable phase completed: maintained connections for {Duration}", stableDuration);
+        Logger.LogInformation("Stable phase completed: maintained connections for {Duration}", stableDuration);
 
         return (true, string.Empty);
     }
@@ -304,7 +304,7 @@ public class ConnectionLoadScenario : LoadTestScenarioBase
             .Select(u => $"User {u.UserId}: {u.Metrics.LastErrorMessage}")
             .Take(10)];
 
-        _logger.LogInformation("Connection Load Test Results: {SuccessfulConnections}/{TotalUsers} connected ({SuccessRate:P2}), Avg connection time: {AvgConnectionTime:F1}ms",
+        Logger.LogInformation("Connection Load Test Results: {SuccessfulConnections}/{TotalUsers} connected ({SuccessRate:P2}), Avg connection time: {AvgConnectionTime:F1}ms",
             result.SuccessfulConnections, result.TotalUsers, result.ConnectionSuccessRate, result.LatencyStats.AverageMs);
 
         return Task.CompletedTask;

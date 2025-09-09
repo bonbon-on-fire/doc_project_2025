@@ -93,9 +93,9 @@ public class OperationCommandFactory : IOperationCommandFactory
         var validation = ValidateCreationParameters(operationId, chatId, userId);
         if (!validation.IsValid)
         {
-            var errorMessage = $"Invalid parameters for ProcessMessageCommand: {string.Join(", ", validation.Errors)}";
-            _logger.LogError(errorMessage);
-            throw new ArgumentException(errorMessage);
+            var errors = string.Join(", ", validation.Errors);
+            _logger.LogError("Invalid parameters for ProcessMessageCommand: {Errors}", errors);
+            throw new ArgumentException($"Invalid parameters for ProcessMessageCommand: {errors}");
         }
 
         if (message == null)
@@ -117,9 +117,9 @@ public class OperationCommandFactory : IOperationCommandFactory
         var validation = ValidateCreationParameters(operationId, chatId, userId);
         if (!validation.IsValid)
         {
-            var errorMessage = $"Invalid parameters for RelayMessageCommand: {string.Join(", ", validation.Errors)}";
-            _logger.LogError(errorMessage);
-            throw new ArgumentException(errorMessage);
+            var errors = string.Join(", ", validation.Errors);
+            _logger.LogError("Invalid parameters for RelayMessageCommand: {Errors}", errors);
+            throw new ArgumentException($"Invalid parameters for RelayMessageCommand: {errors}");
         }
 
         if (message == null)
@@ -141,9 +141,9 @@ public class OperationCommandFactory : IOperationCommandFactory
         var validation = ValidateCreationParameters(operationId, chatId, userId);
         if (!validation.IsValid)
         {
-            var errorMessage = $"Invalid parameters for ProcessStreamChunkCommand: {string.Join(", ", validation.Errors)}";
-            _logger.LogError(errorMessage);
-            throw new ArgumentException(errorMessage);
+            var errors = string.Join(", ", validation.Errors);
+            _logger.LogError("Invalid parameters for ProcessStreamChunkCommand: {Errors}", errors);
+            throw new ArgumentException($"Invalid parameters for ProcessStreamChunkCommand: {errors}");
         }
 
         if (chunk == null)
@@ -165,9 +165,9 @@ public class OperationCommandFactory : IOperationCommandFactory
         var validation = ValidateCreationParameters(operationId, chatId, userId);
         if (!validation.IsValid)
         {
-            var errorMessage = $"Invalid parameters for CancelOperationCommand: {string.Join(", ", validation.Errors)}";
-            _logger.LogError(errorMessage);
-            throw new ArgumentException(errorMessage);
+            var errors = string.Join(", ", validation.Errors);
+            _logger.LogError("Invalid parameters for CancelOperationCommand: {Errors}", errors);
+            throw new ArgumentException($"Invalid parameters for CancelOperationCommand: {errors}");
         }
 
         if (string.IsNullOrWhiteSpace(targetOperationId))

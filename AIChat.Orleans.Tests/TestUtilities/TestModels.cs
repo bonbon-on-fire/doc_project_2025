@@ -81,9 +81,10 @@ public class TestResilientStreamManager : IResilientStreamManager
         return _inner.GetMetricsAsync();
     }
 
-    public ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
-        return _inner.DisposeAsync();
+        await _inner.DisposeAsync();
+        GC.SuppressFinalize(this);
     }
 
     private sealed class StreamingBridgeFactoryWrapper : IStreamingBridgeFactory

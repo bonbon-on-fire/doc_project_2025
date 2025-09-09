@@ -14,10 +14,10 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
     private readonly ILogger<StreamingBridgeV2> _logger;
     private readonly StreamingConfiguration _configuration;
     private readonly ILoggerFactory _loggerFactory;
-    private IBufferManager<StreamItem>? _bufferManager;
-    private IHttpStreamWriter? _httpWriter;
-    private IBackpressureHandler? _backpressureHandler;
-    private IStreamingMetrics? _metrics;
+    private BufferManager<StreamItem>? _bufferManager;
+    private HttpStreamWriter? _httpWriter;
+    private BackpressureHandler? _backpressureHandler;
+    private StreamingMetrics? _metrics;
     private bool _disposed;
 
     /// <summary>
@@ -242,9 +242,9 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
     private async Task ProduceFromGrainAsync<T>(
         IAsyncEnumerable<T> grainStream,
         Func<T, string> formatter,
-        IBufferManager<StreamItem> bufferManager,
-        IBackpressureHandler backpressureHandler,
-        IStreamingMetrics metrics,
+        BufferManager<StreamItem> bufferManager,
+        BackpressureHandler backpressureHandler,
+        StreamingMetrics metrics,
         CancellationToken cancellationToken)
     {
         try
@@ -297,8 +297,8 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
 
     private async Task ConsumeAndWriteAsync(
         IBufferManager<StreamItem> bufferManager,
-        IHttpStreamWriter httpWriter,
-        IStreamingMetrics metrics,
+        HttpStreamWriter httpWriter,
+        StreamingMetrics metrics,
         CancellationToken cancellationToken)
     {
         var lastFlush = DateTime.UtcNow;
@@ -359,13 +359,10 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
 
     private void ThrowIfDisposed()
     {
-        if (_disposed)
-        {
-            throw new ObjectDisposedException(nameof(StreamingBridgeV2));
-        }
+        ObjectDisposedException.ThrowIf(_disposed, this);
     }
 
-    private record StreamItem
+    private sealed record StreamItem
     {
         public required string Data { get; init; }
         public required DateTime Timestamp { get; init; }

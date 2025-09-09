@@ -155,5 +155,6 @@ public class TestWebApplicationManager : IDisposable
     public void Dispose()
     {
         _factory?.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

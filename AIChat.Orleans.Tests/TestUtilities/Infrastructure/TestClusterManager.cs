@@ -79,6 +79,7 @@ public class TestClusterManager : IAsyncDisposable
             _cluster = null;
             _isInitialized = false;
         }
+        GC.SuppressFinalize(this);
     }
 
     /// <summary>

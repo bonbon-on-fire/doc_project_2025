@@ -1,3 +1,4 @@
+using System.Globalization;
 using AIChat.Server.Services;
 using AIChat.Server.Services.AgentCards;
 using FluentAssertions;
@@ -479,7 +480,7 @@ Test";
         var result = Result<int>.Success(42);
 
         // Act
-        var mapped = result.Map(x => x.ToString());
+        var mapped = result.Map(x => x.ToString(CultureInfo.InvariantCulture));
 
         // Assert
         _ = mapped.IsSuccess.Should().BeTrue();
@@ -493,7 +494,7 @@ Test";
         var result = Result<int>.Failure("Error message");
 
         // Act
-        var mapped = result.Map(x => x.ToString());
+        var mapped = result.Map(x => x.ToString(CultureInfo.InvariantCulture));
 
         // Assert
         _ = mapped.IsFailure.Should().BeTrue();

@@ -226,6 +226,39 @@ if ($success) {
         else {
             Write-Host "⚠️ Validation script not found, skipping post-formatting validation" -ForegroundColor Yellow
         }
+        
+        # Check for critical warnings that must be fixed
+        Write-Host ""
+        Write-Host "Checking for critical code quality warnings..." -ForegroundColor Yellow
+        $warningsScript = "scripts/check-critical-warnings.ps1"
+        if (Test-Path $warningsScript) {
+            & $warningsScript
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host ""
+                Write-Host "❌ CRITICAL WARNINGS DETECTED" -ForegroundColor Red
+                Write-Host "=" * 70 -ForegroundColor Red
+                Write-Host ""
+                Write-Host "The code has critical quality issues that MUST be fixed before checkin." -ForegroundColor Yellow
+                Write-Host "These warnings indicate:" -ForegroundColor Yellow
+                Write-Host "  • Performance problems (CA1826, CA1859)" -ForegroundColor White
+                Write-Host "  • Correctness issues (CA1310, CA1304, CA1305)" -ForegroundColor White
+                Write-Host "  • Dead code (IDE0052)" -ForegroundColor White
+                Write-Host "  • Modern pattern violations (CA1513)" -ForegroundColor White
+                Write-Host ""
+                Write-Host "ACTION REQUIRED:" -ForegroundColor Red
+                Write-Host "  1. Review the warnings above" -ForegroundColor Cyan
+                Write-Host "  2. Fix each warning manually (see HOW TO FIX section)" -ForegroundColor Cyan
+                Write-Host "  3. Run this script again to verify all warnings are resolved" -ForegroundColor Cyan
+                Write-Host ""
+                Write-Host "For detailed information, run:" -ForegroundColor Gray
+                Write-Host "  .\scripts\check-critical-warnings.ps1 -Detailed" -ForegroundColor White
+                Write-Host ""
+                exit 1
+            }
+            else {
+                Write-Host "✅ No critical warnings found - code quality check passed" -ForegroundColor Green
+            }
+        }
     }
     exit 0
 }

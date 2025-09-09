@@ -189,20 +189,206 @@ if ($files) {
 
 ---
 
-## 6) Common rules with reliable auto‑fixers (examples)
+## 6) Auto‑fix catalog (built‑in + popular analyzers)
 
-These have solid Fix‑All support and are good candidates to keep at `warning` or `error`:
+These rules have reliable code fixes and work well with **Fix‑All** (VS/VS Code) and `dotnet format`. Start with these, keep them at `warning` (or `error`) once the repo is clean.
+
+### 6.1 Built‑in IDE (code style) rules — strong auto‑fixers
+
+**Formatting & imports**
 
 * **IDE0055** — Format document
 * **IDE0005** — Remove unnecessary usings
-* **IDE0065** — Using directives placement
-* **IDE0044** — Make field readonly
+* **IDE0065** — Using directives placement (file‑scoped or inside namespace)
+
+**Braces & blocks**
+
+* **IDE0011** — Add braces to control statements
+* **IDE0063** — Use simple `using` statement
+
+**Initializers & patterns**
+
 * **IDE0017** — Use object initializer
 * **IDE0028** — Use collection initializer
-* **IDE0066** — Convert switch statement to expression
-* **CA1822** — Member can be static
+* **IDE0066** — Convert `switch` statement to expression (when safe)
 
-> Many more have fixers; if a rule is noisy without a reliable fix, keep it at `suggestion` until the codebase is clean.
+**Simplifications**
+
+* **IDE0004** — Remove unnecessary cast
+* **IDE0031** — Use null‑propagation (`?.`)
+* **IDE0032** — Use auto‑property
+* **IDE0037** — Use inferred member name
+* **IDE0040** — Add accessibility modifiers
+* **IDE0057** — Use range operator (`..`)
+* **IDE0058** — Expression value is never used (remove)
+* **IDE0060** — Remove unused parameter (when no referenced)
+* **IDE0062** — Make local function `static`
+* **IDE0090** — Use target‑typed `new`
+
+> **Expanded:** Many more IDE rules have reliable code fixes. After your baseline is clean, consider elevating these to `warning`/`error` (keep subjective ones like naming, `var`/explicit type, and wrapping at `suggestion`). Common fixable rules include:
+
+* **Names & qualifiers**
+
+  * IDE0001 — Simplify names
+  * IDE0003 — Remove unnecessary `this`/`Me`
+  * IDE0049 — Use language keywords instead of framework types
+
+* **Null/typeof/name**
+
+  * IDE0031 — Use null‑propagation (`?.`)
+  * IDE0041 — Use `is null` check
+  * IDE0082 — Convert `typeof(T).Name` to `nameof(T)`
+
+* **Expression‑bodied/throw**
+
+  * IDE0016 — Use `throw` expression
+  * IDE0021–IDE0027, IDE0053, IDE0061 — Use expression‑bodied members (constructors, methods, operators, properties, indexers, accessors, lambdas, local functions)
+
+* **Coalescing & patterns**
+
+  * IDE0029/IDE0030 — Use coalesce / coalesce assignment (`??`, `??=`)
+  * IDE0019/IDE0020/IDE0038 — Use pattern matching instead of `as`/`is` + cast/null checks
+  * IDE0170 — Simplify property patterns
+
+* **Collections**
+
+  * IDE0028 — Use collection initializers/expressions
+  * IDE0301/IDE0305 — Prefer collection expressions (`[]`, `[..]`) where applicable (C# 12+)
+
+* **Indices, ranges & slices**
+
+  * IDE0056 — Use index operator (`^`)
+  * IDE0057 — Use range operator (`..`)
+
+* **Deconstruction**
+
+  * IDE0042 — Deconstruct variable declarations
+
+* **Conditionals & parentheses**
+
+  * IDE0045/IDE0046 — Use conditional expression for assignment/return
+  * IDE0047/IDE0048 — Parentheses preferences (remove/add for clarity)
+
+* **Fields & modifiers**
+
+  * IDE0040 — Add accessibility modifiers
+  * IDE0044 — Add `readonly` modifier
+  * IDE0036 — Order modifiers
+
+* **Cleanup & unused**
+
+  * IDE0051 — Remove unused private member
+  * IDE0052 — Remove unread private member
+  * IDE0059 — Unnecessary assignment of a value
+  * IDE0058 — Expression value is never used
+
+* **Switches & patterns**
+
+  * IDE0010 — Add missing cases to `switch`
+  * IDE0066 — Convert `switch` statement to expression
+
+* **Language simplifications**
+
+  * IDE0004 — Remove unnecessary cast
+  * IDE0090 — Use target‑typed `new`
+
+Full list can be found at: [https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/style-rules/](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/style-rules/)
+
+> Many of these default to `suggestion`; use `--severity info` with `dotnet format` to apply them in bulk. Some are IDE‑only (show in the editor, not build) but still fixable via Quick Fix or `dotnet format`. For a complete reference, see the .NET code‑style rule index and individual rule pages.
+
+**Bulk‑fix examples**
+
+```bash
+# all style fixes at >= warn (use --severity info to include suggestions)
+dotnet format style --severity warn
+# specific IDE rules
+dotnet format style --diagnostics IDE0005,IDE0055,IDE0011 --severity info
+```
+
+### 6.2 Built‑in Code Quality rules (CAxxxx) — fixable & usually safe
+
+Performance‑oriented fixes that are broadly safe to apply (still review public API surface changes):
+
+* **CA1829** — Use `Length`/`Count` property instead of `Enumerable.Count` on arrays/collections
+* **CA1836** — Prefer `IsEmpty` over `Count` when available
+* **CA1834** — Prefer `StringBuilder.Append(char)` for single‑char strings
+* **CA1847** — Use `char` literal for single‑character lookup (`"x"` → `'x'`)
+* **CA1837** — Prefer `Environment.ProcessId` over `Process.GetCurrentProcess().Id`
+* **CA1802** — Use `const` for compile‑time constants (⚠️ changing public fields can be a breaking change)
+
+> Use `dotnet format analyzers ...` to apply CA fixes that have code‑fix providers. For the **full, up‑to‑date list of CA rules**, see Microsoft’s official index: [https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/](https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/) (each rule page notes if a **Code fix** is available). Commonly fixable examples include **CA1829** (use `Length`/`Count`), **CA1836** (prefer `IsEmpty`), **CA1834** (`StringBuilder.Append(char)`), **CA1847** (use `'char'` literal), **CA1837** (`Environment.ProcessId`), **CA1802** (use `const`), **CA1826** (use property instead of LINQ), **CA1860** (avoid `Enumerable.Any()` where a count/length exists). Keep potentially breaking API changes (e.g., **CA1822** *Mark members static*) gated behind manual review or restricted scopes.
+
+**Bulk‑fix examples**
+
+```bash
+# include CA rules that have code fixes
+dotnet format analyzers --severity warn
+# target specific rules
+dotnet format analyzers --diagnostics CA1829,CA1836,CA1834,CA1847 --severity info
+```
+
+### 6.3 StyleCop.Analyzers (optional)
+
+Adds style rules with many automatic fixes.
+
+**Install**
+
+```xml
+<!-- Directory.Build.props or per‑project -->
+<ItemGroup>
+  <PackageReference Include="StyleCop.Analyzers" Version="1.*" PrivateAssets="all" />
+</ItemGroup>
+```
+
+**Run fixes**
+
+* Many SA rules surface Quick Fixes (Fix‑All in doc/project). Use VS/VS Code Quick Fix or `dotnet format analyzers` to apply available code fixes.
+
+### 6.4 Roslynator (optional, lots of fixes)
+
+Hundreds of analyzers & code fixes beyond the built‑ins.
+
+**Install CLI**
+
+```bash
+dotnet tool install -g roslynator.dotnet.cli
+```
+
+**Use**
+
+```bash
+# analyze & fix entire solution (uses analyzers referenced by your projects)
+roslynator fix path/to/YourSolution.sln
+# or project
+eroslynator fix path/to/Project.csproj
+```
+
+> You can scope with `--diagnostics RCSxxxx` or `--include` paths. Prefer committing in small batches.
+
+### 6.5 Meziantou.Analyzer (optional)
+
+Practical performance, security, and correctness rules; many have code fixes.
+
+**Install**
+
+```xml
+<ItemGroup>
+  <PackageReference Include="Meziantou.Analyzer" Version="2.*" PrivateAssets="all" />
+</ItemGroup>
+```
+
+**Apply fixes**
+
+* Use Quick Fix/ Fix‑All in the editor, or run `dotnet format analyzers`.
+
+### 6.6 What *not* to auto‑fix blindly
+
+Keep these at `suggestion` or review individually:
+
+* **CA1062** (validate arguments) — can add boilerplate/null checks indiscriminately
+* **CA1848** (LoggerMessage) — requires refactoring to the LoggerMessage pattern
+* **CA2007** (ConfigureAwait) — policy dependent; library vs app
+* **CA1822** (make member static) — may break virtual/override or public APIs
 
 ---
 
@@ -216,7 +402,7 @@ These have solid Fix‑All support and are good candidates to keep at `warning` 
 ## 8) Troubleshooting
 
 * **I don’t see IDE rules in build output** → Ensure `<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>` and rule severity ≥ `warning` in `.editorconfig`.
-* **`dotnet format` didn’t change anything** → Check severities; by default it applies warn/error. Add `--severity info` to include info‑level fixes.
+* **`dotnet format`**\*\* didn’t change anything\*\* → Check severities; by default it applies warn/error. Add `--severity info` to include info‑level fixes.
 * **VS Code isn’t fixing on save** → Confirm `.vscode/settings.json` is in the workspace, the C# extension is active, and auto‑save behavior matches your `"explicit"/"always"` choice.
 * **Legacy projects** → Prefer SDK‑style; otherwise add analyzers via NuGet.
 
@@ -230,3 +416,39 @@ These have solid Fix‑All support and are good candidates to keep at `warning` 
 4. Enable VS Code `formatOnSave` + `fixAll`.
 
 That’s it—warnings surface in build, the easy ones auto‑fix, and CI guards drift.
+
+---
+
+## 10) Rule cookbook: IDE0011 — Add braces (warn + auto‑fix)
+
+Make missing braces show up as **warnings** in `dotnet build` and enable bulk fixes.
+
+**MSBuild (once per repo)**
+
+```xml
+<!-- Directory.Build.props or a .csproj -->
+<PropertyGroup>
+  <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+</PropertyGroup>
+```
+
+**.editorconfig**
+
+```ini
+[*.cs]
+# Prefer braces on control statements and warn when missing
+csharp_prefer_braces = true:warning       # or: when_multiline:warning
+# Force build-time severity for the specific rule
+dotnet_diagnostic.IDE0011.severity = warning
+```
+
+**Auto-fix (CLI)**
+
+```bash
+dotnet format style --diagnostics IDE0011
+```
+
+This applies the Roslyn code fix to add braces where safe.
+
+**Auto-fix (VS Code)**
+The existing settings in this playbook (`formatOnSave` + `source.fixAll`) will apply the "Add braces" fix on save when available.

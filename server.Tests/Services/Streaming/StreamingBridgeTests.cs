@@ -38,6 +38,7 @@ public class StreamingBridgeTests : IDisposable
     public void Dispose()
     {
         _streamingBridge?.DisposeAsync().AsTask().Wait();
+        GC.SuppressFinalize(this);
     }
 
     [Fact]

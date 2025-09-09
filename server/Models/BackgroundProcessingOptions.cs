@@ -80,7 +80,7 @@ public class MonitoringOptions
     /// <summary>
     /// Whether to enable detailed logging for debugging.
     /// </summary>
-    public bool EnableDetailedLogging { get; set; } = false;
+    public bool EnableDetailedLogging { get; set; }
 }
 
 /// <summary>

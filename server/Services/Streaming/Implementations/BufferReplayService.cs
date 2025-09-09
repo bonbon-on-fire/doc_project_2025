@@ -316,7 +316,7 @@ public class BufferReplayService : IBufferReplayService
     /// <summary>
     /// Tracks message delivery for duplicate detection.
     /// </summary>
-    private class DeliveryTracker
+    private sealed class DeliveryTracker
     {
         private readonly HashSet<long> _deliveredSequences = [];
         private readonly Lock _lock = new();
@@ -368,7 +368,7 @@ public class BufferReplayService : IBufferReplayService
     /// <summary>
     /// Collects and merges partial messages.
     /// </summary>
-    private class PartialMessageCollector
+    private sealed class PartialMessageCollector
     {
         private readonly ConcurrentDictionary<long, List<PartialMessage>> _partials = new();
 

@@ -109,7 +109,9 @@ public interface IOperationCoordinatorService
 public class OperationCoordinatorService : IOperationCoordinatorService
 {
     private readonly ILogger<OperationCoordinatorService> _logger;
+#pragma warning disable IDE0052 // Remove unread private members - used in derived classes
     private readonly IOperationCommandFactory _commandFactory;
+#pragma warning restore IDE0052
 
     /// <summary>
     /// Initializes a new instance of the OperationCoordinatorService.

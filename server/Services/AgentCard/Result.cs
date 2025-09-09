@@ -43,6 +43,7 @@ public readonly struct Result<T>
     /// <summary>
     /// Creates a successful result with the given value.
     /// </summary>
+#pragma warning disable CA1000 // Do not declare static members on generic types - This is a common pattern for Result types
     public static Result<T> Success(T value)
     {
         return value == null
@@ -54,6 +55,7 @@ public readonly struct Result<T>
     /// Creates a failed result with the given error message.
     /// </summary>
     public static Result<T> Failure(string error)
+#pragma warning restore CA1000
     {
         return string.IsNullOrWhiteSpace(error)
             ? throw new ArgumentException("Error message cannot be empty", nameof(error))

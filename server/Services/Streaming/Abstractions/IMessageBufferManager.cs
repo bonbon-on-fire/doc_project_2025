@@ -174,7 +174,7 @@ public class BufferOptions
     /// <summary>
     /// Gets or sets whether to enable compression.
     /// </summary>
-    public bool EnableCompression { get; set; } = false;
+    public bool EnableCompression { get; set; }
 
     /// <summary>
     /// Gets or sets the maximum message size in bytes.

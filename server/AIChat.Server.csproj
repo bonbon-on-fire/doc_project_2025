@@ -10,8 +10,9 @@
     <!-- <TreatWarningsAsErrors>true</TreatWarningsAsErrors> -->
     <WarningLevel>5</WarningLevel>
     <!-- Optionally suppress specific warnings that are from external dependencies -->
-    <NoWarn>CS0618</NoWarn>
-    <!-- Suppress obsolete warnings from submodules -->
+    <NoWarn>CS0618;CS1591</NoWarn>
+    <!-- CS0618: Suppress obsolete warnings from submodules -->
+    <!-- CS1591: Missing XML comment for publicly visible type or member -->
   </PropertyGroup>
   <!-- Standard package references -->
   <ItemGroup>

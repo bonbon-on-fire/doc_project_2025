@@ -364,7 +364,7 @@ public class HealthCheckConfiguration
             errors.Add("EndpointPath cannot be empty");
         }
 
-        if (!EndpointPath.StartsWith("/"))
+        if (!EndpointPath.StartsWith('/'))
         {
             errors.Add("EndpointPath must start with /");
         }

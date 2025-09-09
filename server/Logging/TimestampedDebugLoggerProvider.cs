@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 
 namespace AIChat.Server.Logging;
@@ -41,7 +42,7 @@ public sealed class TimestampedDebugLoggerProvider : ILoggerProvider
                 return;
             }
 
-            var ts = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff 'UTC'");
+            var ts = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff 'UTC'", CultureInfo.InvariantCulture);
             var level = logLevel.ToString().ToLowerInvariant();
             var message = formatter(state, exception);
 

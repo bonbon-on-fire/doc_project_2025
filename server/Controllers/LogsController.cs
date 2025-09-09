@@ -105,5 +105,5 @@ public class LogsController(ILogger<LogsController> logger) : ControllerBase
         }
     }
 
-    private static bool _pathLogged = false;
+    private static bool _pathLogged;
 }

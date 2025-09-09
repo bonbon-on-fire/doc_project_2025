@@ -63,7 +63,7 @@ public class SystemMetricsCollector : IDisposable
     {
         lock (_metricsLock)
         {
-            return new List<SystemMetrics>(_metricsHistory);
+            return [.. _metricsHistory];
         }
     }
 
@@ -74,7 +74,7 @@ public class SystemMetricsCollector : IDisposable
     {
         lock (_metricsLock)
         {
-            if (!_metricsHistory.Any())
+            if (_metricsHistory.Count == 0)
             {
                 return new ResourceUsageStatistics();
             }
@@ -155,18 +155,12 @@ public class SystemMetricsCollector : IDisposable
     {
         var metrics = new SystemMetrics
         {
-            Timestamp = DateTime.UtcNow
+            Timestamp = DateTime.UtcNow,
+            CpuUsagePercent = GetCpuUsage(),
+            MemoryUsageMB = GetMemoryUsage(),
+            MemoryAvailableMB = GetAvailableMemory(),
+            NetworkBandwidthMbps = 0 // TODO: Implement network monitoring
         };
-
-        // Collect CPU usage
-        metrics.CpuUsagePercent = GetCpuUsage();
-
-        // Collect memory usage
-        metrics.MemoryUsageMB = GetMemoryUsage();
-        metrics.MemoryAvailableMB = GetAvailableMemory();
-
-        // Collect network bandwidth (placeholder - would need more sophisticated implementation)
-        metrics.NetworkBandwidthMbps = 0; // TODO: Implement network monitoring
 
         // Collect Orleans metrics if enabled
         if (_config.MonitorOrleansGrains)
@@ -181,7 +175,7 @@ public class SystemMetricsCollector : IDisposable
     {
         try
         {
-            if (_cpuCounter != null)
+            if (_cpuCounter != null && OperatingSystem.IsWindows())
             {
                 return _cpuCounter.NextValue();
             }
@@ -214,7 +208,7 @@ public class SystemMetricsCollector : IDisposable
     {
         try
         {
-            if (_memoryCounter != null)
+            if (_memoryCounter != null && OperatingSystem.IsWindows())
             {
                 return (long)_memoryCounter.NextValue();
             }
@@ -277,6 +271,11 @@ public class SystemMetricsCollector : IDisposable
                         JsonValueKind.Number when typeof(T) == typeof(int) => (T)(object)jsonElement.GetInt32(),
                         JsonValueKind.Number when typeof(T) == typeof(double) => (T)(object)jsonElement.GetDouble(),
                         JsonValueKind.True or JsonValueKind.False when typeof(T) == typeof(bool) => (T)(object)jsonElement.GetBoolean(),
+                        JsonValueKind.String => defaultValue,
+                        JsonValueKind.Array => defaultValue,
+                        JsonValueKind.Object => defaultValue,
+                        JsonValueKind.Null => defaultValue,
+                        JsonValueKind.Undefined => defaultValue,
                         _ => defaultValue
                     };
                 }
@@ -297,7 +296,10 @@ public class SystemMetricsCollector : IDisposable
 
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+        {
+            return;
+        }
 
         _metricsTimer?.Dispose();
         _cpuCounter?.Dispose();
@@ -305,5 +307,6 @@ public class SystemMetricsCollector : IDisposable
         _currentProcess?.Dispose();
 
         _disposed = true;
+        GC.SuppressFinalize(this);
     }
 }

@@ -71,8 +71,6 @@ public class RelayMessageCommand : OperationCommandBase<ChatMessage, int>
         CancellationToken cancellationToken)
     {
         var logger = context.Logger;
-        var successCount = 0;
-
         try
         {
             logger.LogInformation(
@@ -91,8 +89,7 @@ public class RelayMessageCommand : OperationCommandBase<ChatMessage, int>
             await Task.Delay(50, cancellationToken);
 
             // Simulate relay to multiple connections
-            successCount = 3; // Simulate 3 successful relays
-
+            var successCount = 3;
             logger.LogInformation(
                 "Successfully relayed message {MessageId} to {ConnectionCount} connections for operation {OperationId}",
                 Request.Id, successCount, OperationId);

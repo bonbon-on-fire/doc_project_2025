@@ -72,12 +72,12 @@ public record ReplayOptions
     /// <summary>
     /// Gets whether to skip duplicate detection.
     /// </summary>
-    public bool SkipDuplicateDetection { get; init; } = false;
+    public bool SkipDuplicateDetection { get; init; }
 
     /// <summary>
     /// Gets the maximum messages to replay (0 for unlimited).
     /// </summary>
-    public int MaxMessages { get; init; } = 0;
+    public int MaxMessages { get; init; }
 
     /// <summary>
     /// Gets the delay between messages during replay.

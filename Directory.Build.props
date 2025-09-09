@@ -3,31 +3,31 @@
   <PropertyGroup>
     <!-- Enable code style rules in build -->
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
-    
+
     <!-- Enable .NET analyzers -->
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
-    
+
     <!-- Use latest analysis level -->
     <AnalysisLevel>latest</AnalysisLevel>
-    
+
     <!-- Make analyzers visible in build output -->
     <ReportAnalyzer>true</ReportAnalyzer>
-    
+
     <!-- Generate additional code analysis logs -->
     <CodeAnalysisGenerateSuccessFile>true</CodeAnalysisGenerateSuccessFile>
-    
+
     <!-- Optional: Treat warnings as errors (enable after cleanup) -->
     <!-- <TreatWarningsAsErrors>true</TreatWarningsAsErrors> -->
-    
+
     <!-- Warning level for C# compiler -->
     <WarningLevel>5</WarningLevel>
-    
+
     <!-- Enable nullable reference types -->
     <Nullable>enable</Nullable>
-    
+
     <!-- Implicit usings -->
     <ImplicitUsings>enable</ImplicitUsings>
-    
+
     <!-- Suppress specific warnings that are from external dependencies or can't be auto-fixed -->
     <!-- CS0618: Obsolete warnings -->
     <!-- CA1031: Do not catch general exception types (requires manual review) -->
@@ -36,19 +36,34 @@
     <!-- CA2007: ConfigureAwait (not needed in ASP.NET Core) -->
     <!-- CA1051: Do not declare visible instance fields (requires property conversion) -->
     <!-- CA1716: Don't use reserved keywords (breaking change) -->
-    <!-- CA2254: Logging template should not vary (requires refactoring) -->
     <!-- CA1000: Don't declare static members on generic types (design issue) -->
-    <!-- CA1310: Specify StringComparison (requires manual fix) -->
-    <!-- CA1866: Use char overload (performance) -->
-    <!-- CA1805: Do not initialize unnecessarily (minor) -->
-    <NoWarn>$(NoWarn);CS0618;CA1031;CA1062;CA1848;CA2007;CA1051;CA1716;CA2254;CA1000;CA1310;CA1866;CA1805</NoWarn>
-    
+    <!-- MUST FIX BEFORE CHECKIN - These warnings indicate code quality issues -->
+    <!-- CA1310: Specify StringComparison (MUST FIX - use StringComparison.Ordinal or appropriate comparison) -->
+    <!-- CA1826: Use property instead of LINQ method (MUST FIX - performance issue) -->
+    <!-- CA1513: Use ObjectDisposedException.ThrowIf (MUST FIX - modern pattern) -->
+    <!-- CA1859: Use concrete types for performance (MUST FIX - performance issue) -->
+    <!-- IDE0052: Remove unread private members (MUST FIX - dead code) -->
+    <!-- CA2254: Logging template should not vary (MUST FIX - use static templates for structured logging) -->
+
+    <!-- Suppressions for truly unfixable or breaking changes only -->
+    <!-- CA1716: Don't use reserved keywords (breaking API change) -->
+    <!-- CA1000: Don't declare static members on generic types (design issue) -->
+    <!-- CA1051: Do not declare visible instance fields (breaking change) -->
+    <!-- CA1068: CancellationToken should be last (breaking API change) -->
+    <!-- CA1050: Declare types in namespaces (structural change) -->
+    <!-- CS0618: Obsolete warnings from external dependencies -->
+    <!-- CA1031: Do not catch general exception types (requires careful review) -->
+    <!-- CA1062: Validate arguments of public methods (can add excessive null checks) -->
+    <!-- CA1848: Use LoggerMessage delegates (performance optimization, requires refactoring) -->
+    <!-- CA2007: ConfigureAwait (not needed in ASP.NET Core) -->
+    <NoWarn>$(NoWarn);CS0618;CA2007;CA1716;CA1000;CA1050;CA1591</NoWarn>
+
     <!-- Enable documentation file generation for IDE0005 -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!-- But suppress the XML documentation warnings -->
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
-  
+
   <!-- Common package references for analyzers (optional) -->
   <ItemGroup>
     <!-- Microsoft.CodeAnalysis.NetAnalyzers is included by default with .NET 5+ SDK -->

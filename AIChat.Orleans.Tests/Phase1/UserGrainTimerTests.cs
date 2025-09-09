@@ -124,7 +124,7 @@ public class UserGrainTimerTests
         Assert.That(state, Is.Not.Null);
         Assert.Multiple(() =>
         {
-            Assert.That(state.RecentActivity.Count, Is.GreaterThan(0));
+            Assert.That(state.RecentActivity, Has.Count.GreaterThan(0));
             Assert.That(state.Metrics.TotalActivities, Is.EqualTo(3));
         });
     }

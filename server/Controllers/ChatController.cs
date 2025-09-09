@@ -3,14 +3,12 @@ using AchieveAi.LmDotnetTools.Misc.Utils;
 using AIChat.Orleans.Contracts;
 using AIChat.Server.Extensions;
 using AIChat.Server.Hubs;
-using AIChat.Server.Models;
 using AIChat.Server.Services;
 using AIChat.Server.Services.Streaming;
 using AIChat.Server.Storage;
 using Lib.AspNetCore.ServerSentEvents;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.Options;
 using Microsoft.FeatureManagement;
 using ChatDto = AIChat.Server.Services.ChatDto;
 
@@ -26,7 +24,6 @@ public class ChatController(
     IChatStorage chatStorage,
     IHubContext<ChatHub> hubContext,
     IFeatureManager featureManager,
-    IOptions<BackgroundProcessingOptions> backgroundProcessingOptions,
     IClusterClient? clusterClient = null,
     IBackgroundChatService? backgroundChatService = null,
     IOperationTrackingService? operationTrackingService = null,
@@ -41,7 +38,6 @@ public class ChatController(
     private readonly IChatStorage _chatStorage = chatStorage;
     private readonly IHubContext<ChatHub> _hubContext = hubContext;
     private readonly IFeatureManager _featureManager = featureManager;
-    private readonly BackgroundProcessingOptions _backgroundProcessingOptions = backgroundProcessingOptions.Value;
     private readonly IClusterClient? _clusterClient = clusterClient;
     private readonly IBackgroundChatService? _backgroundChatService = backgroundChatService;
     private readonly IOperationTrackingService? _operationTrackingService = operationTrackingService;
@@ -363,7 +359,7 @@ public class ChatController(
     public async Task<ActionResult<GetTasksResponse>> GetTasks(string chatId)
     {
         // Verify chat exists and user has access
-        var (Success, Error, Chat) = await _chatStorage.GetChatByIdAsync(chatId);
+        var (Success, _, _) = await _chatStorage.GetChatByIdAsync(chatId);
         if (!Success)
         {
             return NotFound(new { Error = "Chat not found" });
@@ -426,7 +422,7 @@ public class ChatController(
         Response.Headers.Append("Connection", "keep-alive");
 
         // Add Orleans routing headers
-        Response.Headers.Append("X-Orleans-Routed", useOrleans.ToString().ToLower());
+        Response.Headers.Append("X-Orleans-Routed", useOrleans.ToString().ToLower(System.Globalization.CultureInfo.CurrentCulture));
         Response.Headers.Append("X-Processing-Mode", useOrleans ? "orleans" : "direct");
 
         string? currentChatId = null;

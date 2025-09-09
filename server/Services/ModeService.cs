@@ -8,14 +8,14 @@ namespace AIChat.Server.Services;
 /// Service for managing chat modes including system modes and user-created custom modes.
 /// Loads system modes from Agent Card files (.agent.md) on startup and provides caching for performance.
 /// </summary>
-public sealed class ModeService : IModeService
+public sealed class ModeService : IModeService, IDisposable
 {
     private readonly IModeStorage _modeStorage;
     private readonly ILogger<ModeService> _logger;
     private readonly IHostEnvironment _hostEnvironment;
     private readonly ConcurrentDictionary<string, SystemModeConfig> _systemModes = new();
     private readonly JsonSerializerOptions _jsonOptions;
-    private bool _systemModesLoaded = false;
+    private bool _systemModesLoaded;
     private readonly SemaphoreSlim _loadSemaphore = new(1, 1);
 
     public ModeService(
@@ -597,6 +597,11 @@ public sealed class ModeService : IModeService
             },
             ct
         );
+    }
+
+    public void Dispose()
+    {
+        throw new NotImplementedException();
     }
 }
 

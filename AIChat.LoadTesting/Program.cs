@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
 using AIChat.LoadTesting.Configuration;
@@ -14,9 +15,10 @@ namespace AIChat.LoadTesting;
 /// AIChat Load Testing Application
 /// Tests Orleans grain integration with 10,000 concurrent users
 /// </summary>
-class Program
+sealed class Program
 {
     private static readonly string Version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0";
+    private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
     private static IServiceProvider? _serviceProvider;
     private static ILogger<Program>? _logger;
 
@@ -48,7 +50,7 @@ class Program
 
             // Validate configuration
             var validationErrors = await ValidateConfigurationAsync();
-            if (validationErrors.Any())
+            if (validationErrors.Count > 0)
             {
                 _logger.LogError("Configuration validation failed:");
                 foreach (var error in validationErrors)
@@ -97,7 +99,7 @@ class Program
             .Build();
     }
 
-    private static IServiceProvider BuildServiceProvider(IConfiguration configuration)
+    private static ServiceProvider BuildServiceProvider(IConfiguration configuration)
     {
         var services = new ServiceCollection();
 
@@ -166,12 +168,11 @@ class Program
         var reportDir = Path.Combine(Directory.GetCurrentDirectory(), "load-test-reports");
         _ = Directory.CreateDirectory(reportDir);
 
-        var timestamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
+        var timestamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
 
         // Generate JSON report
         var jsonReportPath = Path.Combine(reportDir, $"load-test-report-{timestamp}.json");
-        var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
-        var jsonReport = JsonSerializer.Serialize(report, jsonOptions);
+        var jsonReport = JsonSerializer.Serialize(report, s_jsonOptions);
         await File.WriteAllTextAsync(jsonReportPath, jsonReport);
 
         // Generate summary report
@@ -204,67 +205,67 @@ class Program
 
         _ = summary.AppendLine("AIChat Orleans Load Testing Report");
         _ = summary.AppendLine("================================");
-        _ = summary.AppendLine($"Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
-        _ = summary.AppendLine($"Test Duration: {report.TotalDuration}");
-        _ = summary.AppendLine($"Version: {Version}");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"Test Duration: {report.TotalDuration}");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"Version: {Version}");
         _ = summary.AppendLine();
 
         _ = summary.AppendLine("OVERALL RESULTS");
         _ = summary.AppendLine("--------------");
-        _ = summary.AppendLine($"Test Status: {(report.Summary.TestPassed ? "PASSED" : "FAILED")}");
-        _ = summary.AppendLine($"Scenarios: {report.Summary.SuccessfulScenarios}/{report.Summary.TotalScenarios} passed");
-        _ = summary.AppendLine($"Connections: {report.Summary.SuccessfulConnections:N0}/{report.Summary.TotalConnections:N0} ({report.Summary.OverallConnectionSuccessRate:P2})");
-        _ = summary.AppendLine($"Messages: {report.Summary.DeliveredMessages:N0}/{report.Summary.TotalMessages:N0} ({report.Summary.OverallMessageDeliveryRate:P2})");
-        _ = summary.AppendLine($"Average Latency: {report.Summary.AverageLatencyMs:F1}ms");
-        _ = summary.AppendLine($"P95 Latency: {report.Summary.P95LatencyMs:F1}ms");
-        _ = summary.AppendLine($"Peak CPU: {report.Summary.PeakCpuPercent:F1}%");
-        _ = summary.AppendLine($"Peak Memory: {report.Summary.PeakMemoryMB:N0}MB");
-        _ = summary.AppendLine($"Max Concurrent Users: {report.Summary.MaxConcurrentUsers:N0}");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"Test Status: {(report.Summary.TestPassed ? "PASSED" : "FAILED")}");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"Scenarios: {report.Summary.SuccessfulScenarios}/{report.Summary.TotalScenarios} passed");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"Connections: {report.Summary.SuccessfulConnections:N0}/{report.Summary.TotalConnections:N0} ({report.Summary.OverallConnectionSuccessRate:P2})");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"Messages: {report.Summary.DeliveredMessages:N0}/{report.Summary.TotalMessages:N0} ({report.Summary.OverallMessageDeliveryRate:P2})");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"Average Latency: {report.Summary.AverageLatencyMs:F1}ms");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"P95 Latency: {report.Summary.P95LatencyMs:F1}ms");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"Peak CPU: {report.Summary.PeakCpuPercent:F1}%");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"Peak Memory: {report.Summary.PeakMemoryMB:N0}MB");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"Max Concurrent Users: {report.Summary.MaxConcurrentUsers:N0}");
         _ = summary.AppendLine();
 
         _ = summary.AppendLine("ACCEPTANCE CRITERIA VALIDATION");
         _ = summary.AppendLine("----------------------------");
-        _ = summary.AppendLine($"All Criteria Pass: {(report.ValidationResults.AllCriteriaPass ? "YES" : "NO")}");
-        _ = summary.AppendLine($"10K Users Connected: {(report.ValidationResults.Users10kConnected.Pass ? "PASS" : "FAIL")} - {report.ValidationResults.Users10kConnected.ActualValue}");
-        _ = summary.AppendLine($"Messages < 100ms: {(report.ValidationResults.MessagesUnder100ms.Pass ? "PASS" : "FAIL")} - {report.ValidationResults.MessagesUnder100ms.ActualValue}");
-        _ = summary.AppendLine($"No Messages Lost: {(report.ValidationResults.NoMessagesLost.Pass ? "PASS" : "FAIL")} - {report.ValidationResults.NoMessagesLost.ActualValue}");
-        _ = summary.AppendLine($"System Scales: {(report.ValidationResults.SystemScales.Pass ? "PASS" : "FAIL")} - {report.ValidationResults.SystemScales.ActualValue}");
-        _ = summary.AppendLine($"Resources Within Limits: {(report.ValidationResults.ResourcesWithinLimits.Pass ? "PASS" : "FAIL")} - {report.ValidationResults.ResourcesWithinLimits.ActualValue}");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"All Criteria Pass: {(report.ValidationResults.AllCriteriaPass ? "YES" : "NO")}");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"10K Users Connected: {(report.ValidationResults.Users10kConnected.Pass ? "PASS" : "FAIL")} - {report.ValidationResults.Users10kConnected.ActualValue}");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"Messages < 100ms: {(report.ValidationResults.MessagesUnder100ms.Pass ? "PASS" : "FAIL")} - {report.ValidationResults.MessagesUnder100ms.ActualValue}");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"No Messages Lost: {(report.ValidationResults.NoMessagesLost.Pass ? "PASS" : "FAIL")} - {report.ValidationResults.NoMessagesLost.ActualValue}");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"System Scales: {(report.ValidationResults.SystemScales.Pass ? "PASS" : "FAIL")} - {report.ValidationResults.SystemScales.ActualValue}");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"Resources Within Limits: {(report.ValidationResults.ResourcesWithinLimits.Pass ? "PASS" : "FAIL")} - {report.ValidationResults.ResourcesWithinLimits.ActualValue}");
         _ = summary.AppendLine();
 
         _ = summary.AppendLine("SCENARIO RESULTS");
         _ = summary.AppendLine("---------------");
         foreach (var scenario in report.ScenarioResults)
         {
-            _ = summary.AppendLine($"{scenario.ScenarioName}: {(scenario.Success ? "PASSED" : "FAILED")}");
-            _ = summary.AppendLine($"  Duration: {scenario.Duration}");
-            _ = summary.AppendLine($"  Users: {scenario.SuccessfulConnections:N0}/{scenario.TotalUsers:N0}");
-            _ = summary.AppendLine($"  Messages: {scenario.DeliveredMessages:N0}/{scenario.TotalMessages:N0}");
-            _ = summary.AppendLine($"  Latency: avg {scenario.LatencyStats.AverageMs:F1}ms, p95 {scenario.LatencyStats.P95Ms:F1}ms");
+            _ = summary.AppendLine(CultureInfo.InvariantCulture, $"{scenario.ScenarioName}: {(scenario.Success ? "PASSED" : "FAILED")}");
+            _ = summary.AppendLine(CultureInfo.InvariantCulture, $"  Duration: {scenario.Duration}");
+            _ = summary.AppendLine(CultureInfo.InvariantCulture, $"  Users: {scenario.SuccessfulConnections:N0}/{scenario.TotalUsers:N0}");
+            _ = summary.AppendLine(CultureInfo.InvariantCulture, $"  Messages: {scenario.DeliveredMessages:N0}/{scenario.TotalMessages:N0}");
+            _ = summary.AppendLine(CultureInfo.InvariantCulture, $"  Latency: avg {scenario.LatencyStats.AverageMs:F1}ms, p95 {scenario.LatencyStats.P95Ms:F1}ms");
 
             if (!scenario.Success)
             {
-                _ = summary.AppendLine($"  Failure: {scenario.FailureReason}");
+                _ = summary.AppendLine(CultureInfo.InvariantCulture, $"  Failure: {scenario.FailureReason}");
             }
 
-            if (scenario.Errors.Any())
+            if (scenario.Errors.Count > 0)
             {
-                _ = summary.AppendLine($"  Errors: {scenario.Errors.Count} (showing first 3)");
+                _ = summary.AppendLine(CultureInfo.InvariantCulture, $"  Errors: {scenario.Errors.Count} (showing first 3)");
                 foreach (var error in scenario.Errors.Take(3))
                 {
-                    _ = summary.AppendLine($"    - {error}");
+                    _ = summary.AppendLine(CultureInfo.InvariantCulture, $"    - {error}");
                 }
             }
             _ = summary.AppendLine();
         }
 
-        if (report.Summary.CriticalIssues.Any())
+        if (report.Summary.CriticalIssues.Count > 0)
         {
             _ = summary.AppendLine("CRITICAL ISSUES");
             _ = summary.AppendLine("--------------");
             foreach (var issue in report.Summary.CriticalIssues)
             {
-                _ = summary.AppendLine($"- {issue}");
+                _ = summary.AppendLine(CultureInfo.InvariantCulture, $"- {issue}");
             }
             _ = summary.AppendLine();
         }
@@ -282,7 +283,7 @@ class Program
         // Data rows
         foreach (var scenario in report.ScenarioResults)
         {
-            _ = csv.AppendLine($"{scenario.ScenarioName},{scenario.Duration.TotalSeconds:F1},{scenario.TotalUsers},{scenario.SuccessfulConnections},{scenario.ConnectionSuccessRate:F4},{scenario.TotalMessages},{scenario.DeliveredMessages},{scenario.MessageDeliveryRate:F4},{scenario.LatencyStats.AverageMs:F2},{scenario.LatencyStats.P95Ms:F2},{scenario.LatencyStats.MaxMs:F2},{scenario.ThroughputStats.MessagesPerSecond:F2},{scenario.ResourceStats.AverageCpuPercent:F1},{scenario.ResourceStats.MaxCpuPercent:F1},{scenario.ResourceStats.AverageMemoryMB},{scenario.ResourceStats.MaxMemoryMB},{scenario.Success}");
+            _ = csv.AppendLine(CultureInfo.InvariantCulture, $"{scenario.ScenarioName},{scenario.Duration.TotalSeconds:F1},{scenario.TotalUsers},{scenario.SuccessfulConnections},{scenario.ConnectionSuccessRate:F4},{scenario.TotalMessages},{scenario.DeliveredMessages},{scenario.MessageDeliveryRate:F4},{scenario.LatencyStats.AverageMs:F2},{scenario.LatencyStats.P95Ms:F2},{scenario.LatencyStats.MaxMs:F2},{scenario.ThroughputStats.MessagesPerSecond:F2},{scenario.ResourceStats.AverageCpuPercent:F1},{scenario.ResourceStats.MaxCpuPercent:F1},{scenario.ResourceStats.AverageMemoryMB},{scenario.ResourceStats.MaxMemoryMB},{scenario.Success}");
         }
 
         return csv.ToString();
@@ -292,22 +293,22 @@ class Program
     {
         var summary = new System.Text.StringBuilder();
 
-        _ = summary.AppendLine($"Test Status: {(report.Summary.TestPassed ? "✅ PASSED" : "❌ FAILED")}");
-        _ = summary.AppendLine($"Duration: {report.TotalDuration}");
-        _ = summary.AppendLine($"Scenarios: {report.Summary.SuccessfulScenarios}/{report.Summary.TotalScenarios}");
-        _ = summary.AppendLine($"Max Concurrent Users: {report.Summary.MaxConcurrentUsers:N0}");
-        _ = summary.AppendLine($"Connection Success Rate: {report.Summary.OverallConnectionSuccessRate:P2}");
-        _ = summary.AppendLine($"Message Delivery Rate: {report.Summary.OverallMessageDeliveryRate:P2}");
-        _ = summary.AppendLine($"Average Latency: {report.Summary.AverageLatencyMs:F1}ms");
-        _ = summary.AppendLine($"Peak Resources: {report.Summary.PeakCpuPercent:F1}% CPU, {report.Summary.PeakMemoryMB:N0}MB Memory");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"Test Status: {(report.Summary.TestPassed ? "✅ PASSED" : "❌ FAILED")}");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"Duration: {report.TotalDuration}");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"Scenarios: {report.Summary.SuccessfulScenarios}/{report.Summary.TotalScenarios}");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"Max Concurrent Users: {report.Summary.MaxConcurrentUsers:N0}");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"Connection Success Rate: {report.Summary.OverallConnectionSuccessRate:P2}");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"Message Delivery Rate: {report.Summary.OverallMessageDeliveryRate:P2}");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"Average Latency: {report.Summary.AverageLatencyMs:F1}ms");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"Peak Resources: {report.Summary.PeakCpuPercent:F1}% CPU, {report.Summary.PeakMemoryMB:N0}MB Memory");
 
         _ = summary.AppendLine();
         _ = summary.AppendLine("Acceptance Criteria:");
-        _ = summary.AppendLine($"  10K Users Connected: {(report.ValidationResults.Users10kConnected.Pass ? "✅" : "❌")} {report.ValidationResults.Users10kConnected.ActualValue}");
-        _ = summary.AppendLine($"  Messages < 100ms: {(report.ValidationResults.MessagesUnder100ms.Pass ? "✅" : "❌")} {report.ValidationResults.MessagesUnder100ms.ActualValue}");
-        _ = summary.AppendLine($"  No Messages Lost: {(report.ValidationResults.NoMessagesLost.Pass ? "✅" : "❌")} {report.ValidationResults.NoMessagesLost.ActualValue}");
-        _ = summary.AppendLine($"  System Scales: {(report.ValidationResults.SystemScales.Pass ? "✅" : "❌")} {report.ValidationResults.SystemScales.ActualValue}");
-        _ = summary.AppendLine($"  Resources Within Limits: {(report.ValidationResults.ResourcesWithinLimits.Pass ? "✅" : "❌")} {report.ValidationResults.ResourcesWithinLimits.ActualValue}");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"  10K Users Connected: {(report.ValidationResults.Users10kConnected.Pass ? "✅" : "❌")} {report.ValidationResults.Users10kConnected.ActualValue}");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"  Messages < 100ms: {(report.ValidationResults.MessagesUnder100ms.Pass ? "✅" : "❌")} {report.ValidationResults.MessagesUnder100ms.ActualValue}");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"  No Messages Lost: {(report.ValidationResults.NoMessagesLost.Pass ? "✅" : "❌")} {report.ValidationResults.NoMessagesLost.ActualValue}");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"  System Scales: {(report.ValidationResults.SystemScales.Pass ? "✅" : "❌")} {report.ValidationResults.SystemScales.ActualValue}");
+        _ = summary.AppendLine(CultureInfo.InvariantCulture, $"  Resources Within Limits: {(report.ValidationResults.ResourcesWithinLimits.Pass ? "✅" : "❌")} {report.ValidationResults.ResourcesWithinLimits.ActualValue}");
 
         return summary.ToString();
     }

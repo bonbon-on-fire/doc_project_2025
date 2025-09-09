@@ -234,7 +234,7 @@ public class UserGrainBufferTests
         Assert.Multiple(() =>
         {
             Assert.That(buffer!.ChatId, Is.EqualTo(TestChatId));
-            Assert.That(buffer.Messages.Count, Is.EqualTo(1));
+            Assert.That(buffer.Messages, Has.Count.EqualTo(1));
             Assert.That(buffer.MaxSize, Is.GreaterThan(0));
         });
     }

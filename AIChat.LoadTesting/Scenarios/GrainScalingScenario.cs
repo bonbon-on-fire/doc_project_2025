@@ -36,7 +36,7 @@ public class GrainScalingScenario : LoadTestScenarioBase
     {
         var errors = new List<string>();
 
-        if (_config.BurstUsers == null || !_config.BurstUsers.Any())
+        if (_config.BurstUsers == null || _config.BurstUsers.Length == 0)
         {
             errors.Add("BurstUsers array cannot be empty");
         }
@@ -64,7 +64,7 @@ public class GrainScalingScenario : LoadTestScenarioBase
         var startTime = DateTime.UtcNow;
         var burstPatterns = string.Join(" → ", _config.BurstUsers);
 
-        _logger.LogInformation("Starting Grain Scaling Test: burst pattern {BurstPattern}, {BurstDuration}s bursts, {RestDuration}s rest",
+        Logger.LogInformation("Starting Grain Scaling Test: burst pattern {BurstPattern}, {BurstDuration}s bursts, {RestDuration}s rest",
             burstPatterns, _config.BurstDurationSeconds, _config.RestDurationSeconds);
 
         var scalingResults = new List<BurstResult>();
@@ -77,7 +77,7 @@ public class GrainScalingScenario : LoadTestScenarioBase
                 var userCount = _config.BurstUsers[i];
                 var burstNumber = i + 1;
 
-                _logger.LogInformation("Executing burst {BurstNumber}/{TotalBursts}: {UserCount} users",
+                Logger.LogInformation("Executing burst {BurstNumber}/{TotalBursts}: {UserCount} users",
                     burstNumber, _config.BurstUsers.Length, userCount);
 
                 var burstResult = await ExecuteBurstAsync(userCount, burstNumber, _config.BurstUsers.Length, progress, cancellationToken);
@@ -92,7 +92,7 @@ public class GrainScalingScenario : LoadTestScenarioBase
                 // Rest period between bursts (except after the last one)
                 if (i < _config.BurstUsers.Length - 1)
                 {
-                    _logger.LogInformation("Rest period: {RestDuration}s before next burst", _config.RestDurationSeconds);
+                    Logger.LogInformation("Rest period: {RestDuration}s before next burst", _config.RestDurationSeconds);
 
                     await _connectionManager.DisconnectAllAsync();
                     await Task.Delay(TimeSpan.FromSeconds(_config.RestDurationSeconds), cancellationToken);
@@ -105,14 +105,14 @@ public class GrainScalingScenario : LoadTestScenarioBase
 
             PopulateScalingResults(result, scalingResults);
 
-            _logger.LogInformation("Grain Scaling Test completed successfully in {Duration}. Grain scaling behavior validated across {BurstCount} burst patterns.",
+            Logger.LogInformation("Grain Scaling Test completed successfully in {Duration}. Grain scaling behavior validated across {BurstCount} burst patterns.",
                 endTime - startTime, scalingResults.Count);
 
             return result;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Grain Scaling Test failed");
+            Logger.LogError(ex, "Grain Scaling Test failed");
             return CreateResult(startTime, DateTime.UtcNow, false, ex.Message);
         }
         finally
@@ -136,7 +136,7 @@ public class GrainScalingScenario : LoadTestScenarioBase
         try
         {
             // Phase 1: Rapid connection burst to trigger grain activation
-            _logger.LogInformation("Burst {BurstNumber}: Rapidly connecting {UserCount} users", burstNumber, userCount);
+            Logger.LogInformation("Burst {BurstNumber}: Rapidly connecting {UserCount} users", burstNumber, userCount);
 
             var preActivationMetrics = _metricsCollector.GetLatestMetrics();
             var connectionStart = DateTime.UtcNow;
@@ -152,12 +152,12 @@ public class GrainScalingScenario : LoadTestScenarioBase
             result.GrainsAfter = postActivationMetrics?.Orleans.ActiveGrainCount ?? 0;
             result.GrainActivationCount = Math.Max(0, result.GrainsAfter - result.GrainsBefore);
 
-            _logger.LogInformation("Burst {BurstNumber}: {ConnectedUsers}/{TargetUsers} connected in {ConnectionTime}ms, grain count: {GrainsBefore} → {GrainsAfter} (+{ActivationCount})",
+            Logger.LogInformation("Burst {BurstNumber}: {ConnectedUsers}/{TargetUsers} connected in {ConnectionTime}ms, grain count: {GrainsBefore} → {GrainsAfter} (+{ActivationCount})",
                 burstNumber, result.ConnectedUsers, userCount, result.ConnectionTime.TotalMilliseconds,
                 result.GrainsBefore, result.GrainsAfter, result.GrainActivationCount);
 
             // Phase 2: Message burst to test grain message handling under load
-            _logger.LogInformation("Burst {BurstNumber}: Testing message handling with {UserCount} users", burstNumber, userCount);
+            Logger.LogInformation("Burst {BurstNumber}: Testing message handling with {UserCount} users", burstNumber, userCount);
 
             var messageMetrics = await ExecuteMessageBurstAsync(connectedUsers, chatId, progress, burstNumber, totalBursts, cancellationToken);
 
@@ -167,7 +167,7 @@ public class GrainScalingScenario : LoadTestScenarioBase
             result.MaxLatencyMs = messageMetrics.MaxLatency;
 
             // Phase 3: Maintain load and measure scaling stability
-            _logger.LogInformation("Burst {BurstNumber}: Maintaining load for {Duration}s", burstNumber, _config.BurstDurationSeconds);
+            Logger.LogInformation("Burst {BurstNumber}: Maintaining load for {Duration}s", burstNumber, _config.BurstDurationSeconds);
 
             var stabilityEnd = burstStart.AddSeconds(_config.BurstDurationSeconds);
             while (DateTime.UtcNow < stabilityEnd && !cancellationToken.IsCancellationRequested)
@@ -205,7 +205,7 @@ public class GrainScalingScenario : LoadTestScenarioBase
             result.Success = false;
             result.FailureReason = ex.Message;
 
-            _logger.LogError(ex, "Burst {BurstNumber} failed", burstNumber);
+            Logger.LogError(ex, "Burst {BurstNumber} failed", burstNumber);
             return result;
         }
     }
@@ -224,7 +224,7 @@ public class GrainScalingScenario : LoadTestScenarioBase
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogTrace(ex, "Failed to connect user {UserId} in burst {BurstNumber}", userId, burstNumber);
+                    Logger.LogTrace(ex, "Failed to connect user {UserId} in burst {BurstNumber}", userId, burstNumber);
                     return null;
                 }
             }));
@@ -276,7 +276,7 @@ public class GrainScalingScenario : LoadTestScenarioBase
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogTrace(ex, "Message send failed for user {UserId}", user.UserId);
+                    Logger.LogTrace(ex, "Message send failed for user {UserId}", user.UserId);
                 }
             })));
 
@@ -292,8 +292,8 @@ public class GrainScalingScenario : LoadTestScenarioBase
         {
             MessagesSent = messagesSent,
             MessagesReceived = messagesReceived,
-            AverageLatency = latencies.Any() ? latencies.Average() : 0,
-            MaxLatency = latencies.Any() ? latencies.Max() : 0
+            AverageLatency = latencies.Count > 0 ? latencies.Average() : 0,
+            MaxLatency = latencies.Count > 0 ? latencies.Max() : 0
         };
     }
 
@@ -357,17 +357,17 @@ public class GrainScalingScenario : LoadTestScenarioBase
         result.Errors = [.. scalingResults.SelectMany(b => b.Warnings)];
 
         // Log detailed scaling analysis
-        _logger.LogInformation("Grain Scaling Analysis:");
+        Logger.LogInformation("Grain Scaling Analysis:");
         foreach (var burst in scalingResults)
         {
-            _logger.LogInformation("  Burst {BurstNumber}: {UserCount} users → {ConnectedUsers} connected, {GrainsBefore}→{GrainsAfter} grains (+{ActivationCount}), {ConnectionTime:F1}s",
+            Logger.LogInformation("  Burst {BurstNumber}: {UserCount} users → {ConnectedUsers} connected, {GrainsBefore}→{GrainsAfter} grains (+{ActivationCount}), {ConnectionTime:F1}s",
                 burst.BurstNumber, burst.UserCount, burst.ConnectedUsers,
                 burst.GrainsBefore, burst.GrainsAfter, burst.GrainActivationCount, burst.ConnectionTime.TotalSeconds);
         }
 
-        _logger.LogInformation("  Peak Grain Count: {PeakGrains}", scalingResults.Max(b => b.GrainsAfter));
-        _logger.LogInformation("  Total Grain Activations: {TotalActivations}", scalingResults.Sum(b => b.GrainActivationCount));
-        _logger.LogInformation("  Average Scaling Response Time: {AvgScalingTime:F1}s", scalingResults.Average(b => b.ConnectionTime.TotalSeconds));
+        Logger.LogInformation("  Peak Grain Count: {PeakGrains}", scalingResults.Max(b => b.GrainsAfter));
+        Logger.LogInformation("  Total Grain Activations: {TotalActivations}", scalingResults.Sum(b => b.GrainActivationCount));
+        Logger.LogInformation("  Average Scaling Response Time: {AvgScalingTime:F1}s", scalingResults.Average(b => b.ConnectionTime.TotalSeconds));
     }
 }
 

@@ -1053,7 +1053,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
 /// <summary>
 /// Internal state tracking for an operation in progress.
 /// </summary>
-internal class OperationState
+internal sealed class OperationState
 {
     public ChatOperation Operation { get; set; } = null!;
     public ServerOperationStatus Status { get; set; }
@@ -1063,7 +1063,7 @@ internal class OperationState
     public string? Error { get; set; }
     public double Progress { get; set; }
     public string? ProgressDescription { get; set; }
-    public int ChunkIndex { get; set; } = 0; // Track chunk sequence for streaming
+    public int ChunkIndex { get; set; }  // Track chunk sequence for streaming
 }
 
 /// <summary>

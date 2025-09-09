@@ -25,14 +25,18 @@ public class ProductionMonitoringService : IHostedService, IDisposable
     private readonly Counter<long> _grainActivationsCounter;
     private readonly Counter<long> _messageRelayCounter;
     private readonly Counter<long> _backgroundOperationsCounter;
+#pragma warning disable IDE0052 // Remove unread private members - These metrics are exposed via OpenTelemetry callbacks
     private readonly Counter<long> _signalrConnectionsCounter;
+#pragma warning restore IDE0052
     private readonly Counter<long> _errorCounter;
     private readonly Histogram<double> _messageLatencyHistogram;
+#pragma warning disable IDE0052 // Remove unread private members - These metrics are exposed via OpenTelemetry callbacks
     private readonly Histogram<double> _grainMethodDurationHistogram;
     private readonly UpDownCounter<long> _activeGrainsGauge;
     private readonly UpDownCounter<long> _queueDepthGauge;
     private readonly Gauge<double> _memoryUsageGauge;
     private readonly Gauge<double> _cpuUsageGauge;
+#pragma warning restore IDE0052
 
     // Metrics storage for dashboard
     private readonly ConcurrentDictionary<string, MetricValue> _currentMetrics = new();
@@ -386,10 +390,10 @@ public class ProductionMonitoringService : IHostedService, IDisposable
         var result = alertRule.Condition switch
         {
             "unhealthy" => metric.Value == 0,
-            var condition when condition.StartsWith("average >") =>
+            var condition when condition.StartsWith("average >", StringComparison.Ordinal) =>
                 double.TryParse(condition.Replace("average >", "").Replace("ms", "").Trim(), out var threshold) &&
                 metric.Value > threshold,
-            var condition when condition.StartsWith("percentage >") =>
+            var condition when condition.StartsWith("percentage >", StringComparison.Ordinal) =>
                 double.TryParse(condition.Replace("percentage >", "").Replace("%", "").Trim(), out var percentage) &&
                 metric.Value > percentage,
             _ => false
@@ -433,7 +437,7 @@ public class ProductionMonitoringService : IHostedService, IDisposable
     public void RecordGrainActivation(string grainType, string grainId)
     {
         _grainActivationsCounter.Add(1, new KeyValuePair<string, object?>("grain_type", grainType));
-        UpdateMetric($"orleans.grain.activations.{grainType.ToLower()}", 1, DateTime.UtcNow);
+        UpdateMetric($"orleans.grain.activations.{grainType.ToLower(System.Globalization.CultureInfo.CurrentCulture)}", 1, DateTime.UtcNow);
     }
 
     /// <summary>
@@ -452,7 +456,7 @@ public class ProductionMonitoringService : IHostedService, IDisposable
     public void RecordBackgroundOperation(string operationType, double durationMs)
     {
         _backgroundOperationsCounter.Add(1, new KeyValuePair<string, object?>("operation_type", operationType));
-        UpdateMetric($"background.operation.{operationType.ToLower()}.duration_ms", durationMs, DateTime.UtcNow);
+        UpdateMetric($"background.operation.{operationType.ToLower(System.Globalization.CultureInfo.CurrentCulture)}.duration_ms", durationMs, DateTime.UtcNow);
     }
 
     /// <summary>
@@ -467,7 +471,7 @@ public class ProductionMonitoringService : IHostedService, IDisposable
         }
 
         _errorCounter.Add(1, [.. tagList]);
-        UpdateMetric($"errors.{errorType.ToLower()}", 1, DateTime.UtcNow);
+        UpdateMetric($"errors.{errorType.ToLower(System.Globalization.CultureInfo.CurrentCulture)}", 1, DateTime.UtcNow);
     }
 
     /// <summary>
@@ -502,6 +506,7 @@ public class ProductionMonitoringService : IHostedService, IDisposable
         _metricsTimer?.Dispose();
         _alertTimer?.Dispose();
         _meter?.Dispose();
+        GC.SuppressFinalize(this);
     }
 }
 

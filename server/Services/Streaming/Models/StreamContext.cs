@@ -51,12 +51,16 @@ public sealed class StreamContext
     /// </summary>
     public StreamState State
     {
-        get { lock (_lock)
+        get
+        {
+            lock (_lock)
             {
                 return _state;
             }
         }
-        set { lock (_lock)
+        set
+        {
+            lock (_lock)
             {
                 _state = value;
             }
@@ -68,12 +72,16 @@ public sealed class StreamContext
     /// </summary>
     public CircuitState CircuitState
     {
-        get { lock (_lock)
+        get
+        {
+            lock (_lock)
             {
                 return _circuitState;
             }
         }
-        set { lock (_lock)
+        set
+        {
+            lock (_lock)
             {
                 _circuitState = value;
             }
@@ -124,12 +132,16 @@ public sealed class StreamContext
     /// </summary>
     public int ConsecutiveFailures
     {
-        get { lock (_lock)
+        get
+        {
+            lock (_lock)
             {
                 return _consecutiveFailures;
             }
         }
-        set { lock (_lock)
+        set
+        {
+            lock (_lock)
             {
                 _consecutiveFailures = value;
             }
@@ -141,12 +153,16 @@ public sealed class StreamContext
     /// </summary>
     public int ConsecutiveSuccesses
     {
-        get { lock (_lock)
+        get
+        {
+            lock (_lock)
             {
                 return _consecutiveSuccesses;
             }
         }
-        set { lock (_lock)
+        set
+        {
+            lock (_lock)
             {
                 _consecutiveSuccesses = value;
             }
@@ -158,12 +174,16 @@ public sealed class StreamContext
     /// </summary>
     public string? LastError
     {
-        get { lock (_lock)
+        get
+        {
+            lock (_lock)
             {
                 return _lastError;
             }
         }
-        set { lock (_lock)
+        set
+        {
+            lock (_lock)
             {
                 _lastError = value;
             }
@@ -175,12 +195,16 @@ public sealed class StreamContext
     /// </summary>
     public DateTime LastActivityTime
     {
-        get { lock (_lock)
+        get
+        {
+            lock (_lock)
             {
                 return _lastActivityTime;
             }
         }
-        set { lock (_lock)
+        set
+        {
+            lock (_lock)
             {
                 _lastActivityTime = value;
             }
@@ -192,7 +216,9 @@ public sealed class StreamContext
     /// </summary>
     public double TotalProcessingTimeMs
     {
-        get { lock (_lock)
+        get
+        {
+            lock (_lock)
             {
                 return _totalProcessingTimeMs;
             }
@@ -272,7 +298,7 @@ public interface IPartialMessageStore
     /// <summary>
     /// Retrieves a partial message.
     /// </summary>
-    PartialMessage? Get(int sequenceNumber);
+    PartialMessage? Retrieve(int sequenceNumber);
 
     /// <summary>
     /// Removes a partial message.

@@ -352,7 +352,10 @@ public class SignalRConnectionManager : IDisposable
 
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+        {
+            return;
+        }
 
         _ = Task.Run(async () =>
         {
@@ -368,6 +371,7 @@ public class SignalRConnectionManager : IDisposable
 
         _connectionSemaphore?.Dispose();
         _disposed = true;
+        GC.SuppressFinalize(this);
     }
 }
 

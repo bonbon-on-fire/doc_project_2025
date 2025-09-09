@@ -1,7 +1,6 @@
 using AIChat.Orleans.Contracts;
 using AIChat.Server.Controllers;
 using AIChat.Server.Hubs;
-using AIChat.Server.Models;
 using AIChat.Server.Services;
 using AIChat.Server.Services.Streaming;
 using AIChat.Server.Storage;
@@ -10,7 +9,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Microsoft.FeatureManagement;
 using Moq;
 using Xunit;
@@ -44,7 +42,6 @@ public class ChatControllerOrleansTests
     private readonly Mock<IChatStorage> _mockChatStorage;
     private readonly Mock<IHubContext<ChatHub>> _mockHubContext;
     private readonly Mock<IFeatureManager> _mockFeatureManager;
-    private readonly Mock<IOptions<BackgroundProcessingOptions>> _mockBackgroundOptions;
     private readonly Mock<IClusterClient> _mockClusterClient;
     private readonly Mock<IStreamingBridge> _mockStreamingBridge;
     private readonly ChatController _controller;
@@ -58,12 +55,8 @@ public class ChatControllerOrleansTests
         _mockChatStorage = new Mock<IChatStorage>();
         _mockHubContext = new Mock<IHubContext<ChatHub>>();
         _mockFeatureManager = new Mock<IFeatureManager>();
-        _mockBackgroundOptions = new Mock<IOptions<BackgroundProcessingOptions>>();
         _mockClusterClient = new Mock<IClusterClient>();
         _mockStreamingBridge = new Mock<IStreamingBridge>();
-
-        _ = _mockBackgroundOptions.Setup(o => o.Value)
-            .Returns(new BackgroundProcessingOptions());
 
         _controller = new ChatController(
             _mockChatService.Object,
@@ -73,11 +66,11 @@ public class ChatControllerOrleansTests
             _mockChatStorage.Object,
             _mockHubContext.Object,
             _mockFeatureManager.Object,
-            _mockBackgroundOptions.Object,
             _mockClusterClient.Object,
             null, // backgroundChatService
             null, // operationTrackingService
-            _mockStreamingBridge.Object
+            _mockStreamingBridge.Object,
+            null  // resilientStreamManager
         );
 
         // Setup HTTP context
@@ -211,7 +204,7 @@ public class ChatControllerOrleansTests
 
         // Make health check fail
         _ = mockUserGrain.Setup(g => g.CheckHealth())
-            .ThrowsAsync(new Exception("Orleans not available"));
+            .ThrowsAsync(new InvalidOperationException("Orleans not available"));
 
         _ = _mockChatService.Setup(cs => cs.PrepareUnifiedStreamChatAsync(It.IsAny<StreamChatRequest>()))
             .ReturnsAsync(initResult);

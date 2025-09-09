@@ -508,11 +508,12 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
     /// <summary>
     /// Helper method to convert items to SSE format with simulated failure.
     /// </summary>
+#pragma warning disable IDE0051 // Remove unused private members - Test helper for future scenarios
     private static async IAsyncEnumerable<string> ConvertToSseWithFailure(
         IAsyncEnumerable<ChatStreamItem> items,
-        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken,
         List<string> messagesProcessed,
-        int failureAtCount = 3)
+        int failureAtCount = 3,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var count = 0;
         var failureOccurred = false;
@@ -535,11 +536,12 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
     /// Helper method to convert items to SSE format for duplicate detection.
     /// </summary>
     private static async IAsyncEnumerable<string> ConvertToSseWithDuplicateCheck(
+#pragma warning restore IDE0051
         IAsyncEnumerable<ChatStreamItem> items,
-        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken,
         HashSet<string> processedIds,
         bool simulateFailure = false,
-        int failureAtCount = 5)
+        int failureAtCount = 5,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var count = 0;
         var failureOccurred = false;

@@ -354,7 +354,7 @@ public sealed class StreamingBridge : IStreamingBridge
         }
     }
 
-    private record StreamItem
+    private sealed record StreamItem
     {
         public required string Data { get; init; }
         public required DateTime Timestamp { get; init; }

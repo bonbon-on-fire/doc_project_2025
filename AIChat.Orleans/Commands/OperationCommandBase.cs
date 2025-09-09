@@ -97,9 +97,9 @@ public abstract class OperationCommandBase : IOperationCommand
             var validation = Validate();
             if (!validation.IsValid)
             {
-                var errorMessage = $"Command validation failed: {string.Join(", ", validation.Errors)}";
-                logger.LogError(errorMessage);
-                return CommandExecutionResult.Failed(errorMessage);
+                var errors = string.Join(", ", validation.Errors);
+                logger.LogError("Command validation failed: {Errors}", errors);
+                return CommandExecutionResult.Failed($"Command validation failed: {errors}");
             }
 
             // Log warnings if any

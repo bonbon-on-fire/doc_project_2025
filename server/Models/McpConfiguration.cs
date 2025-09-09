@@ -27,7 +27,7 @@ public class McpServerConfig
     public Dictionary<string, string>? Headers { get; set; }
     public string? WorkingDirectory { get; set; }
     public bool Enabled { get; set; } = true;
-    public int Priority { get; set; } = 0;
+    public int Priority { get; set; }
     public string? Description { get; set; }
 
     /// <summary>
@@ -59,7 +59,7 @@ public class McpToolFilterConfig
     /// <summary>
     /// Whether to enable tool filtering based on configuration
     /// </summary>
-    public bool EnableFiltering { get; set; } = false;
+    public bool EnableFiltering { get; set; }
 
     /// <summary>
     /// Global list of allowed tool names (supports wildcards)
@@ -89,7 +89,7 @@ public class FunctionFilterConfig
     /// <summary>
     /// Whether to enable function filtering based on configuration
     /// </summary>
-    public bool EnableFiltering { get; set; } = false;
+    public bool EnableFiltering { get; set; }
 
     /// <summary>
     /// Global list of allowed function names (supports wildcards)

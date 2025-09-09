@@ -291,7 +291,7 @@ public class MonitoringController : ControllerBase
 
     private static object GetComponentHealth(Dictionary<string, MetricValue> metrics, string component)
     {
-        var componentMetrics = metrics.Where(m => m.Key.StartsWith(component)).ToList();
+        var componentMetrics = metrics.Where(m => m.Key.StartsWith(component, StringComparison.Ordinal)).ToList();
 
         if (componentMetrics.Count == 0)
         {

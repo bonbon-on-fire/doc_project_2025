@@ -8,7 +8,7 @@ using Xunit;
 
 namespace AIChat.Server.Tests.Services;
 
-public class TaskManagerServiceTests
+public class TaskManagerServiceTests : IDisposable
 {
     private readonly Mock<ITaskStorage> _mockTaskStorage;
     private readonly Mock<ILogger<ImprovedTaskManagerService>> _mockLogger;
@@ -19,6 +19,12 @@ public class TaskManagerServiceTests
         _mockTaskStorage = new Mock<ITaskStorage>();
         _mockLogger = new Mock<ILogger<ImprovedTaskManagerService>>();
         _service = new ImprovedTaskManagerService(_mockTaskStorage.Object, _mockLogger.Object);
+    }
+
+    public void Dispose()
+    {
+        _service?.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     [Fact]

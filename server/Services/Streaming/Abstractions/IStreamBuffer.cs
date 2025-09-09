@@ -143,7 +143,7 @@ public record BufferConfiguration
     /// <summary>
     /// Gets whether persistence is enabled.
     /// </summary>
-    public bool EnablePersistence { get; init; } = false;
+    public bool EnablePersistence { get; init; }
 
     /// <summary>
     /// Gets the persistence path if enabled.

@@ -543,7 +543,7 @@ public class ChatService(
         var systemPrompt = request.SystemPrompt;
         if (!string.IsNullOrEmpty(request.ModeId))
         {
-            var (Success, Error, SystemPrompt) = await modeService.GetModeSystemPromptAsync(
+            var (Success, _, SystemPrompt) = await modeService.GetModeSystemPromptAsync(
                 request.ModeId,
                 request.UserId
             );
@@ -656,7 +656,6 @@ public class ChatService(
         await StreamChatCompletionAsync(
             chatId,
             history,
-            cancellationToken,
             streamingAgent,
             toolingService,
             storage,
@@ -665,7 +664,8 @@ public class ChatService(
             request.ModeId,
             request.UserId,
             null, // messageCallback - not provided at this level
-            null  // chunkCallback - not provided at this level
+            null, // chunkCallback - not provided at this level
+            cancellationToken
         );
     }
 
@@ -702,7 +702,6 @@ public class ChatService(
         await StreamChatCompletionAsync(
             chatId,
             history,
-            cancellationToken,
             streamingAgent,
             toolingService,
             storage,
@@ -711,14 +710,14 @@ public class ChatService(
             null, // modeId - not available in this context
             null, // userId - not available in this context
             messageCallback,
-            chunkCallback
+            chunkCallback,
+            cancellationToken
         );
     }
 
     private async Task StreamChatCompletionAsync(
         string chatId,
         List<MessageDto> history,
-        CancellationToken cancellationToken,
         IStreamingAgent streamingAgent,
         IToolingService toolingService,
         IChatStorage storage,
@@ -727,7 +726,8 @@ public class ChatService(
         string? modeId = null,
         string? userId = null,
         Func<MessageEvent, Task>? messageCallback = null,
-        Func<StreamChunkEvent, Task>? chunkCallback = null
+        Func<StreamChunkEvent, Task>? chunkCallback = null,
+        CancellationToken cancellationToken = default
     )
     {
         // NOTE: Stateful context removed - will be passed via StreamingContext parameter
@@ -1665,10 +1665,10 @@ public class ChatService(
             history,
             messageCallback,
             chunkCallback,
-            cancellationToken,
             storage,
             streamingAgent,
-            modeService
+            modeService,
+            cancellationToken
         );
     }
 
@@ -1680,10 +1680,10 @@ public class ChatService(
         List<MessageDto> history,
         Func<MessageEvent, Task>? messageCallback,
         Func<StreamChunkEvent, Task>? chunkCallback,
-        CancellationToken cancellationToken,
         IChatStorage storage,
         IStreamingAgent streamingAgent,
-        IModeService modeService
+        IModeService modeService,
+        CancellationToken cancellationToken = default
     )
     {
         // This is a callback-based version of StreamChatCompletionAsync
@@ -1695,11 +1695,11 @@ public class ChatService(
         var lmMessages = history.Select(ConvertToLmMessage).ToList();
         var modelId = await GetModelIdAsync(modeService, context.ModeId, context.UserId);
         var options = new GenerateReplyOptions { ModelId = modelId };
-        var messages = await streamingAgent.GenerateReplyAsync(lmMessages, options);
+        var messages = await streamingAgent.GenerateReplyAsync(lmMessages, options, cancellationToken);
         var response = string.Join("", messages.OfType<TextMessage>().Select(m => m.Text));
 
         // Create a simple text response
-        var (seqSuccess, seqError, nextSequence) = await storage.AllocateSequenceAsync(context.ChatId);
+        var (seqSuccess, seqError, nextSequence) = await storage.AllocateSequenceAsync(context.ChatId, cancellationToken);
         if (seqSuccess)
         {
             var assistantDto = new TextMessageDto
@@ -1726,7 +1726,7 @@ public class ChatService(
                 ),
             };
 
-            _ = await storage.InsertMessageAsync(assistantRecord);
+            _ = await storage.InsertMessageAsync(assistantRecord, cancellationToken);
 
             // Notify via callback if provided
             if (messageCallback != null)
@@ -1790,7 +1790,7 @@ public class ChatService(
         // Try to get model preference from mode first
         if (!string.IsNullOrEmpty(modeId) && !string.IsNullOrEmpty(userId))
         {
-            var (Success, Error, DefaultModel) = await modeService.GetModeDefaultModelAsync(
+            var (Success, _, DefaultModel) = await modeService.GetModeDefaultModelAsync(
                 modeId,
                 userId
             );
@@ -1809,11 +1809,6 @@ public class ChatService(
         var defaultModel = _aiOptions.ModelId ?? "openrouter/horizon-beta";
         logger.LogDebug("Using default model {ModelId}", defaultModel);
         return defaultModel;
-    }
-
-    private string GetModelId()
-    {
-        return _aiOptions.ModelId ?? "openrouter/horizon-beta";
     }
 
     private static IMessage ConvertToLmMessage(MessageDto message)
@@ -1896,31 +1891,6 @@ public class ChatService(
     #endregion
 
     /// <summary>
-    /// Simple check to determine if a function name is a TaskManager function
-    /// </summary>
-    private static bool IsTaskManagerFunction(string functionName)
-    {
-        // Function names are likely prefixed (e.g., "TaskManager_add_task")
-        // and use underscores instead of hyphens
-        var taskManagerFunctions = new[]
-        {
-            "add-task",
-            "bulk-initialize",
-            "update-task",
-            "delete-task",
-            "manage-notes",
-            "list-notes",
-            "get-task",
-            "list-tasks",
-            "search-tasks",
-        };
-
-        return taskManagerFunctions.Any(func =>
-            functionName.EndsWith(func, StringComparison.OrdinalIgnoreCase)
-        );
-    }
-
-    /// <summary>
     /// Ensures generation ID is unique by adding time-based salt if needed.
     /// This prevents primary key conflicts when using cached LLM responses.
     /// </summary>
@@ -1938,7 +1908,7 @@ public class ChatService(
 
         // If generation ID is provided (possibly from cache), add a unique suffix to ensure uniqueness
         // Check if it already has our timestamp pattern to avoid double-salting
-        if (providedGenerationId.StartsWith("gen-") && providedGenerationId.Length >= 32)
+        if (providedGenerationId.StartsWith("gen-", StringComparison.Ordinal) && providedGenerationId.Length >= 32)
         {
             // Already has our format, likely unique
             return providedGenerationId + $"-{chatId[..8]}";

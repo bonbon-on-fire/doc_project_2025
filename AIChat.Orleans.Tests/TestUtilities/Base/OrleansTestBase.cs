@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Http.Json;
 using AIChat.Orleans.Tests.TestUtilities.Builders;
 using AIChat.Server.Models;
@@ -13,8 +14,8 @@ namespace AIChat.Orleans.Tests.TestUtilities.Base;
 /// </summary>
 public abstract class OrleansTestBase : IClassFixture<OrleansTestFixture>
 {
-    protected readonly OrleansTestFixture Fixture;
-    protected readonly ITestOutputHelper Output;
+    protected OrleansTestFixture Fixture { get; }
+    protected ITestOutputHelper Output { get; }
 
     protected OrleansTestBase(OrleansTestFixture fixture, ITestOutputHelper output)
     {
@@ -74,7 +75,7 @@ public abstract class OrleansTestBase : IClassFixture<OrleansTestFixture>
     /// </summary>
     protected void LogTestStep(string step, params object[] args)
     {
-        Output.WriteLine($"[{DateTime.UtcNow:HH:mm:ss.fff}] {string.Format(step, args)}");
+        Output.WriteLine($"[{DateTime.UtcNow:HH:mm:ss.fff}] {string.Format(CultureInfo.InvariantCulture, step, args)}");
     }
 
     /// <summary>
@@ -141,7 +142,7 @@ public abstract class OrleansTestBase : IClassFixture<OrleansTestFixture>
         Assert.Equal("true", orleansRouted);
         Assert.Equal("orleans", processingMode);
 
-        LogTestStep("Verified Orleans routing: routed={0}, mode={1}", orleansRouted, processingMode);
+        LogTestStep("Verified Orleans routing: routed={0}, mode={1}", orleansRouted ?? "null", processingMode ?? "null");
     }
 
     /// <summary>
@@ -155,6 +156,6 @@ public abstract class OrleansTestBase : IClassFixture<OrleansTestFixture>
         Assert.Equal("false", orleansRouted);
         Assert.Equal("direct", processingMode);
 
-        LogTestStep("Verified direct processing: routed={0}, mode={1}", orleansRouted, processingMode);
+        LogTestStep("Verified direct processing: routed={0}, mode={1}", orleansRouted ?? "null", processingMode ?? "null");
     }
 }

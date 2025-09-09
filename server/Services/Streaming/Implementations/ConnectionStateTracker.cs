@@ -6,7 +6,7 @@ namespace AIChat.Server.Services.Streaming.Implementations;
 /// <summary>
 /// Tracks and manages connection state for streaming operations.
 /// </summary>
-public class ConnectionStateTracker : IConnectionStateTracker
+public class ConnectionStateTracker : IConnectionStateTracker, IDisposable
 {
     private readonly ILogger<ConnectionStateTracker> _logger;
     private readonly ConcurrentDictionary<string, ConnectionStateData> _connectionStates;
@@ -411,7 +411,7 @@ public class ConnectionStateTracker : IConnectionStateTracker
     /// <summary>
     /// Internal data structure for connection state tracking.
     /// </summary>
-    private class ConnectionStateData
+    private sealed class ConnectionStateData
     {
         public string StreamId { get; set; } = string.Empty;
         public ConnectionStatus Status { get; set; } = ConnectionStatus.Unknown;

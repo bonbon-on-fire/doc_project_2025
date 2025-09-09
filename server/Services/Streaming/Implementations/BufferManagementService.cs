@@ -667,7 +667,7 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
         _configurations[streamId] = configuration;
 
         // If buffer exists, update its configuration
-        if (_buffers.TryGetValue(streamId, out var buffer))
+        if (_buffers.TryGetValue(streamId, out _))
         {
             // Note: Current implementation doesn't support dynamic configuration updates
             // This would need to be added to IStreamBuffer interface

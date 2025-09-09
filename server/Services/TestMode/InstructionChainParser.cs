@@ -96,9 +96,9 @@ public sealed class InstructionChainParser(ILogger<InstructionChainParser> logge
     }
 
     /// <inheritdoc />
-    public InstructionPlan? ParseSingleInstruction(JsonElement instructionEl)
+    public InstructionPlan? ParseSingleInstruction(JsonElement instructionElement)
     {
-        if (instructionEl.ValueKind != JsonValueKind.Object)
+        if (instructionElement.ValueKind != JsonValueKind.Object)
         {
             _logger.LogDebug("Instruction element is not an object");
             return null;
@@ -106,14 +106,14 @@ public sealed class InstructionChainParser(ILogger<InstructionChainParser> logge
 
         // Extract id (optional, but useful for logging)
         var id =
-            instructionEl.TryGetProperty("id", out var idEl)
+            instructionElement.TryGetProperty("id", out var idEl)
             && idEl.ValueKind == JsonValueKind.String
                 ? idEl.GetString() ?? string.Empty
                 : string.Empty;
 
         // Extract id_message
         var idMessage =
-            instructionEl.TryGetProperty("id_message", out var idMsgEl)
+            instructionElement.TryGetProperty("id_message", out var idMsgEl)
             && idMsgEl.ValueKind == JsonValueKind.String
                 ? idMsgEl.GetString() ?? string.Empty
                 : id; // Fall back to id if id_message not present
@@ -121,7 +121,7 @@ public sealed class InstructionChainParser(ILogger<InstructionChainParser> logge
         // Extract reasoning length (optional)
         int? reasoningLen = null;
         if (
-            instructionEl.TryGetProperty("reasoning", out var reasonEl)
+            instructionElement.TryGetProperty("reasoning", out var reasonEl)
             && reasonEl.ValueKind == JsonValueKind.Object
         )
         {
@@ -136,7 +136,7 @@ public sealed class InstructionChainParser(ILogger<InstructionChainParser> logge
         }
 
         // Extract messages array
-        var messages = ParseInstructionMessages(instructionEl);
+        var messages = ParseInstructionMessages(instructionElement);
 
         if (messages.Count == 0)
         {

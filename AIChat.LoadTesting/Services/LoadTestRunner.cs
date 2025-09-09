@@ -107,14 +107,14 @@ public class LoadTestRunner
     {
         var allScenarios = _serviceProvider.GetServices<ILoadTestScenario>().ToList();
 
-        if (options.SpecificScenarios.Any())
+        if (options.SpecificScenarios.Count > 0)
         {
             // Filter to only requested scenarios
             var requestedScenarios = allScenarios
                 .Where(s => options.SpecificScenarios.Contains(s.Name.Replace(" ", ""), StringComparer.OrdinalIgnoreCase))
                 .ToList();
 
-            if (!requestedScenarios.Any())
+            if (requestedScenarios.Count == 0)
             {
                 _logger.LogWarning("No matching scenarios found for: {RequestedScenarios}",
                     string.Join(", ", options.SpecificScenarios));
@@ -202,7 +202,7 @@ public class LoadTestRunner
             .Select(r => r.LatencyStats.AverageMs)
             .ToList();
 
-        if (allLatencies.Any())
+        if (allLatencies.Count > 0)
         {
             summary.AverageLatencyMs = allLatencies.Average();
             summary.P95LatencyMs = scenarioResults
@@ -252,7 +252,7 @@ public class LoadTestRunner
         }
 
         // Overall test pass/fail determination
-        summary.TestPassed = summary.FailedScenarios == 0 && !summary.CriticalIssues.Any();
+        summary.TestPassed = summary.FailedScenarios == 0 && summary.CriticalIssues.Count == 0;
 
         return summary;
     }
@@ -345,7 +345,7 @@ public class LoadTestRunner
 
         // Use latency-specific result if available, otherwise use all scenarios with messages
         var resultsWithMessages = latencyResult != null
-            ? new[] { latencyResult }
+            ? [latencyResult]
             : allResults.Where(r => r.TotalMessages > 0);
 
         if (!resultsWithMessages.Any())
@@ -386,7 +386,7 @@ public class LoadTestRunner
 
         var resultsWithMessages = scenarioResults.Where(r => r.TotalMessages > 0).ToList();
 
-        if (!resultsWithMessages.Any())
+        if (resultsWithMessages.Count == 0)
         {
             criterion.Pass = true; // No messages to lose
             criterion.ActualValue = "No messages sent";
@@ -469,10 +469,14 @@ public class LoadTestRunner
             var issues = new List<string>();
 
             if (!cpuOk)
+            {
                 issues.Add($"CPU {resourceStats.MaxCpuPercent:F1}% > {_validationConfig.MaxCpuUsagePercent}%");
+            }
 
             if (!memoryOk)
+            {
                 issues.Add($"Memory {resourceStats.MaxMemoryMB:N0}MB > {_validationConfig.MaxMemoryUsageMB}MB");
+            }
 
             criterion.FailureReason = string.Join(", ", issues);
         }

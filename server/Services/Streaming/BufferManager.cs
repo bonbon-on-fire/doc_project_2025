@@ -115,9 +115,6 @@ public sealed class BufferManager<T> : IBufferManager<T>
 
     private void ThrowIfDisposed()
     {
-        if (_disposed)
-        {
-            throw new ObjectDisposedException(nameof(BufferManager<T>));
-        }
+        ObjectDisposedException.ThrowIf(_disposed, this);
     }
 }

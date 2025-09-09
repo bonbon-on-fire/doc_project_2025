@@ -112,7 +112,7 @@ public class OrleansIntegrationServiceTests
 
         _ = _mockUserGrain!
             .Setup(x => x.RecordActivity(It.IsAny<ActivityType>(), It.IsAny<string>()))
-            .ThrowsAsync(new Exception("Grain failure"));
+            .ThrowsAsync(new InvalidOperationException("Grain failure"));
 
         // Act & Assert - Should not throw in shadow mode
         Assert.DoesNotThrowAsync(async () => await _service!.RecordUserActivityAsync("test-user", ActivityType.MessageSent, new { test = "data" }));
@@ -282,7 +282,7 @@ public class OrleansIntegrationServiceTests
         // Arrange - Setup various failure scenarios
         _ = _mockFeatureManager!
             .Setup(x => x.IsEnabledAsync("OrleansIntegration"))
-            .ThrowsAsync(new Exception("Feature manager failure"));
+            .ThrowsAsync(new InvalidOperationException("Feature manager failure"));
 
         // Act & Assert - None of these should throw
         Assert.DoesNotThrowAsync(async () =>

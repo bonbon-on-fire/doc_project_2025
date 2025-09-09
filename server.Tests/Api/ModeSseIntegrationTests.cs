@@ -445,7 +445,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
 
         foreach (var line in lines)
         {
-            if (line.StartsWith("event: "))
+            if (line.StartsWith("event: ", StringComparison.Ordinal))
             {
                 // Save previous event if exists
                 if (currentEventType != null && dataLines.Count != 0)
@@ -462,7 +462,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
                 currentEventType = line[7..].Trim();
                 dataLines.Clear();
             }
-            else if (line.StartsWith("data: "))
+            else if (line.StartsWith("data: ", StringComparison.Ordinal))
             {
                 dataLines.Add(line[6..]);
             }

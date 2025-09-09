@@ -134,7 +134,7 @@ public class McpConfigurationValidator(
                 }
 
                 // Check for input references
-                if (value?.StartsWith("${input:") == true && value.EndsWith("}"))
+                if (value?.StartsWith("${input:", StringComparison.Ordinal) == true && value.EndsWith('}'))
                 {
                     var inputId = value[8..^1];
                     if (

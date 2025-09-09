@@ -70,7 +70,7 @@ public class UserGrainTests
         var state = await grain.GetState();
 
         // Assert
-        Assert.That(state.RecentActivity.Count, Is.EqualTo(1));
+        Assert.That(state.RecentActivity, Has.Count.EqualTo(1));
         Assert.Multiple(() =>
         {
             Assert.That(state.RecentActivity.First().Type, Is.EqualTo(ActivityType.MessageSent));
@@ -97,7 +97,7 @@ public class UserGrainTests
         Assert.Multiple(() =>
         {
             // Assert
-            Assert.That(state.RecentActivity.Count, Is.EqualTo(50)); // Should cap at 50 (test config)
+            Assert.That(state.RecentActivity, Has.Count.EqualTo(50)); // Should cap at 50 (test config)
             Assert.That(state.Metrics.TotalActivities, Is.EqualTo(52)); // Total should be accurate
         });
 
@@ -210,7 +210,7 @@ public class UserGrainTests
             {
                 Assert.That(state.UserId, Is.EqualTo(userIds[i]));
                 Assert.That(state.Metrics.TotalActivities, Is.EqualTo(10));
-                Assert.That(state.RecentActivity.Count, Is.EqualTo(10));
+                Assert.That(state.RecentActivity, Has.Count.EqualTo(10));
             });
         }
     }
@@ -236,7 +236,7 @@ public class UserGrainTests
             // Assert - State should persist
             Assert.That(state.UserId, Is.EqualTo(userId));
             Assert.That(state.Metrics.TotalActivities, Is.EqualTo(2));
-            Assert.That(state.RecentActivity.Count, Is.EqualTo(2));
+            Assert.That(state.RecentActivity, Has.Count.EqualTo(2));
         });
 
         var activities = state.RecentActivity.ToList();

@@ -330,7 +330,7 @@ public class UserActivityService : IUserActivityService
                 }
 
                 // Try to validate as JSON if it looks like JSON
-                if (metadata.TrimStart().StartsWith("{") || metadata.TrimStart().StartsWith("["))
+                if (metadata.TrimStart().StartsWith('{') || metadata.TrimStart().StartsWith('['))
                 {
                     try
                     {

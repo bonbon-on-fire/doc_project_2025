@@ -209,8 +209,10 @@ namespace AIChat.Server.Services.Streaming
 {
     public class StreamingBridge : IStreamingBridge
     {
+#pragma warning disable IDE0052 // Remove unread private members - Mock implementation
         private readonly ILogger<StreamingBridge> _logger;
         private readonly StreamingConfiguration _configuration;
+#pragma warning restore IDE0052
 
         public StreamingBridge(
             ILogger<StreamingBridge> logger,
@@ -251,6 +253,7 @@ namespace AIChat.Server.Services.Streaming
 
         public ValueTask DisposeAsync()
         {
+            GC.SuppressFinalize(this);
             return ValueTask.CompletedTask;
         }
     }
@@ -274,9 +277,11 @@ namespace AIChat.Server.Services.Streaming
 
     public class ResilientStreamManager : IResilientStreamManager
     {
+#pragma warning disable IDE0052 // Remove unread private members - Mock implementation
         private readonly ILogger<ResilientStreamManager> _logger;
         private readonly IStreamingBridgeFactory _bridgeFactory;
         private readonly ResilientStreamingConfiguration _configuration;
+#pragma warning restore IDE0052
 
         public ResilientStreamManager(
             ILogger<ResilientStreamManager> logger,
@@ -312,6 +317,7 @@ namespace AIChat.Server.Services.Streaming
 
         public ValueTask DisposeAsync()
         {
+            GC.SuppressFinalize(this);
             return ValueTask.CompletedTask;
         }
     }

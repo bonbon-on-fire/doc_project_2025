@@ -51,9 +51,6 @@ public sealed class InstructionToolCall(string name, string argsJson)
 
 public sealed class SseStreamHttpContent : HttpContent
 {
-    // Configuration constants with clear intent
-    private const int DefaultWordsPerChunk = 5;
-    private const int DefaultChunkDelayMs = 100;
     private const int MinWordsPerChunk = 1;
     private const int MinChunkDelayMs = 0;
 

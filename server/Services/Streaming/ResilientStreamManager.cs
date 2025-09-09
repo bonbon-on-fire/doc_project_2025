@@ -6,6 +6,7 @@ using AIChat.Server.Configuration;
 using Microsoft.Extensions.Options;
 using Polly;
 using Polly.CircuitBreaker;
+using Polly.Wrap;
 
 namespace AIChat.Server.Services.Streaming;
 
@@ -339,7 +340,7 @@ public sealed class ResilientStreamManager : IResilientStreamManager
         };
     }
 
-    private IAsyncPolicy CreateResiliencePipeline(StreamContext context)
+    private AsyncPolicyWrap CreateResiliencePipeline(StreamContext context)
     {
         // Create retry policy with exponential backoff
         var retryPolicy = Policy
@@ -814,7 +815,7 @@ public sealed class ResilientStreamManager : IResilientStreamManager
 
     #region Nested Types
 
-    private class StreamContext
+    private sealed class StreamContext
     {
         public required string StreamId { get; init; }
         public required HttpResponse HttpResponse { get; init; }
@@ -833,14 +834,14 @@ public sealed class ResilientStreamManager : IResilientStreamManager
         public double TotalProcessingTimeMs { get; set; }
     }
 
-    private record BufferedMessage
+    private sealed record BufferedMessage
     {
         public required int SequenceNumber { get; init; }
         public required string Data { get; init; }
         public required DateTime Timestamp { get; init; }
     }
 
-    private record PartialMessage
+    private sealed record PartialMessage
     {
         public required int SequenceNumber { get; init; }
         public required string Data { get; init; }

@@ -6,7 +6,7 @@ namespace AIChat.Server.Services.Streaming.Implementations;
 /// <summary>
 /// In-memory implementation of stream buffer with TTL and overflow handling.
 /// </summary>
-public class InMemoryStreamBuffer : IStreamBuffer
+public class InMemoryStreamBuffer : IStreamBuffer, IDisposable
 {
     private readonly ILogger<InMemoryStreamBuffer> _logger;
     private readonly ConcurrentQueue<BufferedStreamMessage> _messages;
@@ -289,7 +289,7 @@ public class InMemoryStreamBuffer : IStreamBuffer
                 goto default;
             default:
                 // Default to dropping oldest
-                if (_messages.TryDequeue(out var defaultOldest))
+                if (_messages.TryDequeue(out _))
                 {
                     _ = Interlocked.Increment(ref _totalMessagesDropped);
                     return Task.FromResult(true);
