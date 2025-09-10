@@ -31,11 +31,13 @@ if ($UseOrleans) {
     Write-Host "Orleans Integration: ENABLED (via -UseOrleans flag)" -ForegroundColor Cyan
     Write-Host "Environment: $Environment" -ForegroundColor Cyan
     Write-Host "Orleans Dashboard will be available at: http://localhost:8081" -ForegroundColor Cyan
-} else {
+}
+else {
     if ($Environment -eq "Development" -or $Environment -eq "Production") {
         Write-Host "Note: Orleans may be enabled based on $Environment environment settings" -ForegroundColor Yellow
         Write-Host "To ensure Orleans is disabled, use Test environment or check appsettings.$Environment.json" -ForegroundColor Yellow
-    } else {
+    }
+    else {
         Write-Host "Orleans Integration: DISABLED (Test environment)" -ForegroundColor Yellow
     }
 }
@@ -57,15 +59,15 @@ if ($UseOrleans) {
             Write-Host "Found processes on Orleans port ${oPort}:" -ForegroundColor Yellow
             $orleansProcesses | ForEach-Object {
                 Write-Host $_ -ForegroundColor Gray
-                $pid = ($_ -split '\s+')[-1]
-                if ($pid -match '^\d+$') {
+                $processid = ($_ -split '\s+')[-1]
+                if ($processid -match '^\d+$') {
                     try {
-                        Write-Host "Killing Orleans-related process with PID ${pid}..." -ForegroundColor Red
-                        Stop-Process -Id $pid -Force -ErrorAction Stop
-                        Write-Host "Successfully killed process ${pid}" -ForegroundColor Green
+                        Write-Host "Killing Orleans-related process with PID ${processid}..." -ForegroundColor Red
+                        Stop-Process -Id $processid -Force -ErrorAction Stop
+                        Write-Host "Successfully killed process ${processid}" -ForegroundColor Green
                     }
                     catch {
-                        Write-Warning "Failed to kill process ${pid}: $($_.Exception.Message)"
+                        Write-Warning "Failed to kill process ${processid}: $($_.Exception.Message)"
                     }
                 }
             }
@@ -99,23 +101,30 @@ else {
     Write-Host "No processes found listening on port ${Port}" -ForegroundColor Green
 }
 
-# Ensure logs directory exists
-$logsDir = "logs/server"
-if (!(Test-Path $logsDir)) {
-    Write-Host "Creating logs directory: $logsDir" -ForegroundColor Yellow
-    New-Item -ItemType Directory -Path $logsDir -Force | Out-Null
+# Ensure logs directories exist
+$serverLogsDir = "logs/server"
+$clientLogsDir = "logs/client"
+if (!(Test-Path $serverLogsDir)) {
+    Write-Host "Creating server logs directory: $serverLogsDir" -ForegroundColor Yellow
+    New-Item -ItemType Directory -Path $serverLogsDir -Force | Out-Null
+}
+if (!(Test-Path $clientLogsDir)) {
+    Write-Host "Creating client logs directory: $clientLogsDir" -ForegroundColor Yellow
+    New-Item -ItemType Directory -Path $clientLogsDir -Force | Out-Null
 }
 
-# Clean existing log files
-Write-Host "Cleaning existing log files..." -ForegroundColor Yellow
-Get-ChildItem -Path $logsDir -Filter "*.log" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
-Get-ChildItem -Path $logsDir -Filter "*.jsonl" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+# Clean existing log files (both server and client)
+Write-Host "Cleaning existing server and client log files..." -ForegroundColor Yellow
+Get-ChildItem -Path $serverLogsDir -Filter "*.log" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+Get-ChildItem -Path $serverLogsDir -Filter "*.jsonl" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+Get-ChildItem -Path $clientLogsDir -Filter "*.log" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+Get-ChildItem -Path $clientLogsDir -Filter "*.jsonl" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
 
 # 2. Build the server project (no tests)
 Write-Host "Building server project..." -ForegroundColor Yellow
 try {
     # Build and log output to build.log
-    dotnet build server/AIChat.Server/AIChat.Server.csproj --configuration Debug --verbosity minimal 2>&1 | Tee-Object -FilePath "$logsDir/build.log"
+    dotnet build server/AIChat.Server/AIChat.Server.csproj --configuration Debug --verbosity minimal 2>&1 | Tee-Object -FilePath "$serverLogsDir/build.log"
     if ($LASTEXITCODE -ne 0) {
         throw "Build failed with exit code $LASTEXITCODE"
     }
@@ -126,39 +135,48 @@ catch {
     return 1
 }
 
-# 3. If Orleans is enabled, build and start Orleans Host
+# 3. If Orleans is enabled, handle based on environment
 $orleansProcess = $null
 if ($UseOrleans) {
-    Write-Host ""
-    Write-Host "Building Orleans Host..." -ForegroundColor Yellow
-    try {
-        # Build Orleans Host project
-        dotnet build server/AIChat.Orleans.Host/AIChat.Orleans.Host.csproj --configuration Debug --verbosity minimal 2>&1 | Tee-Object -FilePath "$logsDir/orleans-build.log"
-        if ($LASTEXITCODE -ne 0) {
-            throw "Orleans Host build failed with exit code $LASTEXITCODE"
+    if ($Environment -eq "Development" -or $Environment -eq "Test") {
+        # In Development/Test, Orleans is co-hosted within the server process
+        Write-Host ""
+        Write-Host "Orleans will be co-hosted within the server process (single-process mode)" -ForegroundColor Cyan
+        Write-Host "No separate Orleans Host needed for $Environment environment" -ForegroundColor Green
+    }
+    else {
+        # In Production, start Orleans Host as separate process
+        Write-Host ""
+        Write-Host "Building Orleans Host for Production environment..." -ForegroundColor Yellow
+        try {
+            # Build Orleans Host project
+            dotnet build server/AIChat.Orleans.Host/AIChat.Orleans.Host.csproj --configuration Debug --verbosity minimal 2>&1 | Tee-Object -FilePath "$serverLogsDir/orleans-build.log"
+            if ($LASTEXITCODE -ne 0) {
+                throw "Orleans Host build failed with exit code $LASTEXITCODE"
+            }
+            Write-Host "Orleans Host build completed successfully" -ForegroundColor Green
+
+            # Start Orleans Host in background
+            Write-Host "Starting Orleans Host in background..." -ForegroundColor Yellow
+            $orleansProcess = Start-Process -FilePath "dotnet" -ArgumentList "run", "--project", "server/AIChat.Orleans.Host/AIChat.Orleans.Host.csproj", "--no-build" -WorkingDirectory (Get-Location) -PassThru -NoNewWindow -RedirectStandardOutput "$serverLogsDir/orleans-output.log" -RedirectStandardError "$serverLogsDir/orleans-error.log"
+
+            # Wait a moment for Orleans to start
+            Write-Host "Waiting for Orleans Silo to initialize..." -ForegroundColor Yellow
+            Start-Sleep -Seconds 5
+
+            # Check if Orleans Host is running
+            if ($orleansProcess.HasExited) {
+                Write-Error "Orleans Host failed to start. Check logs/server/orleans-error.log for details"
+                return 1
+            }
+
+            Write-Host "Orleans Host started successfully (PID: $($orleansProcess.Id))" -ForegroundColor Green
+            Write-Host "Orleans Dashboard: http://localhost:8081" -ForegroundColor Cyan
         }
-        Write-Host "Orleans Host build completed successfully" -ForegroundColor Green
-        
-        # Start Orleans Host in background
-        Write-Host "Starting Orleans Host in background..." -ForegroundColor Yellow
-        $orleansProcess = Start-Process -FilePath "dotnet" -ArgumentList "run", "--project", "server/AIChat.Orleans.Host/AIChat.Orleans.Host.csproj", "--no-build" -WorkingDirectory (Get-Location) -PassThru -NoNewWindow -RedirectStandardOutput "$logsDir/orleans-output.log" -RedirectStandardError "$logsDir/orleans-error.log"
-        
-        # Wait a moment for Orleans to start
-        Write-Host "Waiting for Orleans Silo to initialize..." -ForegroundColor Yellow
-        Start-Sleep -Seconds 5
-        
-        # Check if Orleans Host is running
-        if ($orleansProcess.HasExited) {
-            Write-Error "Orleans Host failed to start. Check logs/server/orleans-error.log for details"
+        catch {
+            Write-Error "Failed to build/start Orleans Host: $($_.Exception.Message)"
             return 1
         }
-        
-        Write-Host "Orleans Host started successfully (PID: $($orleansProcess.Id))" -ForegroundColor Green
-        Write-Host "Orleans Dashboard: http://localhost:8081" -ForegroundColor Cyan
-    }
-    catch {
-        Write-Error "Failed to build/start Orleans Host: $($_.Exception.Message)"
-        return 1
     }
 }
 
@@ -189,28 +207,45 @@ try {
     Write-Host "  Environment: $Environment" -ForegroundColor Cyan
     Write-Host "  Server URL: http://localhost:$Port" -ForegroundColor Cyan
     if ($UseOrleans) {
-        Write-Host "  Orleans: ENABLED" -ForegroundColor Green
-        Write-Host "  Orleans Dashboard: http://localhost:8081" -ForegroundColor Green
+        if ($Environment -eq "Development" -or $Environment -eq "Test") {
+            Write-Host "  Orleans: ENABLED (Co-hosted mode)" -ForegroundColor Green
+            Write-Host "  Orleans Dashboard: Integrated with server" -ForegroundColor Green
+        }
+        else {
+            Write-Host "  Orleans: ENABLED (Separate process)" -ForegroundColor Green
+            Write-Host "  Orleans Dashboard: http://localhost:8081" -ForegroundColor Green
+        }
         Write-Host "  Orleans Gateway Port: 30000" -ForegroundColor Cyan
         Write-Host "  Orleans Silo Port: 11111" -ForegroundColor Cyan
-    } else {
+    }
+    else {
         if ($Environment -eq "Test") {
             Write-Host "  Orleans: DISABLED (Test environment)" -ForegroundColor Yellow
-        } else {
+        }
+        else {
             Write-Host "  Orleans: Check appsettings.$Environment.json for status" -ForegroundColor Yellow
         }
     }
     Write-Host "============================================================" -ForegroundColor Green
     Write-Host ""
-    Write-Host "Build output logged to: ../logs/server/build.log" -ForegroundColor Cyan
-    Write-Host "Server runtime logs will be appended to: ../logs/server/build.log" -ForegroundColor Cyan
-    Write-Host "Application logs: ../logs/server/app-${Environment}.jsonl" -ForegroundColor Cyan
+    Write-Host "Build output logged to: logs/server/build.log" -ForegroundColor Cyan
+    Write-Host "Server runtime logs will be appended to: logs/server/build.log" -ForegroundColor Cyan
+    Write-Host "Application logs: logs/server/app-${Environment}.jsonl" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "Press Ctrl+C to stop the server" -ForegroundColor Yellow
     Write-Host ""
 
     # Run the server and append output to the same log file (after build output)
-    dotnet run --project AIChat.Server.csproj --urls "http://localhost:$Port" 2>&1 | Tee-Object -FilePath "../logs/server/build.log" -Append
+    # Using launch profiles for proper environment configuration
+    if ($UseOrleans) {
+        # Use DEV profile when Orleans is enabled (Orleans requires Development environment)
+        dotnet run --project AIChat.Server.csproj --launch-profile DEV --urls "http://localhost:$Port" 2>&1 | Tee-Object -FilePath "../../logs/server/build.log" -Append
+    }
+    else {
+        # Use TEST profile by default (or specify based on Environment parameter)
+        $profile = if ($Environment -eq "Development") { "DEV" } else { "TEST" }
+        dotnet run --project AIChat.Server.csproj --launch-profile $profile --urls "http://localhost:$Port" 2>&1 | Tee-Object -FilePath "../../logs/server/build.log" -Append
+    }
 }
 catch {
     Write-Error "Failed to start server: $($_.Exception.Message)"
@@ -224,7 +259,7 @@ finally {
         Stop-Process -Id $orleansProcess.Id -Force -ErrorAction SilentlyContinue
         Write-Host "Orleans Host stopped" -ForegroundColor Green
     }
-    
-    # Return to original directory
-    Set-Location ..
+
+    # Return to original directory (project root)
+    Set-Location ../..
 }

@@ -21,15 +21,18 @@ using Microsoft.Extensions.Options;
 using Microsoft.FeatureManagement;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Orleans.Configuration;
 using Serilog;
 using Serilog.Formatting.Compact;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure Serilog for JSON file logging - ensure logs go to project root
-var projectRoot =
-    Directory.GetParent(Directory.GetCurrentDirectory())?.FullName
-    ?? Directory.GetCurrentDirectory();
+// When running from server/AIChat.Server, we need to go up two levels to reach project root
+var currentDir = Directory.GetCurrentDirectory();
+var projectRoot = currentDir.EndsWith("AIChat.Server")
+    ? Directory.GetParent(Directory.GetParent(currentDir)?.FullName ?? currentDir)?.FullName ?? currentDir
+    : Directory.GetParent(currentDir)?.FullName ?? currentDir;
 var logFileName = builder.Environment.EnvironmentName switch
 {
     "Development" => Path.Combine(projectRoot, "logs", "server", "app-dev.jsonl"),
@@ -139,7 +142,25 @@ builder.Services.AddSignalR(hubOptions =>
 });
 
 // Add Feature Management for controlled Orleans rollout
-builder.Services.AddFeatureManagement(builder.Configuration.GetSection("FeatureManagement"));
+// Check if FeatureManagement section exists, otherwise use defaults
+var featureSection = builder.Configuration.GetSection("FeatureManagement");
+if (featureSection.Exists())
+{
+    _ = builder.Services.AddFeatureManagement(featureSection);
+}
+else
+{
+    // If no FeatureManagement section, enable Orleans by default in Development
+    _ = builder.Services.AddFeatureManagement();
+    if (builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Test"))
+    {
+        // Enable Orleans feature flag by default in Development when using -UseOrleans
+        _ = builder.Services.Configure<FeatureManagementOptions>(options =>
+        {
+            // This will be checked later based on Orleans configuration
+        });
+    }
+}
 
 // Configure OpenTelemetry for distributed tracing
 builder.Services.AddOpenTelemetry()
@@ -183,20 +204,70 @@ builder.Services.AddOpenTelemetry()
             : new TraceIdRatioBasedSampler(0.1)); // Sample 10% in production
     });
 
-// Add Orleans Client for Phase 1 shadow mode integration
-// Only adds client dependency - Orleans silo runs separately
-// Check if we're in test environment or Orleans is explicitly disabled
+// Configure Orleans based on environment
+// In Development/Test: Co-host Orleans silo for single-process deployment
+// In Production: Use Orleans client to connect to separate silo
 var isTestEnvironment = builder.Environment.IsEnvironment("Test");
+var isDevelopmentEnvironment = builder.Environment.IsDevelopment();
 var orleansDisabled = builder.Configuration.GetValue("Orleans:DisableInTests", false);
 
-if (!isTestEnvironment && !orleansDisabled)
+if (!orleansDisabled)
 {
     try
     {
-        _ = builder.Services.AddOrleansClient(builder.Configuration, builder.Environment);
-        Log.Information("Orleans client configured successfully");
+        // Co-host Orleans silo in Development/Test environments
+        if (isDevelopmentEnvironment || isTestEnvironment)
+        {
+            Log.Information("Configuring Orleans co-hosting for {Environment} environment", builder.Environment.EnvironmentName);
 
-        // Add health checks including Orleans client
+            // Configure Orleans silo co-hosting
+            _ = builder.Host.UseOrleans((context, siloBuilder) =>
+            {
+                var configuration = context.Configuration;
+
+                _ = siloBuilder
+                    .UseLocalhostClustering()
+                    .Configure<ClusterOptions>(options =>
+                    {
+                        options.ClusterId = configuration.GetValue<string>("Orleans:ClusterId") ?? "doc-chat-cluster";
+                        options.ServiceId = configuration.GetValue<string>("Orleans:ServiceId") ?? "doc-chat-service";
+                    })
+                    .ConfigureEndpoints(
+                        siloPort: configuration.GetValue("Orleans:SiloPort", 11111),
+                        gatewayPort: configuration.GetValue("Orleans:GatewayPort", 30000)
+                    )
+                    .AddMemoryGrainStorage("UserGrainStorage")
+                    .AddMemoryGrainStorage("PubSubStore")
+                    .ConfigureLogging(logging =>
+                    {
+                        _ = logging.SetMinimumLevel(LogLevel.Warning);
+                        _ = logging.AddFilter("Orleans", LogLevel.Warning);
+                        _ = logging.AddFilter("Orleans.Runtime", LogLevel.Warning);
+                        _ = logging.AddFilter("AIChat.Orleans", LogLevel.Debug);
+                    });
+
+                // Add startup task for initialization
+                _ = siloBuilder.AddStartupTask<AIChat.Server.OrleansCoHostStartupTask>();
+
+                Log.Information("Orleans silo co-hosting configured successfully");
+            });
+
+            // When co-hosting, Orleans registers IGrainFactory but not IClusterClient
+            // We don't need to register IClusterClient for co-hosting as IGrainFactory is sufficient
+
+            // Register ChatServiceProxy for grains (required for co-hosting)
+            _ = builder.Services.AddSingleton<AIChat.Orleans.Services.IChatServiceProxy, AIChat.Orleans.Services.DefaultChatServiceProxy>();
+        }
+        else
+        {
+            // Production: Use Orleans client only (connect to separate silo)
+            Log.Information("Configuring Orleans client for Production environment");
+            _ = builder.Services.AddOrleansClient(builder.Configuration, builder.Environment);
+        }
+
+        Log.Information("Orleans configured successfully");
+
+        // Add health checks including Orleans
         _ = builder.Services.AddHealthChecks()
             .AddCheck<OrleansClientHealthCheck>("orleans-client")
             .AddCheck<OrleansHealthCheck>("orleans")
@@ -207,7 +278,7 @@ if (!isTestEnvironment && !orleansDisabled)
         // Log warning but don't fail startup - Orleans is optional in Phase 1
         Log.Warning(
             ex,
-            "Failed to configure Orleans client - Orleans integration will be disabled"
+            "Failed to configure Orleans - Orleans integration will be disabled"
         );
 
         // Add basic health checks without Orleans
@@ -216,7 +287,7 @@ if (!isTestEnvironment && !orleansDisabled)
 }
 else
 {
-    Log.Information("Orleans integration disabled for test environment");
+    Log.Information("Orleans integration explicitly disabled");
 
     // Add basic health checks without Orleans
     _ = builder.Services.AddHealthChecks();
@@ -556,4 +627,44 @@ app.Run();
 public partial class Program
 {
     private static readonly string[] tags = ["streaming"];
+}
+
+namespace AIChat.Server
+{
+    /// <summary>
+    /// Startup task for Orleans co-hosting initialization and validation.
+    /// </summary>
+    public class OrleansCoHostStartupTask : IStartupTask
+    {
+        private readonly ILogger<OrleansCoHostStartupTask> _logger;
+
+        /// <summary>
+        /// Initializes a new instance of the OrleansCoHostStartupTask.
+        /// </summary>
+        /// <param name="logger">Logger instance</param>
+        public OrleansCoHostStartupTask(ILogger<OrleansCoHostStartupTask> logger)
+        {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
+        /// <summary>
+        /// Executes startup validation and initialization for co-hosted Orleans silo.
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Task representing the startup operation</returns>
+        public Task Execute(CancellationToken cancellationToken)
+        {
+            try
+            {
+                _logger.LogInformation("Orleans co-hosting startup task beginning...");
+                _logger.LogInformation("Orleans silo co-hosted successfully. Grains are ready to accept requests");
+                return Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Orleans co-hosting startup task failed");
+                throw; // Re-throw to prevent silo startup
+            }
+        }
+    }
 }

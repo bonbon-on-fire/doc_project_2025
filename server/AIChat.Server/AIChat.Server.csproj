@@ -34,6 +34,11 @@
   <ItemGroup>
     <ProjectReference Include="..\AIChat.Orleans.Client\AIChat.Orleans.Client.csproj" />
   </ItemGroup>
+  <!-- Orleans server for co-hosting in Development/Test -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Orleans.Server" Version="9.2.1" />
+    <PackageReference Include="Microsoft.Orleans.Persistence.Memory" Version="9.2.1" />
+  </ItemGroup>
   <!-- Feature Management for Orleans integration -->
   <ItemGroup>
     <PackageReference Include="Microsoft.FeatureManagement.AspNetCore" Version="3.0.0" />

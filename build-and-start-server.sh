@@ -180,57 +180,72 @@ else
     print_color $GREEN "No processes found listening on port $PORT"
 fi
 
-# Ensure logs directory exists
-LOGS_DIR="logs/server"
-if [ ! -d "$LOGS_DIR" ]; then
-    print_color $YELLOW "Creating logs directory: $LOGS_DIR"
-    mkdir -p "$LOGS_DIR"
+# Ensure logs directories exist
+SERVER_LOGS_DIR="logs/server"
+CLIENT_LOGS_DIR="logs/client"
+if [ ! -d "$SERVER_LOGS_DIR" ]; then
+    print_color $YELLOW "Creating server logs directory: $SERVER_LOGS_DIR"
+    mkdir -p "$SERVER_LOGS_DIR"
+fi
+if [ ! -d "$CLIENT_LOGS_DIR" ]; then
+    print_color $YELLOW "Creating client logs directory: $CLIENT_LOGS_DIR"
+    mkdir -p "$CLIENT_LOGS_DIR"
 fi
 
-# Clean existing log files
-print_color $YELLOW "Cleaning existing log files..."
-rm -f "$LOGS_DIR"/*.log 2>/dev/null || true
-rm -f "$LOGS_DIR"/*.jsonl 2>/dev/null || true
+# Clean existing log files (both server and client)
+print_color $YELLOW "Cleaning existing server and client log files..."
+rm -f "$SERVER_LOGS_DIR"/*.log 2>/dev/null || true
+rm -f "$SERVER_LOGS_DIR"/*.jsonl 2>/dev/null || true
+rm -f "$CLIENT_LOGS_DIR"/*.log 2>/dev/null || true
+rm -f "$CLIENT_LOGS_DIR"/*.jsonl 2>/dev/null || true
 
 # 2. Build the server project
 print_color $YELLOW "Building server project..."
-if dotnet build server/AIChat.Server/AIChat.Server.csproj --configuration Debug --verbosity minimal 2>&1 | tee "$LOGS_DIR/build.log"; then
+if dotnet build server/AIChat.Server/AIChat.Server.csproj --configuration Debug --verbosity minimal 2>&1 | tee "$SERVER_LOGS_DIR/build.log"; then
     print_color $GREEN "Server build completed successfully"
 else
     print_color $RED "Failed to build server"
     exit 1
 fi
 
-# 3. If Orleans is enabled, build and start Orleans Host
+# 3. If Orleans is enabled, handle based on environment
 ORLEANS_PID=""
 if [ "$USE_ORLEANS" = true ]; then
-    echo ""
-    print_color $YELLOW "Building Orleans Host..."
-    
-    # Build Orleans Host project
-    if dotnet build server/AIChat.Orleans.Host/AIChat.Orleans.Host.csproj --configuration Debug --verbosity minimal 2>&1 | tee "$LOGS_DIR/orleans-build.log"; then
-        print_color $GREEN "Orleans Host build completed successfully"
+    if [ "$ENVIRONMENT" = "Development" ] || [ "$ENVIRONMENT" = "Test" ]; then
+        # In Development/Test, Orleans is co-hosted within the server process
+        echo ""
+        print_color $CYAN "Orleans will be co-hosted within the server process (single-process mode)"
+        print_color $GREEN "No separate Orleans Host needed for $ENVIRONMENT environment"
+    else
+        # In Production, start Orleans Host as separate process
+        echo ""
+        print_color $YELLOW "Building Orleans Host for Production environment..."
         
-        # Start Orleans Host in background
-        print_color $YELLOW "Starting Orleans Host in background..."
-        dotnet run --project server/AIChat.Orleans.Host/AIChat.Orleans.Host.csproj --no-build > "$LOGS_DIR/orleans-output.log" 2> "$LOGS_DIR/orleans-error.log" &
-        ORLEANS_PID=$!
-        
-        # Wait a moment for Orleans to start
-        print_color $YELLOW "Waiting for Orleans Silo to initialize..."
-        sleep 5
-        
-        # Check if Orleans Host is still running
-        if kill -0 $ORLEANS_PID 2>/dev/null; then
-            print_color $GREEN "Orleans Host started successfully (PID: $ORLEANS_PID)"
-            print_color $CYAN "Orleans Dashboard: http://localhost:8081"
+        # Build Orleans Host project
+        if dotnet build server/AIChat.Orleans.Host/AIChat.Orleans.Host.csproj --configuration Debug --verbosity minimal 2>&1 | tee "$SERVER_LOGS_DIR/orleans-build.log"; then
+            print_color $GREEN "Orleans Host build completed successfully"
+            
+            # Start Orleans Host in background
+            print_color $YELLOW "Starting Orleans Host in background..."
+            dotnet run --project server/AIChat.Orleans.Host/AIChat.Orleans.Host.csproj --no-build > "$SERVER_LOGS_DIR/orleans-output.log" 2> "$SERVER_LOGS_DIR/orleans-error.log" &
+            ORLEANS_PID=$!
+            
+            # Wait a moment for Orleans to start
+            print_color $YELLOW "Waiting for Orleans Silo to initialize..."
+            sleep 5
+            
+            # Check if Orleans Host is still running
+            if kill -0 $ORLEANS_PID 2>/dev/null; then
+                print_color $GREEN "Orleans Host started successfully (PID: $ORLEANS_PID)"
+                print_color $CYAN "Orleans Dashboard: http://localhost:8081"
+            else
+                print_color $RED "Orleans Host failed to start. Check logs/server/orleans-error.log for details"
+                exit 1
+            fi
         else
-            print_color $RED "Orleans Host failed to start. Check logs/server/orleans-error.log for details"
+            print_color $RED "Failed to build Orleans Host"
             exit 1
         fi
-    else
-        print_color $RED "Failed to build Orleans Host"
-        exit 1
     fi
 fi
 
@@ -276,8 +291,13 @@ print_color $CYAN "Server Configuration:"
 print_color $CYAN "  Environment: $ENVIRONMENT"
 print_color $CYAN "  Server URL: http://localhost:$PORT"
 if [ "$USE_ORLEANS" = true ]; then
-    print_color $GREEN "  Orleans: ENABLED"
-    print_color $GREEN "  Orleans Dashboard: http://localhost:8081"
+    if [ "$ENVIRONMENT" = "Development" ] || [ "$ENVIRONMENT" = "Test" ]; then
+        print_color $GREEN "  Orleans: ENABLED (Co-hosted mode)"
+        print_color $GREEN "  Orleans Dashboard: Integrated with server"
+    else
+        print_color $GREEN "  Orleans: ENABLED (Separate process)"
+        print_color $GREEN "  Orleans Dashboard: http://localhost:8081"
+    fi
     print_color $CYAN "  Orleans Gateway Port: 30000"
     print_color $CYAN "  Orleans Silo Port: 11111"
 else
@@ -289,15 +309,29 @@ else
 fi
 print_color $GREEN "============================================================"
 echo ""
-print_color $CYAN "Build output logged to: ../logs/server/build.log"
-print_color $CYAN "Server runtime logs will be appended to: ../logs/server/build.log"
-print_color $CYAN "Application logs: ../logs/server/app-${ENVIRONMENT}.jsonl"
+print_color $CYAN "Build output logged to: logs/server/build.log"
+print_color $CYAN "Server runtime logs will be appended to: logs/server/build.log"
+print_color $CYAN "Application logs: logs/server/app-${ENVIRONMENT}.jsonl"
 echo ""
 print_color $YELLOW "Press Ctrl+C to stop the server"
 echo ""
 
 # Run the server and append output to the same log file (after build output)
-if ! dotnet run --project server/AIChat.Server/AIChat.Server.csproj --urls "http://localhost:$PORT" 2>&1 | tee -a "logs/server/build.log"; then
-    print_color $RED "Failed to start server"
-    exit 1
+# Using launch profiles for proper environment configuration
+if [ "$USE_ORLEANS" = true ]; then
+    # Use DEV profile when Orleans is enabled (Orleans requires Development environment)
+    if ! dotnet run --project AIChat.Server/AIChat.Server.csproj --launch-profile DEV --urls "http://localhost:$PORT" 2>&1 | tee -a "../logs/server/build.log"; then
+        print_color $RED "Failed to start server"
+        exit 1
+    fi
+else
+    # Use TEST profile by default (or specify based on Environment parameter)
+    PROFILE="TEST"
+    if [ "$ENVIRONMENT" = "Development" ]; then
+        PROFILE="DEV"
+    fi
+    if ! dotnet run --project AIChat.Server/AIChat.Server.csproj --launch-profile "$PROFILE" --urls "http://localhost:$PORT" 2>&1 | tee -a "../logs/server/build.log"; then
+        print_color $RED "Failed to start server"
+        exit 1
+    fi
 fi

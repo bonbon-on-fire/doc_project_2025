@@ -24,6 +24,7 @@ public class ChatController(
     IChatStorage chatStorage,
     IHubContext<ChatHub> hubContext,
     IFeatureManager featureManager,
+    IHostEnvironment environment,
     IClusterClient? clusterClient = null,
     IBackgroundChatService? backgroundChatService = null,
     IOperationTrackingService? operationTrackingService = null,
@@ -38,6 +39,7 @@ public class ChatController(
     private readonly IChatStorage _chatStorage = chatStorage;
     private readonly IHubContext<ChatHub> _hubContext = hubContext;
     private readonly IFeatureManager _featureManager = featureManager;
+    private readonly IHostEnvironment _environment = environment;
     private readonly IClusterClient? _clusterClient = clusterClient;
     private readonly IBackgroundChatService? _backgroundChatService = backgroundChatService;
     private readonly IOperationTrackingService? _operationTrackingService = operationTrackingService;
@@ -94,26 +96,50 @@ public class ChatController(
     /// </summary>
     private async Task<bool> ShouldUseOrleansStreamingAsync()
     {
-        // Check if Orleans integration is available
+        // In Development/Test with co-hosting, check if streaming bridge is available
+        var isCoHosted = _environment.IsDevelopment() || _environment.EnvironmentName == "Test";
+        
+        // If streaming bridge is available and we're in a co-hosted environment, Orleans is ready
+        if (isCoHosted && _streamingBridge != null)
+        {
+            _logger.LogDebug("Orleans streaming enabled via co-hosted configuration");
+            return true;
+        }
+        
+        // Otherwise check feature flag for explicit control
         var orleansEnabled = await _featureManager.IsEnabledAsync("OrleansIntegration");
         if (!orleansEnabled)
         {
             _logger.LogDebug("Orleans integration feature is disabled for streaming");
             return false;
-        }
-
+}
+        
         // Check if required services are available
-        if (_clusterClient == null || _streamingBridge == null)
+        if (_streamingBridge == null)
         {
-            _logger.LogDebug("Orleans streaming not available: ClusterClient={ClusterClientAvailable}, StreamingBridge={StreamingBridgeAvailable}",
-                _clusterClient != null, _streamingBridge != null);
+            _logger.LogDebug("Orleans streaming bridge not available");
+            return false;
+        }
+        
+        // In co-hosted mode, we don't have IClusterClient but we have IGrainFactory
+        // The streaming bridge uses IOrleansIntegrationService which uses IGrainFactory
+        if (!isCoHosted && _clusterClient == null)
+        {
+            _logger.LogDebug("Orleans client not available in non-co-hosted mode");
             return false;
         }
 
-        // Check cluster health
+        // In co-hosted mode, assume Orleans is ready if the services are injected
+        if (isCoHosted)
+        {
+            _logger.LogDebug("Orleans streaming enabled in co-hosted mode");
+            return true;
+        }
+
+        // For non-co-hosted mode, check cluster health
         try
         {
-            var healthGrain = _clusterClient.GetGrain<IUserGrain>("health-check-user");
+            var healthGrain = _clusterClient!.GetGrain<IUserGrain>("health-check-user");
             // Quick health check with timeout
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
             var healthTask = healthGrain.CheckHealth();
