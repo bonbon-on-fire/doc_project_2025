@@ -29,7 +29,12 @@ public interface IOrleansMetricsCollector
     /// <param name="operationType">Type of operation (e.g., ProcessMessage, RegisterConnection)</param>
     /// <param name="duration">Operation duration in milliseconds</param>
     /// <param name="success">Whether the operation succeeded</param>
-    Task RecordGrainOperationAsync(string grainType, string operationType, double duration, bool success);
+    Task RecordGrainOperationAsync(
+        string grainType,
+        string operationType,
+        double duration,
+        bool success
+    );
 
     /// <summary>
     /// Records grain state metrics.
@@ -39,7 +44,13 @@ public interface IOrleansMetricsCollector
     /// <param name="stateSize">Size of grain state in bytes</param>
     /// <param name="connectionCount">Number of active connections (for UserGrain)</param>
     /// <param name="operationCount">Number of active operations</param>
-    Task RecordGrainStateMetricsAsync(string grainType, string grainId, long stateSize, int connectionCount, int operationCount);
+    Task RecordGrainStateMetricsAsync(
+        string grainType,
+        string grainId,
+        long stateSize,
+        int connectionCount,
+        int operationCount
+    );
 
     /// <summary>
     /// Gets current metrics summary for dashboard display.

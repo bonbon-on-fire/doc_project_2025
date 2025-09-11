@@ -17,7 +17,8 @@ public interface IPersistentBufferStore
         string streamId,
         IEnumerable<BufferedStreamMessage> messages,
         BufferMetadata? metadata = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Loads a persisted buffer from storage.
@@ -25,7 +26,10 @@ public interface IPersistentBufferStore
     /// <param name="streamId">The stream identifier</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The persisted buffer or null if not found</returns>
-    Task<PersistedBuffer?> LoadBufferAsync(string streamId, CancellationToken cancellationToken = default);
+    Task<PersistedBuffer?> LoadBufferAsync(
+        string streamId,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Deletes a persisted buffer from storage.
@@ -40,7 +44,9 @@ public interface IPersistentBufferStore
     /// </summary>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Collection of stream identifiers with persisted buffers</returns>
-    Task<IReadOnlyList<string>> ListPersistedBuffersAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<string>> ListPersistedBuffersAsync(
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Gets metadata for a persisted buffer without loading messages.
@@ -48,7 +54,10 @@ public interface IPersistentBufferStore
     /// <param name="streamId">The stream identifier</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Buffer metadata or null if not found</returns>
-    Task<BufferMetadata?> GetBufferMetadataAsync(string streamId, CancellationToken cancellationToken = default);
+    Task<BufferMetadata?> GetBufferMetadataAsync(
+        string streamId,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Cleans up expired persisted buffers based on retention policy.
@@ -56,7 +65,10 @@ public interface IPersistentBufferStore
     /// <param name="retentionPeriod">How long to retain buffers</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Number of buffers cleaned up</returns>
-    Task<int> CleanupExpiredBuffersAsync(TimeSpan retentionPeriod, CancellationToken cancellationToken = default);
+    Task<int> CleanupExpiredBuffersAsync(
+        TimeSpan retentionPeriod,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Gets storage statistics.
@@ -213,9 +225,8 @@ public record PersistenceStatistics
     /// <summary>
     /// Gets the average buffer size in bytes.
     /// </summary>
-    public double AverageBufferSizeBytes => TotalBuffers > 0
-        ? (double)TotalSizeBytes / TotalBuffers
-        : 0;
+    public double AverageBufferSizeBytes =>
+        TotalBuffers > 0 ? (double)TotalSizeBytes / TotalBuffers : 0;
 
     /// <summary>
     /// Gets the total number of messages across all buffers.
@@ -240,7 +251,8 @@ public record PersistenceStatistics
     /// <summary>
     /// Gets the storage utilization percentage.
     /// </summary>
-    public double? StorageUtilizationPercentage => AvailableStorageBytes > 0
-        ? (double)TotalSizeBytes / AvailableStorageBytes.Value * 100
-        : null;
+    public double? StorageUtilizationPercentage =>
+        AvailableStorageBytes > 0
+            ? (double)TotalSizeBytes / AvailableStorageBytes.Value * 100
+            : null;
 }

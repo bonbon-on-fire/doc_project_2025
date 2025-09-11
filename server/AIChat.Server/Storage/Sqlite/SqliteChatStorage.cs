@@ -118,8 +118,14 @@ FROM chats WHERE UserId=$userId ORDER BY UpdatedAtUtc DESC LIMIT $limit OFFSET $
                         Id = reader.GetString(0),
                         UserId = reader.GetString(1),
                         Title = reader.GetString(2),
-                        CreatedAtUtc = DateTime.Parse(reader.GetString(3), CultureInfo.InvariantCulture),
-                        UpdatedAtUtc = DateTime.Parse(reader.GetString(4), CultureInfo.InvariantCulture),
+                        CreatedAtUtc = DateTime.Parse(
+                            reader.GetString(3),
+                            CultureInfo.InvariantCulture
+                        ),
+                        UpdatedAtUtc = DateTime.Parse(
+                            reader.GetString(4),
+                            CultureInfo.InvariantCulture
+                        ),
                         ChatJson = reader.IsDBNull(5) ? null : reader.GetString(5),
                     }
                 );
@@ -170,7 +176,10 @@ FROM chats WHERE UserId=$userId ORDER BY UpdatedAtUtc DESC LIMIT $limit OFFSET $
             cmd.CommandText =
                 "SELECT IFNULL(MAX(SequenceNumber), -1) + 1 FROM messages WHERE ChatId=$chatId";
             _ = cmd.Parameters.AddWithValue("$chatId", chatId);
-            var next = Convert.ToInt32(await cmd.ExecuteScalarAsync(ct), CultureInfo.InvariantCulture);
+            var next = Convert.ToInt32(
+                await cmd.ExecuteScalarAsync(ct),
+                CultureInfo.InvariantCulture
+            );
             await tx.CommitAsync(ct);
             return (true, null, next);
         }
@@ -276,7 +285,10 @@ VALUES ($id, $chatId, $role, $kind, $timestampUtc, $seq, $json)";
                     ChatId = reader.GetString(1),
                     Role = reader.GetString(2),
                     Kind = reader.GetString(3),
-                    TimestampUtc = DateTime.Parse(reader.GetString(4), CultureInfo.InvariantCulture),
+                    TimestampUtc = DateTime.Parse(
+                        reader.GetString(4),
+                        CultureInfo.InvariantCulture
+                    ),
                     SequenceNumber = reader.GetInt32(5),
                     MessageJson = reader.GetString(6),
                 }
@@ -325,10 +337,7 @@ VALUES ($id, $chatId, $role, $kind, $timestampUtc, $seq, $json)";
         }
         try
         {
-            var dto = JsonSerializer.Deserialize<MessageDto>(
-                Message.MessageJson,
-                JsonOptions
-            );
+            var dto = JsonSerializer.Deserialize<MessageDto>(Message.MessageJson, JsonOptions);
             if (dto is TextMessageDto text)
             {
                 return (true, null, text.Text);

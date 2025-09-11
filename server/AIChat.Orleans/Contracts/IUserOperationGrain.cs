@@ -78,5 +78,8 @@ public interface IUserOperationGrain : IGrainWithStringKey
     /// <param name="cancellationToken">Cancellation token for stream control</param>
     /// <returns>Async enumerable of stream chunks</returns>
     [Alias("ProcessChatStreamAsync")]
-    IAsyncEnumerable<StreamChunk> ProcessChatStreamAsync(ChatRequest request, CancellationToken cancellationToken = default);
+    IAsyncEnumerable<StreamChunk> ProcessChatStreamAsync(
+        ChatRequest request,
+        CancellationToken cancellationToken = default
+    );
 }

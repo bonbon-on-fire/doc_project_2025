@@ -44,7 +44,8 @@ public class OrleansIntegrationServiceTests
             _mockGrainFactory.Object,
             _mockFeatureManager.Object,
             _mockLogger.Object,
-            _mockResilienceOptions.Object);
+            _mockResilienceOptions.Object
+        );
     }
 
     [Test]
@@ -60,12 +61,21 @@ public class OrleansIntegrationServiceTests
             .Returns(Task.CompletedTask);
 
         // Act
-        await _service!.RecordUserActivityAsync("test-user", ActivityType.MessageSent, new { test = "data" });
+        await _service!.RecordUserActivityAsync(
+            "test-user",
+            ActivityType.MessageSent,
+            new { test = "data" }
+        );
 
         // Assert
         _mockUserGrain.Verify(
-            x => x.RecordActivity(ActivityType.MessageSent, It.Is<string>(json => json.Contains("test"))),
-            Times.Once);
+            x =>
+                x.RecordActivity(
+                    ActivityType.MessageSent,
+                    It.Is<string>(json => json.Contains("test"))
+                ),
+            Times.Once
+        );
     }
 
     [Test]
@@ -77,12 +87,17 @@ public class OrleansIntegrationServiceTests
             .ReturnsAsync(false);
 
         // Act
-        await _service!.RecordUserActivityAsync("test-user", ActivityType.MessageSent, new { test = "data" });
+        await _service!.RecordUserActivityAsync(
+            "test-user",
+            ActivityType.MessageSent,
+            new { test = "data" }
+        );
 
         // Assert
         _mockUserGrain!.Verify(
             x => x.RecordActivity(It.IsAny<ActivityType>(), It.IsAny<string>()),
-            Times.Never);
+            Times.Never
+        );
     }
 
     [Test]
@@ -94,12 +109,17 @@ public class OrleansIntegrationServiceTests
             .ReturnsAsync(true);
 
         // Act
-        await _service!.RecordUserActivityAsync("", ActivityType.MessageSent, new { test = "data" });
+        await _service!.RecordUserActivityAsync(
+            "",
+            ActivityType.MessageSent,
+            new { test = "data" }
+        );
 
         // Assert
         _mockUserGrain!.Verify(
             x => x.RecordActivity(It.IsAny<ActivityType>(), It.IsAny<string>()),
-            Times.Never);
+            Times.Never
+        );
     }
 
     [Test]
@@ -115,17 +135,29 @@ public class OrleansIntegrationServiceTests
             .ThrowsAsync(new InvalidOperationException("Grain failure"));
 
         // Act & Assert - Should not throw in shadow mode
-        Assert.DoesNotThrowAsync(async () => await _service!.RecordUserActivityAsync("test-user", ActivityType.MessageSent, new { test = "data" }));
+        Assert.DoesNotThrowAsync(
+            async () =>
+                await _service!.RecordUserActivityAsync(
+                    "test-user",
+                    ActivityType.MessageSent,
+                    new { test = "data" }
+                )
+        );
 
         // Verify warning was logged
         _mockLogger!.Verify(
-            x => x.Log(
-                LogLevel.Warning,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Failed to record Orleans activity")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+            x =>
+                x.Log(
+                    LogLevel.Warning,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>(
+                        (v, t) => v.ToString()!.Contains("Failed to record Orleans activity")
+                    ),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()
+                ),
+            Times.Once
+        );
         return Task.CompletedTask;
     }
 
@@ -140,12 +172,10 @@ public class OrleansIntegrationServiceTests
         var expectedState = new UserGrainState
         {
             UserId = "test-user",
-            LastActivity = DateTime.UtcNow
+            LastActivity = DateTime.UtcNow,
         };
 
-        _ = _mockUserGrain!
-            .Setup(x => x.GetState())
-            .ReturnsAsync(expectedState);
+        _ = _mockUserGrain!.Setup(x => x.GetState()).ReturnsAsync(expectedState);
 
         // Act
         var result = await _service!.GetUserStateAsync("test-user");
@@ -207,12 +237,10 @@ public class OrleansIntegrationServiceTests
             IsHealthy = true,
             GrainId = "test-user",
             CheckedAt = DateTime.UtcNow,
-            Warnings = []
+            Warnings = [],
         };
 
-        _ = _mockUserGrain!
-            .Setup(x => x.CheckHealth())
-            .ReturnsAsync(expectedHealth);
+        _ = _mockUserGrain!.Setup(x => x.CheckHealth()).ReturnsAsync(expectedHealth);
 
         // Act
         var result = await _service!.CheckUserHealthAsync("test-user");
@@ -264,12 +292,20 @@ public class OrleansIntegrationServiceTests
     public async Task Phase3MethodsShouldReturnDummyValues()
     {
         // Arrange
-        var message = new ChatMessage { Id = "msg-1", ChatId = "chat-1", UserId = "user", Content = "test" };
+        var message = new ChatMessage
+        {
+            Id = "msg-1",
+            ChatId = "chat-1",
+            UserId = "user",
+            Content = "test",
+        };
 
         // Act
         var operationId = await _service!.ProcessMessageAsync("user", message);
 
-        Assert.DoesNotThrowAsync(async () => await _service.CancelOperationAsync("user", operationId));
+        Assert.DoesNotThrowAsync(
+            async () => await _service.CancelOperationAsync("user", operationId)
+        );
 
         // Assert
         Assert.That(operationId, Is.Not.Null);
@@ -287,7 +323,11 @@ public class OrleansIntegrationServiceTests
         // Act & Assert - None of these should throw
         Assert.DoesNotThrowAsync(async () =>
         {
-            await _service!.RecordUserActivityAsync("user", ActivityType.MessageSent, new { test = "data" });
+            await _service!.RecordUserActivityAsync(
+                "user",
+                ActivityType.MessageSent,
+                new { test = "data" }
+            );
             _ = await _service.GetUserStateAsync("user");
             _ = await _service.IsOrleansHealthyAsync();
             _ = await _service.CheckUserHealthAsync("user");

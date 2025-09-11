@@ -35,7 +35,11 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
     }
 
     /// <inheritdoc />
-    public async Task RecordGrainActivationAsync(string grainType, string grainId, double activationTime)
+    public async Task RecordGrainActivationAsync(
+        string grainType,
+        string grainId,
+        double activationTime
+    )
     {
         try
         {
@@ -45,7 +49,7 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
                 GrainType = grainType,
                 GrainId = grainId,
                 ActivationTime = activationTime,
-                Timestamp = DateTime.UtcNow
+                Timestamp = DateTime.UtcNow,
             };
 
             _recentActivations.Enqueue(activation);
@@ -57,14 +61,15 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
             }
 
             // Update grain instance metrics
-            _ = _grainMetrics.AddOrUpdate(key,
+            _ = _grainMetrics.AddOrUpdate(
+                key,
                 _ => new GrainInstanceMetrics
                 {
                     GrainType = grainType,
                     GrainId = grainId,
                     ActivatedAt = DateTime.UtcNow,
                     LastActivationTime = activationTime,
-                    IsActive = true
+                    IsActive = true,
                 },
                 (_, existing) =>
                 {
@@ -73,21 +78,35 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
                     existing.IsActive = true;
                     existing.ActivationCount++;
                     return existing;
-                });
+                }
+            );
 
-            _logger.LogDebug("Recorded grain activation: {GrainType}:{GrainId} in {ActivationTime}ms",
-                grainType, grainId, activationTime);
+            _logger.LogDebug(
+                "Recorded grain activation: {GrainType}:{GrainId} in {ActivationTime}ms",
+                grainType,
+                grainId,
+                activationTime
+            );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to record grain activation for {GrainType}:{GrainId}", grainType, grainId);
+            _logger.LogError(
+                ex,
+                "Failed to record grain activation for {GrainType}:{GrainId}",
+                grainType,
+                grainId
+            );
         }
 
         await Task.CompletedTask;
     }
 
     /// <inheritdoc />
-    public async Task RecordGrainDeactivationAsync(string grainType, string grainId, double lifetimeMinutes)
+    public async Task RecordGrainDeactivationAsync(
+        string grainType,
+        string grainId,
+        double lifetimeMinutes
+    )
     {
         try
         {
@@ -97,7 +116,7 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
                 GrainType = grainType,
                 GrainId = grainId,
                 LifetimeMinutes = lifetimeMinutes,
-                Timestamp = DateTime.UtcNow
+                Timestamp = DateTime.UtcNow,
             };
 
             _recentDeactivations.Enqueue(deactivation);
@@ -116,19 +135,33 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
                 metrics.TotalLifetimeMinutes += lifetimeMinutes;
             }
 
-            _logger.LogDebug("Recorded grain deactivation: {GrainType}:{GrainId} after {LifetimeMinutes} minutes",
-                grainType, grainId, lifetimeMinutes);
+            _logger.LogDebug(
+                "Recorded grain deactivation: {GrainType}:{GrainId} after {LifetimeMinutes} minutes",
+                grainType,
+                grainId,
+                lifetimeMinutes
+            );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to record grain deactivation for {GrainType}:{GrainId}", grainType, grainId);
+            _logger.LogError(
+                ex,
+                "Failed to record grain deactivation for {GrainType}:{GrainId}",
+                grainType,
+                grainId
+            );
         }
 
         await Task.CompletedTask;
     }
 
     /// <inheritdoc />
-    public async Task RecordGrainOperationAsync(string grainType, string operationType, double duration, bool success)
+    public async Task RecordGrainOperationAsync(
+        string grainType,
+        string operationType,
+        double duration,
+        bool success
+    )
     {
         try
         {
@@ -138,7 +171,7 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
                 OperationType = operationType,
                 Duration = duration,
                 Success = success,
-                Timestamp = DateTime.UtcNow
+                Timestamp = DateTime.UtcNow,
             };
 
             _recentOperations.Enqueue(operation);
@@ -149,25 +182,42 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
                 _ = _recentOperations.TryDequeue(out _);
             }
 
-            _logger.LogTrace("Recorded operation: {GrainType}.{OperationType} - {Duration}ms (Success: {Success})",
-                grainType, operationType, duration, success);
+            _logger.LogTrace(
+                "Recorded operation: {GrainType}.{OperationType} - {Duration}ms (Success: {Success})",
+                grainType,
+                operationType,
+                duration,
+                success
+            );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to record grain operation for {GrainType}.{OperationType}", grainType, operationType);
+            _logger.LogError(
+                ex,
+                "Failed to record grain operation for {GrainType}.{OperationType}",
+                grainType,
+                operationType
+            );
         }
 
         await Task.CompletedTask;
     }
 
     /// <inheritdoc />
-    public async Task RecordGrainStateMetricsAsync(string grainType, string grainId, long stateSize, int connectionCount, int operationCount)
+    public async Task RecordGrainStateMetricsAsync(
+        string grainType,
+        string grainId,
+        long stateSize,
+        int connectionCount,
+        int operationCount
+    )
     {
         try
         {
             var key = $"{grainType}:{grainId}";
 
-            _ = _grainMetrics.AddOrUpdate(key,
+            _ = _grainMetrics.AddOrUpdate(
+                key,
                 _ => new GrainInstanceMetrics
                 {
                     GrainType = grainType,
@@ -175,7 +225,7 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
                     StateSizeBytes = stateSize,
                     ConnectionCount = connectionCount,
                     ActiveOperationCount = operationCount,
-                    LastStateUpdate = DateTime.UtcNow
+                    LastStateUpdate = DateTime.UtcNow,
                 },
                 (_, existing) =>
                 {
@@ -184,14 +234,26 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
                     existing.ActiveOperationCount = operationCount;
                     existing.LastStateUpdate = DateTime.UtcNow;
                     return existing;
-                });
+                }
+            );
 
-            _logger.LogTrace("Recorded state metrics: {GrainType}:{GrainId} - Size: {StateSize}B, Connections: {Connections}, Operations: {Operations}",
-                grainType, grainId, stateSize, connectionCount, operationCount);
+            _logger.LogTrace(
+                "Recorded state metrics: {GrainType}:{GrainId} - Size: {StateSize}B, Connections: {Connections}, Operations: {Operations}",
+                grainType,
+                grainId,
+                stateSize,
+                connectionCount,
+                operationCount
+            );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to record grain state metrics for {GrainType}:{GrainId}", grainType, grainId);
+            _logger.LogError(
+                ex,
+                "Failed to record grain state metrics for {GrainType}:{GrainId}",
+                grainType,
+                grainId
+            );
         }
 
         await Task.CompletedTask;
@@ -210,19 +272,25 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
             summary.TotalActiveGrains = activeGrains.Count;
 
             // Recent activations/deactivations
-            summary.GrainActivationsLastHour = _recentActivations.Count(a => a.Timestamp > cutoffTime);
-            summary.GrainDeactivationsLastHour = _recentDeactivations.Count(d => d.Timestamp > cutoffTime);
+            summary.GrainActivationsLastHour = _recentActivations.Count(a =>
+                a.Timestamp > cutoffTime
+            );
+            summary.GrainDeactivationsLastHour = _recentDeactivations.Count(d =>
+                d.Timestamp > cutoffTime
+            );
 
             // Operation metrics
             var recentOps = _recentOperations.Where(o => o.Timestamp > cutoffTime).ToList();
             if (recentOps.Count != 0)
             {
                 summary.AverageOperationDuration = recentOps.Average(o => o.Duration);
-                summary.OperationSuccessRate = (double)recentOps.Count(o => o.Success) / recentOps.Count * 100;
+                summary.OperationSuccessRate =
+                    (double)recentOps.Count(o => o.Success) / recentOps.Count * 100;
             }
 
             // Memory usage
-            summary.TotalMemoryUsageMB = activeGrains.Sum(g => g.StateSizeBytes) / (1024.0 * 1024.0);
+            summary.TotalMemoryUsageMB =
+                activeGrains.Sum(g => g.StateSizeBytes) / (1024.0 * 1024.0);
 
             // Grain type metrics
             var grainGroups = activeGrains.GroupBy(g => g.GrainType);
@@ -255,7 +323,9 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
             if (grainInstances.Count != 0)
             {
                 var activations = _recentActivations.Where(a => a.GrainType == grainType).ToList();
-                var deactivations = _recentDeactivations.Where(d => d.GrainType == grainType).ToList();
+                var deactivations = _recentDeactivations
+                    .Where(d => d.GrainType == grainType)
+                    .ToList();
                 var operations = _recentOperations.Where(o => o.GrainType == grainType).ToList();
 
                 if (activations.Count != 0)
@@ -271,14 +341,17 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
                 if (operations.Count != 0)
                 {
                     metrics.AverageOperationDuration = operations.Average(o => o.Duration);
-                    metrics.OperationSuccessRate = (double)operations.Count(o => o.Success) / operations.Count * 100;
+                    metrics.OperationSuccessRate =
+                        (double)operations.Count(o => o.Success) / operations.Count * 100;
 
                     // Operation counts by type
-                    metrics.OperationCounts = operations.GroupBy(o => o.OperationType)
+                    metrics.OperationCounts = operations
+                        .GroupBy(o => o.OperationType)
                         .ToDictionary(g => g.Key, g => (long)g.Count());
                 }
 
-                metrics.MemoryUsageMB = activeInstances.Sum(g => g.StateSizeBytes) / (1024.0 * 1024.0);
+                metrics.MemoryUsageMB =
+                    activeInstances.Sum(g => g.StateSizeBytes) / (1024.0 * 1024.0);
 
                 // Recent samples for trending (last 10 operations)
                 var recentSamples = operations
@@ -288,7 +361,7 @@ public class OrleansMetricsCollector : IOrleansMetricsCollector
                     {
                         Timestamp = o.Timestamp,
                         Value = o.Duration,
-                        MetricType = "OperationDuration"
+                        MetricType = "OperationDuration",
                     })
                     .OrderBy(s => s.Timestamp)
                     .ToList();

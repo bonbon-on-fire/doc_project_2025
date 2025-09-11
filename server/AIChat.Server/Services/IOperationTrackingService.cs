@@ -13,7 +13,12 @@ public interface IOperationTrackingService
     /// <param name="userId">The user ID associated with this operation</param>
     /// <param name="chatId">The chat ID associated with this operation</param>
     /// <param name="operationType">The type of operation (e.g., "SendMessage")</param>
-    Task RegisterOperationAsync(string operationId, string userId, string chatId, string operationType);
+    Task RegisterOperationAsync(
+        string operationId,
+        string userId,
+        string chatId,
+        string operationType
+    );
 
     /// <summary>
     /// Gets user context for an operation.

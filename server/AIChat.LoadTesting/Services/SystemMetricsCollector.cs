@@ -30,7 +30,8 @@ public class SystemMetricsCollector : IDisposable
         IOptions<MonitoringConfiguration> config,
         IOptions<LoadTestingConfiguration> loadTestConfig,
         ILogger<SystemMetricsCollector> logger,
-        HttpClient httpClient)
+        HttpClient httpClient
+    )
     {
         _config = config.Value;
         _loadTestConfig = loadTestConfig.Value;
@@ -41,8 +42,12 @@ public class SystemMetricsCollector : IDisposable
         InitializePerformanceCounters();
 
         // Start metrics collection timer
-        _metricsTimer = new Timer(CollectMetrics, null, TimeSpan.Zero,
-            TimeSpan.FromSeconds(_config.MetricsIntervalSeconds));
+        _metricsTimer = new Timer(
+            CollectMetrics,
+            null,
+            TimeSpan.Zero,
+            TimeSpan.FromSeconds(_config.MetricsIntervalSeconds)
+        );
     }
 
     /// <summary>
@@ -86,7 +91,7 @@ public class SystemMetricsCollector : IDisposable
                 AverageMemoryMB = (long)_metricsHistory.Average(m => m.MemoryUsageMB),
                 MaxMemoryMB = _metricsHistory.Max(m => m.MemoryUsageMB),
                 AverageNetworkMbps = _metricsHistory.Average(m => m.NetworkBandwidthMbps),
-                MaxNetworkMbps = _metricsHistory.Max(m => m.NetworkBandwidthMbps)
+                MaxNetworkMbps = _metricsHistory.Max(m => m.NetworkBandwidthMbps),
             };
 
             // Check if resource limits were exceeded
@@ -94,12 +99,16 @@ public class SystemMetricsCollector : IDisposable
 
             if (stats.MaxCpuPercent > 80)
             {
-                stats.ResourceWarnings.Add($"CPU usage exceeded 80% (peak: {stats.MaxCpuPercent:F1}%)");
+                stats.ResourceWarnings.Add(
+                    $"CPU usage exceeded 80% (peak: {stats.MaxCpuPercent:F1}%)"
+                );
             }
 
             if (stats.MaxMemoryMB > 8192)
             {
-                stats.ResourceWarnings.Add($"Memory usage exceeded 8GB (peak: {stats.MaxMemoryMB}MB)");
+                stats.ResourceWarnings.Add(
+                    $"Memory usage exceeded 8GB (peak: {stats.MaxMemoryMB}MB)"
+                );
             }
 
             return stats;
@@ -121,7 +130,10 @@ public class SystemMetricsCollector : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to initialize performance counters. System metrics may be limited.");
+            _logger.LogWarning(
+                ex,
+                "Failed to initialize performance counters. System metrics may be limited."
+            );
         }
     }
 
@@ -142,8 +154,11 @@ public class SystemMetricsCollector : IDisposable
                 }
             }
 
-            _logger.LogTrace("Collected system metrics: CPU={CpuPercent:F1}%, Memory={MemoryMB}MB",
-                metrics.CpuUsagePercent, metrics.MemoryUsageMB);
+            _logger.LogTrace(
+                "Collected system metrics: CPU={CpuPercent:F1}%, Memory={MemoryMB}MB",
+                metrics.CpuUsagePercent,
+                metrics.MemoryUsageMB
+            );
         }
         catch (Exception ex)
         {
@@ -159,7 +174,7 @@ public class SystemMetricsCollector : IDisposable
             CpuUsagePercent = GetCpuUsage(),
             MemoryUsageMB = GetMemoryUsage(),
             MemoryAvailableMB = GetAvailableMemory(),
-            NetworkBandwidthMbps = 0 // TODO: Implement network monitoring
+            NetworkBandwidthMbps = 0, // TODO: Implement network monitoring
         };
 
         // Collect Orleans metrics if enabled
@@ -181,8 +196,10 @@ public class SystemMetricsCollector : IDisposable
             }
 
             // Fallback for non-Windows systems or when performance counters fail
-            return _currentProcess.TotalProcessorTime.TotalMilliseconds / Environment.ProcessorCount /
-                   Environment.TickCount * 100.0;
+            return _currentProcess.TotalProcessorTime.TotalMilliseconds
+                / Environment.ProcessorCount
+                / Environment.TickCount
+                * 100.0;
         }
         catch (Exception ex)
         {
@@ -230,7 +247,8 @@ public class SystemMetricsCollector : IDisposable
 
         try
         {
-            var monitoringUrl = $"{_loadTestConfig.ServerBaseUrl.TrimEnd('/')}{_config.MonitoringApiUrl}/metrics";
+            var monitoringUrl =
+                $"{_loadTestConfig.ServerBaseUrl.TrimEnd('/')}{_config.MonitoringApiUrl}/metrics";
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             var response = await _httpClient.GetAsync(monitoringUrl, cts.Token);
@@ -238,14 +256,32 @@ public class SystemMetricsCollector : IDisposable
             if (response.IsSuccessStatusCode)
             {
                 var jsonContent = await response.Content.ReadAsStringAsync();
-                var metricsData = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonContent);
+                var metricsData = JsonSerializer.Deserialize<Dictionary<string, object>>(
+                    jsonContent
+                );
 
                 if (metricsData != null)
                 {
-                    orleansMetrics.SiloHealthy = GetMetricValue<bool>(metricsData, "orleans.silo.healthy", false);
-                    orleansMetrics.ActiveGrainCount = GetMetricValue<int>(metricsData, "orleans.grains.active", 0);
-                    orleansMetrics.BackgroundQueueDepth = GetMetricValue<int>(metricsData, "background.queue.depth", 0);
-                    orleansMetrics.AverageMessageLatencyMs = GetMetricValue<double>(metricsData, "orleans.message.relay.latency_ms", 0);
+                    orleansMetrics.SiloHealthy = GetMetricValue<bool>(
+                        metricsData,
+                        "orleans.silo.healthy",
+                        false
+                    );
+                    orleansMetrics.ActiveGrainCount = GetMetricValue<int>(
+                        metricsData,
+                        "orleans.grains.active",
+                        0
+                    );
+                    orleansMetrics.BackgroundQueueDepth = GetMetricValue<int>(
+                        metricsData,
+                        "background.queue.depth",
+                        0
+                    );
+                    orleansMetrics.AverageMessageLatencyMs = GetMetricValue<double>(
+                        metricsData,
+                        "orleans.message.relay.latency_ms",
+                        0
+                    );
                     orleansMetrics.ErrorCount = GetMetricValue<int>(metricsData, "errors.total", 0);
                 }
             }
@@ -268,15 +304,18 @@ public class SystemMetricsCollector : IDisposable
                 {
                     return jsonElement.ValueKind switch
                     {
-                        JsonValueKind.Number when typeof(T) == typeof(int) => (T)(object)jsonElement.GetInt32(),
-                        JsonValueKind.Number when typeof(T) == typeof(double) => (T)(object)jsonElement.GetDouble(),
-                        JsonValueKind.True or JsonValueKind.False when typeof(T) == typeof(bool) => (T)(object)jsonElement.GetBoolean(),
+                        JsonValueKind.Number when typeof(T) == typeof(int) => (T)
+                            (object)jsonElement.GetInt32(),
+                        JsonValueKind.Number when typeof(T) == typeof(double) => (T)
+                            (object)jsonElement.GetDouble(),
+                        JsonValueKind.True or JsonValueKind.False when typeof(T) == typeof(bool) =>
+                            (T)(object)jsonElement.GetBoolean(),
                         JsonValueKind.String => defaultValue,
                         JsonValueKind.Array => defaultValue,
                         JsonValueKind.Object => defaultValue,
                         JsonValueKind.Null => defaultValue,
                         JsonValueKind.Undefined => defaultValue,
-                        _ => defaultValue
+                        _ => defaultValue,
                     };
                 }
 

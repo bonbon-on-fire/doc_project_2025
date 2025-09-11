@@ -17,10 +17,13 @@ public class ProcessMessageCommand : OperationCommandBase<ChatMessage, string>
     /// <param name="chatId">The chat ID</param>
     /// <param name="userId">The user ID</param>
     /// <param name="message">The message to process</param>
-    public ProcessMessageCommand(string operationId, string chatId, string userId, ChatMessage message)
-        : base(operationId, chatId, userId, message)
-    {
-    }
+    public ProcessMessageCommand(
+        string operationId,
+        string chatId,
+        string userId,
+        ChatMessage message
+    )
+        : base(operationId, chatId, userId, message) { }
 
     /// <summary>
     /// Performs custom validation for message processing.
@@ -48,12 +51,16 @@ public class ProcessMessageCommand : OperationCommandBase<ChatMessage, string>
 
             if (Request.ChatId != ChatId)
             {
-                errors.Add($"Message ChatId '{Request.ChatId}' does not match command ChatId '{ChatId}'");
+                errors.Add(
+                    $"Message ChatId '{Request.ChatId}' does not match command ChatId '{ChatId}'"
+                );
             }
 
             if (Request.UserId != UserId)
             {
-                errors.Add($"Message UserId '{Request.UserId}' does not match command UserId '{UserId}'");
+                errors.Add(
+                    $"Message UserId '{Request.UserId}' does not match command UserId '{UserId}'"
+                );
             }
 
             if (Request.Content.Length > 100000) // 100KB limit
@@ -62,10 +69,8 @@ public class ProcessMessageCommand : OperationCommandBase<ChatMessage, string>
             }
         }
 
-        return errors.Count > 0
-            ? CommandValidationResult.Failed([.. errors])
-            : warnings.Count > 0
-            ? CommandValidationResult.WithWarnings([.. warnings])
+        return errors.Count > 0 ? CommandValidationResult.Failed([.. errors])
+            : warnings.Count > 0 ? CommandValidationResult.WithWarnings([.. warnings])
             : CommandValidationResult.Success();
     }
 
@@ -74,7 +79,8 @@ public class ProcessMessageCommand : OperationCommandBase<ChatMessage, string>
     /// </summary>
     protected override async Task<CommandExecutionResult<string>> ExecuteTypedInternalAsync(
         ICommandExecutionContext context,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var logger = context.Logger;
 
@@ -82,7 +88,9 @@ public class ProcessMessageCommand : OperationCommandBase<ChatMessage, string>
         {
             logger.LogInformation(
                 "Processing message command for operation {OperationId} in chat {ChatId}",
-                OperationId, ChatId);
+                OperationId,
+                ChatId
+            );
 
             // TODO: This will be replaced with actual background service integration
             // For now, we simulate the processing and return the operation ID
@@ -91,8 +99,11 @@ public class ProcessMessageCommand : OperationCommandBase<ChatMessage, string>
             if (string.IsNullOrWhiteSpace(Request.Id))
             {
                 Request.Id = Guid.NewGuid().ToString();
-                logger.LogDebug("Generated message ID {MessageId} for operation {OperationId}",
-                    Request.Id, OperationId);
+                logger.LogDebug(
+                    "Generated message ID {MessageId} for operation {OperationId}",
+                    Request.Id,
+                    OperationId
+                );
             }
 
             // Validate message content length and sanitize if needed
@@ -100,7 +111,9 @@ public class ProcessMessageCommand : OperationCommandBase<ChatMessage, string>
             {
                 logger.LogWarning(
                     "Message content length {Length} exceeds recommended limit for operation {OperationId}",
-                    Request.Content.Length, OperationId);
+                    Request.Content.Length,
+                    OperationId
+                );
             }
 
             // In the complete implementation, this would:
@@ -114,21 +127,24 @@ public class ProcessMessageCommand : OperationCommandBase<ChatMessage, string>
 
             logger.LogInformation(
                 "Message processing command completed for operation {OperationId}. Message ID: {MessageId}",
-                OperationId, Request.Id);
-
-            return CommandExecutionResult<string>.Success(
                 OperationId,
-                100); // Duration matches the simulated delay
+                Request.Id
+            );
+
+            return CommandExecutionResult<string>.Success(OperationId, 100); // Duration matches the simulated delay
         }
         catch (Exception ex)
         {
-            logger.LogError(ex,
+            logger.LogError(
+                ex,
                 "Failed to execute message processing command for operation {OperationId}",
-                OperationId);
+                OperationId
+            );
 
             return CommandExecutionResult<string>.Failed(
                 $"Message processing failed: {ex.Message}",
-                ex.ToString());
+                ex.ToString()
+            );
         }
     }
 
@@ -156,7 +172,9 @@ public class ProcessMessageCommand : OperationCommandBase<ChatMessage, string>
             {
                 try
                 {
-                    var messageMetadata = JsonSerializer.Deserialize<Dictionary<string, object>>(Request.Metadata);
+                    var messageMetadata = JsonSerializer.Deserialize<Dictionary<string, object>>(
+                        Request.Metadata
+                    );
                     metadata["MessageMetadata"] = messageMetadata ?? [];
                 }
                 catch
@@ -172,7 +190,10 @@ public class ProcessMessageCommand : OperationCommandBase<ChatMessage, string>
     /// <summary>
     /// Message processing commands support cancellation.
     /// </summary>
-    public override async Task<bool> UndoAsync(ICommandExecutionContext context, CancellationToken cancellationToken = default)
+    public override async Task<bool> UndoAsync(
+        ICommandExecutionContext context,
+        CancellationToken cancellationToken = default
+    )
     {
         var logger = context.Logger;
 
@@ -180,7 +201,8 @@ public class ProcessMessageCommand : OperationCommandBase<ChatMessage, string>
         {
             logger.LogInformation(
                 "Attempting to cancel message processing for operation {OperationId}",
-                OperationId);
+                OperationId
+            );
 
             // TODO: In complete implementation, this would:
             // 1. Cancel the background processing operation
@@ -193,15 +215,18 @@ public class ProcessMessageCommand : OperationCommandBase<ChatMessage, string>
 
             logger.LogInformation(
                 "Successfully cancelled message processing for operation {OperationId}",
-                OperationId);
+                OperationId
+            );
 
             return true;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex,
+            logger.LogError(
+                ex,
                 "Failed to cancel message processing for operation {OperationId}",
-                OperationId);
+                OperationId
+            );
 
             return false;
         }

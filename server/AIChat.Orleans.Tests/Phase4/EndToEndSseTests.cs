@@ -40,7 +40,7 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
             UserId = userId,
             Message = "Hello, this is my first message",
             SystemPrompt = "You are a helpful assistant",
-            ModeId = "default"
+            ModeId = "default",
         };
 
         var response1 = await client.PostAsJsonAsync("/api/chat/stream-sse", request1);
@@ -60,7 +60,7 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
             UserId = userId,
             Message = "This is my second message",
             SystemPrompt = "You are a helpful assistant",
-            ModeId = "default"
+            ModeId = "default",
         };
 
         var response2 = await client.PostAsJsonAsync("/api/chat/stream-sse", request2);
@@ -86,7 +86,9 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
         _ = state.Should().NotBeNull();
         _ = state.LastActivity.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(1));
 
-        _output.WriteLine($"Full chat flow completed with {events1.Count + events2.Count} total events");
+        _output.WriteLine(
+            $"Full chat flow completed with {events1.Count + events2.Count} total events"
+        );
         _output.WriteLine($"ChatId: {actualChatId}, Last activity: {state.LastActivity}");
     }
 
@@ -106,7 +108,7 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
         {
             CreateUserChat(user1, "User 1 asking about weather"),
             CreateUserChat(user2, "User 2 asking about sports"),
-            CreateUserChat(user3, "User 3 asking about technology")
+            CreateUserChat(user3, "User 3 asking about technology"),
         };
 
         var results = await Task.WhenAll(tasks);
@@ -154,7 +156,7 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
                 UserId = userId,
                 Message = messages[i],
                 SystemPrompt = "Echo back the message exactly",
-                ModeId = "default"
+                ModeId = "default",
             };
 
             var response = await client.PostAsJsonAsync("/api/chat/stream-sse", request);
@@ -198,7 +200,7 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
             UserId = "error-test-user",
             Message = "", // Empty message should trigger validation error
             SystemPrompt = "Test",
-            ModeId = "default"
+            ModeId = "default",
         };
 
         // Act
@@ -212,8 +214,8 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
 
             // Should contain error event
             var errorEvent = events.FirstOrDefault(e =>
-                e.EventType == "error" ||
-                (e.Envelope?.Metadata?.ContainsKey("error") ?? false));
+                e.EventType == "error" || (e.Envelope?.Metadata?.ContainsKey("error") ?? false)
+            );
 
             _ = errorEvent.Should().NotBeNull("Error should be propagated to client");
         }
@@ -246,16 +248,17 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
             UserId = userId,
             Message = "Test message for recovery",
             SystemPrompt = "You are a helpful assistant",
-            ModeId = "default"
+            ModeId = "default",
         };
 
         var responseTask = client.SendAsync(
             new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse")
             {
-                Content = JsonContent.Create(request)
+                Content = JsonContent.Create(request),
             },
             HttpCompletionOption.ResponseHeadersRead,
-            cts.Token);
+            cts.Token
+        );
 
         var response = await responseTask;
         _ = response.EnsureSuccessStatusCode();
@@ -271,10 +274,13 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
             UserId = userId,
             Message = "Continue after interruption",
             SystemPrompt = "You are a helpful assistant",
-            ModeId = "default"
+            ModeId = "default",
         };
 
-        var recoveryResponse = await client2.PostAsJsonAsync("/api/chat/stream-sse", recoveryRequest);
+        var recoveryResponse = await client2.PostAsJsonAsync(
+            "/api/chat/stream-sse",
+            recoveryRequest
+        );
 
         // Assert
         _ = recoveryResponse.EnsureSuccessStatusCode();
@@ -301,7 +307,7 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
             ("What's my name?", "should recall Alice"),
             ("I live in Seattle", "assistant should remember location"),
             ("Where do I live?", "should recall Seattle"),
-            ("Summarize what you know about me", "should recall both name and location")
+            ("Summarize what you know about me", "should recall both name and location"),
         };
 
         string? chatId = null;
@@ -316,7 +322,7 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
                 UserId = userId,
                 Message = message,
                 SystemPrompt = "You are a helpful assistant with perfect memory",
-                ModeId = "default"
+                ModeId = "default",
             };
 
             var response = await client.PostAsJsonAsync("/api/chat/stream-sse", request);
@@ -370,7 +376,7 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
                     UserId = userId,
                     Message = $"Chat {index + 1} message",
                     SystemPrompt = "You are a helpful assistant",
-                    ModeId = "default"
+                    ModeId = "default",
                 };
 
                 var response = await client.PostAsJsonAsync("/api/chat/stream-sse", request);
@@ -407,7 +413,10 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
         _output.WriteLine($"Chat IDs: {string.Join(", ", chatIds)}");
     }
 
-    private async Task<(string ChatId, string UserId, int EventCount)> CreateUserChat(string userId, string message)
+    private async Task<(string ChatId, string UserId, int EventCount)> CreateUserChat(
+        string userId,
+        string message
+    )
     {
         using var client = _fixture.CreateSseClient();
         var request = new CreateChatRequest
@@ -415,7 +424,7 @@ public class EndToEndSseTests : IClassFixture<OrleansTestFixture>
             UserId = userId,
             Message = message,
             SystemPrompt = "You are a helpful assistant",
-            ModeId = "default"
+            ModeId = "default",
         };
 
         var response = await client.PostAsJsonAsync("/api/chat/stream-sse", request);

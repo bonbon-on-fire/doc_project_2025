@@ -30,7 +30,7 @@ public class StreamingBridgeFactoryTests
             WriteTimeoutMs = 30000,
             BackpressureDelayMs = 100,
             EnableAdaptiveBackpressure = true,
-            EnableTelemetry = true
+            EnableTelemetry = true,
         };
 
         _configurationOptions = Options.Create(_defaultConfiguration);
@@ -105,24 +105,25 @@ public class StreamingBridgeFactoryTests
     public void CreateBridgeWithNullConfigureActionThrowsException()
     {
         // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() =>
-            _factory.CreateBridge(null!));
+        _ = Assert.Throws<ArgumentNullException>(() => _factory.CreateBridge(null!));
     }
 
     [Fact]
     public void ConstructorWithNullLoggerFactoryThrowsException()
     {
         // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() =>
-            new StreamingBridgeFactory(null!, _configurationOptions));
+        _ = Assert.Throws<ArgumentNullException>(
+            () => new StreamingBridgeFactory(null!, _configurationOptions)
+        );
     }
 
     [Fact]
     public void ConstructorWithNullConfigurationThrowsException()
     {
         // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() =>
-            new StreamingBridgeFactory(_loggerFactoryMock.Object, null!));
+        _ = Assert.Throws<ArgumentNullException>(
+            () => new StreamingBridgeFactory(_loggerFactoryMock.Object, null!)
+        );
     }
 
     [Fact]

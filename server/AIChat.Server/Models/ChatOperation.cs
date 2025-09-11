@@ -109,7 +109,7 @@ public enum OperationStatus
     /// <summary>
     /// Operation timed out.
     /// </summary>
-    TimedOut
+    TimedOut,
 }
 
 /// <summary>

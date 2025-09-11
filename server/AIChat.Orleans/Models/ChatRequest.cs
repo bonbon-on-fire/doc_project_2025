@@ -160,5 +160,5 @@ public enum StreamStatus
     /// <summary>
     /// Stream timed out.
     /// </summary>
-    TimedOut = 4
+    TimedOut = 4,
 }

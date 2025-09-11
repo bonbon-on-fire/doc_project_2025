@@ -26,12 +26,15 @@ public class DefaultChatServiceProxy : IChatServiceProxy
     /// <inheritdoc />
     public async IAsyncEnumerable<StreamChunk> ProcessChatStreamAsync(
         ChatRequest request,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default
+    )
     {
         _logger.LogWarning(
-            "Using default ChatServiceProxy implementation. This should be replaced with actual ChatService integration. " +
-            "ChatId: {ChatId}, UserId: {UserId}",
-            request.ChatId, request.UserId);
+            "Using default ChatServiceProxy implementation. This should be replaced with actual ChatService integration. "
+                + "ChatId: {ChatId}, UserId: {UserId}",
+            request.ChatId,
+            request.UserId
+        );
 
         var streamId = request.RequestId ?? Guid.NewGuid().ToString();
         var messageId = Guid.NewGuid().ToString();
@@ -46,7 +49,7 @@ public class DefaultChatServiceProxy : IChatServiceProxy
             Content = "I'm currently running in simulation mode. ",
             ChunkIndex = chunkIndex++,
             IsComplete = false,
-            Type = StreamChunkType.Text
+            Type = StreamChunkType.Text,
         };
 
         await Task.Delay(100, cancellationToken);
@@ -61,7 +64,7 @@ public class DefaultChatServiceProxy : IChatServiceProxy
             Content = responseText,
             ChunkIndex = chunkIndex++,
             IsComplete = false,
-            Type = StreamChunkType.Text
+            Type = StreamChunkType.Text,
         };
 
         await Task.Delay(100, cancellationToken);
@@ -77,7 +80,7 @@ public class DefaultChatServiceProxy : IChatServiceProxy
                 Content = $"(Mode: {request.ModeId}) ",
                 ChunkIndex = chunkIndex++,
                 IsComplete = false,
-                Type = StreamChunkType.Text
+                Type = StreamChunkType.Text,
             };
 
             await Task.Delay(100, cancellationToken);
@@ -92,7 +95,7 @@ public class DefaultChatServiceProxy : IChatServiceProxy
             Content = "This is a simulated response from the default ChatServiceProxy.",
             ChunkIndex = chunkIndex++,
             IsComplete = false,
-            Type = StreamChunkType.Text
+            Type = StreamChunkType.Text,
         };
 
         await Task.Delay(100, cancellationToken);
@@ -106,11 +109,13 @@ public class DefaultChatServiceProxy : IChatServiceProxy
             ChunkIndex = chunkIndex,
             IsComplete = true,
             TotalChunks = chunkIndex + 1,
-            Type = StreamChunkType.Complete
+            Type = StreamChunkType.Complete,
         };
 
         _logger.LogInformation(
             "Completed simulated chat stream for ChatId: {ChatId}. Total chunks: {ChunkCount}",
-            request.ChatId, chunkIndex + 1);
+            request.ChatId,
+            chunkIndex + 1
+        );
     }
 }

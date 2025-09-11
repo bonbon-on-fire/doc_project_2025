@@ -24,7 +24,8 @@ public interface IHttpStreamWriter : IAsyncDisposable
     Task WriteErrorAsync(
         Exception exception,
         string traceId,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Writes a keepalive ping to maintain the connection.

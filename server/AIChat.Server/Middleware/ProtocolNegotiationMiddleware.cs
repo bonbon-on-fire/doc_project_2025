@@ -15,7 +15,8 @@ public partial class ProtocolNegotiationMiddleware
     public ProtocolNegotiationMiddleware(
         RequestDelegate next,
         IFeatureManager featureManager,
-        ILogger<ProtocolNegotiationMiddleware> logger)
+        ILogger<ProtocolNegotiationMiddleware> logger
+    )
     {
         _next = next ?? throw new ArgumentNullException(nameof(next));
         _featureManager = featureManager ?? throw new ArgumentNullException(nameof(featureManager));
@@ -41,7 +42,8 @@ public partial class ProtocolNegotiationMiddleware
                 "Protocol negotiation completed. Selected: {Protocol} for path: {Path}, User-Agent: {UserAgent}",
                 selectedProtocol,
                 context.Request.Path,
-                context.Request.Headers.UserAgent.ToString());
+                context.Request.Headers.UserAgent.ToString()
+            );
         }
 
         await _next(context);
@@ -55,10 +57,10 @@ public partial class ProtocolNegotiationMiddleware
         var path = context.Request.Path.Value ?? "";
 
         // Negotiate for chat-related endpoints
-        return path.StartsWith("/api/chat", StringComparison.OrdinalIgnoreCase) ||
-               path.StartsWith("/api/messages", StringComparison.OrdinalIgnoreCase) ||
-               path.StartsWith("/chatHub", StringComparison.OrdinalIgnoreCase) ||
-               path.StartsWith("/api/chat-sse", StringComparison.OrdinalIgnoreCase);
+        return path.StartsWith("/api/chat", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("/api/messages", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("/chatHub", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("/api/chat-sse", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -78,7 +80,10 @@ public partial class ProtocolNegotiationMiddleware
         var userAgent = context.Request.Headers.UserAgent.ToString();
         if (IsLegacyBrowser(userAgent))
         {
-            _logger.LogDebug("Legacy browser detected, falling back to SSE. User-Agent: {UserAgent}", userAgent);
+            _logger.LogDebug(
+                "Legacy browser detected, falling back to SSE. User-Agent: {UserAgent}",
+                userAgent
+            );
             return "SSE";
         }
 
@@ -105,7 +110,11 @@ public partial class ProtocolNegotiationMiddleware
             var userPreference = await GetUserProtocolPreferenceAsync(userId);
             if (!string.IsNullOrEmpty(userPreference))
             {
-                _logger.LogDebug("Using user preference: {Protocol} for user: {UserId}", userPreference, userId);
+                _logger.LogDebug(
+                    "Using user preference: {Protocol} for user: {UserId}",
+                    userPreference,
+                    userId
+                );
                 return userPreference;
             }
         }
@@ -115,8 +124,10 @@ public partial class ProtocolNegotiationMiddleware
         var connectionHeader = context.Request.Headers.Connection.ToString();
 
         // If client explicitly requests WebSocket upgrade, prefer SignalR
-        if (upgradeHeader.Contains("websocket", StringComparison.OrdinalIgnoreCase) &&
-            connectionHeader.Contains("Upgrade", StringComparison.OrdinalIgnoreCase))
+        if (
+            upgradeHeader.Contains("websocket", StringComparison.OrdinalIgnoreCase)
+            && connectionHeader.Contains("Upgrade", StringComparison.OrdinalIgnoreCase)
+        )
         {
             _logger.LogDebug("WebSocket upgrade requested, using SignalR");
             return "SignalR";
@@ -181,6 +192,7 @@ public partial class ProtocolNegotiationMiddleware
 
     [System.Text.RegularExpressions.GeneratedRegex(@"Edge/(\d+)")]
     private static partial System.Text.RegularExpressions.Regex MyRegex();
+
     [System.Text.RegularExpressions.GeneratedRegex(@"Version/(\d+)")]
     private static partial System.Text.RegularExpressions.Regex MyRegex1();
 }

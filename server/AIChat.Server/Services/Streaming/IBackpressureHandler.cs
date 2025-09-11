@@ -21,7 +21,8 @@ public interface IBackpressureHandler
     /// <returns>The actual delay applied in milliseconds</returns>
     Task<int> ApplyBackpressureAsync(
         float utilization,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Calculates the appropriate delay based on utilization and configuration.

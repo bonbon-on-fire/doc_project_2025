@@ -31,7 +31,10 @@ public class TestUserMetrics
 
     public double AverageLatency => MessageLatencies.Count > 0 ? MessageLatencies.Average() : 0;
     public double MaxLatency => MessageLatencies.Count > 0 ? MessageLatencies.Max() : 0;
-    public double ConnectionSuccessRate => ConnectionAttempts > 0 ? (double)(ConnectionAttempts - ConnectionFailures) / ConnectionAttempts : 0;
+    public double ConnectionSuccessRate =>
+        ConnectionAttempts > 0
+            ? (double)(ConnectionAttempts - ConnectionFailures) / ConnectionAttempts
+            : 0;
 }
 
 /// <summary>
@@ -92,11 +95,13 @@ public class ScenarioResult
     public int TotalUsers { get; set; }
     public int SuccessfulConnections { get; set; }
     public int FailedConnections { get; set; }
-    public double ConnectionSuccessRate => TotalUsers > 0 ? (double)SuccessfulConnections / TotalUsers : 0;
+    public double ConnectionSuccessRate =>
+        TotalUsers > 0 ? (double)SuccessfulConnections / TotalUsers : 0;
 
     public int TotalMessages { get; set; }
     public int DeliveredMessages { get; set; }
-    public double MessageDeliveryRate => TotalMessages > 0 ? (double)DeliveredMessages / TotalMessages : 0;
+    public double MessageDeliveryRate =>
+        TotalMessages > 0 ? (double)DeliveredMessages / TotalMessages : 0;
 
     public LatencyStatistics LatencyStats { get; set; } = new();
     public ThroughputStatistics ThroughputStats { get; set; } = new();
@@ -178,11 +183,13 @@ public class LoadTestSummary
 
     public int TotalConnections { get; set; }
     public int SuccessfulConnections { get; set; }
-    public double OverallConnectionSuccessRate => TotalConnections > 0 ? (double)SuccessfulConnections / TotalConnections : 0;
+    public double OverallConnectionSuccessRate =>
+        TotalConnections > 0 ? (double)SuccessfulConnections / TotalConnections : 0;
 
     public int TotalMessages { get; set; }
     public int DeliveredMessages { get; set; }
-    public double OverallMessageDeliveryRate => TotalMessages > 0 ? (double)DeliveredMessages / TotalMessages : 0;
+    public double OverallMessageDeliveryRate =>
+        TotalMessages > 0 ? (double)DeliveredMessages / TotalMessages : 0;
 
     public double AverageLatencyMs { get; set; }
     public double P95LatencyMs { get; set; }

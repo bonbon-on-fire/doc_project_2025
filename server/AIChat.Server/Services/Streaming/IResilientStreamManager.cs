@@ -21,7 +21,8 @@ public interface IResilientStreamManager : IAsyncDisposable
         IAsyncEnumerable<T> grainStream,
         HttpResponse httpResponse,
         Func<T, string> formatter,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Attempts to recover a failed stream using buffered messages and partial recovery.
@@ -29,9 +30,7 @@ public interface IResilientStreamManager : IAsyncDisposable
     /// <param name="streamId">Unique identifier for the stream to recover</param>
     /// <param name="cancellationToken">Cancellation token for the operation</param>
     /// <returns>True if recovery was successful, false otherwise</returns>
-    Task<bool> RecoverStreamAsync(
-        string streamId,
-        CancellationToken cancellationToken = default);
+    Task<bool> RecoverStreamAsync(string streamId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets the current health status of the resilient streaming system.
@@ -243,7 +242,7 @@ public enum StreamState
     /// <summary>
     /// Stream was cancelled.
     /// </summary>
-    Cancelled
+    Cancelled,
 }
 
 /// <summary>
@@ -264,5 +263,5 @@ public enum CircuitState
     /// <summary>
     /// Circuit is half-open and testing recovery.
     /// </summary>
-    HalfOpen
+    HalfOpen,
 }

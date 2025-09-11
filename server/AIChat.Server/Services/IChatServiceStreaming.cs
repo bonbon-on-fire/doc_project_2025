@@ -129,7 +129,11 @@ public class StreamingContext
     /// Map tool call IDs to their corresponding message IDs and sequence numbers
     /// Thread-safe for concurrent access during streaming
     /// </summary>
-    public ConcurrentDictionary<string, (string MessageId, int SequenceNumber)> ToolCallToMessageMap { get; } = new();
+    public ConcurrentDictionary<
+        string,
+        (string MessageId, int SequenceNumber)
+    > ToolCallToMessageMap
+    { get; } = new();
 
     /// <summary>
     /// Map tool call IDs to function names for TaskManager detection

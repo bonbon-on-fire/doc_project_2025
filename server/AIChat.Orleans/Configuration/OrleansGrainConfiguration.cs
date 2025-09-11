@@ -105,7 +105,8 @@ public class UserGrainSettings
     /// Strategy for handling buffer overflow conditions.
     /// Default: DropOldest
     /// </summary>
-    public BufferOverflowStrategy BufferOverflowStrategy { get; set; } = BufferOverflowStrategy.DropOldest;
+    public BufferOverflowStrategy BufferOverflowStrategy { get; set; } =
+        BufferOverflowStrategy.DropOldest;
 
     /// <summary>
     /// Maximum delivery attempts per buffered message.

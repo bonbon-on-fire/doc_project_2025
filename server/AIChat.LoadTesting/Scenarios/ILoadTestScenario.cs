@@ -29,7 +29,10 @@ public interface ILoadTestScenario
     /// <param name="progress">Progress reporting callback</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Scenario result</returns>
-    Task<ScenarioResult> ExecuteAsync(IProgress<TestProgress>? progress = null, CancellationToken cancellationToken = default);
+    Task<ScenarioResult> ExecuteAsync(
+        IProgress<TestProgress>? progress = null,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Validates the scenario configuration
@@ -49,14 +52,18 @@ public abstract class LoadTestScenarioBase : ILoadTestScenario
     protected LoadTestScenarioBase(ILogger logger, IServiceProvider serviceProvider)
     {
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        ServiceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        ServiceProvider =
+            serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
     }
 
     public abstract string Name { get; }
     public abstract string Description { get; }
     public abstract bool IsEnabled { get; }
 
-    public abstract Task<ScenarioResult> ExecuteAsync(IProgress<TestProgress>? progress = null, CancellationToken cancellationToken = default);
+    public abstract Task<ScenarioResult> ExecuteAsync(
+        IProgress<TestProgress>? progress = null,
+        CancellationToken cancellationToken = default
+    );
 
     public virtual Task<List<string>> ValidateConfigurationAsync()
     {
@@ -81,7 +88,12 @@ public abstract class LoadTestScenarioBase : ILoadTestScenario
     /// <summary>
     /// Creates a new scenario result with basic information
     /// </summary>
-    protected ScenarioResult CreateResult(DateTime startTime, DateTime endTime, bool success = true, string failureReason = "")
+    protected ScenarioResult CreateResult(
+        DateTime startTime,
+        DateTime endTime,
+        bool success = true,
+        string failureReason = ""
+    )
     {
         return new ScenarioResult
         {
@@ -89,7 +101,7 @@ public abstract class LoadTestScenarioBase : ILoadTestScenario
             StartTime = startTime,
             EndTime = endTime,
             Success = success,
-            FailureReason = failureReason
+            FailureReason = failureReason,
         };
     }
 
@@ -115,7 +127,7 @@ public abstract class LoadTestScenarioBase : ILoadTestScenario
             P99Ms = GetPercentile(latencyList, 0.99),
             MaxMs = latencyList.Max(),
             MinMs = latencyList.Min(),
-            SampleCount = latencyList.Count
+            SampleCount = latencyList.Count,
         };
     }
 
@@ -167,7 +179,7 @@ public abstract class LoadTestScenarioBase : ILoadTestScenario
             "SignalR real-time communication verification.",
             "Background processing load testing in progress.",
             "Monitoring system resource usage during tests.",
-            "Validating 10,000 concurrent user capacity."
+            "Validating 10,000 concurrent user capacity.",
         };
 
         var random = new Random();
@@ -177,7 +189,11 @@ public abstract class LoadTestScenarioBase : ILoadTestScenario
     /// <summary>
     /// Creates a delay with some randomization to avoid thundering herd effects
     /// </summary>
-    protected async Task RandomDelayAsync(TimeSpan baseDelay, double variationPercent = 0.2, CancellationToken cancellationToken = default)
+    protected async Task RandomDelayAsync(
+        TimeSpan baseDelay,
+        double variationPercent = 0.2,
+        CancellationToken cancellationToken = default
+    )
     {
         var random = new Random();
         var variation = 1.0 + ((random.NextDouble() - 0.5) * 2 * variationPercent);
@@ -194,33 +210,39 @@ public abstract class LoadTestScenarioBase : ILoadTestScenario
         int maxConcurrency,
         IProgress<TestProgress>? progress = null,
         string operationName = "Operation",
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var taskList = taskFactories.ToList();
         var results = new T[taskList.Count];
         var semaphore = new SemaphoreSlim(maxConcurrency, maxConcurrency);
         var completed = 0;
 
-        var tasks = taskList.Select(async (taskFactory, index) =>
-        {
-            await semaphore.WaitAsync(cancellationToken);
-            try
+        var tasks = taskList.Select(
+            async (taskFactory, index) =>
             {
-                results[index] = await taskFactory();
-
-                var current = Interlocked.Increment(ref completed);
-                ReportProgress(progress, new TestProgress
+                await semaphore.WaitAsync(cancellationToken);
+                try
                 {
-                    CurrentScenario = Name,
-                    ProgressPercent = (double)current / taskList.Count * 100,
-                    LastUpdated = DateTime.UtcNow
-                });
+                    results[index] = await taskFactory();
+
+                    var current = Interlocked.Increment(ref completed);
+                    ReportProgress(
+                        progress,
+                        new TestProgress
+                        {
+                            CurrentScenario = Name,
+                            ProgressPercent = (double)current / taskList.Count * 100,
+                            LastUpdated = DateTime.UtcNow,
+                        }
+                    );
+                }
+                finally
+                {
+                    _ = semaphore.Release();
+                }
             }
-            finally
-            {
-                _ = semaphore.Release();
-            }
-        });
+        );
 
         await Task.WhenAll(tasks);
         semaphore.Dispose();

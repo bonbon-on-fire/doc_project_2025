@@ -34,18 +34,19 @@ public class TestWebApplicationManager : IDisposable
     /// </summary>
     public void Initialize(IClusterClient? orleansClient = null)
     {
-        _factory = new WebApplicationFactory<Program>()
-            .WithWebHostBuilder(builder =>
+        _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            _ = builder.ConfigureTestServices(services =>
             {
-                _ = builder.ConfigureTestServices(services =>
-                {
-                    ConfigureOrleansServices(services, orleansClient);
-                    ConfigureStreamingServices(services);
-                    ConfigureFeatureManagement(services);
-                });
-
-                _ = builder.ConfigureAppConfiguration((context, config) => ConfigureTestSettings(config));
+                ConfigureOrleansServices(services, orleansClient);
+                ConfigureStreamingServices(services);
+                ConfigureFeatureManagement(services);
             });
+
+            _ = builder.ConfigureAppConfiguration(
+                (context, config) => ConfigureTestSettings(config)
+            );
+        });
     }
 
     /// <summary>
@@ -53,10 +54,9 @@ public class TestWebApplicationManager : IDisposable
     /// </summary>
     public HttpClient CreateSseClient()
     {
-        var client = Factory.CreateClient(new WebApplicationFactoryClientOptions
-        {
-            AllowAutoRedirect = false
-        });
+        var client = Factory.CreateClient(
+            new WebApplicationFactoryClientOptions { AllowAutoRedirect = false }
+        );
 
         // Set SSE headers
         client.DefaultRequestHeaders.Add("Accept", "text/event-stream");
@@ -70,13 +70,15 @@ public class TestWebApplicationManager : IDisposable
     /// </summary>
     public HttpClient CreateStandardClient()
     {
-        return Factory.CreateClient(new WebApplicationFactoryClientOptions
-        {
-            AllowAutoRedirect = false
-        });
+        return Factory.CreateClient(
+            new WebApplicationFactoryClientOptions { AllowAutoRedirect = false }
+        );
     }
 
-    private void ConfigureOrleansServices(IServiceCollection services, IClusterClient? orleansClient)
+    private void ConfigureOrleansServices(
+        IServiceCollection services,
+        IClusterClient? orleansClient
+    )
     {
         // Remove existing Orleans client if any
         var existingClient = services.FirstOrDefault(d => d.ServiceType == typeof(IClusterClient));
@@ -111,9 +113,15 @@ public class TestWebApplicationManager : IDisposable
             options.Enabled = _configuration.ResilientStreamingEnabled;
             options.MaxRetryAttempts = _configuration.ResilientConfig.MaxRetryAttempts;
             options.RetryDelayMs = _configuration.ResilientConfig.RetryDelayMs;
-            options.CircuitBreakerThreshold = _configuration.ResilientConfig.CircuitBreakerThreshold;
-            options.CircuitBreakerResetTimeoutMs = _configuration.ResilientConfig.CircuitBreakerResetTimeoutMs;
-            options.PartialMessageBufferSize = _configuration.ResilientConfig.PartialMessageBufferSize;
+            options.CircuitBreakerThreshold = _configuration
+                .ResilientConfig
+                .CircuitBreakerThreshold;
+            options.CircuitBreakerResetTimeoutMs = _configuration
+                .ResilientConfig
+                .CircuitBreakerResetTimeoutMs;
+            options.PartialMessageBufferSize = _configuration
+                .ResilientConfig
+                .PartialMessageBufferSize;
             options.MessageTimeoutMs = _configuration.ResilientConfig.MessageTimeoutMs;
             options.HealthCheckIntervalMs = _configuration.ResilientConfig.HealthCheckIntervalMs;
         });
@@ -143,13 +151,16 @@ public class TestWebApplicationManager : IDisposable
 
     private void ConfigureTestSettings(IConfigurationBuilder config)
     {
-        _ = config.AddInMemoryCollection(new Dictionary<string, string?>
-        {
-            ["Orleans:Enabled"] = _configuration.OrleansEnabled.ToString(),
-            ["Features:ResilientStreaming"] = _configuration.ResilientStreamingEnabled.ToString(),
-            ["Logging:LogLevel:Default"] = _configuration.LogLevel,
-            ["Logging:LogLevel:AIChat"] = "Debug"
-        });
+        _ = config.AddInMemoryCollection(
+            new Dictionary<string, string?>
+            {
+                ["Orleans:Enabled"] = _configuration.OrleansEnabled.ToString(),
+                ["Features:ResilientStreaming"] =
+                    _configuration.ResilientStreamingEnabled.ToString(),
+                ["Logging:LogLevel:Default"] = _configuration.LogLevel,
+                ["Logging:LogLevel:AIChat"] = "Debug",
+            }
+        );
     }
 
     public void Dispose()

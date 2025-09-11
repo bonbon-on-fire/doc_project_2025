@@ -30,7 +30,11 @@ public static class OrleansActivitySource
     /// <param name="methodName">The method being called</param>
     /// <param name="grainId">The grain identifier (optional)</param>
     /// <returns>The created activity, or null if tracing is disabled</returns>
-    public static Activity? StartGrainActivity(string grainType, string methodName, string? grainId = null)
+    public static Activity? StartGrainActivity(
+        string grainType,
+        string methodName,
+        string? grainId = null
+    )
     {
         var activityName = $"{grainType}.{methodName}";
         var activity = Source.StartActivity(activityName);
@@ -60,7 +64,11 @@ public static class OrleansActivitySource
     /// <param name="operationName">The operation being performed</param>
     /// <param name="operationId">The operation identifier (optional)</param>
     /// <returns>The created activity, or null if tracing is disabled</returns>
-    public static Activity? StartBackgroundActivity(string serviceName, string operationName, string? operationId = null)
+    public static Activity? StartBackgroundActivity(
+        string serviceName,
+        string operationName,
+        string? operationId = null
+    )
     {
         var activityName = $"{serviceName}.{operationName}";
         var activity = Source.StartActivity(activityName);
@@ -107,7 +115,10 @@ public static class OrleansActivitySource
     /// </summary>
     /// <param name="activity">The activity to complete</param>
     /// <param name="additionalTags">Optional additional tags to set</param>
-    public static void SetSuccess(Activity? activity, Dictionary<string, object>? additionalTags = null)
+    public static void SetSuccess(
+        Activity? activity,
+        Dictionary<string, object>? additionalTags = null
+    )
     {
         if (activity == null)
         {

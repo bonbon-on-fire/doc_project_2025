@@ -162,5 +162,5 @@ public enum ResilienceState
     /// <summary>
     /// Operation failed.
     /// </summary>
-    Failed
+    Failed,
 }

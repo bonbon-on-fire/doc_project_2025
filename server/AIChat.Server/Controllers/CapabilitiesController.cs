@@ -1,7 +1,6 @@
+using System.Reflection;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.FeatureManagement;
-using Orleans;
-using System.Reflection;
 
 namespace AIChat.Server.Controllers;
 
@@ -23,7 +22,8 @@ public class CapabilitiesController : ControllerBase
         IFeatureManager featureManager,
         IHostEnvironment environment,
         IConfiguration configuration,
-        IGrainFactory? grainFactory = null)
+        IGrainFactory? grainFactory = null
+    )
     {
         _logger = logger;
         _featureManager = featureManager;
@@ -42,17 +42,11 @@ public class CapabilitiesController : ControllerBase
         {
             Version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0",
             Environment = _environment.EnvironmentName,
-            Timestamp = DateTime.UtcNow
+            Timestamp = DateTime.UtcNow,
+            Orleans = await GetOrleansCapabilities(),
+            Features = await GetEnabledFeatures(),
+            StreamingProtocols = GetStreamingProtocols(),
         };
-
-        // Check Orleans availability
-        capabilities.Orleans = await GetOrleansCapabilities();
-
-        // Check feature flags
-        capabilities.Features = await GetEnabledFeatures();
-
-        // Check streaming protocols
-        capabilities.StreamingProtocols = GetStreamingProtocols();
 
         return Ok(capabilities);
     }
@@ -64,7 +58,7 @@ public class CapabilitiesController : ControllerBase
             Enabled = false,
             CoHosted = false,
             Available = false,
-            RoutingEnabled = false
+            RoutingEnabled = false,
         };
 
         // Check if Orleans feature is enabled
@@ -82,8 +76,8 @@ public class CapabilitiesController : ControllerBase
             orleansCapabilities.Available = true;
 
             // In Development/Test, Orleans is co-hosted
-            orleansCapabilities.CoHosted = _environment.IsDevelopment() || 
-                                          _environment.EnvironmentName == "Test";
+            orleansCapabilities.CoHosted =
+                _environment.IsDevelopment() || _environment.EnvironmentName == "Test";
 
             // Try to check cluster health
             try
@@ -91,7 +85,6 @@ public class CapabilitiesController : ControllerBase
                 var managementGrain = _grainFactory.GetGrain<IManagementGrain>(0);
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
                 var hosts = await managementGrain.GetHosts();
-                
                 orleansCapabilities.ClusterSize = hosts?.Count ?? 0;
                 orleansCapabilities.Healthy = orleansCapabilities.ClusterSize > 0;
                 orleansCapabilities.RoutingEnabled = orleansCapabilities.Healthy;
@@ -110,14 +103,14 @@ public class CapabilitiesController : ControllerBase
     private async Task<Dictionary<string, bool>> GetEnabledFeatures()
     {
         var features = new Dictionary<string, bool>();
-        
+
         // Check key features
-        var featureNames = new[] 
-        { 
+        var featureNames = new[]
+        {
             "OrleansIntegration",
             "BackgroundProcessing",
             "StreamingEnhancements",
-            "ResilientStreaming"
+            "ResilientStreaming",
         };
 
         foreach (var feature in featureNames)
@@ -151,8 +144,8 @@ public class ServerCapabilities
     public string Environment { get; set; } = string.Empty;
     public DateTime Timestamp { get; set; }
     public OrleansCapabilities Orleans { get; set; } = new();
-    public Dictionary<string, bool> Features { get; set; } = new();
-    public List<string> StreamingProtocols { get; set; } = new();
+    public Dictionary<string, bool> Features { get; set; } = [];
+    public List<string> StreamingProtocols { get; set; } = [];
 }
 
 /// <summary>

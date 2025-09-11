@@ -32,10 +32,12 @@ public sealed class StreamingBridge : IStreamingBridge
     /// <param name="configuration">Streaming configuration settings</param>
     public StreamingBridge(
         ILogger<StreamingBridge> logger,
-        IOptions<StreamingConfiguration> configuration)
+        IOptions<StreamingConfiguration> configuration
+    )
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _configuration = configuration?.Value ?? throw new ArgumentNullException(nameof(configuration));
+        _configuration =
+            configuration?.Value ?? throw new ArgumentNullException(nameof(configuration));
 
         // Validate configuration
         if (!_configuration.Validate(out var errors))
@@ -50,7 +52,7 @@ public sealed class StreamingBridge : IStreamingBridge
         {
             FullMode = BoundedChannelFullMode.Wait,
             SingleWriter = false,
-            SingleReader = false
+            SingleReader = false,
         };
         _buffer = Channel.CreateBounded<StreamItem>(channelOptions);
 
@@ -60,7 +62,8 @@ public sealed class StreamingBridge : IStreamingBridge
         _logger.LogInformation(
             "StreamingBridge initialized with buffer size: {BufferSize}, backpressure threshold: {Threshold}%",
             _configuration.BufferSize,
-            _configuration.BackpressureThreshold);
+            _configuration.BackpressureThreshold
+        );
     }
 
     /// <inheritdoc />
@@ -68,7 +71,8 @@ public sealed class StreamingBridge : IStreamingBridge
         IAsyncEnumerable<T> grainStream,
         HttpResponse httpResponse,
         Func<T, string> formatter,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         ArgumentNullException.ThrowIfNull(grainStream);
         ArgumentNullException.ThrowIfNull(httpResponse);
@@ -76,20 +80,16 @@ public sealed class StreamingBridge : IStreamingBridge
 
         var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken,
-            httpResponse.HttpContext.RequestAborted);
+            httpResponse.HttpContext.RequestAborted
+        );
 
         try
         {
             // Start consumer task
-            var consumerTask = ConsumeAndWriteToHttpAsync(
-                httpResponse,
-                linkedCts.Token);
+            var consumerTask = ConsumeAndWriteToHttpAsync(httpResponse, linkedCts.Token);
 
             // Start producer task
-            var producerTask = ProduceFromGrainAsync(
-                grainStream,
-                formatter,
-                linkedCts.Token);
+            var producerTask = ProduceFromGrainAsync(grainStream, formatter, linkedCts.Token);
 
             // Wait for both tasks to complete
             await Task.WhenAll(producerTask, consumerTask);
@@ -114,7 +114,8 @@ public sealed class StreamingBridge : IStreamingBridge
     /// <inheritdoc />
     public async Task<bool> HandleBackpressureAsync(
         float bufferUtilization,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         if (bufferUtilization < _configuration.BackpressureThreshold)
         {
@@ -128,15 +129,17 @@ public sealed class StreamingBridge : IStreamingBridge
         if (_configuration.EnableAdaptiveBackpressure)
         {
             // Adaptive delay based on utilization
-            var utilizationFactor = (bufferUtilization - _configuration.BackpressureThreshold) /
-                                   (100 - _configuration.BackpressureThreshold);
+            var utilizationFactor =
+                (bufferUtilization - _configuration.BackpressureThreshold)
+                / (100 - _configuration.BackpressureThreshold);
             delay = (int)(delay * (1 + (utilizationFactor * 2))); // Up to 3x delay at 100% utilization
         }
 
         _logger.LogWarning(
             "Backpressure triggered. Buffer utilization: {Utilization}%, applying delay: {Delay}ms",
             bufferUtilization,
-            delay);
+            delay
+        );
 
         try
         {
@@ -153,7 +156,8 @@ public sealed class StreamingBridge : IStreamingBridge
     public async Task PropagateErrorAsync(
         Exception exception,
         HttpResponse httpResponse,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         ArgumentNullException.ThrowIfNull(exception);
         ArgumentNullException.ThrowIfNull(httpResponse);
@@ -163,7 +167,8 @@ public sealed class StreamingBridge : IStreamingBridge
             null,
             null,
             exception.Message,
-            exception.GetType().Name);
+            exception.GetType().Name
+        );
 
         var errorData = $"data: {System.Text.Json.JsonSerializer.Serialize(errorEnvelope)}\n\n";
         var errorBytes = Encoding.UTF8.GetBytes(errorData);
@@ -191,9 +196,8 @@ public sealed class StreamingBridge : IStreamingBridge
         {
             var currentSize = _buffer.Reader.Count;
             var utilization = (float)currentSize / _configuration.BufferSize * 100;
-            var avgProcessingTime = _itemsProcessed > 0
-                ? (double)_totalProcessingTimeMs / _itemsProcessed
-                : 0;
+            var avgProcessingTime =
+                _itemsProcessed > 0 ? (double)_totalProcessingTimeMs / _itemsProcessed : 0;
 
             return new BufferStatistics
             {
@@ -202,7 +206,7 @@ public sealed class StreamingBridge : IStreamingBridge
                 UtilizationPercentage = utilization,
                 ItemsProcessed = _itemsProcessed,
                 BackpressureEvents = _backpressureEvents,
-                AverageProcessingTimeMs = avgProcessingTime
+                AverageProcessingTimeMs = avgProcessingTime,
             };
         }
     }
@@ -228,7 +232,8 @@ public sealed class StreamingBridge : IStreamingBridge
                 "StreamingBridge disposed. Final stats - Items: {Items}, Backpressure events: {Backpressure}, Avg time: {AvgTime}ms",
                 stats.ItemsProcessed,
                 stats.BackpressureEvents,
-                stats.AverageProcessingTimeMs);
+                stats.AverageProcessingTimeMs
+            );
         }
         catch (Exception ex)
         {
@@ -241,7 +246,8 @@ public sealed class StreamingBridge : IStreamingBridge
     private async Task ProduceFromGrainAsync<T>(
         IAsyncEnumerable<T> grainStream,
         Func<T, string> formatter,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         try
         {
@@ -251,14 +257,17 @@ public sealed class StreamingBridge : IStreamingBridge
                 var streamItem = new StreamItem
                 {
                     Data = formattedData,
-                    Timestamp = DateTime.UtcNow
+                    Timestamp = DateTime.UtcNow,
                 };
 
                 // Check buffer utilization
                 var stats = GetBufferStatistics();
                 if (stats.UtilizationPercentage >= _configuration.BackpressureThreshold)
                 {
-                    _ = await HandleBackpressureAsync(stats.UtilizationPercentage, cancellationToken);
+                    _ = await HandleBackpressureAsync(
+                        stats.UtilizationPercentage,
+                        cancellationToken
+                    );
                 }
 
                 // Try to write to buffer
@@ -270,7 +279,10 @@ public sealed class StreamingBridge : IStreamingBridge
 
                 if (_configuration.EnableTelemetry)
                 {
-                    _logger.LogDebug("Produced item to buffer. Current size: {Size}", stats.CurrentSize + 1);
+                    _logger.LogDebug(
+                        "Produced item to buffer. Current size: {Size}",
+                        stats.CurrentSize + 1
+                    );
                 }
             }
         }
@@ -283,7 +295,8 @@ public sealed class StreamingBridge : IStreamingBridge
 
     private async Task ConsumeAndWriteToHttpAsync(
         HttpResponse httpResponse,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var lastFlush = DateTime.UtcNow;
         var flushInterval = TimeSpan.FromMilliseconds(_configuration.FlushIntervalMs);
@@ -303,7 +316,9 @@ public sealed class StreamingBridge : IStreamingBridge
                 {
                     using var cts = new CancellationTokenSource(_configuration.WriteTimeoutMs);
                     using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
-                        cancellationToken, cts.Token);
+                        cancellationToken,
+                        cts.Token
+                    );
 
                     await httpResponse.Body.WriteAsync(bytes, linkedCts.Token);
 
@@ -331,7 +346,8 @@ public sealed class StreamingBridge : IStreamingBridge
                 {
                     _logger.LogWarning(
                         "Chunk processing exceeded 10ms threshold: {Time}ms",
-                        processingTime);
+                        processingTime
+                    );
                 }
             }
 

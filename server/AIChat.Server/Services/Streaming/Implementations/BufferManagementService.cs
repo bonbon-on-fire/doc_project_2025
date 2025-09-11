@@ -36,13 +36,16 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
         IConnectionStateTracker connectionTracker,
         IBufferReplayService replayService,
         IPersistentBufferStore persistentStore,
-        IOptions<BufferManagementOptions> options)
+        IOptions<BufferManagementOptions> options
+    )
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
-        _connectionTracker = connectionTracker ?? throw new ArgumentNullException(nameof(connectionTracker));
+        _connectionTracker =
+            connectionTracker ?? throw new ArgumentNullException(nameof(connectionTracker));
         _replayService = replayService ?? throw new ArgumentNullException(nameof(replayService));
-        _persistentStore = persistentStore ?? throw new ArgumentNullException(nameof(persistentStore));
+        _persistentStore =
+            persistentStore ?? throw new ArgumentNullException(nameof(persistentStore));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
 
         _buffers = new ConcurrentDictionary<string, IStreamBuffer>();
@@ -58,12 +61,15 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
         // Recover from persistence if enabled
         if (_options.EnablePersistence)
         {
-            var recoveryResult = await RecoverFromPersistenceAsync(cancellationToken).ConfigureAwait(false);
+            var recoveryResult = await RecoverFromPersistenceAsync(cancellationToken)
+                .ConfigureAwait(false);
             if (recoveryResult.Success)
             {
                 _logger.LogInformation(
                     "Recovered {BufferCount} buffers with {MessageCount} total messages",
-                    recoveryResult.BuffersRecovered, recoveryResult.TotalMessagesRecovered);
+                    recoveryResult.BuffersRecovered,
+                    recoveryResult.TotalMessagesRecovered
+                );
             }
         }
 
@@ -74,7 +80,8 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
                 async _ => await PerformCleanupAsync(CancellationToken.None).ConfigureAwait(false),
                 null,
                 TimeSpan.FromMinutes(1),
-                _options.CleanupInterval);
+                _options.CleanupInterval
+            );
         }
 
         _logger.LogInformation("Buffer management service started successfully");
@@ -105,7 +112,8 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
     public async Task<IStreamBuffer> GetOrCreateBufferAsync(
         string streamId,
         BufferConfiguration? configuration = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
 
@@ -128,7 +136,9 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
             _logger.LogInformation("Created new buffer for stream {StreamId}", streamId);
 
             // Initialize connection tracking
-            await _connectionTracker.RecordConnectionAsync(streamId, cancellationToken).ConfigureAwait(false);
+            await _connectionTracker
+                .RecordConnectionAsync(streamId, cancellationToken)
+                .ConfigureAwait(false);
 
             return newBuffer;
         }
@@ -141,18 +151,22 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
     public async Task<bool> BufferMessageAsync(
         string streamId,
         BufferedStreamMessage message,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
         ArgumentNullException.ThrowIfNull(message);
 
-        var buffer = await GetOrCreateBufferAsync(streamId, null, cancellationToken).ConfigureAwait(false);
+        var buffer = await GetOrCreateBufferAsync(streamId, null, cancellationToken)
+            .ConfigureAwait(false);
         var result = await buffer.AddMessageAsync(message, cancellationToken).ConfigureAwait(false);
 
         if (result)
         {
             // Update connection state by recording a new connection
-            await _connectionTracker.RecordConnectionAsync(streamId, cancellationToken).ConfigureAwait(false);
+            await _connectionTracker
+                .RecordConnectionAsync(streamId, cancellationToken)
+                .ConfigureAwait(false);
         }
 
         return result;
@@ -162,14 +176,17 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
     public async Task<DisconnectionResult> HandleDisconnectionAsync(
         string streamId,
         string? reason = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
 
         try
         {
             // Update connection state
-            await _connectionTracker.RecordDisconnectionAsync(streamId, reason, cancellationToken).ConfigureAwait(false);
+            await _connectionTracker
+                .RecordDisconnectionAsync(streamId, reason, cancellationToken)
+                .ConfigureAwait(false);
 
             // Get buffer
             if (!_buffers.TryGetValue(streamId, out var buffer))
@@ -180,7 +197,7 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
                     MessagesBuffered = 0,
                     BufferPersisted = false,
                     ConnectionStatus = ConnectionStatus.Unknown,
-                    ErrorMessage = "Buffer not found"
+                    ErrorMessage = "Buffer not found",
                 };
             }
 
@@ -192,24 +209,32 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
             var bufferPersisted = false;
             if (_options.EnablePersistence && messagesBuffered > 0)
             {
-                var messages = await buffer.GetMessagesAsync(cancellationToken).ConfigureAwait(false);
-                bufferPersisted = await _persistentStore.PersistBufferAsync(
-                    streamId, messages, null, cancellationToken).ConfigureAwait(false);
+                var messages = await buffer
+                    .GetMessagesAsync(cancellationToken)
+                    .ConfigureAwait(false);
+                bufferPersisted = await _persistentStore
+                    .PersistBufferAsync(streamId, messages, null, cancellationToken)
+                    .ConfigureAwait(false);
             }
 
             // Get connection status
-            var connectionState = await _connectionTracker.GetConnectionStateAsync(streamId).ConfigureAwait(false);
+            var connectionState = await _connectionTracker
+                .GetConnectionStateAsync(streamId)
+                .ConfigureAwait(false);
 
             _logger.LogInformation(
                 "Handled disconnection for stream {StreamId}. Messages buffered: {MessageCount}, Persisted: {Persisted}",
-                streamId, messagesBuffered, bufferPersisted);
+                streamId,
+                messagesBuffered,
+                bufferPersisted
+            );
 
             return new DisconnectionResult
             {
                 Success = true,
                 MessagesBuffered = messagesBuffered,
                 BufferPersisted = bufferPersisted,
-                ConnectionStatus = connectionState?.Status ?? ConnectionStatus.Disconnected
+                ConnectionStatus = connectionState?.Status ?? ConnectionStatus.Disconnected,
             };
         }
         catch (Exception ex)
@@ -221,7 +246,7 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
                 MessagesBuffered = 0,
                 BufferPersisted = false,
                 ConnectionStatus = ConnectionStatus.Unknown,
-                ErrorMessage = ex.Message
+                ErrorMessage = ex.Message,
             };
         }
     }
@@ -231,7 +256,8 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
         string streamId,
         HttpResponse httpResponse,
         ReconnectionOptions? options = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
         ArgumentNullException.ThrowIfNull(httpResponse);
@@ -241,7 +267,9 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
         try
         {
             // Update connection state
-            await _connectionTracker.RecordReconnectionAttemptAsync(streamId, true, cancellationToken).ConfigureAwait(false);
+            await _connectionTracker
+                .RecordReconnectionAttemptAsync(streamId, true, cancellationToken)
+                .ConfigureAwait(false);
 
             var messagesReplayed = 0;
             var messagesFromPersistence = 0;
@@ -251,16 +279,21 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
             // Load from persistence if enabled
             if (options.LoadFromPersistence && _options.EnablePersistence)
             {
-                var persistedBuffer = await _persistentStore.LoadBufferAsync(streamId, cancellationToken).ConfigureAwait(false);
+                var persistedBuffer = await _persistentStore
+                    .LoadBufferAsync(streamId, cancellationToken)
+                    .ConfigureAwait(false);
                 if (persistedBuffer != null && !persistedBuffer.IsCorrupted)
                 {
                     messagesFromPersistence = persistedBuffer.Messages.Count;
 
                     // Add messages back to buffer
-                    var buffer = await GetOrCreateBufferAsync(streamId, null, cancellationToken).ConfigureAwait(false);
+                    var buffer = await GetOrCreateBufferAsync(streamId, null, cancellationToken)
+                        .ConfigureAwait(false);
                     foreach (var message in persistedBuffer.Messages)
                     {
-                        _ = await buffer.AddMessageAsync(message, cancellationToken).ConfigureAwait(false);
+                        _ = await buffer
+                            .AddMessageAsync(message, cancellationToken)
+                            .ConfigureAwait(false);
                     }
                 }
             }
@@ -268,20 +301,30 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
             // Replay buffered messages if requested
             if (options.ReplayBufferedMessages)
             {
-                var buffer = await GetOrCreateBufferAsync(streamId, null, cancellationToken).ConfigureAwait(false);
+                var buffer = await GetOrCreateBufferAsync(streamId, null, cancellationToken)
+                    .ConfigureAwait(false);
                 var stats = await buffer.GetStatisticsAsync().ConfigureAwait(false);
 
                 if (stats.MessageCount > 0)
                 {
-                    var messages = await buffer.GetMessagesAsync(cancellationToken).ConfigureAwait(false);
+                    var messages = await buffer
+                        .GetMessagesAsync(cancellationToken)
+                        .ConfigureAwait(false);
 
                     // Filter by age if specified
                     var cutoffTime = DateTime.UtcNow - options.MaxMessageAge;
                     var validMessages = messages.Where(m => m.Timestamp >= cutoffTime).ToList();
 
                     // Replay messages
-                    replayResult = await _replayService.ReplayMessagesAsync(
-                        streamId, validMessages, httpResponse, options.ReplayOptions, cancellationToken).ConfigureAwait(false);
+                    replayResult = await _replayService
+                        .ReplayMessagesAsync(
+                            streamId,
+                            validMessages,
+                            httpResponse,
+                            options.ReplayOptions,
+                            cancellationToken
+                        )
+                        .ConfigureAwait(false);
 
                     messagesReplayed = replayResult.MessagesReplayed;
                     duplicatesAvoided = replayResult.DuplicatesSkipped;
@@ -294,11 +337,17 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
             }
 
             // Get connection status
-            var connectionState = await _connectionTracker.GetConnectionStateAsync(streamId).ConfigureAwait(false);
+            var connectionState = await _connectionTracker
+                .GetConnectionStateAsync(streamId)
+                .ConfigureAwait(false);
 
             _logger.LogInformation(
                 "Handled reconnection for stream {StreamId}. Replayed: {Replayed}, From persistence: {FromPersistence}, Duplicates avoided: {Duplicates}",
-                streamId, messagesReplayed, messagesFromPersistence, duplicatesAvoided);
+                streamId,
+                messagesReplayed,
+                messagesFromPersistence,
+                duplicatesAvoided
+            );
 
             return new ReconnectionResult
             {
@@ -307,7 +356,7 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
                 MessagesFromPersistence = messagesFromPersistence,
                 DuplicatesAvoided = duplicatesAvoided,
                 ConnectionStatus = connectionState?.Status ?? ConnectionStatus.Connected,
-                ReplayResult = replayResult
+                ReplayResult = replayResult,
             };
         }
         catch (Exception ex)
@@ -320,7 +369,7 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
                 MessagesFromPersistence = 0,
                 DuplicatesAvoided = 0,
                 ConnectionStatus = ConnectionStatus.Unknown,
-                ErrorMessage = ex.Message
+                ErrorMessage = ex.Message,
             };
         }
     }
@@ -336,14 +385,19 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
         }
 
         var stats = await buffer.GetStatisticsAsync().ConfigureAwait(false);
-        var connectionState = await _connectionTracker.GetConnectionStateAsync(streamId).ConfigureAwait(false);
-        var configuration = _configurations.GetValueOrDefault(streamId) ?? GetDefaultConfiguration();
+        var connectionState = await _connectionTracker
+            .GetConnectionStateAsync(streamId)
+            .ConfigureAwait(false);
+        var configuration =
+            _configurations.GetValueOrDefault(streamId) ?? GetDefaultConfiguration();
 
         // Check if persisted
         var isPersisted = false;
         if (_options.EnablePersistence)
         {
-            var metadata = await _persistentStore.GetBufferMetadataAsync(streamId).ConfigureAwait(false);
+            var metadata = await _persistentStore
+                .GetBufferMetadataAsync(streamId)
+                .ConfigureAwait(false);
             isPersisted = metadata != null;
         }
 
@@ -357,12 +411,15 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
             ConnectionState = connectionState,
             Statistics = stats,
             IsPersisted = isPersisted,
-            LastActivityAt = connectionState?.LastActivityAt
+            LastActivityAt = connectionState?.LastActivityAt,
         };
     }
 
     /// <inheritdoc/>
-    public async Task<int> ClearBufferAsync(string streamId, CancellationToken cancellationToken = default)
+    public async Task<int> ClearBufferAsync(
+        string streamId,
+        CancellationToken cancellationToken = default
+    )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
 
@@ -379,10 +436,16 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
         // Also clear from persistence if enabled
         if (_options.EnablePersistence)
         {
-            _ = await _persistentStore.DeleteBufferAsync(streamId, cancellationToken).ConfigureAwait(false);
+            _ = await _persistentStore
+                .DeleteBufferAsync(streamId, cancellationToken)
+                .ConfigureAwait(false);
         }
 
-        _logger.LogInformation("Cleared {MessageCount} messages from buffer for stream {StreamId}", messageCount, streamId);
+        _logger.LogInformation(
+            "Cleared {MessageCount} messages from buffer for stream {StreamId}",
+            messageCount,
+            streamId
+        );
         return messageCount;
     }
 
@@ -391,7 +454,8 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
         string streamId,
         HttpResponse httpResponse,
         ReplayOptions? options = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
         ArgumentNullException.ThrowIfNull(httpResponse);
@@ -407,7 +471,7 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
                 PartialMessagesMerged = 0,
                 BytesReplayed = 0,
                 Duration = TimeSpan.Zero,
-                ErrorMessage = "Buffer not found"
+                ErrorMessage = "Buffer not found",
             };
         }
 
@@ -422,13 +486,14 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
                 MessagesFailed = 0,
                 PartialMessagesMerged = 0,
                 BytesReplayed = 0,
-                Duration = TimeSpan.Zero
+                Duration = TimeSpan.Zero,
             };
         }
 
         var messages = await buffer.GetMessagesAsync(cancellationToken).ConfigureAwait(false);
-        var result = await _replayService.ReplayMessagesAsync(
-            streamId, messages, httpResponse, options, cancellationToken).ConfigureAwait(false);
+        var result = await _replayService
+            .ReplayMessagesAsync(streamId, messages, httpResponse, options, cancellationToken)
+            .ConfigureAwait(false);
 
         // Update metrics
         _ = Interlocked.Increment(ref _totalReplayOperations);
@@ -437,19 +502,25 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
 
         _logger.LogInformation(
             "Force replayed {MessageCount} messages for stream {StreamId}",
-            result.MessagesReplayed, streamId);
+            result.MessagesReplayed,
+            streamId
+        );
 
         return result;
     }
 
     /// <inheritdoc/>
-    public async Task<ServiceRecoveryResult> RecoverFromPersistenceAsync(CancellationToken cancellationToken = default)
+    public async Task<ServiceRecoveryResult> RecoverFromPersistenceAsync(
+        CancellationToken cancellationToken = default
+    )
     {
         await _recoveryLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             var startTime = DateTime.UtcNow;
-            var streamIds = await _persistentStore.ListPersistedBuffersAsync(cancellationToken).ConfigureAwait(false);
+            var streamIds = await _persistentStore
+                .ListPersistedBuffersAsync(cancellationToken)
+                .ConfigureAwait(false);
 
             if (streamIds.Count == 0)
             {
@@ -460,7 +531,7 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
                     TotalMessagesRecovered = 0,
                     CorruptedBuffers = 0,
                     RecoveredStreamIds = [],
-                    Duration = DateTime.UtcNow - startTime
+                    Duration = DateTime.UtcNow - startTime,
                 };
             }
 
@@ -474,7 +545,9 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
             {
                 try
                 {
-                    var persistedBuffer = await _persistentStore.LoadBufferAsync(streamId, cancellationToken).ConfigureAwait(false);
+                    var persistedBuffer = await _persistentStore
+                        .LoadBufferAsync(streamId, cancellationToken)
+                        .ConfigureAwait(false);
                     if (persistedBuffer != null)
                     {
                         if (persistedBuffer.IsCorrupted)
@@ -484,10 +557,17 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
                         }
                         else
                         {
-                            var buffer = await GetOrCreateBufferAsync(streamId, null, cancellationToken).ConfigureAwait(false);
+                            var buffer = await GetOrCreateBufferAsync(
+                                    streamId,
+                                    null,
+                                    cancellationToken
+                                )
+                                .ConfigureAwait(false);
                             foreach (var message in persistedBuffer.Messages)
                             {
-                                _ = await buffer.AddMessageAsync(message, cancellationToken).ConfigureAwait(false);
+                                _ = await buffer
+                                    .AddMessageAsync(message, cancellationToken)
+                                    .ConfigureAwait(false);
                             }
 
                             buffersRecovered++;
@@ -498,7 +578,11 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to recover buffer for stream {StreamId}", streamId);
+                    _logger.LogError(
+                        ex,
+                        "Failed to recover buffer for stream {StreamId}",
+                        streamId
+                    );
                     errors.Add($"Stream {streamId}: {ex.Message}");
                 }
             }
@@ -511,7 +595,7 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
                 CorruptedBuffers = corruptedBuffers,
                 RecoveredStreamIds = recoveredStreamIds,
                 Duration = DateTime.UtcNow - startTime,
-                Errors = errors
+                Errors = errors,
             };
         }
         finally
@@ -535,7 +619,9 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
             totalMessages += stats.MessageCount;
             totalSizeBytes += stats.TotalSizeBytes;
 
-            var connectionState = await _connectionTracker.GetConnectionStateAsync(kvp.Key).ConfigureAwait(false);
+            var connectionState = await _connectionTracker
+                .GetConnectionStateAsync(kvp.Key)
+                .ConfigureAwait(false);
             if (connectionState?.Status == ConnectionStatus.Connected)
             {
                 connectedStreams++;
@@ -566,12 +652,14 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
             TotalReplayOperations = _totalReplayOperations,
             TotalMessagesReplayed = _totalMessagesReplayed,
             TotalDuplicatesDetected = _totalDuplicatesDetected,
-            PersistenceStatistics = persistenceStats
+            PersistenceStatistics = persistenceStats,
         };
     }
 
     /// <inheritdoc/>
-    public async Task<CleanupResult> PerformCleanupAsync(CancellationToken cancellationToken = default)
+    public async Task<CleanupResult> PerformCleanupAsync(
+        CancellationToken cancellationToken = default
+    )
     {
         var startTime = DateTime.UtcNow;
         var expiredBuffersRemoved = 0;
@@ -588,7 +676,9 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
 
             foreach (var kvp in _buffers)
             {
-                var connectionState = await _connectionTracker.GetConnectionStateAsync(kvp.Key).ConfigureAwait(false);
+                var connectionState = await _connectionTracker
+                    .GetConnectionStateAsync(kvp.Key)
+                    .ConfigureAwait(false);
                 if (connectionState?.LastActivityAt < cutoffTime)
                 {
                     buffersToRemove.Add(kvp.Key);
@@ -611,20 +701,26 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
             // Clean up expired messages within active buffers
             foreach (var kvp in _buffers)
             {
-                var removed = await kvp.Value.RemoveExpiredMessagesAsync(cancellationToken).ConfigureAwait(false);
+                var removed = await kvp
+                    .Value.RemoveExpiredMessagesAsync(cancellationToken)
+                    .ConfigureAwait(false);
                 expiredMessagesRemoved += removed;
             }
 
             // Clean up persistence if enabled
             if (_options.EnablePersistence)
             {
-                persistenceEntriesCleaned = await _persistentStore.CleanupExpiredBuffersAsync(
-                    _options.BufferRetentionPeriod, cancellationToken).ConfigureAwait(false);
+                persistenceEntriesCleaned = await _persistentStore
+                    .CleanupExpiredBuffersAsync(_options.BufferRetentionPeriod, cancellationToken)
+                    .ConfigureAwait(false);
             }
 
             _logger.LogInformation(
                 "Cleanup completed. Buffers removed: {BuffersRemoved}, Messages removed: {MessagesRemoved}, Space reclaimed: {SpaceReclaimed} bytes",
-                expiredBuffersRemoved, expiredMessagesRemoved, spaceReclaimed);
+                expiredBuffersRemoved,
+                expiredMessagesRemoved,
+                spaceReclaimed
+            );
 
             return new CleanupResult
             {
@@ -634,7 +730,7 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
                 PersistenceEntriesCleaned = persistenceEntriesCleaned,
                 SpaceReclaimedBytes = spaceReclaimed,
                 Duration = DateTime.UtcNow - startTime,
-                Errors = errors
+                Errors = errors,
             };
         }
         catch (Exception ex)
@@ -650,7 +746,7 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
                 PersistenceEntriesCleaned = persistenceEntriesCleaned,
                 SpaceReclaimedBytes = spaceReclaimed,
                 Duration = DateTime.UtcNow - startTime,
-                Errors = errors
+                Errors = errors,
             };
         }
     }
@@ -659,7 +755,8 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
     public Task<bool> ConfigureBufferAsync(
         string streamId,
         BufferConfiguration configuration,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
         ArgumentNullException.ThrowIfNull(configuration);
@@ -689,8 +786,12 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
                 var stats = await kvp.Value.GetStatisticsAsync().ConfigureAwait(false);
                 if (stats.MessageCount > 0)
                 {
-                    var messages = await kvp.Value.GetMessagesAsync(cancellationToken).ConfigureAwait(false);
-                    _ = await _persistentStore.PersistBufferAsync(kvp.Key, messages, null, cancellationToken).ConfigureAwait(false);
+                    var messages = await kvp
+                        .Value.GetMessagesAsync(cancellationToken)
+                        .ConfigureAwait(false);
+                    _ = await _persistentStore
+                        .PersistBufferAsync(kvp.Key, messages, null, cancellationToken)
+                        .ConfigureAwait(false);
                 }
             }
             catch (Exception ex)
@@ -710,7 +811,7 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
             MaxSize = _options.DefaultMaxMessages,
             MessageTTL = _options.DefaultMessageTtl,
             OverflowStrategy = _options.DefaultOverflowStrategy,
-            EnablePersistence = _options.EnablePersistence
+            EnablePersistence = _options.EnablePersistence,
         };
     }
 

@@ -19,7 +19,8 @@ public interface IMessageBufferManager
         string streamId,
         T message,
         MessagePriority priority = MessagePriority.Normal,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Retrieves buffered messages for a stream.
@@ -32,7 +33,8 @@ public interface IMessageBufferManager
     Task<IReadOnlyList<BufferedMessage<T>>> GetBufferedMessagesAsync<T>(
         string streamId,
         int maxMessages = int.MaxValue,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Clears all buffered messages for a stream.
@@ -143,7 +145,7 @@ public enum MessagePriority
     /// <summary>
     /// Critical priority message.
     /// </summary>
-    Critical = 3
+    Critical = 3,
 }
 
 /// <summary>
@@ -205,7 +207,7 @@ public enum OverflowStrategy
     /// <summary>
     /// Drop low priority messages first.
     /// </summary>
-    DropLowPriority
+    DropLowPriority,
 }
 
 /// <summary>

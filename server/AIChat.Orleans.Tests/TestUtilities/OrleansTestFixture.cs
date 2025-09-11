@@ -18,14 +18,14 @@ public class OrleansTestFixture : IAsyncLifetime, IDisposable
     /// <summary>
     /// Gets the test cluster for Orleans grain interactions.
     /// </summary>
-    public TestCluster Cluster => _clusterManager?.Cluster
-        ?? throw new InvalidOperationException("Cluster not initialized");
+    public TestCluster Cluster =>
+        _clusterManager?.Cluster ?? throw new InvalidOperationException("Cluster not initialized");
 
     /// <summary>
     /// Gets the WebApplicationFactory for HTTP testing.
     /// </summary>
-    public WebApplicationFactory<Program> WebAppFactory => _webAppManager?.Factory
-        ?? throw new InvalidOperationException("WebApp not initialized");
+    public WebApplicationFactory<Program> WebAppFactory =>
+        _webAppManager?.Factory ?? throw new InvalidOperationException("WebApp not initialized");
 
     /// <summary>
     /// Gets or sets whether Orleans is enabled for the test.
@@ -84,7 +84,9 @@ public class OrleansTestFixture : IAsyncLifetime, IDisposable
     public HttpClient CreateSseClient()
     {
         return _webAppManager == null
-            ? throw new InvalidOperationException("WebAppManager not initialized. Call InitializeAsync first.")
+            ? throw new InvalidOperationException(
+                "WebAppManager not initialized. Call InitializeAsync first."
+            )
             : _webAppManager.CreateSseClient();
     }
 
@@ -94,7 +96,9 @@ public class OrleansTestFixture : IAsyncLifetime, IDisposable
     public HttpClient CreateStandardClient()
     {
         return _webAppManager == null
-            ? throw new InvalidOperationException("WebAppManager not initialized. Call InitializeAsync first.")
+            ? throw new InvalidOperationException(
+                "WebAppManager not initialized. Call InitializeAsync first."
+            )
             : _webAppManager.CreateStandardClient();
     }
 

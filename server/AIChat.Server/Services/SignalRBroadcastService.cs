@@ -18,7 +18,10 @@ public class SignalRBroadcastService : ISignalRBroadcastService
     /// </summary>
     /// <param name="hubContext">SignalR hub context for ChatHub</param>
     /// <param name="logger">Logger instance</param>
-    public SignalRBroadcastService(IHubContext<ChatHub> hubContext, ILogger<SignalRBroadcastService> logger)
+    public SignalRBroadcastService(
+        IHubContext<ChatHub> hubContext,
+        ILogger<SignalRBroadcastService> logger
+    )
     {
         _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -36,13 +39,18 @@ public class SignalRBroadcastService : ISignalRBroadcastService
 
             _logger.LogTrace(
                 "Successfully broadcasted {MethodName} to group {GroupName}",
-                methodName, groupName);
+                methodName,
+                groupName
+            );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Failed to broadcast {MethodName} to group {GroupName}",
-                methodName, groupName);
+                methodName,
+                groupName
+            );
             throw;
         }
     }

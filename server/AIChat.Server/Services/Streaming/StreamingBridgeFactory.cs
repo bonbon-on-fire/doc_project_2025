@@ -19,13 +19,16 @@ public class StreamingBridgeFactory : IStreamingBridgeFactory
     /// <param name="defaultConfiguration">Default streaming configuration</param>
     public StreamingBridgeFactory(
         ILoggerFactory loggerFactory,
-        IOptions<StreamingConfiguration> defaultConfiguration)
+        IOptions<StreamingConfiguration> defaultConfiguration
+    )
     {
         _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
-        _defaultConfiguration = defaultConfiguration ?? throw new ArgumentNullException(nameof(defaultConfiguration));
+        _defaultConfiguration =
+            defaultConfiguration ?? throw new ArgumentNullException(nameof(defaultConfiguration));
 
         // Check configuration or environment variable to determine which implementation to use
-        _useRefactoredImplementation = Environment.GetEnvironmentVariable("USE_REFACTORED_STREAMING_BRIDGE") == "true";
+        _useRefactoredImplementation =
+            Environment.GetEnvironmentVariable("USE_REFACTORED_STREAMING_BRIDGE") == "true";
     }
 
     /// <inheritdoc />
@@ -60,7 +63,7 @@ public class StreamingBridgeFactory : IStreamingBridgeFactory
             MaxChunkSize = _defaultConfiguration.Value.MaxChunkSize,
             FlushIntervalMs = _defaultConfiguration.Value.FlushIntervalMs,
             EnableAutoRetry = _defaultConfiguration.Value.EnableAutoRetry,
-            MaxRetryAttempts = _defaultConfiguration.Value.MaxRetryAttempts
+            MaxRetryAttempts = _defaultConfiguration.Value.MaxRetryAttempts,
         };
 
         configureOptions(customConfig);

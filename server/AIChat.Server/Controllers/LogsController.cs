@@ -7,9 +7,10 @@ namespace AIChat.Server.Controllers;
 [Route("api/[controller]")]
 public class LogsController(ILogger<LogsController> logger) : ControllerBase
 {
-    private static readonly JsonSerializerOptions S_JsonSerializerOptions =
-        new()
-        { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+    private static readonly JsonSerializerOptions S_JsonSerializerOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    };
 
     private readonly ILogger<LogsController> _logger = logger;
 

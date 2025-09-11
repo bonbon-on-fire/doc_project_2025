@@ -47,7 +47,10 @@ public interface IOperationCommand
     /// <param name="context">Execution context containing services and dependencies</param>
     /// <param name="cancellationToken">Cancellation token for the operation</param>
     /// <returns>Command execution result</returns>
-    Task<CommandExecutionResult> ExecuteAsync(ICommandExecutionContext context, CancellationToken cancellationToken = default);
+    Task<CommandExecutionResult> ExecuteAsync(
+        ICommandExecutionContext context,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Attempts to undo the command if supported.
@@ -55,7 +58,10 @@ public interface IOperationCommand
     /// <param name="context">Execution context containing services and dependencies</param>
     /// <param name="cancellationToken">Cancellation token for the operation</param>
     /// <returns>True if undo was successful, false if not supported or failed</returns>
-    Task<bool> UndoAsync(ICommandExecutionContext context, CancellationToken cancellationToken = default);
+    Task<bool> UndoAsync(
+        ICommandExecutionContext context,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Gets metadata about this command for logging and monitoring.
@@ -82,7 +88,10 @@ public interface IOperationCommand<TRequest, TResponse> : IOperationCommand
     /// <param name="context">Execution context containing services and dependencies</param>
     /// <param name="cancellationToken">Cancellation token for the operation</param>
     /// <returns>Typed command execution result</returns>
-    new Task<CommandExecutionResult<TResponse>> ExecuteAsync(ICommandExecutionContext context, CancellationToken cancellationToken = default);
+    new Task<CommandExecutionResult<TResponse>> ExecuteAsync(
+        ICommandExecutionContext context,
+        CancellationToken cancellationToken = default
+    );
 }
 
 /// <summary>
@@ -124,11 +133,7 @@ public sealed class CommandValidationResult
     /// </summary>
     public static CommandValidationResult Failed(params string[] errors)
     {
-        return new()
-        {
-            IsValid = false,
-            Errors = [.. errors]
-        };
+        return new() { IsValid = false, Errors = [.. errors] };
     }
 
     /// <summary>
@@ -136,11 +141,7 @@ public sealed class CommandValidationResult
     /// </summary>
     public static CommandValidationResult WithWarnings(params string[] warnings)
     {
-        return new()
-        {
-            IsValid = true,
-            Warnings = [.. warnings]
-        };
+        return new() { IsValid = true, Warnings = [.. warnings] };
     }
 }
 
@@ -193,23 +194,22 @@ public class CommandExecutionResult
     /// </summary>
     public static CommandExecutionResult Success(long durationMs = 0)
     {
-        return new()
-        {
-            IsSuccess = true,
-            ExecutionDurationMs = durationMs
-        };
+        return new() { IsSuccess = true, ExecutionDurationMs = durationMs };
     }
 
     /// <summary>
     /// Creates a failed execution result.
     /// </summary>
-    public static CommandExecutionResult Failed(string errorMessage, string? exceptionDetails = null)
+    public static CommandExecutionResult Failed(
+        string errorMessage,
+        string? exceptionDetails = null
+    )
     {
         return new()
         {
             IsSuccess = false,
             ErrorMessage = errorMessage,
-            ExceptionDetails = exceptionDetails
+            ExceptionDetails = exceptionDetails,
         };
     }
 }
@@ -237,20 +237,23 @@ public class CommandExecutionResult<T> : CommandExecutionResult
         {
             IsSuccess = true,
             Data = data,
-            ExecutionDurationMs = durationMs
+            ExecutionDurationMs = durationMs,
         };
     }
 
     /// <summary>
     /// Creates a failed execution result.
     /// </summary>
-    public static new CommandExecutionResult<T> Failed(string errorMessage, string? exceptionDetails = null)
+    public static new CommandExecutionResult<T> Failed(
+        string errorMessage,
+        string? exceptionDetails = null
+    )
     {
         return new()
         {
             IsSuccess = false,
             ErrorMessage = errorMessage,
-            ExceptionDetails = exceptionDetails
+            ExceptionDetails = exceptionDetails,
         };
     }
 }
@@ -273,12 +276,14 @@ public interface ICommandExecutionContext
     /// <summary>
     /// Gets a service of the specified type.
     /// </summary>
-    T GetService<T>() where T : class;
+    T GetService<T>()
+        where T : class;
 
     /// <summary>
     /// Gets a required service of the specified type.
     /// </summary>
-    T GetRequiredService<T>() where T : class;
+    T GetRequiredService<T>()
+        where T : class;
 
     /// <summary>
     /// Creates a child scope for command execution.

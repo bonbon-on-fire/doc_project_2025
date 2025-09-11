@@ -154,10 +154,21 @@ public class UserGrainTests
         await grain.RegisterConnection("conn-2", "client-1");
 
         // These should work with the implemented methods
-        var message = new ChatMessage { Id = "msg-1", ChatId = "chat-1", UserId = "test-user-5", Content = "test" };
+        var message = new ChatMessage
+        {
+            Id = "msg-1",
+            ChatId = "chat-1",
+            UserId = "test-user-5",
+            Content = "test",
+        };
         await grain.RelayMessage(message);
 
-        var chunk = new StreamChunk { OperationId = "op-1", ChatId = "chat-1", Content = "chunk" };
+        var chunk = new StreamChunk
+        {
+            OperationId = "op-1",
+            ChatId = "chat-1",
+            Content = "chunk",
+        };
         await grain.RelayStreamChunk(chunk);
 
         var operationId = await grain.ProcessMessageWithBackground(message);
@@ -193,13 +204,18 @@ public class UserGrainTests
         var grains = userIds.Select(id => _cluster.GrainFactory.GetGrain<IUserGrain>(id)).ToList();
 
         // Act - Record activities concurrently
-        var tasks = grains.Select(async (grain, index) =>
-        {
-            for (var i = 0; i < 10; i++)
+        var tasks = grains.Select(
+            async (grain, index) =>
             {
-                await grain.RecordActivity(ActivityType.MessageSent, $"user-{index}-activity-{i}");
+                for (var i = 0; i < 10; i++)
+                {
+                    await grain.RecordActivity(
+                        ActivityType.MessageSent,
+                        $"user-{index}-activity-{i}"
+                    );
+                }
             }
-        });
+        );
         await Task.WhenAll(tasks);
 
         // Assert - Check each grain has correct state
@@ -259,7 +275,6 @@ public class TestSiloConfigurator : ISiloConfigurator
             .AddMemoryGrainStorageAsDefault()
             .AddMemoryGrainStorage("UserGrainStorage")
             .AddMemoryGrainStorage("PubSubStore")
-
             // Configure services required by grains
             .ConfigureServices(services =>
             {
@@ -276,7 +291,6 @@ public class TestSiloConfigurator : ISiloConfigurator
                     config.Persistence.ActivityPersistenceInterval = 5;
                 });
             })
-
             .ConfigureLogging(logging =>
             {
                 _ = logging.AddConsole();

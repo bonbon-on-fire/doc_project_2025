@@ -42,7 +42,10 @@ public sealed class TimestampedDebugLoggerProvider : ILoggerProvider
                 return;
             }
 
-            var ts = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff 'UTC'", CultureInfo.InvariantCulture);
+            var ts = DateTime.UtcNow.ToString(
+                "yyyy-MM-dd HH:mm:ss.fff 'UTC'",
+                CultureInfo.InvariantCulture
+            );
             var level = logLevel.ToString().ToLowerInvariant();
             var message = formatter(state, exception);
 

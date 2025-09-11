@@ -17,7 +17,10 @@ public interface IUserMessageBufferGrain : IGrainWithStringKey
     /// <param name="priority">Priority level for the message</param>
     /// <returns>Unique buffer entry ID</returns>
     [Alias("BufferMessageAsync")]
-    Task<string> BufferMessageAsync(ChatMessage message, BufferPriority priority = BufferPriority.Normal);
+    Task<string> BufferMessageAsync(
+        ChatMessage message,
+        BufferPriority priority = BufferPriority.Normal
+    );
 
     /// <summary>
     /// Buffers a stream chunk for delivery when connections become available.
@@ -26,7 +29,10 @@ public interface IUserMessageBufferGrain : IGrainWithStringKey
     /// <param name="priority">Priority level for the chunk</param>
     /// <returns>Unique buffer entry ID</returns>
     [Alias("BufferStreamChunkAsync")]
-    Task<string> BufferStreamChunkAsync(StreamChunk chunk, BufferPriority priority = BufferPriority.Normal);
+    Task<string> BufferStreamChunkAsync(
+        StreamChunk chunk,
+        BufferPriority priority = BufferPriority.Normal
+    );
 
     /// <summary>
     /// Retrieves buffered messages for a specific chat.
@@ -39,7 +45,8 @@ public interface IUserMessageBufferGrain : IGrainWithStringKey
     Task<IEnumerable<BufferedMessage>> GetBufferedMessagesAsync(
         string chatId,
         int? limit = null,
-        bool highPriorityOnly = false);
+        bool highPriorityOnly = false
+    );
 
     /// <summary>
     /// Retrieves a specific buffered message by ID.
@@ -107,7 +114,8 @@ public interface IUserMessageBufferGrain : IGrainWithStringKey
     Task<int> ProcessBufferedMessagesAsync(
         string connectionId,
         string? chatId = null,
-        int maxMessages = 50);
+        int maxMessages = 50
+    );
 
     /// <summary>
     /// Clears all buffered messages for a specific chat.

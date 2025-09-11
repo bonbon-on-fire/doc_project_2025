@@ -16,10 +16,13 @@ public class ProcessStreamChunkCommand : OperationCommandBase<StreamChunk, bool>
     /// <param name="chatId">The chat ID</param>
     /// <param name="userId">The user ID</param>
     /// <param name="chunk">The stream chunk to process</param>
-    public ProcessStreamChunkCommand(string operationId, string chatId, string userId, StreamChunk chunk)
-        : base(operationId, chatId, userId, chunk)
-    {
-    }
+    public ProcessStreamChunkCommand(
+        string operationId,
+        string chatId,
+        string userId,
+        StreamChunk chunk
+    )
+        : base(operationId, chatId, userId, chunk) { }
 
     /// <summary>
     /// Performs custom validation for stream chunk processing.
@@ -41,7 +44,9 @@ public class ProcessStreamChunkCommand : OperationCommandBase<StreamChunk, bool>
             }
             else if (Request.OperationId != OperationId)
             {
-                errors.Add($"Stream chunk OperationId '{Request.OperationId}' does not match command OperationId '{OperationId}'");
+                errors.Add(
+                    $"Stream chunk OperationId '{Request.OperationId}' does not match command OperationId '{OperationId}'"
+                );
             }
 
             if (string.IsNullOrWhiteSpace(Request.ChatId))
@@ -50,7 +55,9 @@ public class ProcessStreamChunkCommand : OperationCommandBase<StreamChunk, bool>
             }
             else if (Request.ChatId != ChatId)
             {
-                errors.Add($"Stream chunk ChatId '{Request.ChatId}' does not match command ChatId '{ChatId}'");
+                errors.Add(
+                    $"Stream chunk ChatId '{Request.ChatId}' does not match command ChatId '{ChatId}'"
+                );
             }
 
             if (Request.ChunkIndex < 0)
@@ -80,10 +87,8 @@ public class ProcessStreamChunkCommand : OperationCommandBase<StreamChunk, bool>
             }
         }
 
-        return errors.Count > 0
-            ? CommandValidationResult.Failed([.. errors])
-            : warnings.Count > 0
-            ? CommandValidationResult.WithWarnings([.. warnings])
+        return errors.Count > 0 ? CommandValidationResult.Failed([.. errors])
+            : warnings.Count > 0 ? CommandValidationResult.WithWarnings([.. warnings])
             : CommandValidationResult.Success();
     }
 
@@ -92,7 +97,8 @@ public class ProcessStreamChunkCommand : OperationCommandBase<StreamChunk, bool>
     /// </summary>
     protected override async Task<CommandExecutionResult<bool>> ExecuteTypedInternalAsync(
         ICommandExecutionContext context,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var logger = context.Logger;
 
@@ -100,7 +106,11 @@ public class ProcessStreamChunkCommand : OperationCommandBase<StreamChunk, bool>
         {
             logger.LogDebug(
                 "Processing stream chunk {ChunkIndex} for operation {OperationId} in chat {ChatId}. IsComplete: {IsComplete}",
-                Request.ChunkIndex, OperationId, ChatId, Request.IsComplete);
+                Request.ChunkIndex,
+                OperationId,
+                ChatId,
+                Request.IsComplete
+            );
 
             // TODO: In complete implementation, this would:
             // 1. Get all connections subscribed to the chat from UserGrain state
@@ -119,28 +129,39 @@ public class ProcessStreamChunkCommand : OperationCommandBase<StreamChunk, bool>
             {
                 logger.LogInformation(
                     "Completed processing final chunk {ChunkIndex} for operation {OperationId} in chat {ChatId}",
-                    Request.ChunkIndex, OperationId, ChatId);
+                    Request.ChunkIndex,
+                    OperationId,
+                    ChatId
+                );
             }
             else
             {
                 logger.LogTrace(
                     "Processed stream chunk {ChunkIndex} for operation {OperationId}. Content length: {ContentLength}",
-                    Request.ChunkIndex, OperationId, Request.Content?.Length ?? 0);
+                    Request.ChunkIndex,
+                    OperationId,
+                    Request.Content?.Length ?? 0
+                );
             }
 
             return CommandExecutionResult<bool>.Success(
                 true, // Successfully processed
-                processingDelay);
+                processingDelay
+            );
         }
         catch (Exception ex)
         {
-            logger.LogError(ex,
+            logger.LogError(
+                ex,
                 "Failed to process stream chunk {ChunkIndex} for operation {OperationId}",
-                Request.ChunkIndex, OperationId);
+                Request.ChunkIndex,
+                OperationId
+            );
 
             return CommandExecutionResult<bool>.Failed(
                 $"Stream chunk processing failed: {ex.Message}",
-                ex.ToString());
+                ex.ToString()
+            );
         }
     }
 
@@ -167,7 +188,8 @@ public class ProcessStreamChunkCommand : OperationCommandBase<StreamChunk, bool>
             if (Request.TotalChunks.HasValue)
             {
                 metadata["TotalChunks"] = Request.TotalChunks.Value;
-                metadata["ProgressPercentage"] = (Request.ChunkIndex + 1) * 100.0 / Request.TotalChunks.Value;
+                metadata["ProgressPercentage"] =
+                    (Request.ChunkIndex + 1) * 100.0 / Request.TotalChunks.Value;
             }
         }
 
@@ -180,13 +202,18 @@ public class ProcessStreamChunkCommand : OperationCommandBase<StreamChunk, bool>
     /// Stream chunk commands don't support undo.
     /// Once a chunk is streamed to clients, it cannot be "un-streamed".
     /// </summary>
-    public override Task<bool> UndoAsync(ICommandExecutionContext context, CancellationToken cancellationToken = default)
+    public override Task<bool> UndoAsync(
+        ICommandExecutionContext context,
+        CancellationToken cancellationToken = default
+    )
     {
         var logger = context.Logger;
 
         logger.LogWarning(
             "Undo operation is not supported for stream chunk commands. Chunk {ChunkIndex} of operation {OperationId} cannot be undone.",
-            Request?.ChunkIndex ?? -1, OperationId);
+            Request?.ChunkIndex ?? -1,
+            OperationId
+        );
 
         // In a streaming scenario, you typically can't "undo" a chunk that's already been sent to clients.
         // The stream is inherently forward-only. If there's an error, you would typically:

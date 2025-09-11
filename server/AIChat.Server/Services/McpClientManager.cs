@@ -116,7 +116,11 @@ public class McpClientManager(
             default:
                 var errorMsg =
                     $"Transport type '{config.Type}' is not supported. Supported types: stdio, sse, http";
-                logger.LogError("Transport type '{TransportType}' is not supported for server: {ServerName}. Supported types: stdio, sse, http", config.Type, serverName);
+                logger.LogError(
+                    "Transport type '{TransportType}' is not supported for server: {ServerName}. Supported types: stdio, sse, http",
+                    config.Type,
+                    serverName
+                );
                 throw new McpTransportException(errorMsg, serverName, config.Type);
         }
 
@@ -233,7 +237,10 @@ public class McpClientManager(
                 if (inputConfig != null)
                 {
                     var envVarName =
-                        inputConfig.DefaultValue ?? inputId.ToUpper(System.Globalization.CultureInfo.CurrentCulture).Replace("-", "_");
+                        inputConfig.DefaultValue
+                        ?? inputId
+                            .ToUpper(System.Globalization.CultureInfo.CurrentCulture)
+                            .Replace("-", "_");
 
                     // Try User Secrets/IConfiguration first, then environment variable
                     expandedValue =

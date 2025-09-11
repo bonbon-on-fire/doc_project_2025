@@ -26,7 +26,7 @@ public enum StreamItemType
     ToolCall,
     ToolResult,
     Complete,
-    Error
+    Error,
 }
 
 /// <summary>
@@ -39,7 +39,8 @@ public interface ITestStreamingBridge : IStreamingBridge
     /// </summary>
     IAsyncEnumerable<string> ConvertToSseAsync(
         IAsyncEnumerable<ChatStreamItem> items,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 }
 
 /// <summary>
@@ -60,7 +61,8 @@ public class TestResilientStreamManager : IResilientStreamManager
     public TestResilientStreamManager(
         ILogger<ResilientStreamManager> logger,
         ITestStreamingBridgeFactory bridgeFactory,
-        IOptions<ResilientStreamingConfiguration> configuration)
+        IOptions<ResilientStreamingConfiguration> configuration
+    )
     {
         // Create a wrapper that implements IStreamingBridgeFactory
         var wrappedFactory = new StreamingBridgeFactoryWrapper(bridgeFactory);
@@ -71,9 +73,15 @@ public class TestResilientStreamManager : IResilientStreamManager
         string streamId,
         string userId,
         Func<IStreamingBridge, CancellationToken, Task<T>> streamProcessor,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
-        return _inner.ProcessStreamWithRecoveryAsync(streamId, userId, streamProcessor, cancellationToken);
+        return _inner.ProcessStreamWithRecoveryAsync(
+            streamId,
+            userId,
+            streamProcessor,
+            cancellationToken
+        );
     }
 
     public Task<StreamMetrics> GetMetricsAsync()

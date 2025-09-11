@@ -41,7 +41,7 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
             UserId = "test-user-create",
             Message = "Test stream creation",
             SystemPrompt = "You are a test assistant",
-            ModeId = "default"
+            ModeId = "default",
         };
 
         // Act
@@ -76,7 +76,7 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
             UserId = "test-user-complete",
             Message = "Test stream completion",
             SystemPrompt = "You are a test assistant",
-            ModeId = "default"
+            ModeId = "default",
         };
 
         // Act
@@ -117,7 +117,7 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
                     UserId = userId,
                     Message = $"Concurrent message {i}",
                     SystemPrompt = "You are a test assistant",
-                    ModeId = "default"
+                    ModeId = "default",
                 };
 
                 var response = await client.PostAsJsonAsync("/api/chat/stream-sse", request);
@@ -141,7 +141,9 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
             _ = events.Should().Contain(e => e.EventType == "complete");
         }
 
-        _output.WriteLine($"Successfully handled {results.Length} concurrent streams for user {userId}");
+        _output.WriteLine(
+            $"Successfully handled {results.Length} concurrent streams for user {userId}"
+        );
     }
 
     [Fact]
@@ -159,17 +161,18 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
             UserId = "test-user-cancel",
             Message = "Test stream cancellation",
             SystemPrompt = "You are a test assistant",
-            ModeId = "default"
+            ModeId = "default",
         };
 
         // Act
         var responseTask = client.SendAsync(
             new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse")
             {
-                Content = JsonContent.Create(request)
+                Content = JsonContent.Create(request),
             },
             HttpCompletionOption.ResponseHeadersRead,
-            cts.Token);
+            cts.Token
+        );
 
         var response = await responseTask;
         _ = response.EnsureSuccessStatusCode();
@@ -208,7 +211,7 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
             UserId = "test-user-timeout",
             Message = "Test stream timeout",
             SystemPrompt = "You are a test assistant",
-            ModeId = "default"
+            ModeId = "default",
         };
 
         // Act
@@ -239,7 +242,7 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
             BufferSize = 5, // Small buffer for testing
             BackpressureThreshold = 80,
             FlushIntervalMs = 100,
-            Enabled = true
+            Enabled = true,
         };
 
         var bridgeMock = new Mock<ITestStreamingBridge>();
@@ -247,14 +250,27 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
         var backpressureDetected = false;
 
         // Setup bridge mock
-        _ = bridgeMock.Setup(x => x.ConvertToSseAsync(It.IsAny<IAsyncEnumerable<ChatStreamItem>>(), It.IsAny<CancellationToken>()))
-            .Returns((IAsyncEnumerable<ChatStreamItem> items, CancellationToken ct) =>
-                ConvertToSseSimple(items, ct));
+        _ = bridgeMock
+            .Setup(x =>
+                x.ConvertToSseAsync(
+                    It.IsAny<IAsyncEnumerable<ChatStreamItem>>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .Returns(
+                (IAsyncEnumerable<ChatStreamItem> items, CancellationToken ct) =>
+                    ConvertToSseSimple(items, ct)
+            );
 
         // Act - Send many messages quickly
         var processingTask = Task.Run(async () =>
         {
-            await foreach (var item in bridgeMock.Object.ConvertToSseAsync(GenerateTestStream(), CancellationToken.None))
+            await foreach (
+                var item in bridgeMock.Object.ConvertToSseAsync(
+                    GenerateTestStream(),
+                    CancellationToken.None
+                )
+            )
             {
                 messageCount++;
                 await Task.Delay(50); // Simulate slow consumer
@@ -262,19 +278,25 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
         });
 
         // Monitor for backpressure
-        _ = loggerMock.Setup(x => x.Log(
-            It.Is<LogLevel>(l => l == LogLevel.Warning),
-            It.IsAny<EventId>(),
-            It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("backpressure")),
-            It.IsAny<Exception>(),
-            It.IsAny<Func<It.IsAnyType, Exception?, string>>()))
+        _ = loggerMock
+            .Setup(x =>
+                x.Log(
+                    It.Is<LogLevel>(l => l == LogLevel.Warning),
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("backpressure")),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()
+                )
+            )
             .Callback(() => backpressureDetected = true);
 
         await processingTask;
 
         // Assert
         _ = messageCount.Should().BeGreaterThan(0);
-        _output.WriteLine($"Processed {messageCount} messages, backpressure: {backpressureDetected}");
+        _output.WriteLine(
+            $"Processed {messageCount} messages, backpressure: {backpressureDetected}"
+        );
     }
 
     [Fact]
@@ -295,7 +317,7 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
                 UserId = userId,
                 Message = "Test cleanup",
                 SystemPrompt = "You are a test assistant",
-                ModeId = "default"
+                ModeId = "default",
             };
 
             var response = await client.PostAsJsonAsync("/api/chat/stream-sse", request);
@@ -307,7 +329,9 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
 
         // Assert - Verify cleanup
         var state = await grain.GetState();
-        _ = state.ActiveStreams.Count.Should().Be(0, "All streams should be cleaned up after completion");
+        _ = state
+            .ActiveStreams.Count.Should()
+            .Be(0, "All streams should be cleaned up after completion");
 
         _output.WriteLine($"Stream cleanup verified for user {userId}");
     }
@@ -333,10 +357,15 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
         _ = results[0].UserId.Should().Be(user1);
         _ = results[1].UserId.Should().Be(user2);
 
-        _output.WriteLine($"Stream isolation verified: User1 ChatId={results[0].ChatId}, User2 ChatId={results[1].ChatId}");
+        _output.WriteLine(
+            $"Stream isolation verified: User1 ChatId={results[0].ChatId}, User2 ChatId={results[1].ChatId}"
+        );
     }
 
-    private async Task<(string ChatId, string UserId)> CreateAndVerifyStream(string userId, string message)
+    private async Task<(string ChatId, string UserId)> CreateAndVerifyStream(
+        string userId,
+        string message
+    )
     {
         using var client = _fixture.CreateSseClient();
         var request = new CreateChatRequest
@@ -344,7 +373,7 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
             UserId = userId,
             Message = message,
             SystemPrompt = "You are a test assistant",
-            ModeId = "default"
+            ModeId = "default",
         };
 
         var response = await client.PostAsJsonAsync("/api/chat/stream-sse", request);
@@ -365,7 +394,7 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
             {
                 Type = StreamItemType.Content,
                 Content = $"Test message {i}",
-                Timestamp = DateTime.UtcNow
+                Timestamp = DateTime.UtcNow,
             };
             await Task.Delay(10);
         }
@@ -376,7 +405,8 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
     /// </summary>
     private static async IAsyncEnumerable<string> ConvertToSseSimple(
         IAsyncEnumerable<ChatStreamItem> items,
-        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken
+    )
     {
         await foreach (var item in items.WithCancellation(cancellationToken))
         {

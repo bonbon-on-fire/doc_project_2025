@@ -15,7 +15,8 @@ public interface IBufferManagementService
     Task<IStreamBuffer> GetOrCreateBufferAsync(
         string streamId,
         BufferConfiguration? configuration = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Buffers a message for a stream.
@@ -27,7 +28,8 @@ public interface IBufferManagementService
     Task<bool> BufferMessageAsync(
         string streamId,
         BufferedStreamMessage message,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Handles disconnection for a stream.
@@ -39,7 +41,8 @@ public interface IBufferManagementService
     Task<DisconnectionResult> HandleDisconnectionAsync(
         string streamId,
         string? reason = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Handles reconnection for a stream.
@@ -53,7 +56,8 @@ public interface IBufferManagementService
         string streamId,
         HttpResponse httpResponse,
         ReconnectionOptions? options = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Gets the current status of a stream buffer.
@@ -82,14 +86,17 @@ public interface IBufferManagementService
         string streamId,
         HttpResponse httpResponse,
         ReplayOptions? options = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Recovers buffers from persistent storage after service restart.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Recovery result</returns>
-    Task<ServiceRecoveryResult> RecoverFromPersistenceAsync(CancellationToken cancellationToken = default);
+    Task<ServiceRecoveryResult> RecoverFromPersistenceAsync(
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Gets statistics for all managed buffers.
@@ -114,7 +121,8 @@ public interface IBufferManagementService
     Task<bool> ConfigureBufferAsync(
         string streamId,
         BufferConfiguration configuration,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 }
 
 /// <summary>

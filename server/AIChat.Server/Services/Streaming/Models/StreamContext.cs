@@ -245,12 +245,14 @@ public sealed class StreamContext
         HttpResponse httpResponse,
         Channel<BufferedMessage<string>> messageBuffer,
         IPartialMessageStore partialMessages,
-        ISystemClock systemClock)
+        ISystemClock systemClock
+    )
     {
         StreamId = streamId ?? throw new ArgumentNullException(nameof(streamId));
         HttpResponse = httpResponse ?? throw new ArgumentNullException(nameof(httpResponse));
         MessageBuffer = messageBuffer ?? throw new ArgumentNullException(nameof(messageBuffer));
-        PartialMessages = partialMessages ?? throw new ArgumentNullException(nameof(partialMessages));
+        PartialMessages =
+            partialMessages ?? throw new ArgumentNullException(nameof(partialMessages));
 
         StartTime = systemClock.UtcNow;
         _lastActivityTime = StartTime;
@@ -279,7 +281,7 @@ public sealed class StreamContext
                 StartTime = StartTime,
                 LastActivityTime = _lastActivityTime,
                 TotalProcessingTimeMs = _totalProcessingTimeMs,
-                PartialRecovery = PartialMessages.GetStatistics()
+                PartialRecovery = PartialMessages.GetStatistics(),
             };
         }
     }

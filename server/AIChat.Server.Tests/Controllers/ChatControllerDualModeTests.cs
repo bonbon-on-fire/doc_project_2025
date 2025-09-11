@@ -7,6 +7,7 @@ using Lib.AspNetCore.ServerSentEvents;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.FeatureManagement;
 using Moq;
@@ -23,6 +24,7 @@ public class ChatControllerDualModeTests
     private readonly Mock<IChatStorage> _mockChatStorage;
     private readonly Mock<IHubContext<ChatHub>> _mockHubContext;
     private readonly Mock<IFeatureManager> _mockFeatureManager;
+    private readonly Mock<IHostEnvironment> _mockHostEnvironment;
     private readonly Mock<IClusterClient> _mockClusterClient;
     private readonly Mock<IBackgroundChatService> _mockBackgroundChatService;
     private readonly Mock<IClientProxy> _mockClientProxy;
@@ -40,18 +42,25 @@ public class ChatControllerDualModeTests
         _mockChatStorage = new Mock<IChatStorage>();
         _mockHubContext = new Mock<IHubContext<ChatHub>>();
         _mockFeatureManager = new Mock<IFeatureManager>();
+        _mockHostEnvironment = new Mock<IHostEnvironment>();
         _mockClusterClient = new Mock<IClusterClient>();
         _mockBackgroundChatService = new Mock<IBackgroundChatService>();
         _mockClientProxy = new Mock<IClientProxy>();
         _mockHubClients = new Mock<IHubClients>();
 
         // Setup feature manager - default to disabled for most tests
-        _ = _mockFeatureManager.Setup(x => x.IsEnabledAsync("BackgroundProcessing")).ReturnsAsync(false);
-        _ = _mockFeatureManager.Setup(x => x.IsEnabledAsync("OrleansIntegration")).ReturnsAsync(false);
+        _ = _mockFeatureManager
+            .Setup(x => x.IsEnabledAsync("BackgroundProcessing"))
+            .ReturnsAsync(false);
+        _ = _mockFeatureManager
+            .Setup(x => x.IsEnabledAsync("OrleansIntegration"))
+            .ReturnsAsync(false);
 
         // Setup hub context
         _ = _mockHubContext.Setup(x => x.Clients).Returns(_mockHubClients.Object);
-        _ = _mockHubClients.Setup(x => x.Group(It.IsAny<string>())).Returns(_mockClientProxy.Object);
+        _ = _mockHubClients
+            .Setup(x => x.Group(It.IsAny<string>()))
+            .Returns(_mockClientProxy.Object);
 
         _controller = new ChatController(
             _mockChatService.Object,
@@ -61,6 +70,7 @@ public class ChatControllerDualModeTests
             _mockChatStorage.Object,
             _mockHubContext.Object,
             _mockFeatureManager.Object,
+            _mockHostEnvironment.Object,
             _mockClusterClient.Object,
             _mockBackgroundChatService.Object
         );
@@ -69,10 +79,7 @@ public class ChatControllerDualModeTests
         _httpContext = new DefaultHttpContext();
         var responseBody = new MemoryStream();
         _httpContext.Response.Body = responseBody;
-        _controller.ControllerContext = new ControllerContext
-        {
-            HttpContext = _httpContext
-        };
+        _controller.ControllerContext = new ControllerContext { HttpContext = _httpContext };
     }
 
     [Fact]
@@ -94,13 +101,17 @@ public class ChatControllerDualModeTests
             ChatId = "chat123",
             UserMessageId = "msg123",
             UserTimestamp = DateTime.UtcNow,
-            UserSequenceNumber = 1
+            UserSequenceNumber = 1,
         };
 
-        _ = _mockChatService.Setup(x => x.PrepareUnifiedStreamChatAsync(It.IsAny<StreamChatRequest>()))
+        _ = _mockChatService
+            .Setup(x => x.PrepareUnifiedStreamChatAsync(It.IsAny<StreamChatRequest>()))
             .ReturnsAsync(initResult);
 
-        _ = _mockChatService.Setup(x => x.StreamAssistantResponseAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        _ = _mockChatService
+            .Setup(x =>
+                x.StreamAssistantResponseAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())
+            )
             .Returns(Task.CompletedTask);
 
         // Act
@@ -138,10 +149,11 @@ public class ChatControllerDualModeTests
             ChatId = "chat123",
             UserMessageId = "msg123",
             UserTimestamp = DateTime.UtcNow,
-            UserSequenceNumber = 1
+            UserSequenceNumber = 1,
         };
 
-        _ = _mockChatService.Setup(x => x.PrepareUnifiedStreamChatAsync(It.IsAny<StreamChatRequest>()))
+        _ = _mockChatService
+            .Setup(x => x.PrepareUnifiedStreamChatAsync(It.IsAny<StreamChatRequest>()))
             .ReturnsAsync(initResult);
 
         // Act
@@ -156,7 +168,12 @@ public class ChatControllerDualModeTests
 
         // Verify response contains operation ID
         Assert.True(responseData.TryGetProperty("OperationId", out var operationId));
-        Assert.True(responseData.GetProperty("OperationId").GetString()?.StartsWith("op_", StringComparison.Ordinal));
+        Assert.True(
+            responseData
+                .GetProperty("OperationId")
+                .GetString()
+                ?.StartsWith("op_", StringComparison.Ordinal)
+        );
         Assert.Equal("chat123", responseData.GetProperty("ChatId").GetString());
         Assert.Equal("SignalR", responseData.GetProperty("Protocol").GetString());
         Assert.Equal("Processing", responseData.GetProperty("Status").GetString());
@@ -184,13 +201,17 @@ public class ChatControllerDualModeTests
             ChatId = "chat123",
             UserMessageId = "msg123",
             UserTimestamp = DateTime.UtcNow,
-            UserSequenceNumber = 1
+            UserSequenceNumber = 1,
         };
 
-        _ = _mockChatService.Setup(x => x.PrepareUnifiedStreamChatAsync(It.IsAny<StreamChatRequest>()))
+        _ = _mockChatService
+            .Setup(x => x.PrepareUnifiedStreamChatAsync(It.IsAny<StreamChatRequest>()))
             .ReturnsAsync(initResult);
 
-        _ = _mockChatService.Setup(x => x.StreamAssistantResponseAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        _ = _mockChatService
+            .Setup(x =>
+                x.StreamAssistantResponseAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())
+            )
             .Returns(Task.CompletedTask);
 
         // Act
@@ -215,7 +236,8 @@ public class ChatControllerDualModeTests
             ModeId: null
         );
 
-        _ = _mockChatService.Setup(x => x.PrepareUnifiedStreamChatAsync(It.IsAny<StreamChatRequest>()))
+        _ = _mockChatService
+            .Setup(x => x.PrepareUnifiedStreamChatAsync(It.IsAny<StreamChatRequest>()))
             .ThrowsAsync(new InvalidOperationException("Test error"));
 
         // Act
@@ -257,10 +279,16 @@ public class ChatControllerDualModeTests
         var chatResult = new ChatResult
         {
             Success = true,
-            Chat = new ChatDto { Id = "chat123", UserId = "user123", Title = "New Chat" }
+            Chat = new ChatDto
+            {
+                Id = "chat123",
+                UserId = "user123",
+                Title = "New Chat",
+            },
         };
 
-        _ = _mockChatService.Setup(x => x.CreateChatAsync(It.IsAny<AIChat.Server.Services.CreateChatRequest>()))
+        _ = _mockChatService
+            .Setup(x => x.CreateChatAsync(It.IsAny<AIChat.Server.Services.CreateChatRequest>()))
             .ReturnsAsync(chatResult);
 
         // Act & Assert - should not throw

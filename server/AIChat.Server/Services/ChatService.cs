@@ -12,10 +12,9 @@ using Microsoft.Extensions.Options;
 
 namespace AIChat.Server.Services;
 
-public class ChatService(
-    ILogger<ChatService> logger,
-    IOptions<AiOptions> aiOptions
-) : IChatServiceStreaming, IToolResultCallback
+public class ChatService(ILogger<ChatService> logger, IOptions<AiOptions> aiOptions)
+    : IChatServiceStreaming,
+        IToolResultCallback
 {
     private readonly AiOptions _aiOptions = aiOptions.Value;
 
@@ -166,7 +165,14 @@ public class ChatService(
             }
 
             // Generate AI response with mode configuration
-            var aiResponse = await GenerateAIResponseAsync(chat.Id, storage, streamingAgent, modeService, request.ModeId, request.UserId);
+            var aiResponse = await GenerateAIResponseAsync(
+                chat.Id,
+                storage,
+                streamingAgent,
+                modeService,
+                request.ModeId,
+                request.UserId
+            );
 
             _ = await storage.UpdateChatUpdatedAtAsync(chat.Id, DateTime.UtcNow);
 
@@ -280,7 +286,12 @@ public class ChatService(
         }
     }
 
-    public async Task<ChatHistoryResult> GetChatHistoryAsync(string userId, int page, int pageSize, IChatStorage storage)
+    public async Task<ChatHistoryResult> GetChatHistoryAsync(
+        string userId,
+        int page,
+        int pageSize,
+        IChatStorage storage
+    )
     {
         try
         {
@@ -360,7 +371,13 @@ public class ChatService(
         }
     }
 
-    public async Task<MessageResult> SendMessageAsync(SendMessageRequest request, IChatStorage storage, IStreamingAgent streamingAgent, IModeService modeService, IOrleansIntegrationService? orleansService = null)
+    public async Task<MessageResult> SendMessageAsync(
+        SendMessageRequest request,
+        IChatStorage storage,
+        IStreamingAgent streamingAgent,
+        IModeService modeService,
+        IOrleansIntegrationService? orleansService = null
+    )
     {
         try
         {
@@ -864,7 +881,12 @@ public class ChatService(
                     chatId
                 );
 
-                var sequenceNumber = await PersistFullMessage(chatId, message, fullMessageId, storage);
+                var sequenceNumber = await PersistFullMessage(
+                    chatId,
+                    message,
+                    fullMessageId,
+                    storage
+                );
 
                 // Skip sending encrypted reasoning messages to client (they have sequence -1)
                 if (sequenceNumber == -1)
@@ -999,7 +1021,11 @@ public class ChatService(
         IAsyncEnumerable<IMessage>,
         CancellationToken,
         IAsyncEnumerable<IMessage>
-    > ProcessStream(string chatId, int userMsgSequence, Func<StreamChunkEvent, Task>? chunkCallback = null)
+    > ProcessStream(
+        string chatId,
+        int userMsgSequence,
+        Func<StreamChunkEvent, Task>? chunkCallback = null
+    )
     {
         var messageIndex = userMsgSequence;
         var chunkSequenceId = 0;
@@ -1058,7 +1084,7 @@ public class ChatService(
                                 Kind = "text",
                                 SequenceNumber = messageIndex,
                                 ChunkSequenceId = chunkSequenceId,
-                                Delta = content
+                                Delta = content,
                             };
 
                             await chunkCallback(chunkEvent);
@@ -1626,10 +1652,17 @@ public class ChatService(
     )
     {
         // Add user message to chat
-        var userMessageResult = await AddUserMessageToExistingChatAsync(chatId, userId, message, storage);
+        var userMessageResult = await AddUserMessageToExistingChatAsync(
+            chatId,
+            userId,
+            message,
+            storage
+        );
         if (!userMessageResult.Success)
         {
-            throw new InvalidOperationException(userMessageResult.Error ?? "Failed to add user message");
+            throw new InvalidOperationException(
+                userMessageResult.Error ?? "Failed to add user message"
+            );
         }
 
         // Create streaming context for this operation
@@ -1637,7 +1670,7 @@ public class ChatService(
         {
             ChatId = chatId,
             UserId = userId,
-            ModeId = modeId
+            ModeId = modeId,
         };
 
         // Get chat history and stream AI response
@@ -1695,11 +1728,18 @@ public class ChatService(
         var lmMessages = history.Select(ConvertToLmMessage).ToList();
         var modelId = await GetModelIdAsync(modeService, context.ModeId, context.UserId);
         var options = new GenerateReplyOptions { ModelId = modelId };
-        var messages = await streamingAgent.GenerateReplyAsync(lmMessages, options, cancellationToken);
+        var messages = await streamingAgent.GenerateReplyAsync(
+            lmMessages,
+            options,
+            cancellationToken
+        );
         var response = string.Join("", messages.OfType<TextMessage>().Select(m => m.Text));
 
         // Create a simple text response
-        var (seqSuccess, seqError, nextSequence) = await storage.AllocateSequenceAsync(context.ChatId, cancellationToken);
+        var (seqSuccess, seqError, nextSequence) = await storage.AllocateSequenceAsync(
+            context.ChatId,
+            cancellationToken
+        );
         if (seqSuccess)
         {
             var assistantDto = new TextMessageDto
@@ -1731,14 +1771,16 @@ public class ChatService(
             // Notify via callback if provided
             if (messageCallback != null)
             {
-                await messageCallback(new TextEvent
-                {
-                    ChatId = context.ChatId,
-                    MessageId = assistantDto.Id,
-                    Kind = "text",
-                    SequenceNumber = assistantDto.SequenceNumber,
-                    Text = response,
-                });
+                await messageCallback(
+                    new TextEvent
+                    {
+                        ChatId = context.ChatId,
+                        MessageId = assistantDto.Id,
+                        Kind = "text",
+                        SequenceNumber = assistantDto.SequenceNumber,
+                        Text = response,
+                    }
+                );
             }
         }
     }
@@ -1785,7 +1827,11 @@ public class ChatService(
         }
     }
 
-    private async Task<string> GetModelIdAsync(IModeService modeService, string? modeId = null, string? userId = null)
+    private async Task<string> GetModelIdAsync(
+        IModeService modeService,
+        string? modeId = null,
+        string? userId = null
+    )
     {
         // Try to get model preference from mode first
         if (!string.IsNullOrEmpty(modeId) && !string.IsNullOrEmpty(userId))
@@ -1859,7 +1905,10 @@ public class ChatService(
     {
         // TODO: Implement stateless version with callback parameters
         // The current implementation uses instance fields that are removed
-        logger.LogInformation("Tool result available for {ToolCallId} - stateless implementation needed", toolCallId);
+        logger.LogInformation(
+            "Tool result available for {ToolCallId} - stateless implementation needed",
+            toolCallId
+        );
         await Task.CompletedTask;
     }
 
@@ -1871,7 +1920,11 @@ public class ChatService(
     )
     {
         // TODO: Implement stateless version with callback parameters
-        logger.LogInformation("Tool call started: {ToolCallId}, Function: {FunctionName}", toolCallId, functionName);
+        logger.LogInformation(
+            "Tool call started: {ToolCallId}, Function: {FunctionName}",
+            toolCallId,
+            functionName
+        );
         await Task.CompletedTask;
     }
 
@@ -1883,8 +1936,12 @@ public class ChatService(
     )
     {
         // TODO: Implement stateless version with callback parameters
-        logger.LogError("Tool call error: {ToolCallId}, Function: {FunctionName}, Error: {Error}",
-            toolCallId, functionName, error);
+        logger.LogError(
+            "Tool call error: {ToolCallId}, Function: {FunctionName}, Error: {Error}",
+            toolCallId,
+            functionName,
+            error
+        );
         await Task.CompletedTask;
     }
 
@@ -1908,7 +1965,10 @@ public class ChatService(
 
         // If generation ID is provided (possibly from cache), add a unique suffix to ensure uniqueness
         // Check if it already has our timestamp pattern to avoid double-salting
-        if (providedGenerationId.StartsWith("gen-", StringComparison.Ordinal) && providedGenerationId.Length >= 32)
+        if (
+            providedGenerationId.StartsWith("gen-", StringComparison.Ordinal)
+            && providedGenerationId.Length >= 32
+        )
         {
             // Already has our format, likely unique
             return providedGenerationId + $"-{chatId[..8]}";

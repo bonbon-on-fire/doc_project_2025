@@ -65,7 +65,9 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
         var overhead = orleansAvg - directAvg;
         var overheadPercent = overhead / directAvg * 100;
 
-        _ = orleansAvg.Should().BeLessThan(5000, "Orleans routing should complete within 5 seconds");
+        _ = orleansAvg
+            .Should()
+            .BeLessThan(5000, "Orleans routing should complete within 5 seconds");
         _ = overheadPercent.Should().BeLessThan(50, "Orleans overhead should be less than 50%");
 
         _output.WriteLine($"Orleans avg: {orleansAvg}ms, Direct avg: {directAvg}ms");
@@ -114,11 +116,15 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
         sw.Stop();
 
         // Assert
-        _ = successCount.Should().BeGreaterThan((int)(userCount * 0.95), "At least 95% success rate");
+        _ = successCount
+            .Should()
+            .BeGreaterThan((int)(userCount * 0.95), "At least 95% success rate");
         _ = failureCount.Should().BeLessThan((int)(userCount * 0.05), "Less than 5% failure rate");
 
         var avgDuration = totalDuration / (double)successCount;
-        _ = avgDuration.Should().BeLessThan(10000, "Average request should complete within 10 seconds");
+        _ = avgDuration
+            .Should()
+            .BeLessThan(10000, "Average request should complete within 10 seconds");
 
         var throughput = successCount / (sw.ElapsedMilliseconds / 1000.0);
         _ = throughput.Should().BeGreaterThan(1, "Should handle at least 1 request per second");
@@ -176,7 +182,9 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
 
         var memoryLeak = finalMemory - initialMemory;
         var memoryLeakMB = memoryLeak / (1024.0 * 1024.0);
-        _ = memoryLeakMB.Should().BeLessThan(10, "Memory should be released after streams complete");
+        _ = memoryLeakMB
+            .Should()
+            .BeLessThan(10, "Memory should be released after streams complete");
 
         _output.WriteLine($"Initial memory: {initialMemory / 1024.0 / 1024.0:F2}MB");
         _output.WriteLine($"Peak memory: {peakMemory / 1024.0 / 1024.0:F2}MB");
@@ -285,7 +293,7 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
                 UserId = $"streaming-test-{i}",
                 Message = $"Generate {messageCount} messages",
                 SystemPrompt = "You are a test assistant",
-                ModeId = "default"
+                ModeId = "default",
             };
 
             var response = await client.PostAsJsonAsync("/api/chat/stream-sse", request);
@@ -297,7 +305,9 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
             sw.Stop();
             streamingTimes.Add(sw.ElapsedMilliseconds);
 
-            _output.WriteLine($"Iteration {i + 1}: {sw.ElapsedMilliseconds}ms for {events.Count} events");
+            _output.WriteLine(
+                $"Iteration {i + 1}: {sw.ElapsedMilliseconds}ms for {events.Count} events"
+            );
         }
 
         // Assert
@@ -345,7 +355,9 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
         var avgWarmStart = warmStartTimes.Average();
 
         _ = avgColdStart.Should().BeLessThan(3000, "Cold start should be under 3 seconds");
-        _ = avgWarmStart.Should().BeLessThan(avgColdStart * 0.5, "Warm start should be at least 50% faster");
+        _ = avgWarmStart
+            .Should()
+            .BeLessThan(avgColdStart * 0.5, "Warm start should be at least 50% faster");
 
         _output.WriteLine($"Average cold start: {avgColdStart}ms");
         _output.WriteLine($"Average warm start: {avgWarmStart}ms");
@@ -369,7 +381,7 @@ public class PerformanceTests : IClassFixture<OrleansTestFixture>
             UserId = userId,
             Message = "Performance test message",
             SystemPrompt = "You are a test assistant",
-            ModeId = "default"
+            ModeId = "default",
         };
 
         var response = await client.PostAsJsonAsync("/api/chat/stream-sse", request);

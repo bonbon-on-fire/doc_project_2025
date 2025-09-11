@@ -40,17 +40,20 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
         IOptionsSnapshot<OrleansGrainConfiguration> configuration,
         IOrleansMetricsCollector metricsCollector,
         ISignalRBroadcastService? signalRBroadcast = null,
-        IChatServiceProxy? chatServiceProxy = null)
+        IChatServiceProxy? chatServiceProxy = null
+    )
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _configuration = configuration?.Value ?? new OrleansGrainConfiguration();
-        _metricsCollector = metricsCollector ?? throw new ArgumentNullException(nameof(metricsCollector));
+        _metricsCollector =
+            metricsCollector ?? throw new ArgumentNullException(nameof(metricsCollector));
         _signalRBroadcast = signalRBroadcast ?? new NullSignalRBroadcastService(); // Default to no-op implementation
 
         // Use default proxy if none provided - allows for testing and gradual rollout
         if (chatServiceProxy == null)
         {
-            var proxyLogger = new Microsoft.Extensions.Logging.Abstractions.NullLogger<DefaultChatServiceProxy>();
+            var proxyLogger =
+                new Microsoft.Extensions.Logging.Abstractions.NullLogger<DefaultChatServiceProxy>();
             _chatServiceProxy = new DefaultChatServiceProxy(proxyLogger);
         }
         else
@@ -79,7 +82,11 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
 
         // Record metrics for grain activation
         var activationTime = (DateTime.UtcNow - activationStart).TotalMilliseconds;
-        await _metricsCollector.RecordGrainActivationAsync("UserGrain", State.UserId, activationTime);
+        await _metricsCollector.RecordGrainActivationAsync(
+            "UserGrain",
+            State.UserId,
+            activationTime
+        );
 
         // Setup periodic timers if enabled
         if (_configuration.UserGrain.EnablePeriodicTimers)
@@ -91,18 +98,24 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                 {
                     DueTime = TimeSpan.FromMinutes(_configuration.UserGrain.CleanupIntervalMinutes),
                     Period = TimeSpan.FromMinutes(_configuration.UserGrain.CleanupIntervalMinutes),
-                    Interleave = true
-                });
+                    Interleave = true,
+                }
+            );
 
             // Setup metrics timer using Orleans 9.x API
             _metricsTimer = this.RegisterGrainTimer(
                 async _ => await UpdateMetricsAsync(null),
                 new GrainTimerCreationOptions
                 {
-                    DueTime = TimeSpan.FromMinutes(_configuration.UserGrain.MetricsUpdateIntervalMinutes),
-                    Period = TimeSpan.FromMinutes(_configuration.UserGrain.MetricsUpdateIntervalMinutes),
-                    Interleave = true
-                });
+                    DueTime = TimeSpan.FromMinutes(
+                        _configuration.UserGrain.MetricsUpdateIntervalMinutes
+                    ),
+                    Period = TimeSpan.FromMinutes(
+                        _configuration.UserGrain.MetricsUpdateIntervalMinutes
+                    ),
+                    Interleave = true,
+                }
+            );
         }
 
         await WriteStateAsync();
@@ -110,20 +123,29 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
         _logger.LogInformation(
             "UserGrain activated for {UserId}. Activation #{ActivationCount}",
             State.UserId,
-            State.Metrics.ActivationCount);
+            State.Metrics.ActivationCount
+        );
     }
 
     /// <inheritdoc />
-    public override async Task OnDeactivateAsync(DeactivationReason reason, CancellationToken cancellationToken)
+    public override async Task OnDeactivateAsync(
+        DeactivationReason reason,
+        CancellationToken cancellationToken
+    )
     {
         _logger.LogInformation(
             "UserGrain deactivating for {UserId}. Reason: {Reason}",
             State.UserId,
-            reason);
+            reason
+        );
 
         // Record metrics for grain deactivation
         var lifetimeMinutes = (DateTime.UtcNow - State.ActivatedAt).TotalMinutes;
-        await _metricsCollector.RecordGrainDeactivationAsync("UserGrain", State.UserId, lifetimeMinutes);
+        await _metricsCollector.RecordGrainDeactivationAsync(
+            "UserGrain",
+            State.UserId,
+            lifetimeMinutes
+        );
 
         // Cleanup timers with proper thread safety
         await DisposeTimersAsync();
@@ -168,7 +190,9 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
     {
         var retryCount = 0;
         var maxRetries = _configuration.Persistence.MaxPersistenceRetries;
-        var retryDelay = TimeSpan.FromMilliseconds(_configuration.Persistence.PersistenceRetryDelayMilliseconds);
+        var retryDelay = TimeSpan.FromMilliseconds(
+            _configuration.Persistence.PersistenceRetryDelayMilliseconds
+        );
 
         while (retryCount < maxRetries)
         {
@@ -180,18 +204,27 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             catch (Exception ex) when (retryCount < maxRetries - 1)
             {
                 retryCount++;
-                _logger.LogWarning(ex,
+                _logger.LogWarning(
+                    ex,
                     "Failed to save state for {UserId} (attempt {Attempt}/{MaxAttempts}). Retrying...",
-                    State.UserId, retryCount, maxRetries);
+                    State.UserId,
+                    retryCount,
+                    maxRetries
+                );
 
                 await Task.Delay(retryDelay);
-                retryDelay = TimeSpan.FromMilliseconds(Math.Min(retryDelay.TotalMilliseconds * 2, 5000));
+                retryDelay = TimeSpan.FromMilliseconds(
+                    Math.Min(retryDelay.TotalMilliseconds * 2, 5000)
+                );
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex,
+                _logger.LogError(
+                    ex,
                     "Failed to save state for {UserId} after {MaxAttempts} attempts",
-                    State.UserId, maxRetries);
+                    State.UserId,
+                    maxRetries
+                );
                 throw;
             }
         }
@@ -209,7 +242,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                 Type = type,
                 Metadata = metadata,
                 Timestamp = DateTime.UtcNow,
-                CorrelationId = Guid.NewGuid().ToString()
+                CorrelationId = Guid.NewGuid().ToString(),
             };
 
             State.RecentActivity.Enqueue(activity);
@@ -224,7 +257,11 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             State.Metrics.TotalActivities++;
 
             // Save state periodically based on configuration
-            if (State.Metrics.TotalActivities % _configuration.Persistence.ActivityPersistenceInterval == 0)
+            if (
+                State.Metrics.TotalActivities
+                    % _configuration.Persistence.ActivityPersistenceInterval
+                == 0
+            )
             {
                 await WriteStateAsync();
             }
@@ -233,14 +270,17 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                 "Activity recorded for {UserId}: {ActivityType} - {Metadata}",
                 State.UserId,
                 type,
-                metadata);
+                metadata
+            );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Failed to record activity for {UserId}. Type: {ActivityType}",
                 State.UserId,
-                type);
+                type
+            );
 
             // Don't throw in shadow mode
         }
@@ -261,9 +301,12 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             var warnings = new List<string>();
 
             // Check for stale connections
-            var staleThreshold = TimeSpan.FromMinutes(_configuration.Connections.StaleConnectionThresholdMinutes);
-            var staleConnections = State.Connections.Values
-                .Count(c => DateTime.UtcNow - c.LastActivity > staleThreshold);
+            var staleThreshold = TimeSpan.FromMinutes(
+                _configuration.Connections.StaleConnectionThresholdMinutes
+            );
+            var staleConnections = State.Connections.Values.Count(c =>
+                DateTime.UtcNow - c.LastActivity > staleThreshold
+            );
 
             if (staleConnections > 0)
             {
@@ -278,9 +321,10 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             }
 
             // Check for old active operations
-            var staleOperations = State.ActiveOperations.Values
-                .Count(op => DateTime.UtcNow - op.StartedAt > TimeSpan.FromMinutes(10)
-                           && op.Status == OperationStatus.InProgress);
+            var staleOperations = State.ActiveOperations.Values.Count(op =>
+                DateTime.UtcNow - op.StartedAt > TimeSpan.FromMinutes(10)
+                && op.Status == OperationStatus.InProgress
+            );
 
             if (staleOperations > 0)
             {
@@ -294,12 +338,16 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                 LastActivity = State.LastActivity,
                 Metrics = State.Metrics,
                 CheckedAt = DateTime.UtcNow,
-                AdditionalInfo = $"Connections: {State.Connections.Count}, Chats: {State.ActiveChats.Count}",
-                Warnings = warnings
+                AdditionalInfo =
+                    $"Connections: {State.Connections.Count}, Chats: {State.ActiveChats.Count}",
+                Warnings = warnings,
             };
 
-            _logger.LogDebug("Health check completed for {UserId}. Healthy: {IsHealthy}",
-                State.UserId, result.IsHealthy);
+            _logger.LogDebug(
+                "Health check completed for {UserId}. Healthy: {IsHealthy}",
+                State.UserId,
+                result.IsHealthy
+            );
 
             return Task.FromResult(result);
         }
@@ -307,14 +355,16 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
         {
             _logger.LogError(ex, "Health check failed for {UserId}", State.UserId);
 
-            return Task.FromResult(new HealthCheckResult
-            {
-                IsHealthy = false,
-                GrainId = State.UserId,
-                CheckedAt = DateTime.UtcNow,
-                AdditionalInfo = $"Health check exception: {ex.Message}",
-                Warnings = ["Health check threw exception"]
-            });
+            return Task.FromResult(
+                new HealthCheckResult
+                {
+                    IsHealthy = false,
+                    GrainId = State.UserId,
+                    CheckedAt = DateTime.UtcNow,
+                    AdditionalInfo = $"Health check exception: {ex.Message}",
+                    Warnings = ["Health check threw exception"],
+                }
+            );
         }
     }
 
@@ -325,7 +375,11 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
     /// <inheritdoc />
     public async Task RegisterConnection(string connectionId, string clientId)
     {
-        using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", nameof(RegisterConnection), State.UserId);
+        using var activity = OrleansActivitySource.StartGrainActivity(
+            "UserGrain",
+            nameof(RegisterConnection),
+            State.UserId
+        );
         try
         {
             // Add tracing tags
@@ -335,7 +389,10 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             // Validate parameters
             if (string.IsNullOrEmpty(connectionId))
             {
-                throw new ArgumentException("Connection ID cannot be null or empty", nameof(connectionId));
+                throw new ArgumentException(
+                    "Connection ID cannot be null or empty",
+                    nameof(connectionId)
+                );
             }
 
             if (string.IsNullOrEmpty(clientId))
@@ -348,7 +405,9 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             {
                 _logger.LogWarning(
                     "Connection {ConnectionId} already registered for {UserId}. Updating existing connection.",
-                    connectionId, State.UserId);
+                    connectionId,
+                    State.UserId
+                );
                 value.ClientId = clientId;
                 value.LastActivity = DateTime.UtcNow;
             }
@@ -361,7 +420,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                     ClientId = clientId,
                     ConnectedAt = DateTime.UtcNow,
                     LastActivity = DateTime.UtcNow,
-                    SubscribedChatIds = []
+                    SubscribedChatIds = [],
                 };
 
                 // Add to connections dictionary
@@ -369,7 +428,10 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
 
                 _logger.LogInformation(
                     "Connection {ConnectionId} registered for {UserId} from client {ClientId}",
-                    connectionId, State.UserId, clientId);
+                    connectionId,
+                    State.UserId,
+                    clientId
+                );
             }
 
             // Update metrics
@@ -377,8 +439,10 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             State.LastActivity = DateTime.UtcNow;
 
             // Record activity
-            await RecordActivity(ActivityType.Connected,
-                JsonSerializer.Serialize(new { ConnectionId = connectionId, ClientId = clientId }));
+            await RecordActivity(
+                ActivityType.Connected,
+                JsonSerializer.Serialize(new { ConnectionId = connectionId, ClientId = clientId })
+            );
 
             // Process any buffered messages for connected chats
             var processedCount = await ProcessBufferedMessagesAsync(connectionId);
@@ -386,27 +450,35 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             {
                 _logger.LogDebug(
                     "Delivered {ProcessedCount} buffered messages to newly connected {ConnectionId}",
-                    processedCount, connectionId);
+                    processedCount,
+                    connectionId
+                );
             }
 
             // Save state
             await WriteStateAsync();
 
             // Mark activity as successful
-            OrleansActivitySource.SetSuccess(activity, new Dictionary<string, object>
-            {
-                {"buffered.messages.processed", processedCount},
-                {"active.connections", State.Connections.Count}
-            });
+            OrleansActivitySource.SetSuccess(
+                activity,
+                new Dictionary<string, object>
+                {
+                    { "buffered.messages.processed", processedCount },
+                    { "active.connections", State.Connections.Count },
+                }
+            );
         }
         catch (Exception ex)
         {
             // Set activity error
             OrleansActivitySource.SetError(activity, ex);
 
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Failed to register connection {ConnectionId} for {UserId}",
-                connectionId, State.UserId);
+                connectionId,
+                State.UserId
+            );
             throw;
         }
     }
@@ -419,7 +491,10 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             // Validate parameters
             if (string.IsNullOrEmpty(connectionId))
             {
-                throw new ArgumentException("Connection ID cannot be null or empty", nameof(connectionId));
+                throw new ArgumentException(
+                    "Connection ID cannot be null or empty",
+                    nameof(connectionId)
+                );
             }
 
             // Check if connection exists
@@ -427,7 +502,9 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             {
                 _logger.LogWarning(
                     "Connection {ConnectionId} not found for {UserId}. Ignoring unregistration.",
-                    connectionId, State.UserId);
+                    connectionId,
+                    State.UserId
+                );
                 return;
             }
 
@@ -447,7 +524,9 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                         _ = State.ActiveChats.Remove(chatId);
                         _logger.LogDebug(
                             "Removed chat subscription {ChatId} for {UserId} (no remaining connections)",
-                            chatId, State.UserId);
+                            chatId,
+                            State.UserId
+                        );
                     }
                 }
             }
@@ -460,21 +539,31 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             State.LastActivity = DateTime.UtcNow;
 
             // Record activity
-            await RecordActivity(ActivityType.Disconnected,
-                JsonSerializer.Serialize(new { ConnectionId = connectionId, SubscribedChats = subscribedChats }));
+            await RecordActivity(
+                ActivityType.Disconnected,
+                JsonSerializer.Serialize(
+                    new { ConnectionId = connectionId, SubscribedChats = subscribedChats }
+                )
+            );
 
             // Save state
             await WriteStateAsync();
 
             _logger.LogInformation(
                 "Connection {ConnectionId} unregistered for {UserId}. Removed from {ChatCount} chats.",
-                connectionId, State.UserId, subscribedChats.Count);
+                connectionId,
+                State.UserId,
+                subscribedChats.Count
+            );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Failed to unregister connection {ConnectionId} for {UserId}",
-                connectionId, State.UserId);
+                connectionId,
+                State.UserId
+            );
             throw;
         }
     }
@@ -487,7 +576,10 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             // Validate parameters
             if (string.IsNullOrEmpty(connectionId))
             {
-                throw new ArgumentException("Connection ID cannot be null or empty", nameof(connectionId));
+                throw new ArgumentException(
+                    "Connection ID cannot be null or empty",
+                    nameof(connectionId)
+                );
             }
 
             if (string.IsNullOrEmpty(chatId))
@@ -500,7 +592,10 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             {
                 _logger.LogWarning(
                     "Connection {ConnectionId} not found for {UserId}. Cannot subscribe to chat {ChatId}.",
-                    connectionId, State.UserId, chatId);
+                    connectionId,
+                    State.UserId,
+                    chatId
+                );
                 throw new InvalidOperationException($"Connection {connectionId} not found");
             }
 
@@ -511,7 +606,10 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             {
                 _logger.LogDebug(
                     "Connection {ConnectionId} already subscribed to chat {ChatId} for {UserId}",
-                    connectionId, chatId, State.UserId);
+                    connectionId,
+                    chatId,
+                    State.UserId
+                );
                 return;
             }
 
@@ -530,7 +628,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                     ChatId = chatId,
                     SubscribedAt = DateTime.UtcNow,
                     State = SubscriptionState.Active,
-                    ConnectionCount = 1
+                    ConnectionCount = 1,
                 };
                 State.ActiveChats[chatId] = subscription;
             }
@@ -540,21 +638,31 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             State.LastActivity = DateTime.UtcNow;
 
             // Record activity
-            await RecordActivity(ActivityType.ChatSubscribed,
-                JsonSerializer.Serialize(new { ConnectionId = connectionId, ChatId = chatId }));
+            await RecordActivity(
+                ActivityType.ChatSubscribed,
+                JsonSerializer.Serialize(new { ConnectionId = connectionId, ChatId = chatId })
+            );
 
             // Save state
             await WriteStateAsync();
 
             _logger.LogInformation(
                 "Connection {ConnectionId} subscribed to chat {ChatId} for {UserId}. Total connections in chat: {ConnectionCount}",
-                connectionId, chatId, State.UserId, subscription.ConnectionCount);
+                connectionId,
+                chatId,
+                State.UserId,
+                subscription.ConnectionCount
+            );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Failed to subscribe connection {ConnectionId} to chat {ChatId} for {UserId}",
-                connectionId, chatId, State.UserId);
+                connectionId,
+                chatId,
+                State.UserId
+            );
             throw;
         }
     }
@@ -567,7 +675,10 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             // Validate parameters
             if (string.IsNullOrEmpty(connectionId))
             {
-                throw new ArgumentException("Connection ID cannot be null or empty", nameof(connectionId));
+                throw new ArgumentException(
+                    "Connection ID cannot be null or empty",
+                    nameof(connectionId)
+                );
             }
 
             if (string.IsNullOrEmpty(chatId))
@@ -580,7 +691,10 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             {
                 _logger.LogWarning(
                     "Connection {ConnectionId} not found for {UserId}. Cannot unsubscribe from chat {ChatId}.",
-                    connectionId, State.UserId, chatId);
+                    connectionId,
+                    State.UserId,
+                    chatId
+                );
                 return;
             }
 
@@ -591,7 +705,10 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             {
                 _logger.LogDebug(
                     "Connection {ConnectionId} was not subscribed to chat {ChatId} for {UserId}",
-                    connectionId, chatId, State.UserId);
+                    connectionId,
+                    chatId,
+                    State.UserId
+                );
                 return;
             }
 
@@ -606,13 +723,16 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                     _ = State.ActiveChats.Remove(chatId);
                     _logger.LogDebug(
                         "Removed chat subscription {ChatId} for {UserId} (no remaining connections)",
-                        chatId, State.UserId);
+                        chatId,
+                        State.UserId
+                    );
                 }
                 else
                 {
                     // Check if any connections are still active
-                    var activeConnectionCount = State.Connections.Values
-                        .Count(c => c.SubscribedChatIds.Contains(chatId));
+                    var activeConnectionCount = State.Connections.Values.Count(c =>
+                        c.SubscribedChatIds.Contains(chatId)
+                    );
 
                     if (activeConnectionCount == 0)
                     {
@@ -626,21 +746,30 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             State.LastActivity = DateTime.UtcNow;
 
             // Record activity
-            await RecordActivity(ActivityType.ChatUnsubscribed,
-                JsonSerializer.Serialize(new { ConnectionId = connectionId, ChatId = chatId }));
+            await RecordActivity(
+                ActivityType.ChatUnsubscribed,
+                JsonSerializer.Serialize(new { ConnectionId = connectionId, ChatId = chatId })
+            );
 
             // Save state
             await WriteStateAsync();
 
             _logger.LogInformation(
                 "Connection {ConnectionId} unsubscribed from chat {ChatId} for {UserId}",
-                connectionId, chatId, State.UserId);
+                connectionId,
+                chatId,
+                State.UserId
+            );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Failed to unsubscribe connection {ConnectionId} from chat {ChatId} for {UserId}",
-                connectionId, chatId, State.UserId);
+                connectionId,
+                chatId,
+                State.UserId
+            );
             throw;
         }
     }
@@ -648,7 +777,11 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
     /// <inheritdoc />
     public async Task RelayMessage(ChatMessage message)
     {
-        using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", nameof(RelayMessage), State.UserId);
+        using var activity = OrleansActivitySource.StartGrainActivity(
+            "UserGrain",
+            nameof(RelayMessage),
+            State.UserId
+        );
         try
         {
             // Add tracing tags
@@ -670,7 +803,10 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             {
                 _logger.LogDebug(
                     "No active connections subscribed to chat {ChatId} for {UserId}. Buffering message {MessageId}.",
-                    message.ChatId, State.UserId, message.Id);
+                    message.ChatId,
+                    State.UserId,
+                    message.Id
+                );
 
                 // Buffer the message for later delivery
                 _ = await BufferMessageAsync(message, BufferPriority.Normal);
@@ -699,18 +835,25 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                                 message.Role,
                                 message.Content,
                                 message.Timestamp,
-                                State.UserId
-                            });
+                                State.UserId,
+                            }
+                        );
 
                         _logger.LogTrace(
                             "Relayed message {MessageId} to SignalR group chat_{ChatId} for {UserId}",
-                            message.Id, message.ChatId, State.UserId);
+                            message.Id,
+                            message.ChatId,
+                            State.UserId
+                        );
                     }
                     else
                     {
                         _logger.LogTrace(
                             "Would relay message {MessageId} to connection {ConnectionId} for {UserId} (SignalR not available)",
-                            message.Id, connection.ConnectionId, State.UserId);
+                            message.Id,
+                            connection.ConnectionId,
+                            State.UserId
+                        );
                     }
 
                     // Update connection activity
@@ -719,9 +862,13 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex,
+                    _logger.LogWarning(
+                        ex,
                         "Failed to relay message {MessageId} to connection {ConnectionId} for {UserId}",
-                        message.Id, connection.ConnectionId, State.UserId);
+                        message.Id,
+                        connection.ConnectionId,
+                        State.UserId
+                    );
                     failureCount++;
                 }
             }
@@ -731,30 +878,45 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             State.LastActivity = DateTime.UtcNow;
 
             // Save state periodically based on configuration
-            if (State.Metrics.MessagesRelayed % _configuration.Persistence.MessagePersistenceInterval == 0)
+            if (
+                State.Metrics.MessagesRelayed
+                    % _configuration.Persistence.MessagePersistenceInterval
+                == 0
+            )
             {
                 await WriteStateAsync();
             }
 
             _logger.LogInformation(
                 "Relayed message {MessageId} for chat {ChatId} to {SuccessCount} connections ({FailureCount} failures) for {UserId}",
-                message.Id, message.ChatId, successCount, failureCount, State.UserId);
+                message.Id,
+                message.ChatId,
+                successCount,
+                failureCount,
+                State.UserId
+            );
 
             // Mark activity as successful
-            OrleansActivitySource.SetSuccess(activity, new Dictionary<string, object>
-            {
-                {"connections.success", successCount},
-                {"connections.failed", failureCount}
-            });
+            OrleansActivitySource.SetSuccess(
+                activity,
+                new Dictionary<string, object>
+                {
+                    { "connections.success", successCount },
+                    { "connections.failed", failureCount },
+                }
+            );
         }
         catch (Exception ex)
         {
             // Set activity error
             OrleansActivitySource.SetError(activity, ex);
 
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Failed to relay message {MessageId} for {UserId}",
-                message?.Id ?? "null", State.UserId);
+                message?.Id ?? "null",
+                State.UserId
+            );
             throw;
         }
     }
@@ -784,7 +946,11 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             {
                 _logger.LogDebug(
                     "No active connections subscribed to chat {ChatId} for {UserId}. Buffering chunk {ChunkIndex} of operation {OperationId}.",
-                    chunk.ChatId, State.UserId, chunk.ChunkIndex, chunk.OperationId);
+                    chunk.ChatId,
+                    State.UserId,
+                    chunk.ChunkIndex,
+                    chunk.OperationId
+                );
 
                 // Buffer the stream chunk for later delivery
                 _ = await BufferStreamChunkAsync(chunk, BufferPriority.Normal);
@@ -813,18 +979,27 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                                 chunk.Content,
                                 chunk.IsComplete,
                                 chunk.Timestamp,
-                                State.UserId
-                            });
+                                State.UserId,
+                            }
+                        );
 
                         _logger.LogTrace(
                             "Relayed chunk {ChunkIndex} of operation {OperationId} to SignalR group chat_{ChatId} for {UserId}",
-                            chunk.ChunkIndex, chunk.OperationId, chunk.ChatId, State.UserId);
+                            chunk.ChunkIndex,
+                            chunk.OperationId,
+                            chunk.ChatId,
+                            State.UserId
+                        );
                     }
                     else
                     {
                         _logger.LogTrace(
                             "Would relay chunk {ChunkIndex} of operation {OperationId} to connection {ConnectionId} for {UserId} (SignalR not available)",
-                            chunk.ChunkIndex, chunk.OperationId, connection.ConnectionId, State.UserId);
+                            chunk.ChunkIndex,
+                            chunk.OperationId,
+                            connection.ConnectionId,
+                            State.UserId
+                        );
                     }
 
                     // Update connection activity
@@ -833,9 +1008,14 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex,
+                    _logger.LogWarning(
+                        ex,
                         "Failed to relay chunk {ChunkIndex} of operation {OperationId} to connection {ConnectionId} for {UserId}",
-                        chunk.ChunkIndex, chunk.OperationId, connection.ConnectionId, State.UserId);
+                        chunk.ChunkIndex,
+                        chunk.OperationId,
+                        connection.ConnectionId,
+                        State.UserId
+                    );
                     failureCount++;
                 }
             }
@@ -848,12 +1028,19 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             {
                 _logger.LogInformation(
                     "Completed relaying all chunks for operation {OperationId} in chat {ChatId} to {ConnectionCount} connections for {UserId}",
-                    chunk.OperationId, chunk.ChatId, successCount, State.UserId);
+                    chunk.OperationId,
+                    chunk.ChatId,
+                    successCount,
+                    State.UserId
+                );
 
                 // Save state on completion
                 await WriteStateAsync();
             }
-            else if (chunk.ChunkIndex % _configuration.Persistence.StreamChunkPersistenceInterval == 0)
+            else if (
+                chunk.ChunkIndex % _configuration.Persistence.StreamChunkPersistenceInterval
+                == 0
+            )
             {
                 // Save state periodically for long streams
                 await WriteStateAsync();
@@ -861,9 +1048,12 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Failed to relay chunk for operation {OperationId} for {UserId}",
-                chunk?.OperationId ?? "null", State.UserId);
+                chunk?.OperationId ?? "null",
+                State.UserId
+            );
             throw;
         }
     }
@@ -875,12 +1065,19 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
     /// <inheritdoc />
     public async Task<string> ProcessMessageWithBackground(ChatMessage message)
     {
-        using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", nameof(ProcessMessageWithBackground), State.UserId);
+        using var activity = OrleansActivitySource.StartGrainActivity(
+            "UserGrain",
+            nameof(ProcessMessageWithBackground),
+            State.UserId
+        );
         var operationStart = DateTime.UtcNow;
         try
         {
-            _logger.LogInformation("Processing message in background for chat {ChatId} and user {UserId}",
-                message.ChatId, State.UserId);
+            _logger.LogInformation(
+                "Processing message in background for chat {ChatId} and user {UserId}",
+                message.ChatId,
+                State.UserId
+            );
 
             // Add tracing tags
             _ = (activity?.SetTag("chat.id", message?.ChatId));
@@ -904,7 +1101,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                 ChatId = message.ChatId,
                 Type = OperationType.SendMessage,
                 StartedAt = DateTime.UtcNow,
-                Status = OperationStatus.Queued
+                Status = OperationStatus.Queued,
             };
 
             // Update metrics
@@ -912,52 +1109,76 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             State.Metrics.ActiveOperationsCount++;
 
             // Record activity
-            await RecordActivity(ActivityType.MessageSent,
-                JsonSerializer.Serialize(new
-                {
-                    OperationId = operationId,
-                    message.ChatId,
-                    MessageLength = message.Content?.Length ?? 0
-                }));
+            await RecordActivity(
+                ActivityType.MessageSent,
+                JsonSerializer.Serialize(
+                    new
+                    {
+                        OperationId = operationId,
+                        message.ChatId,
+                        MessageLength = message.Content?.Length ?? 0,
+                    }
+                )
+            );
 
             await WriteStateAsync();
 
-            _logger.LogInformation("Message queued for background processing with operation ID {OperationId}", operationId);
+            _logger.LogInformation(
+                "Message queued for background processing with operation ID {OperationId}",
+                operationId
+            );
 
             // TODO: Phase 3 complete integration - this will be implemented when background service is available
             // For now, we track the intent and provide the operation ID for coordination
 
             // Record successful operation metrics
             var duration = (DateTime.UtcNow - operationStart).TotalMilliseconds;
-            await _metricsCollector.RecordGrainOperationAsync("UserGrain", "ProcessMessageWithBackground", duration, true);
+            await _metricsCollector.RecordGrainOperationAsync(
+                "UserGrain",
+                "ProcessMessageWithBackground",
+                duration,
+                true
+            );
 
             // Mark activity as successful
-            OrleansActivitySource.SetSuccess(activity, new Dictionary<string, object>
-            {
-                {"operation.id", operationId},
-                {"duration.ms", duration}
-            });
+            OrleansActivitySource.SetSuccess(
+                activity,
+                new Dictionary<string, object>
+                {
+                    { "operation.id", operationId },
+                    { "duration.ms", duration },
+                }
+            );
 
             return operationId;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to process message with background for {UserId}", State.UserId);
+            _logger.LogError(
+                ex,
+                "Failed to process message with background for {UserId}",
+                State.UserId
+            );
 
             // Set activity error
             OrleansActivitySource.SetError(activity, ex);
 
             // Record failed operation metrics
             var duration = (DateTime.UtcNow - operationStart).TotalMilliseconds;
-            await _metricsCollector.RecordGrainOperationAsync("UserGrain", "ProcessMessageWithBackground", duration, false);
+            await _metricsCollector.RecordGrainOperationAsync(
+                "UserGrain",
+                "ProcessMessageWithBackground",
+                duration,
+                false
+            );
 
             // Record error activity
-            await RecordActivity(ActivityType.ErrorOccurred,
-                JsonSerializer.Serialize(new
-                {
-                    Error = ex.Message,
-                    ChatId = message?.ChatId ?? "unknown"
-                }));
+            await RecordActivity(
+                ActivityType.ErrorOccurred,
+                JsonSerializer.Serialize(
+                    new { Error = ex.Message, ChatId = message?.ChatId ?? "unknown" }
+                )
+            );
 
             throw;
         }
@@ -968,8 +1189,12 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
     {
         try
         {
-            _logger.LogInformation("Operation {OperationId} started for user {UserId} in chat {ChatId}",
-                operationId, State.UserId, chatId);
+            _logger.LogInformation(
+                "Operation {OperationId} started for user {UserId} in chat {ChatId}",
+                operationId,
+                State.UserId,
+                chatId
+            );
 
             // Update operation status in grain state
             if (State.ActiveOperations.TryGetValue(operationId, out var operation))
@@ -980,52 +1205,81 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             }
             else
             {
-                _logger.LogWarning("Operation {OperationId} not found in state for user {UserId}",
-                    operationId, State.UserId);
+                _logger.LogWarning(
+                    "Operation {OperationId} not found in state for user {UserId}",
+                    operationId,
+                    State.UserId
+                );
             }
 
             // Broadcast operation started event to connected clients
-            _ = await BroadcastToChat(chatId, "OperationStarted", new
-            {
-                OperationId = operationId,
-                ChatId = chatId,
-                State.UserId,
-                Timestamp = DateTime.UtcNow,
-                Status = "InProgress"
-            });
+            _ = await BroadcastToChat(
+                chatId,
+                "OperationStarted",
+                new
+                {
+                    OperationId = operationId,
+                    ChatId = chatId,
+                    State.UserId,
+                    Timestamp = DateTime.UtcNow,
+                    Status = "InProgress",
+                }
+            );
 
             // Record activity
-            await RecordActivity(ActivityType.MessageSent,
-                JsonSerializer.Serialize(new
-                {
-                    Event = "OperationStarted",
-                    OperationId = operationId,
-                    ChatId = chatId
-                }));
+            await RecordActivity(
+                ActivityType.MessageSent,
+                JsonSerializer.Serialize(
+                    new
+                    {
+                        Event = "OperationStarted",
+                        OperationId = operationId,
+                        ChatId = chatId,
+                    }
+                )
+            );
 
-            _logger.LogDebug("Operation started notification completed for {OperationId}", operationId);
+            _logger.LogDebug(
+                "Operation started notification completed for {OperationId}",
+                operationId
+            );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to notify operation started for {OperationId} and user {UserId}",
-                operationId, State.UserId);
+            _logger.LogError(
+                ex,
+                "Failed to notify operation started for {OperationId} and user {UserId}",
+                operationId,
+                State.UserId
+            );
             // Don't throw - this is a notification method
         }
     }
 
     /// <inheritdoc />
-    public async Task NotifyOperationCompleted(string operationId, bool success, string? error = null)
+    public async Task NotifyOperationCompleted(
+        string operationId,
+        bool success,
+        string? error = null
+    )
     {
         try
         {
-            _logger.LogInformation("Operation {OperationId} completed for user {UserId}. Success: {Success}",
-                operationId, State.UserId, success);
+            _logger.LogInformation(
+                "Operation {OperationId} completed for user {UserId}. Success: {Success}",
+                operationId,
+                State.UserId,
+                success
+            );
 
             // Find and update operation in grain state
             if (!State.ActiveOperations.TryGetValue(operationId, out var operation))
             {
-                _logger.LogWarning("Operation {OperationId} not found in state for user {UserId}",
-                    operationId, State.UserId);
+                _logger.LogWarning(
+                    "Operation {OperationId} not found in state for user {UserId}",
+                    operationId,
+                    State.UserId
+                );
                 return;
             }
 
@@ -1056,30 +1310,38 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             await WriteStateAsync();
 
             // Broadcast operation completed event to connected clients
-            _ = await BroadcastToChat(operation.ChatId, "OperationCompleted", new
-            {
-                OperationId = operationId,
+            _ = await BroadcastToChat(
                 operation.ChatId,
-                State.UserId,
-                Success = success,
-                Error = error,
-                Timestamp = DateTime.UtcNow,
-                Status = success ? "Completed" : "Failed",
-                Duration = operation.CompletedAt - operation.StartedAt
-            });
+                "OperationCompleted",
+                new
+                {
+                    OperationId = operationId,
+                    operation.ChatId,
+                    State.UserId,
+                    Success = success,
+                    Error = error,
+                    Timestamp = DateTime.UtcNow,
+                    Status = success ? "Completed" : "Failed",
+                    Duration = operation.CompletedAt - operation.StartedAt,
+                }
+            );
 
             // Record activity
             var activityType = success ? ActivityType.MessageCompleted : ActivityType.ErrorOccurred;
-            await RecordActivity(activityType,
-                JsonSerializer.Serialize(new
-                {
-                    Event = "OperationCompleted",
-                    OperationId = operationId,
-                    operation.ChatId,
-                    Success = success,
-                    Error = error,
-                    Duration = (operation.CompletedAt - operation.StartedAt)?.TotalMilliseconds
-                }));
+            await RecordActivity(
+                activityType,
+                JsonSerializer.Serialize(
+                    new
+                    {
+                        Event = "OperationCompleted",
+                        OperationId = operationId,
+                        operation.ChatId,
+                        Success = success,
+                        Error = error,
+                        Duration = (operation.CompletedAt - operation.StartedAt)?.TotalMilliseconds,
+                    }
+                )
+            );
 
             // Schedule cleanup of completed operation after delay
             if (success || !string.IsNullOrEmpty(error))
@@ -1088,18 +1350,28 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                     async _ => await CleanupOperation(operationId),
                     new GrainTimerCreationOptions
                     {
-                        DueTime = TimeSpan.FromMinutes(_configuration.UserGrain.CompletedOperationRetentionMinutes),
+                        DueTime = TimeSpan.FromMinutes(
+                            _configuration.UserGrain.CompletedOperationRetentionMinutes
+                        ),
                         Period = Timeout.InfiniteTimeSpan,
-                        Interleave = true
-                    });
+                        Interleave = true,
+                    }
+                );
             }
 
-            _logger.LogDebug("Operation completed notification finished for {OperationId}", operationId);
+            _logger.LogDebug(
+                "Operation completed notification finished for {OperationId}",
+                operationId
+            );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to notify operation completed for {OperationId} and user {UserId}",
-                operationId, State.UserId);
+            _logger.LogError(
+                ex,
+                "Failed to notify operation completed for {OperationId} and user {UserId}",
+                operationId,
+                State.UserId
+            );
             // Don't throw - this is a notification method
         }
     }
@@ -1109,22 +1381,37 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
     {
         try
         {
-            _logger.LogInformation("Cancelling operation {OperationId} for user {UserId}",
-                operationId, State.UserId);
+            _logger.LogInformation(
+                "Cancelling operation {OperationId} for user {UserId}",
+                operationId,
+                State.UserId
+            );
 
             // Find operation in grain state
             if (!State.ActiveOperations.TryGetValue(operationId, out var operation))
             {
-                _logger.LogWarning("Operation {OperationId} not found for user {UserId}. Cannot cancel.",
-                    operationId, State.UserId);
+                _logger.LogWarning(
+                    "Operation {OperationId} not found for user {UserId}. Cannot cancel.",
+                    operationId,
+                    State.UserId
+                );
                 return false;
             }
 
             // Check if operation can be cancelled
-            if (operation.Status is OperationStatus.Completed or OperationStatus.Failed or OperationStatus.Cancelled)
+            if (
+                operation.Status
+                is OperationStatus.Completed
+                    or OperationStatus.Failed
+                    or OperationStatus.Cancelled
+            )
             {
-                _logger.LogWarning("Operation {OperationId} for user {UserId} is already in final state {Status}. Cannot cancel.",
-                    operationId, State.UserId, operation.Status);
+                _logger.LogWarning(
+                    "Operation {OperationId} for user {UserId} is already in final state {Status}. Cannot cancel.",
+                    operationId,
+                    State.UserId,
+                    operation.Status
+                );
                 return false;
             }
 
@@ -1146,44 +1433,62 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             await WriteStateAsync();
 
             // Broadcast cancellation to clients
-            _ = await BroadcastToChat(operation.ChatId, "OperationCancelled", new
-            {
-                OperationId = operationId,
+            _ = await BroadcastToChat(
                 operation.ChatId,
-                State.UserId,
-                Timestamp = DateTime.UtcNow,
-                Status = "Cancelled",
-                Duration = operation.CompletedAt - operation.StartedAt
-            });
+                "OperationCancelled",
+                new
+                {
+                    OperationId = operationId,
+                    operation.ChatId,
+                    State.UserId,
+                    Timestamp = DateTime.UtcNow,
+                    Status = "Cancelled",
+                    Duration = operation.CompletedAt - operation.StartedAt,
+                }
+            );
 
             // Record activity
-            await RecordActivity(ActivityType.ErrorOccurred,
-                JsonSerializer.Serialize(new
-                {
-                    Event = "OperationCancelled",
-                    OperationId = operationId,
-                    operation.ChatId
-                }));
+            await RecordActivity(
+                ActivityType.ErrorOccurred,
+                JsonSerializer.Serialize(
+                    new
+                    {
+                        Event = "OperationCancelled",
+                        OperationId = operationId,
+                        operation.ChatId,
+                    }
+                )
+            );
 
             // Schedule cleanup of cancelled operation after delay
             _ = this.RegisterGrainTimer(
                 async _ => await CleanupOperation(operationId),
                 new GrainTimerCreationOptions
                 {
-                    DueTime = TimeSpan.FromMinutes(_configuration.UserGrain.CompletedOperationRetentionMinutes),
+                    DueTime = TimeSpan.FromMinutes(
+                        _configuration.UserGrain.CompletedOperationRetentionMinutes
+                    ),
                     Period = TimeSpan.MaxValue,
-                    Interleave = true
-                });
+                    Interleave = true,
+                }
+            );
 
-            _logger.LogInformation("Operation {OperationId} successfully cancelled for user {UserId}",
-                operationId, State.UserId);
+            _logger.LogInformation(
+                "Operation {OperationId} successfully cancelled for user {UserId}",
+                operationId,
+                State.UserId
+            );
 
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to cancel operation {OperationId} for user {UserId}",
-                operationId, State.UserId);
+            _logger.LogError(
+                ex,
+                "Failed to cancel operation {OperationId} for user {UserId}",
+                operationId,
+                State.UserId
+            );
             // Don't throw - this is a control method
             return false;
         }
@@ -1194,8 +1499,11 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
     {
         try
         {
-            _logger.LogDebug("Getting operation status for {OperationId} and user {UserId}",
-                operationId, State.UserId);
+            _logger.LogDebug(
+                "Getting operation status for {OperationId} and user {UserId}",
+                operationId,
+                State.UserId
+            );
 
             // Find operation in grain state
             if (State.ActiveOperations.TryGetValue(operationId, out var operation))
@@ -1209,24 +1517,35 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                     StartedAt = operation.StartedAt,
                     CompletedAt = operation.CompletedAt,
                     Status = operation.Status,
-                    Error = operation.Error
+                    Error = operation.Error,
                 };
 
-                _logger.LogDebug("Found operation {OperationId} with status {Status} for user {UserId}",
-                    operationId, operation.Status, State.UserId);
+                _logger.LogDebug(
+                    "Found operation {OperationId} with status {Status} for user {UserId}",
+                    operationId,
+                    operation.Status,
+                    State.UserId
+                );
 
                 return Task.FromResult<OperationContext?>(operationCopy);
             }
 
-            _logger.LogDebug("Operation {OperationId} not found for user {UserId}",
-                operationId, State.UserId);
+            _logger.LogDebug(
+                "Operation {OperationId} not found for user {UserId}",
+                operationId,
+                State.UserId
+            );
 
             return Task.FromResult<OperationContext?>(null);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get operation status for {OperationId} and user {UserId}",
-                operationId, State.UserId);
+            _logger.LogError(
+                ex,
+                "Failed to get operation status for {OperationId} and user {UserId}",
+                operationId,
+                State.UserId
+            );
             return Task.FromResult<OperationContext?>(null);
         }
     }
@@ -1250,11 +1569,16 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
         // Filter connections that are:
         // 1. Subscribed to this chat
         // 2. Still active (not stale)
-        var staleThreshold = DateTime.UtcNow.AddMinutes(-_configuration.Connections.StaleConnectionThresholdMinutes);
+        var staleThreshold = DateTime.UtcNow.AddMinutes(
+            -_configuration.Connections.StaleConnectionThresholdMinutes
+        );
 
-        return [.. State.Connections.Values
-            .Where(c => c.SubscribedChatIds.Contains(chatId) &&
-                       c.LastActivity > staleThreshold)];
+        return
+        [
+            .. State.Connections.Values.Where(c =>
+                c.SubscribedChatIds.Contains(chatId) && c.LastActivity > staleThreshold
+            ),
+        ];
     }
 
     /// <summary>
@@ -1264,7 +1588,11 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
     /// <param name="method">The SignalR method name to call</param>
     /// <param name="payload">The payload to broadcast</param>
     /// <returns>Statistics about the broadcast operation</returns>
-    private async Task<(int SuccessCount, int FailureCount)> BroadcastToChat(string chatId, string method, object payload)
+    private async Task<(int SuccessCount, int FailureCount)> BroadcastToChat(
+        string chatId,
+        string method,
+        object payload
+    )
     {
         var connections = GetConnectionsForChat(chatId);
         var successCount = 0;
@@ -1286,13 +1614,21 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
 
                 _logger.LogTrace(
                     "Broadcasted {Method} to SignalR group chat_{ChatId} for {UserId} ({ConnectionCount} connections)",
-                    method, chatId, State.UserId, connections.Count());
+                    method,
+                    chatId,
+                    State.UserId,
+                    connections.Count()
+                );
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex,
+                _logger.LogWarning(
+                    ex,
                     "Failed to broadcast {Method} to SignalR group chat_{ChatId} for {UserId}",
-                    method, chatId, State.UserId);
+                    method,
+                    chatId,
+                    State.UserId
+                );
                 failureCount = connections.Count();
             }
         }
@@ -1305,16 +1641,25 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                 {
                     _logger.LogTrace(
                         "Would broadcast {Method} to connection {ConnectionId} in chat {ChatId} for {UserId} (SignalR not available)",
-                        method, connection.ConnectionId, chatId, State.UserId);
+                        method,
+                        connection.ConnectionId,
+                        chatId,
+                        State.UserId
+                    );
 
                     connection.LastActivity = DateTime.UtcNow;
                     successCount++;
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex,
+                    _logger.LogWarning(
+                        ex,
                         "Failed to track broadcast {Method} to connection {ConnectionId} in chat {ChatId} for {UserId}",
-                        method, connection.ConnectionId, chatId, State.UserId);
+                        method,
+                        connection.ConnectionId,
+                        chatId,
+                        State.UserId
+                    );
                     failureCount++;
                 }
             }
@@ -1340,7 +1685,9 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
         try
         {
             var now = DateTime.UtcNow;
-            var cleanupThreshold = TimeSpan.FromHours(_configuration.UserGrain.ActivityRetentionHours);
+            var cleanupThreshold = TimeSpan.FromHours(
+                _configuration.UserGrain.ActivityRetentionHours
+            );
             var changed = false;
 
             // Clean up old activity records
@@ -1361,15 +1708,23 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             if (State.RecentActivity.Count != oldActivitiesCount)
             {
                 changed = true;
-                _logger.LogDebug("Cleaned up {Count} old activities for {UserId}",
-                    oldActivitiesCount - State.RecentActivity.Count, State.UserId);
+                _logger.LogDebug(
+                    "Cleaned up {Count} old activities for {UserId}",
+                    oldActivitiesCount - State.RecentActivity.Count,
+                    State.UserId
+                );
             }
 
             // Clean up completed operations (Phase 3 data)
-            var completedOps = State.ActiveOperations
-                .Where(kvp => kvp.Value.Status == OperationStatus.Completed
-                           && kvp.Value.CompletedAt.HasValue
-                           && now - kvp.Value.CompletedAt.Value > TimeSpan.FromMinutes(_configuration.UserGrain.CompletedOperationRetentionMinutes))
+            var completedOps = State
+                .ActiveOperations.Where(kvp =>
+                    kvp.Value.Status == OperationStatus.Completed
+                    && kvp.Value.CompletedAt.HasValue
+                    && now - kvp.Value.CompletedAt.Value
+                        > TimeSpan.FromMinutes(
+                            _configuration.UserGrain.CompletedOperationRetentionMinutes
+                        )
+                )
                 .Select(kvp => kvp.Key)
                 .ToList();
 
@@ -1381,8 +1736,11 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
 
             if (completedOps.Count > 0)
             {
-                _logger.LogDebug("Cleaned up {Count} completed operations for {UserId}",
-                    completedOps.Count, State.UserId);
+                _logger.LogDebug(
+                    "Cleaned up {Count} completed operations for {UserId}",
+                    completedOps.Count,
+                    State.UserId
+                );
             }
 
             // Clean up expired buffered messages (Phase 3 data)
@@ -1390,8 +1748,11 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             if (expiredMessagesRemoved > 0)
             {
                 changed = true;
-                _logger.LogDebug("Cleaned up {Count} expired buffered messages for {UserId}",
-                    expiredMessagesRemoved, State.UserId);
+                _logger.LogDebug(
+                    "Cleaned up {Count} expired buffered messages for {UserId}",
+                    expiredMessagesRemoved,
+                    State.UserId
+                );
             }
 
             // Save state if changes were made
@@ -1426,8 +1787,9 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             State.Metrics.ActiveConnections = State.Connections.Count;
 
             // Update active operations count from actual state
-            State.Metrics.ActiveOperationsCount = State.ActiveOperations
-                .Count(kvp => kvp.Value.Status is OperationStatus.Queued or OperationStatus.InProgress);
+            State.Metrics.ActiveOperationsCount = State.ActiveOperations.Count(kvp =>
+                kvp.Value.Status is OperationStatus.Queued or OperationStatus.InProgress
+            );
 
             // Save metrics periodically
             await WriteStateAsync();
@@ -1439,10 +1801,16 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                 State.UserId,
                 stateSize,
                 State.Metrics.ActiveConnections,
-                State.Metrics.ActiveOperationsCount);
+                State.Metrics.ActiveOperationsCount
+            );
 
-            _logger.LogTrace("Metrics updated for {UserId}: Connections={ConnectionCount}, Activities={ActivityCount}, ActiveOps={ActiveOperations}",
-                State.UserId, State.Metrics.ActiveConnections, State.Metrics.TotalActivities, State.Metrics.ActiveOperationsCount);
+            _logger.LogTrace(
+                "Metrics updated for {UserId}: Connections={ConnectionCount}, Activities={ActivityCount}, ActiveOps={ActiveOperations}",
+                State.UserId,
+                State.Metrics.ActiveConnections,
+                State.Metrics.TotalActivities,
+                State.Metrics.ActiveOperationsCount
+            );
         }
         catch (Exception ex)
         {
@@ -1469,30 +1837,49 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             if (State.ActiveOperations.TryGetValue(operationId, out var operation))
             {
                 // Only clean up completed, failed, or cancelled operations
-                if (operation.Status is OperationStatus.Completed or OperationStatus.Failed or OperationStatus.Cancelled)
+                if (
+                    operation.Status
+                    is OperationStatus.Completed
+                        or OperationStatus.Failed
+                        or OperationStatus.Cancelled
+                )
                 {
                     _ = State.ActiveOperations.Remove(operationId);
                     await WriteStateAsync();
 
-                    _logger.LogDebug("Cleaned up completed operation {OperationId} for user {UserId}",
-                        operationId, State.UserId);
+                    _logger.LogDebug(
+                        "Cleaned up completed operation {OperationId} for user {UserId}",
+                        operationId,
+                        State.UserId
+                    );
                 }
                 else
                 {
-                    _logger.LogWarning("Attempted to clean up operation {OperationId} with status {Status} for user {UserId}",
-                        operationId, operation.Status, State.UserId);
+                    _logger.LogWarning(
+                        "Attempted to clean up operation {OperationId} with status {Status} for user {UserId}",
+                        operationId,
+                        operation.Status,
+                        State.UserId
+                    );
                 }
             }
             else
             {
-                _logger.LogDebug("Operation {OperationId} already removed from state for user {UserId}",
-                    operationId, State.UserId);
+                _logger.LogDebug(
+                    "Operation {OperationId} already removed from state for user {UserId}",
+                    operationId,
+                    State.UserId
+                );
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to cleanup operation {OperationId} for user {UserId}",
-                operationId, State.UserId);
+            _logger.LogError(
+                ex,
+                "Failed to cleanup operation {OperationId} for user {UserId}",
+                operationId,
+                State.UserId
+            );
         }
     }
 
@@ -1501,7 +1888,10 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
     #region IUserMessageBufferGrain Implementation
 
     /// <inheritdoc />
-    public async Task<string> BufferMessageAsync(ChatMessage message, BufferPriority priority = BufferPriority.Normal)
+    public async Task<string> BufferMessageAsync(
+        ChatMessage message,
+        BufferPriority priority = BufferPriority.Normal
+    )
     {
         try
         {
@@ -1530,7 +1920,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                 Priority = priority,
                 DeliveryAttempts = 0,
                 LastDeliveryAttempt = null,
-                LastDeliveryError = null
+                LastDeliveryError = null,
             };
 
             // Handle buffer overflow if necessary
@@ -1540,7 +1930,9 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                 {
                     _logger.LogWarning(
                         "Buffer overflow: Rejecting new message for chat {ChatId} (buffer full at {Count})",
-                        message.ChatId, buffer.MaxSize);
+                        message.ChatId,
+                        buffer.MaxSize
+                    );
 
                     // Record overflow metric
                     State.Metrics.TotalBufferOverflowDrops++;
@@ -1555,7 +1947,9 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
 
                     _logger.LogDebug(
                         "Buffer overflow: Dropped oldest message {MessageId} from chat {ChatId}",
-                        droppedMessage.MessageId, message.ChatId);
+                        droppedMessage.MessageId,
+                        message.ChatId
+                    );
                 }
             }
 
@@ -1568,36 +1962,49 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             State.Metrics.CurrentBufferCount = State.MessageBuffers.Count;
 
             // Record activity
-            await RecordActivity(ActivityType.MessageSent,
-                JsonSerializer.Serialize(new
-                {
-                    Event = "MessageBuffered",
-                    MessageId = messageId,
-                    message.ChatId,
-                    Priority = priority.ToString(),
-                    BufferSize = buffer.Messages.Count
-                }));
+            await RecordActivity(
+                ActivityType.MessageSent,
+                JsonSerializer.Serialize(
+                    new
+                    {
+                        Event = "MessageBuffered",
+                        MessageId = messageId,
+                        message.ChatId,
+                        Priority = priority.ToString(),
+                        BufferSize = buffer.Messages.Count,
+                    }
+                )
+            );
 
             // Save state
             await WriteStateAsync();
 
             _logger.LogDebug(
                 "Buffered message {MessageId} for chat {ChatId} with priority {Priority}",
-                messageId, message.ChatId, priority);
+                messageId,
+                message.ChatId,
+                priority
+            );
 
             return messageId;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Failed to buffer message for chat {ChatId} and user {UserId}",
-                message?.ChatId, State.UserId);
+                message?.ChatId,
+                State.UserId
+            );
             throw;
         }
     }
 
     /// <inheritdoc />
-    public async Task<string> BufferStreamChunkAsync(StreamChunk chunk, BufferPriority priority = BufferPriority.Normal)
+    public async Task<string> BufferStreamChunkAsync(
+        StreamChunk chunk,
+        BufferPriority priority = BufferPriority.Normal
+    )
     {
         try
         {
@@ -1618,13 +2025,15 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                 Role = "assistant",
                 Timestamp = DateTime.UtcNow,
                 IsStreaming = true,
-                Metadata = JsonSerializer.Serialize(new
-                {
-                    chunk.IsComplete,
-                    chunk.ChunkIndex,
-                    chunk.TotalChunks,
-                    chunk.MessageId
-                })
+                Metadata = JsonSerializer.Serialize(
+                    new
+                    {
+                        chunk.IsComplete,
+                        chunk.ChunkIndex,
+                        chunk.TotalChunks,
+                        chunk.MessageId,
+                    }
+                ),
             };
 
             // Buffer as a regular message
@@ -1632,15 +2041,21 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
 
             _logger.LogDebug(
                 "Buffered stream chunk {ChunkIndex} for operation {OperationId} as message {MessageId}",
-                chunk.ChunkIndex, chunk.OperationId, messageId);
+                chunk.ChunkIndex,
+                chunk.OperationId,
+                messageId
+            );
 
             return messageId;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Failed to buffer stream chunk for chat {ChatId} and user {UserId}",
-                chunk?.ChatId, State.UserId);
+                chunk?.ChatId,
+                State.UserId
+            );
             throw;
         }
     }
@@ -1649,7 +2064,8 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
     public Task<IEnumerable<BufferedMessage>> GetBufferedMessagesAsync(
         string chatId,
         int? limit = null,
-        bool highPriorityOnly = false)
+        bool highPriorityOnly = false
+    )
     {
         try
         {
@@ -1681,15 +2097,21 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
 
             _logger.LogDebug(
                 "Retrieved {Count} buffered messages for chat {ChatId} (high priority only: {HighPriorityOnly})",
-                result.Count, chatId, highPriorityOnly);
+                result.Count,
+                chatId,
+                highPriorityOnly
+            );
 
             return Task.FromResult<IEnumerable<BufferedMessage>>(result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Failed to get buffered messages for chat {ChatId} and user {UserId}",
-                chatId, State.UserId);
+                chatId,
+                State.UserId
+            );
             throw;
         }
     }
@@ -1701,7 +2123,10 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
         {
             if (string.IsNullOrEmpty(messageId))
             {
-                throw new ArgumentException("Message ID cannot be null or empty", nameof(messageId));
+                throw new ArgumentException(
+                    "Message ID cannot be null or empty",
+                    nameof(messageId)
+                );
             }
 
             // Search through all chat buffers for the message
@@ -1712,21 +2137,29 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                 {
                     _logger.LogDebug(
                         "Found buffered message {MessageId} in chat {ChatId}",
-                        messageId, message.ChatId);
+                        messageId,
+                        message.ChatId
+                    );
                     return Task.FromResult<BufferedMessage?>(message);
                 }
             }
 
-            _logger.LogDebug("Buffered message {MessageId} not found for user {UserId}",
-                messageId, State.UserId);
+            _logger.LogDebug(
+                "Buffered message {MessageId} not found for user {UserId}",
+                messageId,
+                State.UserId
+            );
 
             return Task.FromResult<BufferedMessage?>(null);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Failed to get buffered message {MessageId} for user {UserId}",
-                messageId, State.UserId);
+                messageId,
+                State.UserId
+            );
             throw;
         }
     }
@@ -1738,7 +2171,10 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
         {
             if (string.IsNullOrEmpty(messageId))
             {
-                throw new ArgumentException("Message ID cannot be null or empty", nameof(messageId));
+                throw new ArgumentException(
+                    "Message ID cannot be null or empty",
+                    nameof(messageId)
+                );
             }
 
             // Search through all chat buffers for the message
@@ -1760,35 +2196,47 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                     State.Metrics.CurrentBufferCount = State.MessageBuffers.Count;
 
                     // Record activity
-                    await RecordActivity(ActivityType.MessageCompleted,
-                        JsonSerializer.Serialize(new
-                        {
-                            Event = "MessageRemovedFromBuffer",
-                            MessageId = messageId,
-                            messageToRemove.ChatId
-                        }));
+                    await RecordActivity(
+                        ActivityType.MessageCompleted,
+                        JsonSerializer.Serialize(
+                            new
+                            {
+                                Event = "MessageRemovedFromBuffer",
+                                MessageId = messageId,
+                                messageToRemove.ChatId,
+                            }
+                        )
+                    );
 
                     // Save state
                     await WriteStateAsync();
 
                     _logger.LogDebug(
                         "Removed buffered message {MessageId} from chat {ChatId}",
-                        messageId, messageToRemove.ChatId);
+                        messageId,
+                        messageToRemove.ChatId
+                    );
 
                     return true;
                 }
             }
 
-            _logger.LogDebug("Buffered message {MessageId} not found for removal in user {UserId}",
-                messageId, State.UserId);
+            _logger.LogDebug(
+                "Buffered message {MessageId} not found for removal in user {UserId}",
+                messageId,
+                State.UserId
+            );
 
             return false;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Failed to remove buffered message {MessageId} for user {UserId}",
-                messageId, State.UserId);
+                messageId,
+                State.UserId
+            );
             throw;
         }
     }
@@ -1822,7 +2270,9 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                         buffer.TotalExpiredMessages++;
                         _logger.LogDebug(
                             "Expired buffered message {MessageId} from chat {ChatId}",
-                            message.MessageId, chatId);
+                            message.MessageId,
+                            chatId
+                        );
                     }
                 }
 
@@ -1838,7 +2288,10 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
 
                 _logger.LogDebug(
                     "Cleaned buffer for chat {ChatId}: {OriginalCount} -> {NewCount} messages",
-                    chatId, originalCount, buffer.Messages.Count);
+                    chatId,
+                    originalCount,
+                    buffer.Messages.Count
+                );
             }
 
             // Update metrics
@@ -1849,13 +2302,17 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             if (totalRemoved > 0)
             {
                 // Record activity
-                await RecordActivity(ActivityType.MessageCompleted,
-                    JsonSerializer.Serialize(new
-                    {
-                        Event = "BufferCleanup",
-                        ExpiredMessages = totalRemoved,
-                        RemainingBuffers = State.MessageBuffers.Count
-                    }));
+                await RecordActivity(
+                    ActivityType.MessageCompleted,
+                    JsonSerializer.Serialize(
+                        new
+                        {
+                            Event = "BufferCleanup",
+                            ExpiredMessages = totalRemoved,
+                            RemainingBuffers = State.MessageBuffers.Count,
+                        }
+                    )
+                );
 
                 // Save state
                 await WriteStateAsync();
@@ -1863,15 +2320,19 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
 
             _logger.LogDebug(
                 "Buffer cleanup completed for user {UserId}: removed {ExpiredCount} expired messages",
-                State.UserId, totalRemoved);
+                State.UserId,
+                totalRemoved
+            );
 
             return totalRemoved;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Failed to clear expired buffered messages for user {UserId}",
-                State.UserId);
+                State.UserId
+            );
             throw;
         }
     }
@@ -1890,20 +2351,28 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             {
                 _logger.LogDebug(
                     "Retrieved buffer for chat {ChatId}: {MessageCount} messages",
-                    chatId, buffer.Messages.Count);
+                    chatId,
+                    buffer.Messages.Count
+                );
                 return Task.FromResult<ChatMessageBuffer?>(buffer);
             }
 
-            _logger.LogDebug("No buffer found for chat {ChatId} in user {UserId}",
-                chatId, State.UserId);
+            _logger.LogDebug(
+                "No buffer found for chat {ChatId} in user {UserId}",
+                chatId,
+                State.UserId
+            );
 
             return Task.FromResult<ChatMessageBuffer?>(null);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Failed to get chat buffer for {ChatId} and user {UserId}",
-                chatId, State.UserId);
+                chatId,
+                State.UserId
+            );
             throw;
         }
     }
@@ -1927,11 +2396,14 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                     ChatId = chatId,
                     CurrentMessageCount = messages.Count,
                     MaxCapacity = buffer.MaxSize,
-                    UtilizationPercent = buffer.MaxSize > 0 ? messages.Count * 100.0 / buffer.MaxSize : 0,
+                    UtilizationPercent =
+                        buffer.MaxSize > 0 ? messages.Count * 100.0 / buffer.MaxSize : 0,
                     OldestMessageTime = messages.FirstOrDefault()?.BufferedAt,
                     NewestMessageTime = messages.LastOrDefault()?.BufferedAt,
                     HighPriorityCount = messages.Count(m => m.Priority == BufferPriority.High),
-                    ExpiringMessageCount = messages.Count(m => (m.ExpiresAt - currentTime).TotalMinutes <= 5)
+                    ExpiringMessageCount = messages.Count(m =>
+                        (m.ExpiresAt - currentTime).TotalMinutes <= 5
+                    ),
                 };
 
                 summaries[chatId] = summary;
@@ -1939,15 +2411,15 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
 
             _logger.LogDebug(
                 "Generated buffer summary for user {UserId}: {BufferCount} active buffers",
-                State.UserId, summaries.Count);
+                State.UserId,
+                summaries.Count
+            );
 
             return Task.FromResult(summaries);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
-                "Failed to get buffer summary for user {UserId}",
-                State.UserId);
+            _logger.LogError(ex, "Failed to get buffer summary for user {UserId}", State.UserId);
             throw;
         }
     }
@@ -1959,7 +2431,10 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
         {
             if (string.IsNullOrEmpty(messageId))
             {
-                throw new ArgumentException("Message ID cannot be null or empty", nameof(messageId));
+                throw new ArgumentException(
+                    "Message ID cannot be null or empty",
+                    nameof(messageId)
+                );
             }
 
             // Find and remove the delivered message
@@ -1971,25 +2446,30 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                 State.Metrics.TotalBufferedMessagesDelivered++;
 
                 // Record activity
-                await RecordActivity(ActivityType.MessageCompleted,
-                    JsonSerializer.Serialize(new
-                    {
-                        Event = "MessageDelivered",
-                        MessageId = messageId
-                    }));
+                await RecordActivity(
+                    ActivityType.MessageCompleted,
+                    JsonSerializer.Serialize(
+                        new { Event = "MessageDelivered", MessageId = messageId }
+                    )
+                );
 
                 _logger.LogDebug(
                     "Marked buffered message {MessageId} as delivered for user {UserId}",
-                    messageId, State.UserId);
+                    messageId,
+                    State.UserId
+                );
             }
 
             return removed;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Failed to mark message {MessageId} as delivered for user {UserId}",
-                messageId, State.UserId);
+                messageId,
+                State.UserId
+            );
             throw;
         }
     }
@@ -2001,7 +2481,10 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
         {
             if (string.IsNullOrEmpty(messageId))
             {
-                throw new ArgumentException("Message ID cannot be null or empty", nameof(messageId));
+                throw new ArgumentException(
+                    "Message ID cannot be null or empty",
+                    nameof(messageId)
+                );
             }
 
             // Find the message in buffers
@@ -2025,37 +2508,50 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                     }
 
                     // Record activity
-                    await RecordActivity(ActivityType.ErrorOccurred,
-                        JsonSerializer.Serialize(new
-                        {
-                            Event = "DeliveryAttemptFailed",
-                            MessageId = messageId,
-                            message.ChatId,
-                            Attempts = message.DeliveryAttempts,
-                            Error = error
-                        }));
+                    await RecordActivity(
+                        ActivityType.ErrorOccurred,
+                        JsonSerializer.Serialize(
+                            new
+                            {
+                                Event = "DeliveryAttemptFailed",
+                                MessageId = messageId,
+                                message.ChatId,
+                                Attempts = message.DeliveryAttempts,
+                                Error = error,
+                            }
+                        )
+                    );
 
                     // Save state
                     await WriteStateAsync();
 
                     _logger.LogDebug(
                         "Recorded delivery attempt #{Attempt} for message {MessageId}: {Error}",
-                        message.DeliveryAttempts, messageId, error);
+                        message.DeliveryAttempts,
+                        messageId,
+                        error
+                    );
 
                     return true;
                 }
             }
 
-            _logger.LogDebug("Message {MessageId} not found for delivery attempt recording in user {UserId}",
-                messageId, State.UserId);
+            _logger.LogDebug(
+                "Message {MessageId} not found for delivery attempt recording in user {UserId}",
+                messageId,
+                State.UserId
+            );
 
             return false;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Failed to record delivery attempt for message {MessageId} and user {UserId}",
-                messageId, State.UserId);
+                messageId,
+                State.UserId
+            );
             throw;
         }
     }
@@ -2064,19 +2560,24 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
     public async Task<int> ProcessBufferedMessagesAsync(
         string connectionId,
         string? chatId = null,
-        int maxMessages = 50)
+        int maxMessages = 50
+    )
     {
         try
         {
             if (string.IsNullOrEmpty(connectionId))
             {
-                throw new ArgumentException("Connection ID cannot be null or empty", nameof(connectionId));
+                throw new ArgumentException(
+                    "Connection ID cannot be null or empty",
+                    nameof(connectionId)
+                );
             }
 
             var processedCount = 0;
-            var buffersToProcess = chatId != null
-                ? State.MessageBuffers.Where(kvp => kvp.Key == chatId)
-                : State.MessageBuffers;
+            var buffersToProcess =
+                chatId != null
+                    ? State.MessageBuffers.Where(kvp => kvp.Key == chatId)
+                    : State.MessageBuffers;
 
             foreach (var kvp in buffersToProcess.ToList())
             {
@@ -2090,8 +2591,8 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                 var messagesToDeliver = new List<BufferedMessage>();
 
                 // Get messages to deliver (prioritize high priority)
-                var messages = buffer.Messages
-                    .OrderByDescending(m => m.Priority)
+                var messages = buffer
+                    .Messages.OrderByDescending(m => m.Priority)
                     .ThenBy(m => m.BufferedAt)
                     .Take(maxMessages - processedCount)
                     .ToList();
@@ -2101,12 +2602,17 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                     try
                     {
                         // Attempt to deliver the message
-                        if (message.Message.IsStreaming && !string.IsNullOrEmpty(message.Message.Metadata))
+                        if (
+                            message.Message.IsStreaming
+                            && !string.IsNullOrEmpty(message.Message.Metadata)
+                        )
                         {
                             // Try to parse stream metadata
                             try
                             {
-                                var metadata = JsonSerializer.Deserialize<JsonElement>(message.Message.Metadata);
+                                var metadata = JsonSerializer.Deserialize<JsonElement>(
+                                    message.Message.Metadata
+                                );
 
                                 // Deliver as stream chunk
                                 var chunk = new StreamChunk
@@ -2114,17 +2620,38 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                                     OperationId = message.Message.Id,
                                     ChatId = message.Message.ChatId,
                                     Content = message.Message.Content,
-                                    IsComplete = !metadata.TryGetProperty("IsComplete", out var isComplete) || isComplete.GetBoolean(),
-                                    ChunkIndex = metadata.TryGetProperty("ChunkIndex", out var chunkIndex) ? chunkIndex.GetInt32() : 0,
-                                    TotalChunks = metadata.TryGetProperty("TotalChunks", out var totalChunks) ? totalChunks.GetInt32() : null,
-                                    MessageId = metadata.TryGetProperty("MessageId", out var messageId) ? messageId.GetString() : null
+                                    IsComplete =
+                                        !metadata.TryGetProperty("IsComplete", out var isComplete)
+                                        || isComplete.GetBoolean(),
+                                    ChunkIndex = metadata.TryGetProperty(
+                                        "ChunkIndex",
+                                        out var chunkIndex
+                                    )
+                                        ? chunkIndex.GetInt32()
+                                        : 0,
+                                    TotalChunks = metadata.TryGetProperty(
+                                        "TotalChunks",
+                                        out var totalChunks
+                                    )
+                                        ? totalChunks.GetInt32()
+                                        : null,
+                                    MessageId = metadata.TryGetProperty(
+                                        "MessageId",
+                                        out var messageId
+                                    )
+                                        ? messageId.GetString()
+                                        : null,
                                 };
 
                                 await RelayStreamChunk(chunk);
                             }
                             catch (Exception ex)
                             {
-                                _logger.LogWarning(ex, "Failed to parse stream metadata for message {MessageId}, delivering as regular message", message.MessageId);
+                                _logger.LogWarning(
+                                    ex,
+                                    "Failed to parse stream metadata for message {MessageId}, delivering as regular message",
+                                    message.MessageId
+                                );
                                 // Fall back to regular message delivery
                                 await RelayMessage(message.Message);
                             }
@@ -2143,9 +2670,12 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                         // Record delivery failure
                         _ = await RecordDeliveryAttemptAsync(message.MessageId, ex.Message);
 
-                        _logger.LogWarning(ex,
+                        _logger.LogWarning(
+                            ex,
                             "Failed to deliver buffered message {MessageId} to connection {ConnectionId}",
-                            message.MessageId, connectionId);
+                            message.MessageId,
+                            connectionId
+                        );
                     }
                 }
 
@@ -2159,27 +2689,36 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             if (processedCount > 0)
             {
                 // Record activity
-                await RecordActivity(ActivityType.MessageCompleted,
-                    JsonSerializer.Serialize(new
-                    {
-                        Event = "BufferedMessagesProcessed",
-                        ConnectionId = connectionId,
-                        ChatId = chatId,
-                        ProcessedCount = processedCount
-                    }));
+                await RecordActivity(
+                    ActivityType.MessageCompleted,
+                    JsonSerializer.Serialize(
+                        new
+                        {
+                            Event = "BufferedMessagesProcessed",
+                            ConnectionId = connectionId,
+                            ChatId = chatId,
+                            ProcessedCount = processedCount,
+                        }
+                    )
+                );
 
                 _logger.LogDebug(
                     "Processed {ProcessedCount} buffered messages for connection {ConnectionId}",
-                    processedCount, connectionId);
+                    processedCount,
+                    connectionId
+                );
             }
 
             return processedCount;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Failed to process buffered messages for connection {ConnectionId} and user {UserId}",
-                connectionId, State.UserId);
+                connectionId,
+                State.UserId
+            );
             throw;
         }
     }
@@ -2196,8 +2735,11 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
 
             if (!State.MessageBuffers.TryGetValue(chatId, out var buffer))
             {
-                _logger.LogDebug("No buffer found for chat {ChatId} in user {UserId}",
-                    chatId, State.UserId);
+                _logger.LogDebug(
+                    "No buffer found for chat {ChatId} in user {UserId}",
+                    chatId,
+                    State.UserId
+                );
                 return 0;
             }
 
@@ -2208,28 +2750,37 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             State.Metrics.CurrentBufferCount = State.MessageBuffers.Count;
 
             // Record activity
-            await RecordActivity(ActivityType.MessageCompleted,
-                JsonSerializer.Serialize(new
-                {
-                    Event = "ChatBufferCleared",
-                    ChatId = chatId,
-                    MessagesCleared = messageCount
-                }));
+            await RecordActivity(
+                ActivityType.MessageCompleted,
+                JsonSerializer.Serialize(
+                    new
+                    {
+                        Event = "ChatBufferCleared",
+                        ChatId = chatId,
+                        MessagesCleared = messageCount,
+                    }
+                )
+            );
 
             // Save state
             await WriteStateAsync();
 
             _logger.LogDebug(
                 "Cleared buffer for chat {ChatId}: removed {MessageCount} messages",
-                chatId, messageCount);
+                chatId,
+                messageCount
+            );
 
             return messageCount;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Failed to clear chat buffer for {ChatId} and user {UserId}",
-                chatId, State.UserId);
+                chatId,
+                State.UserId
+            );
             throw;
         }
     }
@@ -2254,14 +2805,16 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             TtlMinutes = _configuration.UserGrain.MessageBufferTtlMinutes,
             LastCleanupAt = DateTime.UtcNow,
             OverflowStrategy = _configuration.UserGrain.BufferOverflowStrategy,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
         };
 
         State.MessageBuffers[chatId] = newBuffer;
 
         _logger.LogDebug(
             "Created new message buffer for chat {ChatId} with size limit {MaxSize}",
-            chatId, newBuffer.MaxSize);
+            chatId,
+            newBuffer.MaxSize
+        );
 
         return newBuffer;
     }
@@ -2283,9 +2836,14 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
     /// <inheritdoc />
     public async IAsyncEnumerable<StreamChunk> ProcessChatStreamAsync(
         ChatRequest request,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default
+    )
     {
-        using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", nameof(ProcessChatStreamAsync), State.UserId);
+        using var activity = OrleansActivitySource.StartGrainActivity(
+            "UserGrain",
+            nameof(ProcessChatStreamAsync),
+            State.UserId
+        );
         var streamId = Guid.NewGuid().ToString();
         var streamState = new StreamState
         {
@@ -2293,7 +2851,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             ChatId = request.ChatId,
             UserId = request.UserId,
             StartedAt = DateTime.UtcNow,
-            Status = StreamStatus.Active
+            Status = StreamStatus.Active,
         };
 
         // Add tracing tags
@@ -2302,15 +2860,25 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
         _ = (activity?.SetTag("request.id", request.RequestId));
 
         // Check stream limit
-        var activeStreamCount = State.ActiveStreams.Count(s => s.Value.Status == StreamStatus.Active);
+        var activeStreamCount = State.ActiveStreams.Count(s =>
+            s.Value.Status == StreamStatus.Active
+        );
         if (activeStreamCount >= _configuration.Streaming.MaxConcurrentStreamsPerUser)
         {
             _logger.LogWarning(
                 "Stream limit exceeded for user {UserId}. Active: {ActiveCount}, Max: {MaxCount}",
-                State.UserId, activeStreamCount, _configuration.Streaming.MaxConcurrentStreamsPerUser);
+                State.UserId,
+                activeStreamCount,
+                _configuration.Streaming.MaxConcurrentStreamsPerUser
+            );
 
-            OrleansActivitySource.SetError(activity, new InvalidOperationException("Stream limit exceeded"));
-            throw new InvalidOperationException($"Maximum concurrent streams ({_configuration.Streaming.MaxConcurrentStreamsPerUser}) exceeded for user {State.UserId}");
+            OrleansActivitySource.SetError(
+                activity,
+                new InvalidOperationException("Stream limit exceeded")
+            );
+            throw new InvalidOperationException(
+                $"Maximum concurrent streams ({_configuration.Streaming.MaxConcurrentStreamsPerUser}) exceeded for user {State.UserId}"
+            );
         }
 
         // Create linked cancellation token
@@ -2322,12 +2890,15 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
 
         // Create channel for callback-to-AsyncEnumerable bridge
         var channel = System.Threading.Channels.Channel.CreateBounded<StreamChunk>(
-            new System.Threading.Channels.BoundedChannelOptions(_configuration.Streaming.StreamChannelBufferSize)
+            new System.Threading.Channels.BoundedChannelOptions(
+                _configuration.Streaming.StreamChannelBufferSize
+            )
             {
                 FullMode = System.Threading.Channels.BoundedChannelFullMode.Wait,
                 SingleWriter = true,
-                SingleReader = true
-            });
+                SingleReader = true,
+            }
+        );
 
         Task? processingTask = null;
         var hasError = false;
@@ -2342,24 +2913,32 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
 
             _logger.LogInformation(
                 "Starting stream {StreamId} for chat {ChatId} and user {UserId}",
-                streamId, request.ChatId, request.UserId);
+                streamId,
+                request.ChatId,
+                request.UserId
+            );
 
             // Record activity
-            await RecordActivity(ActivityType.MessageSent,
-                JsonSerializer.Serialize(new
-                {
-                    Event = "StreamStarted",
-                    StreamId = streamId,
-                    request.ChatId,
-                    request.RequestId
-                }));
+            await RecordActivity(
+                ActivityType.MessageSent,
+                JsonSerializer.Serialize(
+                    new
+                    {
+                        Event = "StreamStarted",
+                        StreamId = streamId,
+                        request.ChatId,
+                        request.RequestId,
+                    }
+                )
+            );
 
             // Process the message with callbacks
             processingTask = ProcessMessageWithStreamingCallbacks(
                 request,
                 streamState,
                 channel.Writer,
-                streamCts.Token);
+                streamCts.Token
+            );
         }
         catch (Exception ex)
         {
@@ -2374,7 +2953,11 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             }
             catch (Exception saveEx)
             {
-                _logger.LogError(saveEx, "Failed to save state after error in stream {StreamId}", streamId);
+                _logger.LogError(
+                    saveEx,
+                    "Failed to save state after error in stream {StreamId}",
+                    streamId
+                );
             }
 
             _logger.LogError(ex, "Stream {StreamId} failed during initialization", streamId);
@@ -2394,8 +2977,11 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                 streamState.LastActivity = DateTime.UtcNow;
 
                 // Persist state periodically
-                if (_configuration.Streaming.PersistPartialStreams &&
-                    streamState.ChunksSent % _configuration.Streaming.PartialStreamSaveInterval == 0)
+                if (
+                    _configuration.Streaming.PersistPartialStreams
+                    && streamState.ChunksSent % _configuration.Streaming.PartialStreamSaveInterval
+                        == 0
+                )
                 {
                     streamState.PartialMessage += chunk.Content;
 
@@ -2405,7 +2991,11 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to persist partial stream state for {StreamId}", streamId);
+                        _logger.LogWarning(
+                            ex,
+                            "Failed to persist partial stream state for {StreamId}",
+                            streamId
+                        );
                     }
                 }
 
@@ -2418,11 +3008,16 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                             "UserGrain",
                             "StreamChunk",
                             0,
-                            true);
+                            true
+                        );
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to record metrics for stream chunk in {StreamId}", streamId);
+                        _logger.LogWarning(
+                            ex,
+                            "Failed to record metrics for stream chunk in {StreamId}",
+                            streamId
+                        );
                     }
                 }
 
@@ -2446,13 +3041,21 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
 
                 _logger.LogInformation(
                     "Stream {StreamId} completed successfully. Chunks sent: {ChunkCount}",
-                    streamId, streamState.ChunksSent);
+                    streamId,
+                    streamState.ChunksSent
+                );
 
-                OrleansActivitySource.SetSuccess(activity, new Dictionary<string, object>
-                {
-                    {"chunks.sent", streamState.ChunksSent},
-                    {"duration.ms", (DateTime.UtcNow - streamState.StartedAt).TotalMilliseconds}
-                });
+                OrleansActivitySource.SetSuccess(
+                    activity,
+                    new Dictionary<string, object>
+                    {
+                        { "chunks.sent", streamState.ChunksSent },
+                        {
+                            "duration.ms",
+                            (DateTime.UtcNow - streamState.StartedAt).TotalMilliseconds
+                        },
+                    }
+                );
             }
         }
         catch (OperationCanceledException)
@@ -2465,7 +3068,11 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to save state after cancellation for stream {StreamId}", streamId);
+                _logger.LogWarning(
+                    ex,
+                    "Failed to save state after cancellation for stream {StreamId}",
+                    streamId
+                );
             }
 
             _logger.LogInformation("Stream {StreamId} was cancelled", streamId);
@@ -2482,7 +3089,11 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             }
             catch (Exception saveEx)
             {
-                _logger.LogWarning(saveEx, "Failed to save state after error for stream {StreamId}", streamId);
+                _logger.LogWarning(
+                    saveEx,
+                    "Failed to save state after error for stream {StreamId}",
+                    streamId
+                );
             }
 
             _logger.LogError(ex, "Stream {StreamId} failed with error", streamId);
@@ -2501,11 +3112,18 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             }
 
             // Schedule stream cleanup after retention period
-            _ = Task.Run(async () =>
-            {
-                await Task.Delay(TimeSpan.FromMinutes(_configuration.UserGrain.CompletedOperationRetentionMinutes));
-                await CleanupStreamState(streamId);
-            }, cancellationToken);
+            _ = Task.Run(
+                async () =>
+                {
+                    await Task.Delay(
+                        TimeSpan.FromMinutes(
+                            _configuration.UserGrain.CompletedOperationRetentionMinutes
+                        )
+                    );
+                    await CleanupStreamState(streamId);
+                },
+                cancellationToken
+            );
         }
 
         // Rethrow captured error if any
@@ -2523,17 +3141,21 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
         ChatRequest request,
         StreamState streamState,
         System.Threading.Channels.ChannelWriter<StreamChunk> channelWriter,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         try
         {
             _logger.LogInformation(
                 "Processing message for stream {StreamId} with ChatService integration",
-                streamState.StreamId);
+                streamState.StreamId
+            );
 
             // Process the chat stream through the ChatServiceProxy
             var chunkCount = 0;
-            await foreach (var chunk in _chatServiceProxy.ProcessChatStreamAsync(request, cancellationToken))
+            await foreach (
+                var chunk in _chatServiceProxy.ProcessChatStreamAsync(request, cancellationToken)
+            )
             {
                 // Forward chunks to the channel
                 await channelWriter.WriteAsync(chunk, cancellationToken);
@@ -2544,8 +3166,10 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                 streamState.LastActivity = DateTime.UtcNow;
 
                 // Add partial message for recovery if configured
-                if (_configuration.Streaming.PersistPartialStreams &&
-                    !string.IsNullOrEmpty(chunk.Content))
+                if (
+                    _configuration.Streaming.PersistPartialStreams
+                    && !string.IsNullOrEmpty(chunk.Content)
+                )
                 {
                     streamState.PartialMessage += chunk.Content;
                 }
@@ -2553,28 +3177,36 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                 // Check for completion
                 if (chunk.IsComplete)
                 {
-                    streamState.Status = chunk.Type == StreamChunkType.Error
-                        ? StreamStatus.Failed
-                        : StreamStatus.Completed;
+                    streamState.Status =
+                        chunk.Type == StreamChunkType.Error
+                            ? StreamStatus.Failed
+                            : StreamStatus.Completed;
 
-                    if (chunk.Type == StreamChunkType.Error && chunk.Metadata?.ContainsKey("error") == true)
+                    if (
+                        chunk.Type == StreamChunkType.Error
+                        && chunk.Metadata?.ContainsKey("error") == true
+                    )
                     {
                         streamState.ErrorMessage = chunk.Metadata["error"]?.ToString();
                     }
 
                     _logger.LogInformation(
                         "Stream {StreamId} completed with {ChunkCount} chunks. Status: {Status}",
-                        streamState.StreamId, chunkCount, streamState.Status);
+                        streamState.StreamId,
+                        chunkCount,
+                        streamState.Status
+                    );
                     break;
                 }
             }
-
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Error processing message for stream {StreamId}",
-                streamState.StreamId);
+                streamState.StreamId
+            );
             throw;
         }
         finally
@@ -2606,7 +3238,9 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
 
                     _logger.LogDebug(
                         "Cleaned up stream state for {StreamId} with status {Status}",
-                        streamId, streamState.Status);
+                        streamId,
+                        streamState.Status
+                    );
                 }
             }
         }

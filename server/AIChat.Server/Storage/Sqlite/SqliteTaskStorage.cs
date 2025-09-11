@@ -114,11 +114,17 @@ public sealed class SqliteTaskStorage(ISqliteConnectionFactory factory) : ITaskS
             if (result != null)
             {
                 // Record exists but version doesn't match
-                var currentVersion = Convert.ToInt32(result, System.Globalization.CultureInfo.InvariantCulture);
+                var currentVersion = Convert.ToInt32(
+                    result,
+                    System.Globalization.CultureInfo.InvariantCulture
+                );
                 throw new InvalidOperationException(
-                    string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                    string.Format(
+                        System.Globalization.CultureInfo.InvariantCulture,
                         "Version conflict: expected {0}, but current version is {1}",
-                        expectedVersion, currentVersion)
+                        expectedVersion,
+                        currentVersion
+                    )
                 );
             }
         }
@@ -127,9 +133,11 @@ public sealed class SqliteTaskStorage(ISqliteConnectionFactory factory) : ITaskS
         if (expectedVersion != 0)
         {
             throw new InvalidOperationException(
-                string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                string.Format(
+                    System.Globalization.CultureInfo.InvariantCulture,
                     "Version conflict: expected version {0}, but no tasks exist for this chat",
-                    expectedVersion)
+                    expectedVersion
+                )
             );
         }
 

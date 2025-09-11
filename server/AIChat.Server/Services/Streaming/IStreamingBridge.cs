@@ -19,7 +19,8 @@ public interface IStreamingBridge : IAsyncDisposable
         IAsyncEnumerable<T> grainStream,
         HttpResponse httpResponse,
         Func<T, string> formatter,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Handles backpressure when the consumer cannot keep up with the producer.
@@ -29,7 +30,8 @@ public interface IStreamingBridge : IAsyncDisposable
     /// <returns>A task with a boolean indicating if backpressure was successfully handled</returns>
     Task<bool> HandleBackpressureAsync(
         float bufferUtilization,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Propagates errors from the grain stream to the HTTP client.
@@ -41,7 +43,8 @@ public interface IStreamingBridge : IAsyncDisposable
     Task PropagateErrorAsync(
         Exception exception,
         HttpResponse httpResponse,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Gets the current buffer statistics for monitoring.

@@ -25,7 +25,7 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
     /// <summary>
@@ -39,7 +39,8 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
         IGrainFactory grainFactory,
         IFeatureManager featureManager,
         ILogger<OrleansIntegrationService> logger,
-        IOptions<OrleansResilienceConfiguration> resilienceOptions)
+        IOptions<OrleansResilienceConfiguration> resilienceOptions
+    )
     {
         _grainFactory = grainFactory ?? throw new ArgumentNullException(nameof(grainFactory));
         _featureManager = featureManager ?? throw new ArgumentNullException(nameof(featureManager));
@@ -66,27 +67,37 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
             // Check if Orleans integration is enabled
             if (!await _featureManager.IsEnabledAsync("OrleansIntegration"))
             {
-                _logger.LogDebug("Orleans integration disabled, skipping activity recording for {UserId}", userId);
+                _logger.LogDebug(
+                    "Orleans integration disabled, skipping activity recording for {UserId}",
+                    userId
+                );
                 return;
             }
 
             // Execute Orleans operation with resilience
-            await ExecuteWithResilienceAsync(async () =>
-            {
-                var grain = _grainFactory.GetGrain<IUserGrain>(userId);
-                var metadata = JsonSerializer.Serialize(data, JsonOptions);
+            await ExecuteWithResilienceAsync(
+                async () =>
+                {
+                    var grain = _grainFactory.GetGrain<IUserGrain>(userId);
+                    var metadata = JsonSerializer.Serialize(data, JsonOptions);
 
-                await grain.RecordActivity(type, metadata);
-            }, $"RecordActivity-{userId}");
+                    await grain.RecordActivity(type, metadata);
+                },
+                $"RecordActivity-{userId}"
+            );
 
             _logger.LogTrace("Activity recorded for {UserId}: {ActivityType}", userId, type);
         }
         catch (Exception ex)
         {
             // Log but don't throw in shadow mode - this should never break the main application flow
-            _logger.LogWarning(ex,
+            _logger.LogWarning(
+                ex,
                 "Failed to record Orleans activity for {UserId}. Type: {ActivityType}. Error: {Error}",
-                userId, type, ex.Message);
+                userId,
+                type,
+                ex.Message
+            );
         }
     }
 
@@ -107,20 +118,32 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
                 return null;
             }
 
-            var state = await ExecuteWithResilienceAsync(async () =>
-            {
-                var grain = _grainFactory.GetGrain<IUserGrain>(userId);
-                return await grain.GetState();
-            }, $"GetUserState-{userId}");
+            var state = await ExecuteWithResilienceAsync(
+                async () =>
+                {
+                    var grain = _grainFactory.GetGrain<IUserGrain>(userId);
+                    return await grain.GetState();
+                },
+                $"GetUserState-{userId}"
+            );
 
-            _logger.LogDebug("Retrieved state for {UserId}: {ConnectionCount} connections, {ActivityCount} activities",
-                userId, state.Connections.Count, state.RecentActivity.Count);
+            _logger.LogDebug(
+                "Retrieved state for {UserId}: {ConnectionCount} connections, {ActivityCount} activities",
+                userId,
+                state.Connections.Count,
+                state.RecentActivity.Count
+            );
 
             return state;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get user state for {UserId}: {Error}", userId, ex.Message);
+            _logger.LogError(
+                ex,
+                "Failed to get user state for {UserId}: {Error}",
+                userId,
+                ex.Message
+            );
             return null;
         }
     }
@@ -137,13 +160,19 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
 
             // Try to activate a health check grain and verify it responds
             var healthCheckUserId = $"health-check-{DateTime.UtcNow.Ticks}";
-            var healthResult = await ExecuteWithResilienceAsync(async () =>
-            {
-                var grain = _grainFactory.GetGrain<IUserGrain>(healthCheckUserId);
-                return await grain.CheckHealth();
-            }, "OrleansHealthCheck");
+            var healthResult = await ExecuteWithResilienceAsync(
+                async () =>
+                {
+                    var grain = _grainFactory.GetGrain<IUserGrain>(healthCheckUserId);
+                    return await grain.CheckHealth();
+                },
+                "OrleansHealthCheck"
+            );
 
-            _logger.LogDebug("Orleans health check completed. Healthy: {IsHealthy}", healthResult.IsHealthy);
+            _logger.LogDebug(
+                "Orleans health check completed. Healthy: {IsHealthy}",
+                healthResult.IsHealthy
+            );
             return healthResult.IsHealthy;
         }
         catch (Exception ex)
@@ -164,7 +193,7 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
                 IsHealthy = false,
                 GrainId = userId,
                 CheckedAt = DateTime.UtcNow,
-                Warnings = ["Invalid user ID provided"]
+                Warnings = ["Invalid user ID provided"],
             };
         }
 
@@ -177,27 +206,36 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
                     IsHealthy = false,
                     GrainId = userId,
                     CheckedAt = DateTime.UtcNow,
-                    Warnings = ["Orleans integration disabled"]
+                    Warnings = ["Orleans integration disabled"],
                 };
             }
 
             var grain = _grainFactory.GetGrain<IUserGrain>(userId);
             var healthResult = await grain.CheckHealth();
 
-            _logger.LogDebug("Health check for {UserId} completed. Healthy: {IsHealthy}, Warnings: {WarningCount}",
-                userId, healthResult.IsHealthy, healthResult.Warnings.Count);
+            _logger.LogDebug(
+                "Health check for {UserId} completed. Healthy: {IsHealthy}, Warnings: {WarningCount}",
+                userId,
+                healthResult.IsHealthy,
+                healthResult.Warnings.Count
+            );
 
             return healthResult;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to check health for {UserId}: {Error}", userId, ex.Message);
+            _logger.LogError(
+                ex,
+                "Failed to check health for {UserId}: {Error}",
+                userId,
+                ex.Message
+            );
             return new HealthCheckResult
             {
                 IsHealthy = false,
                 GrainId = userId,
                 CheckedAt = DateTime.UtcNow,
-                Warnings = [$"Orleans health check failed: {ex.Message}"]
+                Warnings = [$"Orleans health check failed: {ex.Message}"],
             };
         }
     }
@@ -233,8 +271,11 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
                 status.ConnectionState = "No Silos";
             }
 
-            _logger.LogDebug("Orleans connection status: {ConnectionState}, {SiloCount} silos",
-                status.ConnectionState, status.ActiveSilos);
+            _logger.LogDebug(
+                "Orleans connection status: {ConnectionState}, {SiloCount} silos",
+                status.ConnectionState,
+                status.ActiveSilos
+            );
         }
         catch (Exception ex)
         {
@@ -255,8 +296,11 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
     /// <inheritdoc />
     public async Task RegisterConnectionAsync(string userId, string connectionId, string clientId)
     {
-        _logger.LogDebug("RegisterConnectionAsync called in Phase 1 (stubbed) for {UserId}: {ConnectionId}",
-            userId, connectionId);
+        _logger.LogDebug(
+            "RegisterConnectionAsync called in Phase 1 (stubbed) for {UserId}: {ConnectionId}",
+            userId,
+            connectionId
+        );
 
         // Phase 2 implementation will use Orleans for connection management
         await Task.CompletedTask;
@@ -265,8 +309,11 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
     /// <inheritdoc />
     public async Task UnregisterConnectionAsync(string userId, string connectionId)
     {
-        _logger.LogDebug("UnregisterConnectionAsync called in Phase 1 (stubbed) for {UserId}: {ConnectionId}",
-            userId, connectionId);
+        _logger.LogDebug(
+            "UnregisterConnectionAsync called in Phase 1 (stubbed) for {UserId}: {ConnectionId}",
+            userId,
+            connectionId
+        );
 
         // Phase 2 implementation will use Orleans for connection management
         await Task.CompletedTask;
@@ -275,8 +322,12 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
     /// <inheritdoc />
     public async Task SubscribeToChatAsync(string userId, string connectionId, string chatId)
     {
-        _logger.LogDebug("SubscribeToChatAsync called in Phase 1 (stubbed) for {UserId}: {ConnectionId} -> {ChatId}",
-            userId, connectionId, chatId);
+        _logger.LogDebug(
+            "SubscribeToChatAsync called in Phase 1 (stubbed) for {UserId}: {ConnectionId} -> {ChatId}",
+            userId,
+            connectionId,
+            chatId
+        );
 
         // Phase 2 implementation will use Orleans for subscription management
         await Task.CompletedTask;
@@ -289,8 +340,11 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
     /// <inheritdoc />
     public async Task<string> ProcessMessageAsync(string userId, ChatMessage message)
     {
-        _logger.LogDebug("ProcessMessageAsync called in Phase 1 (stubbed) for {UserId}: {MessageId}",
-            userId, message.Id);
+        _logger.LogDebug(
+            "ProcessMessageAsync called in Phase 1 (stubbed) for {UserId}: {MessageId}",
+            userId,
+            message.Id
+        );
 
         // Phase 3 implementation will use Orleans background service
         var operationId = Guid.NewGuid().ToString();
@@ -300,8 +354,11 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
     /// <inheritdoc />
     public async Task CancelOperationAsync(string userId, string operationId)
     {
-        _logger.LogDebug("CancelOperationAsync called in Phase 1 (stubbed) for {UserId}: {OperationId}",
-            userId, operationId);
+        _logger.LogDebug(
+            "CancelOperationAsync called in Phase 1 (stubbed) for {UserId}: {OperationId}",
+            userId,
+            operationId
+        );
 
         // Phase 3 implementation will use Orleans for operation cancellation
         await Task.CompletedTask;
@@ -322,83 +379,112 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
         // Add timeout strategy first (innermost)
         if (_resilienceConfig.Timeout.Enabled)
         {
-            _ = pipelineBuilder.AddTimeout(new TimeoutStrategyOptions
-            {
-                Timeout = TimeSpan.FromSeconds(_resilienceConfig.Timeout.DefaultTimeoutSeconds),
-                OnTimeout = args =>
+            _ = pipelineBuilder.AddTimeout(
+                new TimeoutStrategyOptions
                 {
-                    _logger.LogWarning("Orleans operation timed out after {Timeout}s. Operation: {Operation}",
-                        _resilienceConfig.Timeout.DefaultTimeoutSeconds, args.Context.OperationKey);
-                    return ValueTask.CompletedTask;
+                    Timeout = TimeSpan.FromSeconds(_resilienceConfig.Timeout.DefaultTimeoutSeconds),
+                    OnTimeout = args =>
+                    {
+                        _logger.LogWarning(
+                            "Orleans operation timed out after {Timeout}s. Operation: {Operation}",
+                            _resilienceConfig.Timeout.DefaultTimeoutSeconds,
+                            args.Context.OperationKey
+                        );
+                        return ValueTask.CompletedTask;
+                    },
                 }
-            });
+            );
         }
 
         // Add retry strategy
         if (_resilienceConfig.RetryPolicy.Enabled)
         {
-            _ = pipelineBuilder.AddRetry(new RetryStrategyOptions
-            {
-                ShouldHandle = new PredicateBuilder().Handle<Exception>(ex =>
+            _ = pipelineBuilder.AddRetry(
+                new RetryStrategyOptions
                 {
-                    // Check if this exception type should trigger retries
-                    if (_resilienceConfig.RetryPolicy.RetryableExceptions.Count == 0)
+                    ShouldHandle = new PredicateBuilder().Handle<Exception>(ex =>
                     {
-                        return true;
-                    }
+                        // Check if this exception type should trigger retries
+                        if (_resilienceConfig.RetryPolicy.RetryableExceptions.Count == 0)
+                        {
+                            return true;
+                        }
 
-                    var exceptionTypeName = ex.GetType().FullName ?? ex.GetType().Name;
-                    return _resilienceConfig.RetryPolicy.RetryableExceptions.Contains(exceptionTypeName);
-                }),
-                MaxRetryAttempts = _resilienceConfig.RetryPolicy.MaxRetryAttempts,
-                Delay = TimeSpan.FromMilliseconds(_resilienceConfig.RetryPolicy.BaseDelayMilliseconds),
-                MaxDelay = TimeSpan.FromMilliseconds(_resilienceConfig.RetryPolicy.MaxDelayMilliseconds),
-                BackoffType = DelayBackoffType.Exponential,
-                UseJitter = _resilienceConfig.RetryPolicy.UseJitter,
-                OnRetry = args =>
-                {
-                    _logger.LogWarning("Retrying Orleans operation. Attempt {Attempt}/{MaxAttempts}. Exception: {Exception}",
-                        args.AttemptNumber + 1, _resilienceConfig.RetryPolicy.MaxRetryAttempts + 1, args.Outcome.Exception?.Message);
-                    return ValueTask.CompletedTask;
+                        var exceptionTypeName = ex.GetType().FullName ?? ex.GetType().Name;
+                        return _resilienceConfig.RetryPolicy.RetryableExceptions.Contains(
+                            exceptionTypeName
+                        );
+                    }),
+                    MaxRetryAttempts = _resilienceConfig.RetryPolicy.MaxRetryAttempts,
+                    Delay = TimeSpan.FromMilliseconds(
+                        _resilienceConfig.RetryPolicy.BaseDelayMilliseconds
+                    ),
+                    MaxDelay = TimeSpan.FromMilliseconds(
+                        _resilienceConfig.RetryPolicy.MaxDelayMilliseconds
+                    ),
+                    BackoffType = DelayBackoffType.Exponential,
+                    UseJitter = _resilienceConfig.RetryPolicy.UseJitter,
+                    OnRetry = args =>
+                    {
+                        _logger.LogWarning(
+                            "Retrying Orleans operation. Attempt {Attempt}/{MaxAttempts}. Exception: {Exception}",
+                            args.AttemptNumber + 1,
+                            _resilienceConfig.RetryPolicy.MaxRetryAttempts + 1,
+                            args.Outcome.Exception?.Message
+                        );
+                        return ValueTask.CompletedTask;
+                    },
                 }
-            });
+            );
         }
 
         // Add circuit breaker strategy (outermost)
         if (_resilienceConfig.CircuitBreaker.Enabled)
         {
-            _ = pipelineBuilder.AddCircuitBreaker(new CircuitBreakerStrategyOptions
-            {
-                ShouldHandle = new PredicateBuilder().Handle<Exception>(),
-                FailureRatio = _resilienceConfig.CircuitBreaker.FailureThreshold / 100.0,
-                SamplingDuration = TimeSpan.FromSeconds(_resilienceConfig.CircuitBreaker.SamplingDurationSeconds),
-                MinimumThroughput = _resilienceConfig.CircuitBreaker.MinimumThroughput,
-                BreakDuration = TimeSpan.FromSeconds(_resilienceConfig.CircuitBreaker.BreakDurationSeconds),
-                OnOpened = args =>
+            _ = pipelineBuilder.AddCircuitBreaker(
+                new CircuitBreakerStrategyOptions
                 {
-                    _logger.LogError("Orleans circuit breaker OPENED. Break duration: {BreakDuration}s",
-                        _resilienceConfig.CircuitBreaker.BreakDurationSeconds);
-                    return ValueTask.CompletedTask;
-                },
-                OnClosed = args =>
-                {
-                    _logger.LogInformation("Orleans circuit breaker CLOSED. System recovered.");
-                    return ValueTask.CompletedTask;
-                },
-                OnHalfOpened = args =>
-                {
-                    _logger.LogInformation("Orleans circuit breaker HALF-OPENED. Testing system recovery...");
-                    return ValueTask.CompletedTask;
+                    ShouldHandle = new PredicateBuilder().Handle<Exception>(),
+                    FailureRatio = _resilienceConfig.CircuitBreaker.FailureThreshold / 100.0,
+                    SamplingDuration = TimeSpan.FromSeconds(
+                        _resilienceConfig.CircuitBreaker.SamplingDurationSeconds
+                    ),
+                    MinimumThroughput = _resilienceConfig.CircuitBreaker.MinimumThroughput,
+                    BreakDuration = TimeSpan.FromSeconds(
+                        _resilienceConfig.CircuitBreaker.BreakDurationSeconds
+                    ),
+                    OnOpened = args =>
+                    {
+                        _logger.LogError(
+                            "Orleans circuit breaker OPENED. Break duration: {BreakDuration}s",
+                            _resilienceConfig.CircuitBreaker.BreakDurationSeconds
+                        );
+                        return ValueTask.CompletedTask;
+                    },
+                    OnClosed = args =>
+                    {
+                        _logger.LogInformation("Orleans circuit breaker CLOSED. System recovered.");
+                        return ValueTask.CompletedTask;
+                    },
+                    OnHalfOpened = args =>
+                    {
+                        _logger.LogInformation(
+                            "Orleans circuit breaker HALF-OPENED. Testing system recovery..."
+                        );
+                        return ValueTask.CompletedTask;
+                    },
                 }
-            });
+            );
         }
 
         var pipeline = pipelineBuilder.Build();
 
-        _logger.LogInformation("Orleans resilience pipeline created. Circuit Breaker: {CBEnabled}, Retry: {RetryEnabled}, Timeout: {TimeoutEnabled}",
+        _logger.LogInformation(
+            "Orleans resilience pipeline created. Circuit Breaker: {CBEnabled}, Retry: {RetryEnabled}, Timeout: {TimeoutEnabled}",
             _resilienceConfig.CircuitBreaker.Enabled,
             _resilienceConfig.RetryPolicy.Enabled,
-            _resilienceConfig.Timeout.Enabled);
+            _resilienceConfig.Timeout.Enabled
+        );
 
         return pipeline;
     }
@@ -410,7 +496,10 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
     /// <param name="operation">The operation to execute</param>
     /// <param name="operationName">Name of the operation for logging</param>
     /// <returns>Result of the operation</returns>
-    private async Task<T> ExecuteWithResilienceAsync<T>(Func<Task<T>> operation, string operationName)
+    private async Task<T> ExecuteWithResilienceAsync<T>(
+        Func<Task<T>> operation,
+        string operationName
+    )
     {
         try
         {
@@ -422,7 +511,11 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Orleans operation failed after all resilience attempts: {OperationName}", operationName);
+            _logger.LogError(
+                ex,
+                "Orleans operation failed after all resilience attempts: {OperationName}",
+                operationName
+            );
             throw;
         }
     }
@@ -444,7 +537,11 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Orleans operation failed after all resilience attempts: {OperationName}", operationName);
+            _logger.LogError(
+                ex,
+                "Orleans operation failed after all resilience attempts: {OperationName}",
+                operationName
+            );
             throw;
         }
     }

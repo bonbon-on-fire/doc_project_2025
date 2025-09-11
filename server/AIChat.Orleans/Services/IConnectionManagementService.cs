@@ -21,7 +21,8 @@ public interface IConnectionManagementService
     Task<(UserGrainState UpdatedState, ActivityRecord ActivityRecord)> RegisterConnectionAsync(
         UserGrainState state,
         string connectionId,
-        string clientId);
+        string clientId
+    );
 
     /// <summary>
     /// Unregisters a SignalR connection and cleans up associated subscriptions.
@@ -29,9 +30,11 @@ public interface IConnectionManagementService
     /// <param name="state">Current user grain state</param>
     /// <param name="connectionId">SignalR connection identifier</param>
     /// <returns>Updated state, activity record, and list of affected chat IDs</returns>
-    Task<(UserGrainState UpdatedState, ActivityRecord ActivityRecord, List<string> AffectedChatIds)> UnregisterConnectionAsync(
-        UserGrainState state,
-        string connectionId);
+    Task<(
+        UserGrainState UpdatedState,
+        ActivityRecord ActivityRecord,
+        List<string> AffectedChatIds
+    )> UnregisterConnectionAsync(UserGrainState state, string connectionId);
 
     /// <summary>
     /// Subscribes a connection to a specific chat room.
@@ -43,7 +46,8 @@ public interface IConnectionManagementService
     Task<(UserGrainState UpdatedState, ActivityRecord ActivityRecord)> SubscribeToChatAsync(
         UserGrainState state,
         string connectionId,
-        string chatId);
+        string chatId
+    );
 
     /// <summary>
     /// Unsubscribes a connection from a specific chat room.
@@ -55,7 +59,8 @@ public interface IConnectionManagementService
     Task<(UserGrainState UpdatedState, ActivityRecord ActivityRecord)> UnsubscribeFromChatAsync(
         UserGrainState state,
         string connectionId,
-        string chatId);
+        string chatId
+    );
 
     /// <summary>
     /// Gets all active connections for a specific chat room.
@@ -67,7 +72,8 @@ public interface IConnectionManagementService
     Task<List<ConnectionInfo>> GetActiveConnectionsForChatAsync(
         UserGrainState state,
         string chatId,
-        int staleThresholdMinutes);
+        int staleThresholdMinutes
+    );
 
     /// <summary>
     /// Gets all active connections for the user.
@@ -77,7 +83,8 @@ public interface IConnectionManagementService
     /// <returns>List of active connections</returns>
     Task<List<ConnectionInfo>> GetAllActiveConnectionsAsync(
         UserGrainState state,
-        int staleThresholdMinutes);
+        int staleThresholdMinutes
+    );
 
     /// <summary>
     /// Validates connection parameters.
@@ -89,7 +96,8 @@ public interface IConnectionManagementService
     Task<(bool IsValid, string[] Errors, string[] Warnings)> ValidateConnectionParametersAsync(
         string connectionId,
         string? clientId = null,
-        string? chatId = null);
+        string? chatId = null
+    );
 
     /// <summary>
     /// Performs connection recovery by transferring state from old to new connection.
@@ -100,12 +108,17 @@ public interface IConnectionManagementService
     /// <param name="clientId">Client identifier</param>
     /// <param name="gracePeriodMinutes">Grace period for recovery</param>
     /// <returns>Updated state, success flag, and activity record</returns>
-    Task<(UserGrainState UpdatedState, bool RecoverySuccessful, ActivityRecord ActivityRecord)> RecoverConnectionAsync(
+    Task<(
+        UserGrainState UpdatedState,
+        bool RecoverySuccessful,
+        ActivityRecord ActivityRecord
+    )> RecoverConnectionAsync(
         UserGrainState state,
         string oldConnectionId,
         string newConnectionId,
         string clientId,
-        int gracePeriodMinutes);
+        int gracePeriodMinutes
+    );
 }
 
 /// <summary>
@@ -125,16 +138,19 @@ public class ConnectionManagementService : IConnectionManagementService
     }
 
     /// <inheritdoc />
-    public Task<(UserGrainState UpdatedState, ActivityRecord ActivityRecord)> RegisterConnectionAsync(
-        UserGrainState state,
-        string connectionId,
-        string clientId)
+    public Task<(
+        UserGrainState UpdatedState,
+        ActivityRecord ActivityRecord
+    )> RegisterConnectionAsync(UserGrainState state, string connectionId, string clientId)
     {
         try
         {
             _logger.LogInformation(
                 "Registering connection {ConnectionId} for user {UserId} from client {ClientId}",
-                connectionId, state.UserId, clientId);
+                connectionId,
+                state.UserId,
+                clientId
+            );
 
             var now = DateTime.UtcNow;
             var isUpdate = state.Connections.ContainsKey(connectionId);
@@ -148,7 +164,9 @@ public class ConnectionManagementService : IConnectionManagementService
 
                 _logger.LogWarning(
                     "Updated existing connection {ConnectionId} for user {UserId}",
-                    connectionId, state.UserId);
+                    connectionId,
+                    state.UserId
+                );
             }
             else
             {
@@ -159,14 +177,16 @@ public class ConnectionManagementService : IConnectionManagementService
                     ClientId = clientId,
                     ConnectedAt = now,
                     LastActivity = now,
-                    SubscribedChatIds = []
+                    SubscribedChatIds = [],
                 };
 
                 state.Connections[connectionId] = connectionInfo;
 
                 _logger.LogInformation(
                     "Created new connection {ConnectionId} for user {UserId}",
-                    connectionId, state.UserId);
+                    connectionId,
+                    state.UserId
+                );
             }
 
             // Update metrics
@@ -177,54 +197,63 @@ public class ConnectionManagementService : IConnectionManagementService
             var activityRecord = new ActivityRecord
             {
                 Type = ActivityType.Connected,
-                Metadata = JsonSerializer.Serialize(new
-                {
-                    ConnectionId = connectionId,
-                    ClientId = clientId,
-                    IsUpdate = isUpdate
-                }),
+                Metadata = JsonSerializer.Serialize(
+                    new
+                    {
+                        ConnectionId = connectionId,
+                        ClientId = clientId,
+                        IsUpdate = isUpdate,
+                    }
+                ),
                 Timestamp = now,
-                CorrelationId = Guid.NewGuid().ToString()
+                CorrelationId = Guid.NewGuid().ToString(),
             };
 
             return Task.FromResult((state, activityRecord));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Failed to register connection {ConnectionId} for user {UserId}",
-                connectionId, state.UserId);
+                connectionId,
+                state.UserId
+            );
             throw;
         }
     }
 
     /// <inheritdoc />
-    public Task<(UserGrainState UpdatedState, ActivityRecord ActivityRecord, List<string> AffectedChatIds)> UnregisterConnectionAsync(
-        UserGrainState state,
-        string connectionId)
+    public Task<(
+        UserGrainState UpdatedState,
+        ActivityRecord ActivityRecord,
+        List<string> AffectedChatIds
+    )> UnregisterConnectionAsync(UserGrainState state, string connectionId)
     {
         try
         {
             _logger.LogInformation(
                 "Unregistering connection {ConnectionId} for user {UserId}",
-                connectionId, state.UserId);
+                connectionId,
+                state.UserId
+            );
 
             if (!state.Connections.TryGetValue(connectionId, out var connectionInfo))
             {
                 _logger.LogWarning(
                     "Connection {ConnectionId} not found for user {UserId}",
-                    connectionId, state.UserId);
+                    connectionId,
+                    state.UserId
+                );
 
                 var warningActivity = new ActivityRecord
                 {
                     Type = ActivityType.Disconnected,
-                    Metadata = JsonSerializer.Serialize(new
-                    {
-                        ConnectionId = connectionId,
-                        Status = "NotFound"
-                    }),
+                    Metadata = JsonSerializer.Serialize(
+                        new { ConnectionId = connectionId, Status = "NotFound" }
+                    ),
                     Timestamp = DateTime.UtcNow,
-                    CorrelationId = Guid.NewGuid().ToString()
+                    CorrelationId = Guid.NewGuid().ToString(),
                 };
 
                 return Task.FromResult((state, warningActivity, new List<string>()));
@@ -245,13 +274,16 @@ public class ConnectionManagementService : IConnectionManagementService
                         _ = state.ActiveChats.Remove(chatId);
                         _logger.LogDebug(
                             "Removed chat subscription {ChatId} for user {UserId} (no remaining connections)",
-                            chatId, state.UserId);
+                            chatId,
+                            state.UserId
+                        );
                     }
                     else
                     {
                         // Check if any other connections are still subscribed
-                        var hasOtherSubscribers = state.Connections.Values
-                            .Any(c => c.ConnectionId != connectionId && c.SubscribedChatIds.Contains(chatId));
+                        var hasOtherSubscribers = state.Connections.Values.Any(c =>
+                            c.ConnectionId != connectionId && c.SubscribedChatIds.Contains(chatId)
+                        );
 
                         if (!hasOtherSubscribers)
                         {
@@ -272,28 +304,36 @@ public class ConnectionManagementService : IConnectionManagementService
             var activityRecord = new ActivityRecord
             {
                 Type = ActivityType.Disconnected,
-                Metadata = JsonSerializer.Serialize(new
-                {
-                    ConnectionId = connectionId,
-                    connectionInfo.ClientId,
-                    SubscribedChats = affectedChatIds,
-                    ConnectedDuration = (now - connectionInfo.ConnectedAt).TotalMinutes
-                }),
+                Metadata = JsonSerializer.Serialize(
+                    new
+                    {
+                        ConnectionId = connectionId,
+                        connectionInfo.ClientId,
+                        SubscribedChats = affectedChatIds,
+                        ConnectedDuration = (now - connectionInfo.ConnectedAt).TotalMinutes,
+                    }
+                ),
                 Timestamp = now,
-                CorrelationId = Guid.NewGuid().ToString()
+                CorrelationId = Guid.NewGuid().ToString(),
             };
 
             _logger.LogInformation(
                 "Unregistered connection {ConnectionId} for user {UserId}. Removed from {ChatCount} chats",
-                connectionId, state.UserId, affectedChatIds.Count);
+                connectionId,
+                state.UserId,
+                affectedChatIds.Count
+            );
 
             return Task.FromResult((state, activityRecord, affectedChatIds));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Failed to unregister connection {ConnectionId} for user {UserId}",
-                connectionId, state.UserId);
+                connectionId,
+                state.UserId
+            );
             throw;
         }
     }
@@ -302,17 +342,23 @@ public class ConnectionManagementService : IConnectionManagementService
     public Task<(UserGrainState UpdatedState, ActivityRecord ActivityRecord)> SubscribeToChatAsync(
         UserGrainState state,
         string connectionId,
-        string chatId)
+        string chatId
+    )
     {
         try
         {
             _logger.LogInformation(
                 "Subscribing connection {ConnectionId} to chat {ChatId} for user {UserId}",
-                connectionId, chatId, state.UserId);
+                connectionId,
+                chatId,
+                state.UserId
+            );
 
             if (!state.Connections.TryGetValue(connectionId, out var connectionInfo))
             {
-                throw new InvalidOperationException($"Connection {connectionId} not found for user {state.UserId}");
+                throw new InvalidOperationException(
+                    $"Connection {connectionId} not found for user {state.UserId}"
+                );
             }
 
             var now = DateTime.UtcNow;
@@ -322,7 +368,10 @@ public class ConnectionManagementService : IConnectionManagementService
             {
                 _logger.LogDebug(
                     "Connection {ConnectionId} already subscribed to chat {ChatId} for user {UserId}",
-                    connectionId, chatId, state.UserId);
+                    connectionId,
+                    chatId,
+                    state.UserId
+                );
             }
             else
             {
@@ -339,14 +388,18 @@ public class ConnectionManagementService : IConnectionManagementService
                         ChatId = chatId,
                         SubscribedAt = now,
                         State = SubscriptionState.Active,
-                        ConnectionCount = 1
+                        ConnectionCount = 1,
                     };
                     state.ActiveChats[chatId] = subscription;
                 }
 
                 _logger.LogInformation(
                     "Subscribed connection {ConnectionId} to chat {ChatId} for user {UserId}. Total connections: {ConnectionCount}",
-                    connectionId, chatId, state.UserId, subscription.ConnectionCount);
+                    connectionId,
+                    chatId,
+                    state.UserId,
+                    subscription.ConnectionCount
+                );
             }
 
             // Update activity timestamps
@@ -357,57 +410,72 @@ public class ConnectionManagementService : IConnectionManagementService
             var activityRecord = new ActivityRecord
             {
                 Type = ActivityType.ChatSubscribed,
-                Metadata = JsonSerializer.Serialize(new
-                {
-                    ConnectionId = connectionId,
-                    ChatId = chatId,
-                    WasAlreadySubscribed = wasAlreadySubscribed,
-                    TotalConnectionsInChat = state.ActiveChats.TryGetValue(chatId, out var sub) ? sub.ConnectionCount : 0
-                }),
+                Metadata = JsonSerializer.Serialize(
+                    new
+                    {
+                        ConnectionId = connectionId,
+                        ChatId = chatId,
+                        WasAlreadySubscribed = wasAlreadySubscribed,
+                        TotalConnectionsInChat = state.ActiveChats.TryGetValue(chatId, out var sub)
+                            ? sub.ConnectionCount
+                            : 0,
+                    }
+                ),
                 Timestamp = now,
-                CorrelationId = Guid.NewGuid().ToString()
+                CorrelationId = Guid.NewGuid().ToString(),
             };
 
             return Task.FromResult((state, activityRecord));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Failed to subscribe connection {ConnectionId} to chat {ChatId} for user {UserId}",
-                connectionId, chatId, state.UserId);
+                connectionId,
+                chatId,
+                state.UserId
+            );
             throw;
         }
     }
 
     /// <inheritdoc />
-    public Task<(UserGrainState UpdatedState, ActivityRecord ActivityRecord)> UnsubscribeFromChatAsync(
-        UserGrainState state,
-        string connectionId,
-        string chatId)
+    public Task<(
+        UserGrainState UpdatedState,
+        ActivityRecord ActivityRecord
+    )> UnsubscribeFromChatAsync(UserGrainState state, string connectionId, string chatId)
     {
         try
         {
             _logger.LogInformation(
                 "Unsubscribing connection {ConnectionId} from chat {ChatId} for user {UserId}",
-                connectionId, chatId, state.UserId);
+                connectionId,
+                chatId,
+                state.UserId
+            );
 
             if (!state.Connections.TryGetValue(connectionId, out var connectionInfo))
             {
                 _logger.LogWarning(
                     "Connection {ConnectionId} not found for user {UserId}",
-                    connectionId, state.UserId);
+                    connectionId,
+                    state.UserId
+                );
 
                 var warningActivity = new ActivityRecord
                 {
                     Type = ActivityType.ChatUnsubscribed,
-                    Metadata = JsonSerializer.Serialize(new
-                    {
-                        ConnectionId = connectionId,
-                        ChatId = chatId,
-                        Status = "ConnectionNotFound"
-                    }),
+                    Metadata = JsonSerializer.Serialize(
+                        new
+                        {
+                            ConnectionId = connectionId,
+                            ChatId = chatId,
+                            Status = "ConnectionNotFound",
+                        }
+                    ),
                     Timestamp = DateTime.UtcNow,
-                    CorrelationId = Guid.NewGuid().ToString()
+                    CorrelationId = Guid.NewGuid().ToString(),
                 };
 
                 return Task.FromResult((state, warningActivity));
@@ -420,7 +488,10 @@ public class ConnectionManagementService : IConnectionManagementService
             {
                 _logger.LogDebug(
                     "Connection {ConnectionId} was not subscribed to chat {ChatId} for user {UserId}",
-                    connectionId, chatId, state.UserId);
+                    connectionId,
+                    chatId,
+                    state.UserId
+                );
             }
             else
             {
@@ -434,13 +505,16 @@ public class ConnectionManagementService : IConnectionManagementService
                         _ = state.ActiveChats.Remove(chatId);
                         _logger.LogDebug(
                             "Removed chat subscription {ChatId} for user {UserId} (no remaining connections)",
-                            chatId, state.UserId);
+                            chatId,
+                            state.UserId
+                        );
                     }
                     else
                     {
                         // Check if subscription should be marked inactive
-                        var hasActiveSubscribers = state.Connections.Values
-                            .Any(c => c.SubscribedChatIds.Contains(chatId));
+                        var hasActiveSubscribers = state.Connections.Values.Any(c =>
+                            c.SubscribedChatIds.Contains(chatId)
+                        );
 
                         if (!hasActiveSubscribers)
                         {
@@ -458,24 +532,35 @@ public class ConnectionManagementService : IConnectionManagementService
             var activityRecord = new ActivityRecord
             {
                 Type = ActivityType.ChatUnsubscribed,
-                Metadata = JsonSerializer.Serialize(new
-                {
-                    ConnectionId = connectionId,
-                    ChatId = chatId,
-                    WasSubscribed = wasSubscribed,
-                    RemainingConnectionsInChat = state.ActiveChats.TryGetValue(chatId, out var sub) ? sub.ConnectionCount : 0
-                }),
+                Metadata = JsonSerializer.Serialize(
+                    new
+                    {
+                        ConnectionId = connectionId,
+                        ChatId = chatId,
+                        WasSubscribed = wasSubscribed,
+                        RemainingConnectionsInChat = state.ActiveChats.TryGetValue(
+                            chatId,
+                            out var sub
+                        )
+                            ? sub.ConnectionCount
+                            : 0,
+                    }
+                ),
                 Timestamp = now,
-                CorrelationId = Guid.NewGuid().ToString()
+                CorrelationId = Guid.NewGuid().ToString(),
             };
 
             return Task.FromResult((state, activityRecord));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Failed to unsubscribe connection {ConnectionId} from chat {ChatId} for user {UserId}",
-                connectionId, chatId, state.UserId);
+                connectionId,
+                chatId,
+                state.UserId
+            );
             throw;
         }
     }
@@ -484,7 +569,8 @@ public class ConnectionManagementService : IConnectionManagementService
     public Task<List<ConnectionInfo>> GetActiveConnectionsForChatAsync(
         UserGrainState state,
         string chatId,
-        int staleThresholdMinutes)
+        int staleThresholdMinutes
+    )
     {
         if (string.IsNullOrEmpty(chatId))
         {
@@ -493,28 +579,38 @@ public class ConnectionManagementService : IConnectionManagementService
 
         var staleThreshold = DateTime.UtcNow.AddMinutes(-staleThresholdMinutes);
 
-        return Task.FromResult(state.Connections.Values
-            .Where(c => c.SubscribedChatIds.Contains(chatId) && c.LastActivity > staleThreshold)
-            .ToList());
+        return Task.FromResult(
+            state
+                .Connections.Values.Where(c =>
+                    c.SubscribedChatIds.Contains(chatId) && c.LastActivity > staleThreshold
+                )
+                .ToList()
+        );
     }
 
     /// <inheritdoc />
     public Task<List<ConnectionInfo>> GetAllActiveConnectionsAsync(
         UserGrainState state,
-        int staleThresholdMinutes)
+        int staleThresholdMinutes
+    )
     {
         var staleThreshold = DateTime.UtcNow.AddMinutes(-staleThresholdMinutes);
 
-        return Task.FromResult(state.Connections.Values
-            .Where(c => c.LastActivity > staleThreshold)
-            .ToList());
+        return Task.FromResult(
+            state.Connections.Values.Where(c => c.LastActivity > staleThreshold).ToList()
+        );
     }
 
     /// <inheritdoc />
-    public Task<(bool IsValid, string[] Errors, string[] Warnings)> ValidateConnectionParametersAsync(
+    public Task<(
+        bool IsValid,
+        string[] Errors,
+        string[] Warnings
+    )> ValidateConnectionParametersAsync(
         string connectionId,
         string? clientId = null,
-        string? chatId = null)
+        string? chatId = null
+    )
     {
         var errors = new List<string>();
         var warnings = new List<string>();
@@ -544,39 +640,51 @@ public class ConnectionManagementService : IConnectionManagementService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to validate connection parameters");
-            return Task.FromResult((false, new[] { $"Validation failed: {ex.Message}" }, Array.Empty<string>()));
+            return Task.FromResult(
+                (false, new[] { $"Validation failed: {ex.Message}" }, Array.Empty<string>())
+            );
         }
     }
 
     /// <inheritdoc />
-    public Task<(UserGrainState UpdatedState, bool RecoverySuccessful, ActivityRecord ActivityRecord)> RecoverConnectionAsync(
+    public Task<(
+        UserGrainState UpdatedState,
+        bool RecoverySuccessful,
+        ActivityRecord ActivityRecord
+    )> RecoverConnectionAsync(
         UserGrainState state,
         string oldConnectionId,
         string newConnectionId,
         string clientId,
-        int gracePeriodMinutes)
+        int gracePeriodMinutes
+    )
     {
         try
         {
             _logger.LogInformation(
                 "Attempting to recover connection {OldConnectionId} to {NewConnectionId} for user {UserId}",
-                oldConnectionId, newConnectionId, state.UserId);
+                oldConnectionId,
+                newConnectionId,
+                state.UserId
+            );
 
             if (!state.Connections.TryGetValue(oldConnectionId, out var oldConnection))
             {
                 var failureActivity = new ActivityRecord
                 {
                     Type = ActivityType.Connected,
-                    Metadata = JsonSerializer.Serialize(new
-                    {
-                        Event = "ConnectionRecoveryFailed",
-                        Reason = "OldConnectionNotFound",
-                        OldConnectionId = oldConnectionId,
-                        NewConnectionId = newConnectionId,
-                        ClientId = clientId
-                    }),
+                    Metadata = JsonSerializer.Serialize(
+                        new
+                        {
+                            Event = "ConnectionRecoveryFailed",
+                            Reason = "OldConnectionNotFound",
+                            OldConnectionId = oldConnectionId,
+                            NewConnectionId = newConnectionId,
+                            ClientId = clientId,
+                        }
+                    ),
                     Timestamp = DateTime.UtcNow,
-                    CorrelationId = Guid.NewGuid().ToString()
+                    CorrelationId = Guid.NewGuid().ToString(),
                 };
 
                 return Task.FromResult((state, false, failureActivity));
@@ -589,17 +697,19 @@ public class ConnectionManagementService : IConnectionManagementService
                 var expiredActivity = new ActivityRecord
                 {
                     Type = ActivityType.Connected,
-                    Metadata = JsonSerializer.Serialize(new
-                    {
-                        Event = "ConnectionRecoveryFailed",
-                        Reason = "GracePeriodExpired",
-                        OldConnectionId = oldConnectionId,
-                        NewConnectionId = newConnectionId,
-                        ClientId = clientId,
-                        GracePeriodMinutes = gracePeriodMinutes
-                    }),
+                    Metadata = JsonSerializer.Serialize(
+                        new
+                        {
+                            Event = "ConnectionRecoveryFailed",
+                            Reason = "GracePeriodExpired",
+                            OldConnectionId = oldConnectionId,
+                            NewConnectionId = newConnectionId,
+                            ClientId = clientId,
+                            GracePeriodMinutes = gracePeriodMinutes,
+                        }
+                    ),
                     Timestamp = DateTime.UtcNow,
-                    CorrelationId = Guid.NewGuid().ToString()
+                    CorrelationId = Guid.NewGuid().ToString(),
                 };
 
                 return Task.FromResult((state, false, expiredActivity));
@@ -613,7 +723,7 @@ public class ConnectionManagementService : IConnectionManagementService
                 ClientId = clientId,
                 ConnectedAt = now,
                 LastActivity = now,
-                SubscribedChatIds = [.. oldConnection.SubscribedChatIds]
+                SubscribedChatIds = [.. oldConnection.SubscribedChatIds],
             };
 
             // Remove old connection and add new one
@@ -626,44 +736,55 @@ public class ConnectionManagementService : IConnectionManagementService
             var successActivity = new ActivityRecord
             {
                 Type = ActivityType.Connected,
-                Metadata = JsonSerializer.Serialize(new
-                {
-                    Event = "ConnectionRecovered",
-                    OldConnectionId = oldConnectionId,
-                    NewConnectionId = newConnectionId,
-                    ClientId = clientId,
-                    RecoveredSubscriptions = oldConnection.SubscribedChatIds.Count
-                }),
+                Metadata = JsonSerializer.Serialize(
+                    new
+                    {
+                        Event = "ConnectionRecovered",
+                        OldConnectionId = oldConnectionId,
+                        NewConnectionId = newConnectionId,
+                        ClientId = clientId,
+                        RecoveredSubscriptions = oldConnection.SubscribedChatIds.Count,
+                    }
+                ),
                 Timestamp = now,
-                CorrelationId = Guid.NewGuid().ToString()
+                CorrelationId = Guid.NewGuid().ToString(),
             };
 
             _logger.LogInformation(
                 "Successfully recovered connection {OldConnectionId} to {NewConnectionId} for user {UserId}",
-                oldConnectionId, newConnectionId, state.UserId);
+                oldConnectionId,
+                newConnectionId,
+                state.UserId
+            );
 
             return Task.FromResult((state, true, successActivity));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Failed to recover connection {OldConnectionId} to {NewConnectionId} for user {UserId}",
-                oldConnectionId, newConnectionId, state.UserId);
+                oldConnectionId,
+                newConnectionId,
+                state.UserId
+            );
 
             var errorActivity = new ActivityRecord
             {
                 Type = ActivityType.ErrorOccurred,
-                Metadata = JsonSerializer.Serialize(new
-                {
-                    Event = "ConnectionRecoveryFailed",
-                    Reason = "Exception",
-                    Error = ex.Message,
-                    OldConnectionId = oldConnectionId,
-                    NewConnectionId = newConnectionId,
-                    ClientId = clientId
-                }),
+                Metadata = JsonSerializer.Serialize(
+                    new
+                    {
+                        Event = "ConnectionRecoveryFailed",
+                        Reason = "Exception",
+                        Error = ex.Message,
+                        OldConnectionId = oldConnectionId,
+                        NewConnectionId = newConnectionId,
+                        ClientId = clientId,
+                    }
+                ),
                 Timestamp = DateTime.UtcNow,
-                CorrelationId = Guid.NewGuid().ToString()
+                CorrelationId = Guid.NewGuid().ToString(),
             };
 
             return Task.FromResult((state, false, errorActivity));

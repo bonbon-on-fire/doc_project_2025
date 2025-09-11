@@ -21,7 +21,10 @@ public class ResiliencePolicyFactory : IResiliencePolicyFactory
     }
 
     /// <inheritdoc />
-    public IAsyncPolicy CreateStreamResiliencePolicy(string streamId, StreamResilienceOptions options)
+    public IAsyncPolicy CreateStreamResiliencePolicy(
+        string streamId,
+        StreamResilienceOptions options
+    )
     {
         ArgumentNullException.ThrowIfNull(streamId);
         ArgumentNullException.ThrowIfNull(options);
@@ -32,8 +35,17 @@ public class ResiliencePolicyFactory : IResiliencePolicyFactory
         // Add state change callback wrapper if provided
         if (options.OnStateChange != null)
         {
-            retryPolicy = WrapWithStateCallback(retryPolicy, streamId, options.OnStateChange, ResilienceState.Retrying);
-            circuitBreakerPolicy = WrapWithCircuitStateCallback(circuitBreakerPolicy, streamId, options.OnStateChange);
+            retryPolicy = WrapWithStateCallback(
+                retryPolicy,
+                streamId,
+                options.OnStateChange,
+                ResilienceState.Retrying
+            );
+            circuitBreakerPolicy = WrapWithCircuitStateCallback(
+                circuitBreakerPolicy,
+                streamId,
+                options.OnStateChange
+            );
         }
 
         if (options.CombinePolicies)
@@ -64,10 +76,12 @@ public class ResiliencePolicyFactory : IResiliencePolicyFactory
                         retryCount,
                         options.MaxAttempts,
                         timespan.TotalMilliseconds,
-                        exception?.Message ?? "Unknown error");
+                        exception?.Message ?? "Unknown error"
+                    );
 
                     options.OnRetry?.Invoke(retryCount, timespan, exception);
-                });
+                }
+            );
     }
 
     /// <inheritdoc />
@@ -89,7 +103,8 @@ public class ResiliencePolicyFactory : IResiliencePolicyFactory
                         exception,
                         "Circuit breaker opened for {Duration}s after {Threshold}% failures",
                         timespan.TotalSeconds,
-                        50);
+                        50
+                    );
 
                     options.OnBreak?.Invoke(timespan);
                 },
@@ -102,7 +117,8 @@ public class ResiliencePolicyFactory : IResiliencePolicyFactory
                 {
                     _logger.LogInformation("Circuit breaker entering half-open state");
                     options.OnHalfOpen?.Invoke();
-                });
+                }
+            );
     }
 
     private TimeSpan CalculateRetryDelay(int retryAttempt, RetryPolicyOptions options)
@@ -114,7 +130,8 @@ public class ResiliencePolicyFactory : IResiliencePolicyFactory
             // Calculate exponential backoff with cap
             delayMs = Math.Min(
                 options.InitialDelayMs * Math.Pow(2, retryAttempt - 1),
-                options.MaxDelayMs);
+                options.MaxDelayMs
+            );
         }
         else
         {
@@ -136,7 +153,8 @@ public class ResiliencePolicyFactory : IResiliencePolicyFactory
         IAsyncPolicy policy,
         string streamId,
         Action<string, ResilienceState> onStateChange,
-        ResilienceState state)
+        ResilienceState state
+    )
     {
         // For Polly v8, we'll use a simpler approach
         // The state callbacks are already handled in the retry policy
@@ -146,10 +164,10 @@ public class ResiliencePolicyFactory : IResiliencePolicyFactory
     private static IAsyncPolicy WrapWithCircuitStateCallback(
         IAsyncPolicy policy,
         string streamId,
-        Action<string, ResilienceState> onStateChange)
+        Action<string, ResilienceState> onStateChange
+    )
     {
         // For Polly v8, state callbacks are handled directly in circuit breaker events
         return policy;
     }
-
 }

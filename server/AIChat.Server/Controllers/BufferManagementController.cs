@@ -18,7 +18,8 @@ public class BufferManagementController : ControllerBase
     /// </summary>
     public BufferManagementController(
         ILogger<BufferManagementController> logger,
-        IBufferManagementService bufferService)
+        IBufferManagementService bufferService
+    )
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _bufferService = bufferService ?? throw new ArgumentNullException(nameof(bufferService));
@@ -40,11 +41,10 @@ public class BufferManagementController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to get buffer statistics");
-            return StatusCode(StatusCodes.Status500InternalServerError, new
-            {
-                error = "Failed to retrieve buffer statistics",
-                message = ex.Message
-            });
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                new { error = "Failed to retrieve buffer statistics", message = ex.Message }
+            );
         }
     }
 
@@ -61,16 +61,17 @@ public class BufferManagementController : ControllerBase
         try
         {
             var status = await _bufferService.GetBufferStatusAsync(streamId);
-            return status == null ? NotFound(new { error = $"Buffer not found for stream {streamId}" }) : Ok(status);
+            return status == null
+                ? NotFound(new { error = $"Buffer not found for stream {streamId}" })
+                : Ok(status);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to get buffer status for stream {StreamId}", streamId);
-            return StatusCode(StatusCodes.Status500InternalServerError, new
-            {
-                error = "Failed to retrieve buffer status",
-                message = ex.Message
-            });
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                new { error = "Failed to retrieve buffer status", message = ex.Message }
+            );
         }
     }
 
@@ -83,7 +84,10 @@ public class BufferManagementController : ControllerBase
     [HttpPost("{streamId}/clear")]
     [ProducesResponseType(typeof(ClearBufferResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> ClearBuffer(string streamId, CancellationToken cancellationToken)
+    public async Task<IActionResult> ClearBuffer(
+        string streamId,
+        CancellationToken cancellationToken
+    )
     {
         try
         {
@@ -97,25 +101,29 @@ public class BufferManagementController : ControllerBase
                 }
             }
 
-            _logger.LogInformation("Cleared {MessageCount} messages from buffer for stream {StreamId}",
-                clearedCount, streamId);
+            _logger.LogInformation(
+                "Cleared {MessageCount} messages from buffer for stream {StreamId}",
+                clearedCount,
+                streamId
+            );
 
-            return Ok(new ClearBufferResponse
-            {
-                StreamId = streamId,
-                MessagesCleared = clearedCount,
-                Success = true,
-                Message = $"Successfully cleared {clearedCount} messages"
-            });
+            return Ok(
+                new ClearBufferResponse
+                {
+                    StreamId = streamId,
+                    MessagesCleared = clearedCount,
+                    Success = true,
+                    Message = $"Successfully cleared {clearedCount} messages",
+                }
+            );
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to clear buffer for stream {StreamId}", streamId);
-            return StatusCode(StatusCodes.Status500InternalServerError, new
-            {
-                error = "Failed to clear buffer",
-                message = ex.Message
-            });
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                new { error = "Failed to clear buffer", message = ex.Message }
+            );
         }
     }
 
@@ -138,22 +146,23 @@ public class BufferManagementController : ControllerBase
             // For now, we'll return the current implementation
             _logger.LogInformation("Request to clear all buffers received");
 
-            return Ok(new ClearAllBuffersResponse
-            {
-                BuffersCleared = buffersCleared.Count,
-                TotalMessagesCleared = totalCleared,
-                Success = true,
-                Message = "Clear all buffers operation completed"
-            });
+            return Ok(
+                new ClearAllBuffersResponse
+                {
+                    BuffersCleared = buffersCleared.Count,
+                    TotalMessagesCleared = totalCleared,
+                    Success = true,
+                    Message = "Clear all buffers operation completed",
+                }
+            );
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to clear all buffers");
-            return StatusCode(StatusCodes.Status500InternalServerError, new
-            {
-                error = "Failed to clear all buffers",
-                message = ex.Message
-            });
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                new { error = "Failed to clear all buffers", message = ex.Message }
+            );
         }
     }
 
@@ -170,26 +179,27 @@ public class BufferManagementController : ControllerBase
             // Return the default configuration from statistics
             var stats = await _bufferService.GetStatisticsAsync();
 
-            return Ok(new BufferConfigurationResponse
-            {
-                DefaultMaxMessages = 1000,
-                DefaultMaxSizeBytes = 10 * 1024 * 1024,
-                DefaultMessageTtl = TimeSpan.FromMinutes(30),
-                DefaultOverflowStrategy = "DropOldest",
-                EnablePersistence = stats.PersistedBuffers > 0,
-                EnableAutomaticCleanup = true,
-                CleanupInterval = TimeSpan.FromMinutes(5),
-                BufferRetentionPeriod = TimeSpan.FromHours(1)
-            });
+            return Ok(
+                new BufferConfigurationResponse
+                {
+                    DefaultMaxMessages = 1000,
+                    DefaultMaxSizeBytes = 10 * 1024 * 1024,
+                    DefaultMessageTtl = TimeSpan.FromMinutes(30),
+                    DefaultOverflowStrategy = "DropOldest",
+                    EnablePersistence = stats.PersistedBuffers > 0,
+                    EnableAutomaticCleanup = true,
+                    CleanupInterval = TimeSpan.FromMinutes(5),
+                    BufferRetentionPeriod = TimeSpan.FromHours(1),
+                }
+            );
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to get buffer configuration");
-            return StatusCode(StatusCodes.Status500InternalServerError, new
-            {
-                error = "Failed to retrieve buffer configuration",
-                message = ex.Message
-            });
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                new { error = "Failed to retrieve buffer configuration", message = ex.Message }
+            );
         }
     }
 
@@ -206,7 +216,8 @@ public class BufferManagementController : ControllerBase
     public async Task<IActionResult> ConfigureBuffer(
         string streamId,
         [FromBody] ConfigureBufferRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         try
         {
@@ -220,21 +231,30 @@ public class BufferManagementController : ControllerBase
                 MaxSize = request.MaxMessages ?? 1000,
                 MessageTTL = request.MessageTtl ?? TimeSpan.FromMinutes(30),
                 OverflowStrategy = ParseOverflowStrategy(request.OverflowStrategy),
-                EnablePersistence = request.EnablePersistence ?? false
+                EnablePersistence = request.EnablePersistence ?? false,
             };
 
-            var success = await _bufferService.ConfigureBufferAsync(streamId, configuration, cancellationToken);
+            var success = await _bufferService.ConfigureBufferAsync(
+                streamId,
+                configuration,
+                cancellationToken
+            );
 
             if (success)
             {
-                _logger.LogInformation("Updated buffer configuration for stream {StreamId}", streamId);
-                return Ok(new ConfigureBufferResponse
-                {
-                    StreamId = streamId,
-                    Success = true,
-                    Message = "Buffer configuration updated successfully",
-                    Configuration = configuration
-                });
+                _logger.LogInformation(
+                    "Updated buffer configuration for stream {StreamId}",
+                    streamId
+                );
+                return Ok(
+                    new ConfigureBufferResponse
+                    {
+                        StreamId = streamId,
+                        Success = true,
+                        Message = "Buffer configuration updated successfully",
+                        Configuration = configuration,
+                    }
+                );
             }
 
             return BadRequest(new { error = "Failed to update buffer configuration" });
@@ -242,11 +262,10 @@ public class BufferManagementController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to configure buffer for stream {StreamId}", streamId);
-            return StatusCode(StatusCodes.Status500InternalServerError, new
-            {
-                error = "Failed to configure buffer",
-                message = ex.Message
-            });
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                new { error = "Failed to configure buffer", message = ex.Message }
+            );
         }
     }
 
@@ -264,7 +283,8 @@ public class BufferManagementController : ControllerBase
     public async Task<IActionResult> ForceReplay(
         string streamId,
         [FromBody] ForceReplayRequest? request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         try
         {
@@ -283,28 +303,32 @@ public class BufferManagementController : ControllerBase
                 {
                     SkipDuplicateDetection = request.SkipDuplicateDetection ?? false,
                     MessageDelay = request.DelayBetweenMessages ?? TimeSpan.Zero,
-                    MaxMessages = request.MaxMessagesToReplay ?? 0
+                    MaxMessages = request.MaxMessagesToReplay ?? 0,
                 };
             }
 
             // Note: This requires access to HttpResponse which is not available in this context
             // In a real implementation, this would need to be handled differently
-            _logger.LogWarning("Force replay requested for stream {StreamId} but requires HTTP response context", streamId);
+            _logger.LogWarning(
+                "Force replay requested for stream {StreamId} but requires HTTP response context",
+                streamId
+            );
 
-            return BadRequest(new
-            {
-                error = "Force replay requires an active SSE/streaming connection",
-                message = "Please use the streaming endpoint to replay messages"
-            });
+            return BadRequest(
+                new
+                {
+                    error = "Force replay requires an active SSE/streaming connection",
+                    message = "Please use the streaming endpoint to replay messages",
+                }
+            );
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to force replay for stream {StreamId}", streamId);
-            return StatusCode(StatusCodes.Status500InternalServerError, new
-            {
-                error = "Failed to force replay",
-                message = ex.Message
-            });
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                new { error = "Failed to force replay", message = ex.Message }
+            );
         }
     }
 
@@ -323,18 +347,19 @@ public class BufferManagementController : ControllerBase
 
             _logger.LogInformation(
                 "Cleanup completed. Buffers removed: {BuffersRemoved}, Messages removed: {MessagesRemoved}",
-                result.ExpiredBuffersRemoved, result.ExpiredMessagesRemoved);
+                result.ExpiredBuffersRemoved,
+                result.ExpiredMessagesRemoved
+            );
 
             return Ok(result);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to perform cleanup");
-            return StatusCode(StatusCodes.Status500InternalServerError, new
-            {
-                error = "Failed to perform cleanup",
-                message = ex.Message
-            });
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                new { error = "Failed to perform cleanup", message = ex.Message }
+            );
         }
     }
 
@@ -353,18 +378,19 @@ public class BufferManagementController : ControllerBase
 
             _logger.LogInformation(
                 "Recovery completed. Buffers recovered: {BuffersRecovered}, Messages recovered: {MessagesRecovered}",
-                result.BuffersRecovered, result.TotalMessagesRecovered);
+                result.BuffersRecovered,
+                result.TotalMessagesRecovered
+            );
 
             return Ok(result);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to perform recovery");
-            return StatusCode(StatusCodes.Status500InternalServerError, new
-            {
-                error = "Failed to perform recovery",
-                message = ex.Message
-            });
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                new { error = "Failed to perform recovery", message = ex.Message }
+            );
         }
     }
 
@@ -380,7 +406,7 @@ public class BufferManagementController : ControllerBase
                 "dropoldest" => OverflowStrategy.DropOldest,
                 "dropnewest" => OverflowStrategy.DropNewest,
                 "rejectnew" => OverflowStrategy.RejectNew,
-                _ => OverflowStrategy.DropOldest
+                _ => OverflowStrategy.DropOldest,
             };
     }
 }

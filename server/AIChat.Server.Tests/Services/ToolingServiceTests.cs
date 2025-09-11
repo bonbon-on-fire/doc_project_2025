@@ -446,14 +446,15 @@ public class ToolingServiceTests
         );
 
         // Act & Assert
-        _ = await Assert.ThrowsAsync<OperationCanceledException>(() =>
-            toolingService.CreateChatSpecificFunctionCallMiddlewareAsync(
-                "test-chat-id",
-                null,
-                null,
-                null,
-                cts.Token
-            )
+        _ = await Assert.ThrowsAsync<OperationCanceledException>(
+            () =>
+                toolingService.CreateChatSpecificFunctionCallMiddlewareAsync(
+                    "test-chat-id",
+                    null,
+                    null,
+                    null,
+                    cts.Token
+                )
         );
     }
 

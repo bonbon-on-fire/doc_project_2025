@@ -16,10 +16,13 @@ public class RelayMessageCommand : OperationCommandBase<ChatMessage, int>
     /// <param name="chatId">The chat ID</param>
     /// <param name="userId">The user ID</param>
     /// <param name="message">The message to relay</param>
-    public RelayMessageCommand(string operationId, string chatId, string userId, ChatMessage message)
-        : base(operationId, chatId, userId, message)
-    {
-    }
+    public RelayMessageCommand(
+        string operationId,
+        string chatId,
+        string userId,
+        ChatMessage message
+    )
+        : base(operationId, chatId, userId, message) { }
 
     /// <summary>
     /// Performs custom validation for message relaying.
@@ -47,7 +50,9 @@ public class RelayMessageCommand : OperationCommandBase<ChatMessage, int>
 
             if (Request.ChatId != ChatId)
             {
-                errors.Add($"Message ChatId '{Request.ChatId}' does not match command ChatId '{ChatId}'");
+                errors.Add(
+                    $"Message ChatId '{Request.ChatId}' does not match command ChatId '{ChatId}'"
+                );
             }
 
             if (Request.Timestamp == default)
@@ -56,10 +61,8 @@ public class RelayMessageCommand : OperationCommandBase<ChatMessage, int>
             }
         }
 
-        return errors.Count > 0
-            ? CommandValidationResult.Failed([.. errors])
-            : warnings.Count > 0
-            ? CommandValidationResult.WithWarnings([.. warnings])
+        return errors.Count > 0 ? CommandValidationResult.Failed([.. errors])
+            : warnings.Count > 0 ? CommandValidationResult.WithWarnings([.. warnings])
             : CommandValidationResult.Success();
     }
 
@@ -68,14 +71,18 @@ public class RelayMessageCommand : OperationCommandBase<ChatMessage, int>
     /// </summary>
     protected override async Task<CommandExecutionResult<int>> ExecuteTypedInternalAsync(
         ICommandExecutionContext context,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var logger = context.Logger;
         try
         {
             logger.LogInformation(
                 "Relaying message {MessageId} for operation {OperationId} in chat {ChatId}",
-                Request.Id, OperationId, ChatId);
+                Request.Id,
+                OperationId,
+                ChatId
+            );
 
             // TODO: In complete implementation, this would:
             // 1. Get all connections subscribed to the chat from UserGrain state
@@ -92,21 +99,26 @@ public class RelayMessageCommand : OperationCommandBase<ChatMessage, int>
             var successCount = 3;
             logger.LogInformation(
                 "Successfully relayed message {MessageId} to {ConnectionCount} connections for operation {OperationId}",
-                Request.Id, successCount, OperationId);
-
-            return CommandExecutionResult<int>.Success(
+                Request.Id,
                 successCount,
-                50); // Duration matches the simulated delay
+                OperationId
+            );
+
+            return CommandExecutionResult<int>.Success(successCount, 50); // Duration matches the simulated delay
         }
         catch (Exception ex)
         {
-            logger.LogError(ex,
+            logger.LogError(
+                ex,
                 "Failed to relay message {MessageId} for operation {OperationId}",
-                Request.Id, OperationId);
+                Request.Id,
+                OperationId
+            );
 
             return CommandExecutionResult<int>.Failed(
                 $"Message relay failed: {ex.Message}",
-                ex.ToString());
+                ex.ToString()
+            );
         }
     }
 
@@ -141,13 +153,17 @@ public class RelayMessageCommand : OperationCommandBase<ChatMessage, int>
     /// Message relay commands don't typically support undo.
     /// Once a message is relayed, it cannot be "un-relayed" from client connections.
     /// </summary>
-    public override Task<bool> UndoAsync(ICommandExecutionContext context, CancellationToken cancellationToken = default)
+    public override Task<bool> UndoAsync(
+        ICommandExecutionContext context,
+        CancellationToken cancellationToken = default
+    )
     {
         var logger = context.Logger;
 
         logger.LogWarning(
             "Undo operation is not supported for message relay commands. Message {MessageId} cannot be un-relayed from connections.",
-            Request?.Id ?? "unknown");
+            Request?.Id ?? "unknown"
+        );
 
         // In a real implementation, you might:
         // 1. Send a "retract message" command to connections

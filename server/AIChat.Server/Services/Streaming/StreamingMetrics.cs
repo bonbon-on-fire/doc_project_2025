@@ -38,7 +38,10 @@ public sealed class StreamingMetrics : IStreamingMetrics
     {
         if (processingTimeMs < 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(processingTimeMs), "Processing time cannot be negative");
+            throw new ArgumentOutOfRangeException(
+                nameof(processingTimeMs),
+                "Processing time cannot be negative"
+            );
         }
 
         _ = Interlocked.Increment(ref _itemsProcessed);
@@ -53,7 +56,10 @@ public sealed class StreamingMetrics : IStreamingMetrics
             {
                 break;
             }
-        } while (Interlocked.CompareExchange(ref _maxProcessingTimeMs, processingTimeMs, currentMax) != currentMax);
+        } while (
+            Interlocked.CompareExchange(ref _maxProcessingTimeMs, processingTimeMs, currentMax)
+            != currentMax
+        );
 
         // Update min processing time
         long currentMin;
@@ -64,14 +70,18 @@ public sealed class StreamingMetrics : IStreamingMetrics
             {
                 break;
             }
-        } while (Interlocked.CompareExchange(ref _minProcessingTimeMs, processingTimeMs, currentMin) != currentMin);
+        } while (
+            Interlocked.CompareExchange(ref _minProcessingTimeMs, processingTimeMs, currentMin)
+            != currentMin
+        );
 
         if (_logger?.IsEnabled(LogLevel.Trace) == true)
         {
             _logger.LogTrace(
                 "Item processed in {Time}ms. Total items: {Count}",
                 processingTimeMs,
-                _itemsProcessed);
+                _itemsProcessed
+            );
         }
     }
 
@@ -95,7 +105,11 @@ public sealed class StreamingMetrics : IStreamingMetrics
         _ = Interlocked.Increment(ref _errorCount);
         _ = _errorsByType.AddOrUpdate(errorType, 1, (_, count) => count + 1);
 
-        _logger?.LogWarning("Error recorded: {ErrorType}. Total errors: {Count}", errorType, _errorCount);
+        _logger?.LogWarning(
+            "Error recorded: {ErrorType}. Total errors: {Count}",
+            errorType,
+            _errorCount
+        );
     }
 
     /// <inheritdoc />
@@ -116,13 +130,10 @@ public sealed class StreamingMetrics : IStreamingMetrics
         var totalProcessingTime = Interlocked.Read(ref _totalProcessingTimeMs);
         var duration = _stopwatch.Elapsed;
 
-        var avgProcessingTime = itemsProcessed > 0
-            ? (double)totalProcessingTime / itemsProcessed
-            : 0;
+        var avgProcessingTime =
+            itemsProcessed > 0 ? (double)totalProcessingTime / itemsProcessed : 0;
 
-        var throughput = duration.TotalSeconds > 0
-            ? itemsProcessed / duration.TotalSeconds
-            : 0;
+        var throughput = duration.TotalSeconds > 0 ? itemsProcessed / duration.TotalSeconds : 0;
 
         var minTime = Interlocked.Read(ref _minProcessingTimeMs);
         if (minTime == long.MaxValue)
@@ -143,7 +154,7 @@ public sealed class StreamingMetrics : IStreamingMetrics
             TotalBytesWritten = Interlocked.Read(ref _totalBytesWritten),
             ThroughputPerSecond = throughput,
             StartTime = _startTime,
-            Duration = duration
+            Duration = duration,
         };
     }
 

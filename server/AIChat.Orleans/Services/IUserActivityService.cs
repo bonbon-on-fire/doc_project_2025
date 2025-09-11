@@ -24,7 +24,8 @@ public interface IUserActivityService
         ActivityType type,
         string metadata,
         int maxBufferSize,
-        int persistenceInterval);
+        int persistenceInterval
+    );
 
     /// <summary>
     /// Performs a comprehensive health check on the user grain state.
@@ -38,7 +39,8 @@ public interface IUserActivityService
         UserGrainState state,
         int staleConnectionThresholdMinutes,
         double activityBufferWarningThreshold,
-        int staleOperationThresholdMinutes);
+        int staleOperationThresholdMinutes
+    );
 
     /// <summary>
     /// Cleans up old activity records based on retention policy.
@@ -47,10 +49,11 @@ public interface IUserActivityService
     /// <param name="retentionHours">Hours to retain activity records</param>
     /// <param name="operationRetentionMinutes">Minutes to retain completed operations</param>
     /// <returns>Updated state and number of items cleaned up</returns>
-    Task<(UserGrainState UpdatedState, int ActivitiesRemoved, int OperationsRemoved)> CleanupOldDataAsync(
-        UserGrainState state,
-        int retentionHours,
-        int operationRetentionMinutes);
+    Task<(
+        UserGrainState UpdatedState,
+        int ActivitiesRemoved,
+        int OperationsRemoved
+    )> CleanupOldDataAsync(UserGrainState state, int retentionHours, int operationRetentionMinutes);
 
     /// <summary>
     /// Updates activity-related metrics in the grain state.
@@ -65,7 +68,10 @@ public interface IUserActivityService
     /// <param name="type">Activity type</param>
     /// <param name="metadata">Activity metadata</param>
     /// <returns>Validation result</returns>
-    Task<(bool IsValid, string[] Errors, string[] Warnings)> ValidateActivityAsync(ActivityType type, string metadata);
+    Task<(bool IsValid, string[] Errors, string[] Warnings)> ValidateActivityAsync(
+        ActivityType type,
+        string metadata
+    );
 }
 
 /// <summary>
@@ -90,20 +96,23 @@ public class UserActivityService : IUserActivityService
         ActivityType type,
         string metadata,
         int maxBufferSize,
-        int persistenceInterval)
+        int persistenceInterval
+    )
     {
         try
         {
             _logger.LogDebug(
                 "Recording activity {ActivityType} for user {UserId}",
-                type, state.UserId);
+                type,
+                state.UserId
+            );
 
             var activity = new ActivityRecord
             {
                 Type = type,
                 Metadata = metadata ?? string.Empty,
                 Timestamp = DateTime.UtcNow,
-                CorrelationId = Guid.NewGuid().ToString()
+                CorrelationId = Guid.NewGuid().ToString(),
             };
 
             // Add to circular buffer
@@ -115,7 +124,9 @@ public class UserActivityService : IUserActivityService
                 var removed = state.RecentActivity.Dequeue();
                 _logger.LogTrace(
                     "Removed old activity {ActivityType} from buffer for user {UserId}",
-                    removed.Type, state.UserId);
+                    removed.Type,
+                    state.UserId
+                );
             }
 
             // Update timestamps and metrics
@@ -127,15 +138,22 @@ public class UserActivityService : IUserActivityService
 
             _logger.LogDebug(
                 "Activity recorded for user {UserId}. Total activities: {TotalActivities}, Buffer size: {BufferSize}, Should persist: {ShouldPersist}",
-                state.UserId, state.Metrics.TotalActivities, state.RecentActivity.Count, shouldPersist);
+                state.UserId,
+                state.Metrics.TotalActivities,
+                state.RecentActivity.Count,
+                shouldPersist
+            );
 
             return Task.FromResult((state, shouldPersist));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Failed to record activity {ActivityType} for user {UserId}",
-                type, state.UserId);
+                type,
+                state.UserId
+            );
 
             // Return original state and no persistence on error
             return Task.FromResult((state, false));
@@ -147,7 +165,8 @@ public class UserActivityService : IUserActivityService
         UserGrainState state,
         int staleConnectionThresholdMinutes,
         double activityBufferWarningThreshold,
-        int staleOperationThresholdMinutes)
+        int staleOperationThresholdMinutes
+    )
     {
         try
         {
@@ -158,8 +177,9 @@ public class UserActivityService : IUserActivityService
 
             // Check for stale connections
             var staleThreshold = now.AddMinutes(-staleConnectionThresholdMinutes);
-            var staleConnections = state.Connections.Values
-                .Count(c => c.LastActivity <= staleThreshold);
+            var staleConnections = state.Connections.Values.Count(c =>
+                c.LastActivity <= staleThreshold
+            );
 
             if (staleConnections > 0)
             {
@@ -171,14 +191,16 @@ public class UserActivityService : IUserActivityService
             var warningThreshold = (int)(maxBufferSize * activityBufferWarningThreshold);
             if (state.RecentActivity.Count > warningThreshold)
             {
-                warnings.Add($"Activity buffer usage high: {state.RecentActivity.Count}/{maxBufferSize}");
+                warnings.Add(
+                    $"Activity buffer usage high: {state.RecentActivity.Count}/{maxBufferSize}"
+                );
             }
 
             // Check for stale operations
             var operationStaleThreshold = now.AddMinutes(-staleOperationThresholdMinutes);
-            var staleOperations = state.ActiveOperations.Values
-                .Count(op => op.StartedAt <= operationStaleThreshold
-                           && op.Status == OperationStatus.InProgress);
+            var staleOperations = state.ActiveOperations.Values.Count(op =>
+                op.StartedAt <= operationStaleThreshold && op.Status == OperationStatus.InProgress
+            );
 
             if (staleOperations > 0)
             {
@@ -195,16 +217,20 @@ public class UserActivityService : IUserActivityService
                 LastActivity = state.LastActivity,
                 Metrics = state.Metrics,
                 CheckedAt = now,
-                AdditionalInfo = $"Connections: {state.Connections.Count}, " +
-                               $"Chats: {state.ActiveChats.Count}, " +
-                               $"Operations: {state.ActiveOperations.Count}, " +
-                               $"Activities: {state.RecentActivity.Count}",
-                Warnings = warnings
+                AdditionalInfo =
+                    $"Connections: {state.Connections.Count}, "
+                    + $"Chats: {state.ActiveChats.Count}, "
+                    + $"Operations: {state.ActiveOperations.Count}, "
+                    + $"Activities: {state.RecentActivity.Count}",
+                Warnings = warnings,
             };
 
             _logger.LogDebug(
                 "Health check completed for user {UserId}. Healthy: {IsHealthy}, Warnings: {WarningCount}",
-                state.UserId, isHealthy, warnings.Count);
+                state.UserId,
+                isHealthy,
+                warnings.Count
+            );
 
             return Task.FromResult(result);
         }
@@ -212,22 +238,25 @@ public class UserActivityService : IUserActivityService
         {
             _logger.LogError(ex, "Health check failed for user {UserId}", state.UserId);
 
-            return Task.FromResult(new HealthCheckResult
-            {
-                IsHealthy = false,
-                GrainId = state.UserId,
-                CheckedAt = DateTime.UtcNow,
-                AdditionalInfo = $"Health check exception: {ex.Message}",
-                Warnings = ["Health check threw exception"]
-            });
+            return Task.FromResult(
+                new HealthCheckResult
+                {
+                    IsHealthy = false,
+                    GrainId = state.UserId,
+                    CheckedAt = DateTime.UtcNow,
+                    AdditionalInfo = $"Health check exception: {ex.Message}",
+                    Warnings = ["Health check threw exception"],
+                }
+            );
         }
     }
 
     /// <inheritdoc />
-    public Task<(UserGrainState UpdatedState, int ActivitiesRemoved, int OperationsRemoved)> CleanupOldDataAsync(
-        UserGrainState state,
-        int retentionHours,
-        int operationRetentionMinutes)
+    public Task<(
+        UserGrainState UpdatedState,
+        int ActivitiesRemoved,
+        int OperationsRemoved
+    )> CleanupOldDataAsync(UserGrainState state, int retentionHours, int operationRetentionMinutes)
     {
         try
         {
@@ -254,10 +283,12 @@ public class UserActivityService : IUserActivityService
             var activitiesRemoved = oldActivitiesCount - newActivityQueue.Count;
 
             // Clean up completed operations
-            var completedOps = state.ActiveOperations
-                .Where(kvp => kvp.Value.Status == OperationStatus.Completed
-                           && kvp.Value.CompletedAt.HasValue
-                           && kvp.Value.CompletedAt.Value <= operationThreshold)
+            var completedOps = state
+                .ActiveOperations.Where(kvp =>
+                    kvp.Value.Status == OperationStatus.Completed
+                    && kvp.Value.CompletedAt.HasValue
+                    && kvp.Value.CompletedAt.Value <= operationThreshold
+                )
                 .Select(kvp => kvp.Key)
                 .ToList();
 
@@ -268,7 +299,10 @@ public class UserActivityService : IUserActivityService
 
             _logger.LogDebug(
                 "Cleanup completed for user {UserId}. Activities removed: {ActivitiesRemoved}, Operations removed: {OperationsRemoved}",
-                state.UserId, activitiesRemoved, completedOps.Count);
+                state.UserId,
+                activitiesRemoved,
+                completedOps.Count
+            );
 
             return Task.FromResult((state, activitiesRemoved, completedOps.Count));
         }
@@ -290,20 +324,28 @@ public class UserActivityService : IUserActivityService
             state.Metrics.ActiveConnections = state.Connections.Count;
 
             // Update active operations count
-            state.Metrics.ActiveOperationsCount = state.ActiveOperations
-                .Count(kvp => kvp.Value.Status is OperationStatus.Queued or OperationStatus.InProgress);
+            state.Metrics.ActiveOperationsCount = state.ActiveOperations.Count(kvp =>
+                kvp.Value.Status is OperationStatus.Queued or OperationStatus.InProgress
+            );
 
             return Task.FromResult(state);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to update activity metrics for user {UserId}", state.UserId);
+            _logger.LogWarning(
+                ex,
+                "Failed to update activity metrics for user {UserId}",
+                state.UserId
+            );
             return Task.FromResult(state);
         }
     }
 
     /// <inheritdoc />
-    public Task<(bool IsValid, string[] Errors, string[] Warnings)> ValidateActivityAsync(ActivityType type, string metadata)
+    public Task<(bool IsValid, string[] Errors, string[] Warnings)> ValidateActivityAsync(
+        ActivityType type,
+        string metadata
+    )
     {
         var errors = new List<string>();
         var warnings = new List<string>();
@@ -348,7 +390,9 @@ public class UserActivityService : IUserActivityService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to validate activity {ActivityType}", type);
-            return Task.FromResult((false, new[] { $"Validation failed: {ex.Message}" }, Array.Empty<string>()));
+            return Task.FromResult(
+                (false, new[] { $"Validation failed: {ex.Message}" }, Array.Empty<string>())
+            );
         }
     }
 }

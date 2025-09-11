@@ -17,7 +17,7 @@ public class Program
     private static readonly System.Text.Json.JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
-        WriteIndented = true
+        WriteIndented = true,
     };
 
     /// <summary>
@@ -60,94 +60,140 @@ public class Program
     /// <returns>Configured host builder</returns>
     public static IHostBuilder CreateHostBuilder(string[] args)
     {
-        return Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder(args)
-            .ConfigureWebHostDefaults(webBuilder => _ = webBuilder.Configure(app =>
+        return Microsoft
+            .Extensions.Hosting.Host.CreateDefaultBuilder(args)
+            .ConfigureWebHostDefaults(webBuilder =>
+                _ = webBuilder.Configure(app =>
                 {
                     // Minimal web host for health checks and dashboard
                     _ = app.UseRouting();
                     _ = app.UseEndpoints(endpoints =>
                     {
-                        _ = endpoints.MapGet("/health", async context => await context.Response.WriteAsync("Orleans Host is running"));
+                        _ = endpoints.MapGet(
+                            "/health",
+                            async context =>
+                                await context.Response.WriteAsync("Orleans Host is running")
+                        );
 
                         // Phase 4: Orleans Metrics API endpoint
-                        _ = endpoints.MapGet("/api/orleans/metrics", async context =>
-                        {
-                            var metricsCollector = context.RequestServices.GetRequiredService<IOrleansMetricsCollector>();
-                            var summary = await metricsCollector.GetMetricsSummaryAsync();
-
-                            context.Response.ContentType = "application/json";
-                            await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(summary, JsonOptions));
-                        });
-
-                        _ = endpoints.MapGet("/api/orleans/metrics/{grainType}", async (string grainType, HttpContext context, IOrleansMetricsCollector metricsCollector) =>
-                        {
-                            if (string.IsNullOrEmpty(grainType))
+                        _ = endpoints.MapGet(
+                            "/api/orleans/metrics",
+                            async context =>
                             {
-                                context.Response.StatusCode = 400;
-                                await context.Response.WriteAsync("Grain type is required");
-                                return;
+                                var metricsCollector =
+                                    context.RequestServices.GetRequiredService<IOrleansMetricsCollector>();
+                                var summary = await metricsCollector.GetMetricsSummaryAsync();
+
+                                context.Response.ContentType = "application/json";
+                                await context.Response.WriteAsync(
+                                    System.Text.Json.JsonSerializer.Serialize(summary, JsonOptions)
+                                );
                             }
+                        );
 
-                            var grainMetrics = await metricsCollector.GetGrainTypeMetricsAsync(grainType);
+                        _ = endpoints.MapGet(
+                            "/api/orleans/metrics/{grainType}",
+                            async (
+                                string grainType,
+                                HttpContext context,
+                                IOrleansMetricsCollector metricsCollector
+                            ) =>
+                            {
+                                if (string.IsNullOrEmpty(grainType))
+                                {
+                                    context.Response.StatusCode = 400;
+                                    await context.Response.WriteAsync("Grain type is required");
+                                    return;
+                                }
 
-                            context.Response.ContentType = "application/json";
-                            await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(grainMetrics, JsonOptions));
-                        });
+                                var grainMetrics = await metricsCollector.GetGrainTypeMetricsAsync(
+                                    grainType
+                                );
+
+                                context.Response.ContentType = "application/json";
+                                await context.Response.WriteAsync(
+                                    System.Text.Json.JsonSerializer.Serialize(
+                                        grainMetrics,
+                                        JsonOptions
+                                    )
+                                );
+                            }
+                        );
                     });
-                }))
-            .UseSerilog((context, configuration) =>
-            {
-                _ = configuration
-                    .ReadFrom.Configuration(context.Configuration)
-                    .MinimumLevel.Information()
-                    .MinimumLevel.Override("Orleans", LogEventLevel.Warning)
-                    .MinimumLevel.Override("Orleans.Runtime", LogEventLevel.Warning)
-                    .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
-                    .MinimumLevel.Override("AIChat.Orleans", LogEventLevel.Debug)
-                    .WriteTo.Console(
-                        outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}",
-                        formatProvider: CultureInfo.InvariantCulture)
-                    .WriteTo.File(
-                        path: "logs/orleans-host-.log",
-                        rollingInterval: RollingInterval.Day,
-                        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {SourceContext} - {Message:lj}{NewLine}{Exception}",
-                        formatProvider: CultureInfo.InvariantCulture);
-
-                // Add Application Insights if configured
-                var appInsightsKey = context.Configuration.GetConnectionString("ApplicationInsights");
-                if (!string.IsNullOrEmpty(appInsightsKey))
+                })
+            )
+            .UseSerilog(
+                (context, configuration) =>
                 {
-                    _ = configuration.WriteTo.ApplicationInsights(appInsightsKey, TelemetryConverter.Traces);
-                }
-            })
-            .UseOrleans(ConfigureOrleans)
-            .ConfigureServices((context, services) =>
-            {
-                // Configure Orleans grain settings
-                _ = services.Configure<OrleansGrainConfiguration>(
-                    context.Configuration.GetSection(OrleansGrainConfiguration.SectionName));
+                    _ = configuration
+                        .ReadFrom.Configuration(context.Configuration)
+                        .MinimumLevel.Information()
+                        .MinimumLevel.Override("Orleans", LogEventLevel.Warning)
+                        .MinimumLevel.Override("Orleans.Runtime", LogEventLevel.Warning)
+                        .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
+                        .MinimumLevel.Override("AIChat.Orleans", LogEventLevel.Debug)
+                        .WriteTo.Console(
+                            outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}",
+                            formatProvider: CultureInfo.InvariantCulture
+                        )
+                        .WriteTo.File(
+                            path: "logs/orleans-host-.log",
+                            rollingInterval: RollingInterval.Day,
+                            outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {SourceContext} - {Message:lj}{NewLine}{Exception}",
+                            formatProvider: CultureInfo.InvariantCulture
+                        );
 
-                // Add Application Insights if configured
-                var appInsightsKey = context.Configuration.GetConnectionString("ApplicationInsights");
-                if (!string.IsNullOrEmpty(appInsightsKey))
-                {
-                    _ = services.AddApplicationInsightsTelemetry(new ApplicationInsightsServiceOptions
+                    // Add Application Insights if configured
+                    var appInsightsKey = context.Configuration.GetConnectionString(
+                        "ApplicationInsights"
+                    );
+                    if (!string.IsNullOrEmpty(appInsightsKey))
                     {
-                        ConnectionString = appInsightsKey
-                    });
+                        _ = configuration.WriteTo.ApplicationInsights(
+                            appInsightsKey,
+                            TelemetryConverter.Traces
+                        );
+                    }
                 }
+            )
+            .UseOrleans(ConfigureOrleans)
+            .ConfigureServices(
+                (context, services) =>
+                {
+                    // Configure Orleans grain settings
+                    _ = services.Configure<OrleansGrainConfiguration>(
+                        context.Configuration.GetSection(OrleansGrainConfiguration.SectionName)
+                    );
 
-                // Add Phase 4: Orleans Metrics Collection
-                _ = services.AddSingleton<IOrleansMetricsCollector, OrleansMetricsCollector>();
+                    // Add Application Insights if configured
+                    var appInsightsKey = context.Configuration.GetConnectionString(
+                        "ApplicationInsights"
+                    );
+                    if (!string.IsNullOrEmpty(appInsightsKey))
+                    {
+                        _ = services.AddApplicationInsightsTelemetry(
+                            new ApplicationInsightsServiceOptions
+                            {
+                                ConnectionString = appInsightsKey,
+                            }
+                        );
+                    }
 
-                // Add ChatServiceProxy for grain LLM processing
-                // Default implementation provides simulated responses
-                // In production, this should be replaced with actual ChatService integration
-                _ = services.AddSingleton<Services.IChatServiceProxy, Services.DefaultChatServiceProxy>();
+                    // Add Phase 4: Orleans Metrics Collection
+                    _ = services.AddSingleton<IOrleansMetricsCollector, OrleansMetricsCollector>();
 
-                // Add health checks
-                _ = services.AddHealthChecks();
-            });
+                    // Add ChatServiceProxy for grain LLM processing
+                    // Default implementation provides simulated responses
+                    // In production, this should be replaced with actual ChatService integration
+                    _ = services.AddSingleton<
+                        Services.IChatServiceProxy,
+                        Services.DefaultChatServiceProxy
+                    >();
+
+                    // Add health checks
+                    _ = services.AddHealthChecks();
+                }
+            );
     }
 
     /// <summary>
@@ -164,8 +210,10 @@ public class Program
         _ = siloBuilder
             .Configure<ClusterOptions>(options =>
             {
-                options.ClusterId = configuration.GetValue<string>("Orleans:ClusterId") ?? "doc-chat-cluster";
-                options.ServiceId = configuration.GetValue<string>("Orleans:ServiceId") ?? "doc-chat-service";
+                options.ClusterId =
+                    configuration.GetValue<string>("Orleans:ClusterId") ?? "doc-chat-cluster";
+                options.ServiceId =
+                    configuration.GetValue<string>("Orleans:ServiceId") ?? "doc-chat-service";
             })
             .ConfigureEndpoints(
                 siloPort: configuration.GetValue("Orleans:SiloPort", 11111),
@@ -190,7 +238,10 @@ public class Program
 
         if (dashboardEnabled)
         {
-            Log.Information("Custom Orleans monitoring dashboard will be available on port {Port} (integrated with web host)", context.HostingEnvironment.IsDevelopment() ? 5100 : dashboardPort);
+            Log.Information(
+                "Custom Orleans monitoring dashboard will be available on port {Port} (integrated with web host)",
+                context.HostingEnvironment.IsDevelopment() ? 5100 : dashboardPort
+            );
         }
 
         // Add startup task for initialization
@@ -220,7 +271,10 @@ public class Program
     /// </summary>
     /// <param name="siloBuilder">Orleans silo builder</param>
     /// <param name="configuration">Configuration</param>
-    private static void ConfigureDevelopmentOrleans(ISiloBuilder siloBuilder, IConfiguration configuration)
+    private static void ConfigureDevelopmentOrleans(
+        ISiloBuilder siloBuilder,
+        IConfiguration configuration
+    )
     {
         Log.Information("Configuring Orleans for Development environment");
 
@@ -236,7 +290,10 @@ public class Program
     /// </summary>
     /// <param name="siloBuilder">Orleans silo builder</param>
     /// <param name="configuration">Configuration</param>
-    private static void ConfigureProductionOrleans(ISiloBuilder siloBuilder, IConfiguration configuration)
+    private static void ConfigureProductionOrleans(
+        ISiloBuilder siloBuilder,
+        IConfiguration configuration
+    )
     {
         Log.Information("Configuring Orleans for Production environment");
 
@@ -281,7 +338,9 @@ public class OrleansStartupTask : IStartupTask
         {
             _logger.LogInformation("Orleans startup task beginning...");
 
-            _logger.LogInformation("Orleans startup validation successful. Silo is ready to accept requests");
+            _logger.LogInformation(
+                "Orleans startup validation successful. Silo is ready to accept requests"
+            );
             return Task.CompletedTask;
         }
         catch (Exception ex)

@@ -253,7 +253,8 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
         using var invoker = new HttpMessageInvoker(handler);
 
-        var chainJson = /*lang=json,strict*/ """
+        var chainJson = /*lang=json,strict*/
+            """
             {
               "instruction_chain": [
                 {
@@ -298,7 +299,8 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
         using var invoker = new HttpMessageInvoker(handler);
 
-        var chainJson = /*lang=json,strict*/ """
+        var chainJson = /*lang=json,strict*/
+            """
             {
               "instruction_chain": [
                 {
@@ -338,7 +340,8 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
         using var invoker = new HttpMessageInvoker(handler);
 
-        var chainJson = /*lang=json,strict*/ """
+        var chainJson = /*lang=json,strict*/
+            """
             {
               "instruction_chain": [
                 {
@@ -374,7 +377,8 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
         using var invoker = new HttpMessageInvoker(handler);
 
-        var chainJson = /*lang=json,strict*/ """
+        var chainJson = /*lang=json,strict*/
+            """
             {
               "instruction_chain": [
                 { "id_message": "ONE", "messages": [{ "text_message": { "length": 1 } }] },
@@ -414,7 +418,8 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
         using var invoker = new HttpMessageInvoker(handler);
 
         // Old single instruction format (no instruction_chain array)
-        var singleInstruction = /*lang=json,strict*/ """
+        var singleInstruction = /*lang=json,strict*/
+            """
             {
               "id_message": "SINGLE",
               "messages": [
@@ -1024,7 +1029,8 @@ Get the weather for San Francisco";
                     new ToolCallUpdate
                     {
                         FunctionName = "save_memory",
-                        FunctionArgs = /*lang=json,strict*/ "{\"key\":\"test\",\"value\":\"data\"}",
+                        FunctionArgs = /*lang=json,strict*/
+                            "{\"key\":\"test\",\"value\":\"data\"}",
                     },
                 ],
                 Role = Role.Assistant,
@@ -1155,7 +1161,7 @@ Get the weather for San Francisco";
                 Role = Role.Assistant,
                 Text = "First response from step 1",
                 GenerationId = "gen-1",
-            }
+            },
         };
 
         // Add second assistant response as CompositeMessage (simulating step 2 with multiple message types)
@@ -1186,7 +1192,8 @@ Get the weather for San Francisco";
                         new ToolCall
                         {
                             FunctionName = "analyze_data",
-                            FunctionArgs = /*lang=json,strict*/ "{\"param\": \"value\"}",
+                            FunctionArgs = /*lang=json,strict*/
+                                "{\"param\": \"value\"}",
                             ToolCallId = "tool-1",
                         },
                     ],
@@ -1490,7 +1497,8 @@ Get the weather for San Francisco";
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
         using var invoker = new HttpMessageInvoker(handler);
 
-        var emptyChain = /*lang=json,strict*/ """
+        var emptyChain = /*lang=json,strict*/
+            """
             {
               "instruction_chain": []
             }
@@ -1521,7 +1529,8 @@ Get the weather for San Francisco";
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
         using var invoker = new HttpMessageInvoker(handler);
 
-        var chain1 = /*lang=json,strict*/ """
+        var chain1 = /*lang=json,strict*/
+            """
             {
               "instruction_chain": [
                 { "id_message": "CHAIN1-STEP1", "messages": [{ "text_message": { "length": 1 } }] },
@@ -1530,7 +1539,8 @@ Get the weather for San Francisco";
             }
             """;
 
-        var chain2 = /*lang=json,strict*/ """
+        var chain2 = /*lang=json,strict*/
+            """
             {
               "instruction_chain": [
                 { "id_message": "CHAIN2-STEP1", "messages": [{ "text_message": { "length": 1 } }] },
@@ -1589,7 +1599,8 @@ Get the weather for San Francisco";
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
         using var invoker = new HttpMessageInvoker(handler);
 
-        var chainJson = /*lang=json,strict*/ """
+        var chainJson = /*lang=json,strict*/
+            """
             {
               "instruction_chain": [
                 {

@@ -34,7 +34,8 @@ public class PerformanceBenchmarkTests : Phase1IntegrationTestBase
         var stopwatch = Stopwatch.StartNew();
 
         // Act - Activate multiple grains
-        var tasks = Enumerable.Range(0, grainCount)
+        var tasks = Enumerable
+            .Range(0, grainCount)
             .Select(async i =>
             {
                 var grain = GetGrain<IUserGrain>($"perf-user-{i}");
@@ -58,15 +59,27 @@ public class PerformanceBenchmarkTests : Phase1IntegrationTestBase
         Assert.Multiple(() =>
         {
             // Performance expectations for Phase 1
-            Assert.That(averageTimePerGrain, Is.LessThan(100),
-                $"Grain activation should average < 100ms per grain, actual: {averageTimePerGrain:F2}ms");
-            Assert.That(grainActivationsPerSecond, Is.GreaterThan(10),
-                $"Should achieve > 10 activations/sec, actual: {grainActivationsPerSecond:F0}");
-            Assert.That(results, Has.Length.EqualTo(grainCount), "All grains should activate successfully");
+            Assert.That(
+                averageTimePerGrain,
+                Is.LessThan(100),
+                $"Grain activation should average < 100ms per grain, actual: {averageTimePerGrain:F2}ms"
+            );
+            Assert.That(
+                grainActivationsPerSecond,
+                Is.GreaterThan(10),
+                $"Should achieve > 10 activations/sec, actual: {grainActivationsPerSecond:F0}"
+            );
+            Assert.That(
+                results,
+                Has.Length.EqualTo(grainCount),
+                "All grains should activate successfully"
+            );
         });
 
         // Log baseline for monitoring
-        TestContext.Out.WriteLine($"BASELINE_GRAIN_ACTIVATION_{grainCount}: {averageTimePerGrain:F2}ms avg, {grainActivationsPerSecond:F0}/sec");
+        TestContext.Out.WriteLine(
+            $"BASELINE_GRAIN_ACTIVATION_{grainCount}: {averageTimePerGrain:F2}ms avg, {grainActivationsPerSecond:F0}/sec"
+        );
     }
 
     [Test, Category("Performance")]
@@ -102,17 +115,25 @@ public class PerformanceBenchmarkTests : Phase1IntegrationTestBase
         Assert.Multiple(() =>
         {
             // Performance expectations
-            Assert.That(activitiesPerSecond, Is.GreaterThan(100),
-                $"Should achieve > 100 activities/sec, actual: {activitiesPerSecond:F0}");
-            Assert.That(averageTimePerActivity, Is.LessThan(10),
-                $"Activity recording should average < 10ms, actual: {averageTimePerActivity:F3}ms");
+            Assert.That(
+                activitiesPerSecond,
+                Is.GreaterThan(100),
+                $"Should achieve > 100 activities/sec, actual: {activitiesPerSecond:F0}"
+            );
+            Assert.That(
+                averageTimePerActivity,
+                Is.LessThan(10),
+                $"Activity recording should average < 10ms, actual: {averageTimePerActivity:F3}ms"
+            );
         });
 
         // Verify data integrity
         var state = await grain.GetState();
         Assert.That(state.Metrics.TotalActivities, Is.EqualTo(activityCount));
 
-        TestContext.Out.WriteLine($"BASELINE_ACTIVITY_THROUGHPUT_{activityCount}: {activitiesPerSecond:F0}/sec, {averageTimePerActivity:F3}ms avg");
+        TestContext.Out.WriteLine(
+            $"BASELINE_ACTIVITY_THROUGHPUT_{activityCount}: {activitiesPerSecond:F0}/sec, {averageTimePerActivity:F3}ms avg"
+        );
     }
 
     [Test, Category("Performance")]
@@ -125,7 +146,8 @@ public class PerformanceBenchmarkTests : Phase1IntegrationTestBase
         var stopwatch = Stopwatch.StartNew();
 
         // Act - Concurrent operations across multiple grains
-        var tasks = Enumerable.Range(0, userCount)
+        var tasks = Enumerable
+            .Range(0, userCount)
             .Select(async userId =>
             {
                 var grain = GetGrain<IUserGrain>($"concurrent-user-{userId}");
@@ -158,10 +180,16 @@ public class PerformanceBenchmarkTests : Phase1IntegrationTestBase
         Assert.Multiple(() =>
         {
             // Performance expectations for concurrent operations
-            Assert.That(operationsPerSecond, Is.GreaterThan(200),
-                $"Concurrent operations should achieve > 200 ops/sec, actual: {operationsPerSecond:F0}");
-            Assert.That(averageTimePerUser, Is.LessThan(5000),
-                $"User operation set should complete < 5000ms, actual: {averageTimePerUser:F2}ms");
+            Assert.That(
+                operationsPerSecond,
+                Is.GreaterThan(200),
+                $"Concurrent operations should achieve > 200 ops/sec, actual: {operationsPerSecond:F0}"
+            );
+            Assert.That(
+                averageTimePerUser,
+                Is.LessThan(5000),
+                $"User operation set should complete < 5000ms, actual: {averageTimePerUser:F2}ms"
+            );
 
             // Verify all operations completed successfully
             Assert.That(results, Has.Length.EqualTo(userCount));
@@ -171,7 +199,9 @@ public class PerformanceBenchmarkTests : Phase1IntegrationTestBase
             Assert.That(state.Metrics.TotalActivities, Is.EqualTo(operationsPerUser));
         }
 
-        TestContext.Out.WriteLine($"BASELINE_CONCURRENT_OPERATIONS: {operationsPerSecond:F0}/sec, {userCount} users");
+        TestContext.Out.WriteLine(
+            $"BASELINE_CONCURRENT_OPERATIONS: {operationsPerSecond:F0}/sec, {userCount} users"
+        );
     }
 
     [Test, Category("Performance")]
@@ -212,13 +242,21 @@ public class PerformanceBenchmarkTests : Phase1IntegrationTestBase
         Assert.Multiple(() =>
         {
             // Performance expectations for health checks
-            Assert.That(averageTime, Is.LessThan(50),
-                $"Average health check should be < 50ms, actual: {averageTime:F2}ms");
-            Assert.That(p95Time, Is.LessThan(100),
-                $"95th percentile should be < 100ms, actual: {p95Time}ms");
+            Assert.That(
+                averageTime,
+                Is.LessThan(50),
+                $"Average health check should be < 50ms, actual: {averageTime:F2}ms"
+            );
+            Assert.That(
+                p95Time,
+                Is.LessThan(100),
+                $"95th percentile should be < 100ms, actual: {p95Time}ms"
+            );
         });
 
-        TestContext.Out.WriteLine($"BASELINE_HEALTH_CHECK: {averageTime:F2}ms avg, {p95Time}ms p95");
+        TestContext.Out.WriteLine(
+            $"BASELINE_HEALTH_CHECK: {averageTime:F2}ms avg, {p95Time}ms p95"
+        );
     }
 
     [Test, Category("Performance")]
@@ -262,13 +300,21 @@ public class PerformanceBenchmarkTests : Phase1IntegrationTestBase
         Assert.Multiple(() =>
         {
             // Performance expectations
-            Assert.That(averageTime, Is.LessThan(20),
-                $"Average state retrieval should be < 20ms, actual: {averageTime:F2}ms");
-            Assert.That(p95Time, Is.LessThan(50),
-                $"95th percentile should be < 50ms, actual: {p95Time}ms");
+            Assert.That(
+                averageTime,
+                Is.LessThan(20),
+                $"Average state retrieval should be < 20ms, actual: {averageTime:F2}ms"
+            );
+            Assert.That(
+                p95Time,
+                Is.LessThan(50),
+                $"95th percentile should be < 50ms, actual: {p95Time}ms"
+            );
         });
 
-        TestContext.Out.WriteLine($"BASELINE_STATE_RETRIEVAL: {averageTime:F2}ms avg, {p95Time}ms p95");
+        TestContext.Out.WriteLine(
+            $"BASELINE_STATE_RETRIEVAL: {averageTime:F2}ms avg, {p95Time}ms p95"
+        );
     }
 
     [Test, Category("Performance")]
@@ -308,10 +354,15 @@ public class PerformanceBenchmarkTests : Phase1IntegrationTestBase
         Console.WriteLine($"  Memory per Grain: {memoryPerGrain:N0} bytes");
 
         // Memory usage expectations (reasonable limits for grain overhead)
-        Assert.That(memoryPerGrain, Is.LessThan(50000), // Less than 50KB per grain
-            $"Memory per grain should be < 50KB, actual: {memoryPerGrain:N0} bytes");
+        Assert.That(
+            memoryPerGrain,
+            Is.LessThan(50000), // Less than 50KB per grain
+            $"Memory per grain should be < 50KB, actual: {memoryPerGrain:N0} bytes"
+        );
 
-        TestContext.Out.WriteLine($"BASELINE_MEMORY_USAGE: {memoryPerGrain:N0} bytes/grain, {grainCount} grains");
+        TestContext.Out.WriteLine(
+            $"BASELINE_MEMORY_USAGE: {memoryPerGrain:N0} bytes/grain, {grainCount} grains"
+        );
     }
 
     [Test, Category("Performance")]
@@ -349,19 +400,29 @@ public class PerformanceBenchmarkTests : Phase1IntegrationTestBase
         var totalTime = stopwatch.ElapsedMilliseconds;
 
         Console.WriteLine($"End-to-End User Journey Results:");
-        Console.WriteLine($"  Total Operations: 23 (connect + 20 messages + health + state + disconnect)");
+        Console.WriteLine(
+            $"  Total Operations: 23 (connect + 20 messages + health + state + disconnect)"
+        );
         Console.WriteLine($"  Total Time: {totalTime:N0} ms");
         Console.WriteLine($"  Average Time per Operation: {(double)totalTime / 23:F2} ms");
 
         Assert.Multiple(() =>
         {
-            Assert.That(totalTime, Is.LessThan(5000),
-                    $"Complete user journey should take < 5 seconds, actual: {totalTime}ms");
+            Assert.That(
+                totalTime,
+                Is.LessThan(5000),
+                $"Complete user journey should take < 5 seconds, actual: {totalTime}ms"
+            );
             Assert.That(health.IsHealthy, Is.True, "User should be healthy after journey");
-            Assert.That(state.Metrics.TotalActivities, Is.GreaterThanOrEqualTo(21), "Should have at least 21 activities");
+            Assert.That(
+                state.Metrics.TotalActivities,
+                Is.GreaterThanOrEqualTo(21),
+                "Should have at least 21 activities"
+            );
         });
 
-        TestContext.Out.WriteLine($"BASELINE_E2E_JOURNEY: {totalTime}ms total, {(double)totalTime / 23:F2}ms per op");
+        TestContext.Out.WriteLine(
+            $"BASELINE_E2E_JOURNEY: {totalTime}ms total, {(double)totalTime / 23:F2}ms per op"
+        );
     }
 }
-

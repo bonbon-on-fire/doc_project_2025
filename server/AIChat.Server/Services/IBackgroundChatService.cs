@@ -4,7 +4,7 @@ namespace AIChat.Server.Services;
 
 /// <summary>
 /// Interface for the background chat service that processes chat operations asynchronously.
-/// 
+///
 /// This service manages a queue of chat operations and processes them in the background
 /// using a worker pool with concurrency limits. It integrates with the existing ChatService
 /// to leverage all LLM processing, tool integration, and agentic loop functionality.
@@ -17,7 +17,10 @@ public interface IBackgroundChatService
     /// <param name="operation">The chat operation to process</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The unique operation ID for tracking</returns>
-    Task<string> EnqueueOperationAsync(ChatOperation operation, CancellationToken cancellationToken = default);
+    Task<string> EnqueueOperationAsync(
+        ChatOperation operation,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Cancel a queued or in-progress operation.
@@ -25,7 +28,10 @@ public interface IBackgroundChatService
     /// <param name="operationId">The operation ID to cancel</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>True if the operation was successfully cancelled</returns>
-    Task<bool> CancelOperationAsync(string operationId, CancellationToken cancellationToken = default);
+    Task<bool> CancelOperationAsync(
+        string operationId,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Get the current status of an operation.
@@ -33,7 +39,10 @@ public interface IBackgroundChatService
     /// <param name="operationId">The operation ID to check</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Current operation status information, or null if not found</returns>
-    Task<OperationStatusInfo?> GetOperationStatusAsync(string operationId, CancellationToken cancellationToken = default);
+    Task<OperationStatusInfo?> GetOperationStatusAsync(
+        string operationId,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Get the current queue statistics.
@@ -48,7 +57,10 @@ public interface IBackgroundChatService
     /// <param name="userId">The user ID to filter by</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of active operations for the user</returns>
-    Task<IEnumerable<OperationStatusInfo>> GetUserOperationsAsync(string userId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<OperationStatusInfo>> GetUserOperationsAsync(
+        string userId,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Get all active operations for a specific chat.
@@ -56,7 +68,10 @@ public interface IBackgroundChatService
     /// <param name="chatId">The chat ID to filter by</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of active operations for the chat</returns>
-    Task<IEnumerable<OperationStatusInfo>> GetChatOperationsAsync(string chatId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<OperationStatusInfo>> GetChatOperationsAsync(
+        string chatId,
+        CancellationToken cancellationToken = default
+    );
 }
 
 /// <summary>

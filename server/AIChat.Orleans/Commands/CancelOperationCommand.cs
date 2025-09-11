@@ -20,10 +20,13 @@ public class CancelOperationCommand : OperationCommandBase<string, bool>
     /// <param name="chatId">The chat ID</param>
     /// <param name="userId">The user ID</param>
     /// <param name="targetOperationId">The operation ID to cancel</param>
-    public CancelOperationCommand(string operationId, string chatId, string userId, string targetOperationId)
-        : base(operationId, chatId, userId, targetOperationId)
-    {
-    }
+    public CancelOperationCommand(
+        string operationId,
+        string chatId,
+        string userId,
+        string targetOperationId
+    )
+        : base(operationId, chatId, userId, targetOperationId) { }
 
     /// <summary>
     /// Performs custom validation for operation cancellation.
@@ -42,10 +45,8 @@ public class CancelOperationCommand : OperationCommandBase<string, bool>
         // accessing the grain state, which should happen during execution, not validation.
         // The validation phase should only check the command structure, not external state.
 
-        return errors.Count > 0
-            ? CommandValidationResult.Failed([.. errors])
-            : warnings.Count > 0
-            ? CommandValidationResult.WithWarnings([.. warnings])
+        return errors.Count > 0 ? CommandValidationResult.Failed([.. errors])
+            : warnings.Count > 0 ? CommandValidationResult.WithWarnings([.. warnings])
             : CommandValidationResult.Success();
     }
 
@@ -54,7 +55,8 @@ public class CancelOperationCommand : OperationCommandBase<string, bool>
     /// </summary>
     protected override async Task<CommandExecutionResult<bool>> ExecuteTypedInternalAsync(
         ICommandExecutionContext context,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var logger = context.Logger;
 
@@ -62,7 +64,9 @@ public class CancelOperationCommand : OperationCommandBase<string, bool>
         {
             logger.LogInformation(
                 "Executing cancellation for operation {TargetOperationId} via command operation {CommandOperationId}",
-                TargetOperationId, OperationId);
+                TargetOperationId,
+                OperationId
+            );
 
             // TODO: In complete implementation, this would:
             // 1. Check if the target operation exists in the grain state
@@ -82,28 +86,31 @@ public class CancelOperationCommand : OperationCommandBase<string, bool>
             {
                 logger.LogInformation(
                     "Successfully cancelled operation {TargetOperationId}",
-                    TargetOperationId);
+                    TargetOperationId
+                );
             }
             else
             {
                 logger.LogWarning(
                     "Operation {TargetOperationId} could not be cancelled (may not exist or already completed)",
-                    TargetOperationId);
+                    TargetOperationId
+                );
             }
 
-            return CommandExecutionResult<bool>.Success(
-                wasCancelled,
-                150); // Duration matches the simulated delay
+            return CommandExecutionResult<bool>.Success(wasCancelled, 150); // Duration matches the simulated delay
         }
         catch (Exception ex)
         {
-            logger.LogError(ex,
+            logger.LogError(
+                ex,
                 "Failed to cancel operation {TargetOperationId}",
-                TargetOperationId);
+                TargetOperationId
+            );
 
             return CommandExecutionResult<bool>.Failed(
                 $"Operation cancellation failed: {ex.Message}",
-                ex.ToString());
+                ex.ToString()
+            );
         }
     }
 
@@ -131,13 +138,17 @@ public class CancelOperationCommand : OperationCommandBase<string, bool>
     /// Cancellation commands themselves cannot be undone.
     /// Once an operation is cancelled, you can't "un-cancel" it.
     /// </summary>
-    public override Task<bool> UndoAsync(ICommandExecutionContext context, CancellationToken cancellationToken = default)
+    public override Task<bool> UndoAsync(
+        ICommandExecutionContext context,
+        CancellationToken cancellationToken = default
+    )
     {
         var logger = context.Logger;
 
         logger.LogWarning(
             "Undo operation is not supported for cancellation commands. Operation {TargetOperationId} cannot be un-cancelled.",
-            TargetOperationId);
+            TargetOperationId
+        );
 
         // Cancellation is a terminal operation. Once something is cancelled,
         // it cannot be "un-cancelled" back to its previous state.

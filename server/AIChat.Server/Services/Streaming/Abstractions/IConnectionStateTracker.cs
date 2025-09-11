@@ -18,7 +18,11 @@ public interface IConnectionStateTracker
     /// <param name="streamId">The stream identifier</param>
     /// <param name="state">The new connection state</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    Task UpdateConnectionStateAsync(string streamId, ConnectionState state, CancellationToken cancellationToken = default);
+    Task UpdateConnectionStateAsync(
+        string streamId,
+        ConnectionState state,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Records a successful connection for a stream.
@@ -33,7 +37,11 @@ public interface IConnectionStateTracker
     /// <param name="streamId">The stream identifier</param>
     /// <param name="reason">Optional disconnection reason</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    Task RecordDisconnectionAsync(string streamId, string? reason = null, CancellationToken cancellationToken = default);
+    Task RecordDisconnectionAsync(
+        string streamId,
+        string? reason = null,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Records a reconnection attempt for a stream.
@@ -41,7 +49,11 @@ public interface IConnectionStateTracker
     /// <param name="streamId">The stream identifier</param>
     /// <param name="success">Whether the reconnection was successful</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    Task RecordReconnectionAttemptAsync(string streamId, bool success, CancellationToken cancellationToken = default);
+    Task RecordReconnectionAttemptAsync(
+        string streamId,
+        bool success,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Checks if a stream connection is healthy.
@@ -75,7 +87,9 @@ public interface IConnectionStateTracker
     /// </summary>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Health check results</returns>
-    Task<ConnectionHealthReport> PerformHealthCheckAsync(CancellationToken cancellationToken = default);
+    Task<ConnectionHealthReport> PerformHealthCheckAsync(
+        CancellationToken cancellationToken = default
+    );
 }
 
 /// <summary>
@@ -126,15 +140,16 @@ public record ConnectionState
     /// <summary>
     /// Gets whether the connection is considered stable.
     /// </summary>
-    public bool IsStable => Status == ConnectionStatus.Connected &&
-                            LastActivityAt > DateTime.UtcNow.AddSeconds(-30);
+    public bool IsStable =>
+        Status == ConnectionStatus.Connected && LastActivityAt > DateTime.UtcNow.AddSeconds(-30);
 
     /// <summary>
     /// Gets the connection duration if connected.
     /// </summary>
-    public TimeSpan? ConnectionDuration => ConnectedAt.HasValue && Status == ConnectionStatus.Connected
-        ? DateTime.UtcNow - ConnectedAt.Value
-        : null;
+    public TimeSpan? ConnectionDuration =>
+        ConnectedAt.HasValue && Status == ConnectionStatus.Connected
+            ? DateTime.UtcNow - ConnectedAt.Value
+            : null;
 
     /// <summary>
     /// Gets the time since last activity.
@@ -175,7 +190,7 @@ public enum ConnectionStatus
     /// <summary>
     /// Connection status is unknown.
     /// </summary>
-    Unknown
+    Unknown,
 }
 
 /// <summary>
@@ -231,9 +246,8 @@ public record ConnectionMetrics
     /// <summary>
     /// Gets the reconnection success rate.
     /// </summary>
-    public double ReconnectionSuccessRate => ReconnectionAttempts > 0
-        ? (double)SuccessfulReconnections / ReconnectionAttempts * 100
-        : 0;
+    public double ReconnectionSuccessRate =>
+        ReconnectionAttempts > 0 ? (double)SuccessfulReconnections / ReconnectionAttempts * 100 : 0;
 }
 
 /// <summary>
@@ -279,9 +293,8 @@ public record ConnectionHealthReport
     /// <summary>
     /// Gets the overall health percentage.
     /// </summary>
-    public double HealthPercentage => TotalConnections > 0
-        ? (double)HealthyConnections / TotalConnections * 100
-        : 100;
+    public double HealthPercentage =>
+        TotalConnections > 0 ? (double)HealthyConnections / TotalConnections * 100 : 100;
 
     /// <summary>
     /// Gets whether the overall system is healthy.

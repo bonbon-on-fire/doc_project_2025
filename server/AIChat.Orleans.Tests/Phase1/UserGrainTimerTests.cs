@@ -77,7 +77,8 @@ public class UserGrainTimerTests
         var stateBefore = await grain.GetState();
 
         // Force deactivation by requesting deactivation (Orleans test cluster feature)
-        await _cluster.Client.GetGrain<IUserGrain>("timer-cleanup-test")
+        await _cluster
+            .Client.GetGrain<IUserGrain>("timer-cleanup-test")
             .RecordActivity(ActivityType.Disconnected, "Forcing deactivation");
 
         // Wait for potential deactivation
@@ -157,7 +158,10 @@ public class UserGrainTimerTests
         {
             // Assert - State should be consistent
             Assert.That(stateBefore.Metrics.TotalActivities, Is.EqualTo(15));
-            Assert.That(stateAfter.Metrics.TotalActivities, Is.EqualTo(stateBefore.Metrics.TotalActivities));
+            Assert.That(
+                stateAfter.Metrics.TotalActivities,
+                Is.EqualTo(stateBefore.Metrics.TotalActivities)
+            );
         });
     }
 }
@@ -174,27 +178,30 @@ public class TimerTestSiloConfigurator : ISiloConfigurator
         {
             // Add configuration with timers enabled
             var configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["OrleansGrains:UserGrain:EnablePeriodicTimers"] = "true",
-                    ["OrleansGrains:UserGrain:CleanupIntervalMinutes"] = "1", // Shorter for testing
-                    ["OrleansGrains:UserGrain:MetricsUpdateIntervalMinutes"] = "1",
-                    ["OrleansGrains:UserGrain:MaxActivityBufferSize"] = "50",
-                    ["OrleansGrains:UserGrain:ActivityRetentionHours"] = "0.5",
-                    ["OrleansGrains:UserGrain:CompletedOperationRetentionMinutes"] = "10",
-                    ["OrleansGrains:Connections:StaleConnectionThresholdMinutes"] = "5",
-                    ["OrleansGrains:Connections:ReconnectionGracePeriodMinutes"] = "2",
-                    ["OrleansGrains:Persistence:ActivityPersistenceInterval"] = "10",
-                    ["OrleansGrains:Persistence:MessagePersistenceInterval"] = "10",
-                    ["OrleansGrains:Persistence:PersistOnDeactivation"] = "true",
-                    ["OrleansGrains:Persistence:MaxPersistenceRetries"] = "3",
-                    ["OrleansGrains:Persistence:PersistenceRetryDelayMilliseconds"] = "50"
-                })
+                .AddInMemoryCollection(
+                    new Dictionary<string, string?>
+                    {
+                        ["OrleansGrains:UserGrain:EnablePeriodicTimers"] = "true",
+                        ["OrleansGrains:UserGrain:CleanupIntervalMinutes"] = "1", // Shorter for testing
+                        ["OrleansGrains:UserGrain:MetricsUpdateIntervalMinutes"] = "1",
+                        ["OrleansGrains:UserGrain:MaxActivityBufferSize"] = "50",
+                        ["OrleansGrains:UserGrain:ActivityRetentionHours"] = "0.5",
+                        ["OrleansGrains:UserGrain:CompletedOperationRetentionMinutes"] = "10",
+                        ["OrleansGrains:Connections:StaleConnectionThresholdMinutes"] = "5",
+                        ["OrleansGrains:Connections:ReconnectionGracePeriodMinutes"] = "2",
+                        ["OrleansGrains:Persistence:ActivityPersistenceInterval"] = "10",
+                        ["OrleansGrains:Persistence:MessagePersistenceInterval"] = "10",
+                        ["OrleansGrains:Persistence:PersistOnDeactivation"] = "true",
+                        ["OrleansGrains:Persistence:MaxPersistenceRetries"] = "3",
+                        ["OrleansGrains:Persistence:PersistenceRetryDelayMilliseconds"] = "50",
+                    }
+                )
                 .Build();
 
             _ = services.AddSingleton<IConfiguration>(configuration);
             _ = services.Configure<OrleansGrainConfiguration>(
-                configuration.GetSection(OrleansGrainConfiguration.SectionName));
+                configuration.GetSection(OrleansGrainConfiguration.SectionName)
+            );
 
             // Add Orleans metrics collector (required by UserGrain)
             _ = services.AddSingleton<IOrleansMetricsCollector, OrleansMetricsCollector>();

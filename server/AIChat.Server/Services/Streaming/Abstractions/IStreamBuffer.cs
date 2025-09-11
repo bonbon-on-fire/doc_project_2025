@@ -31,14 +31,19 @@ public interface IStreamBuffer
     /// <param name="message">The message to buffer</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>True if the message was added, false if rejected due to overflow strategy</returns>
-    Task<bool> AddMessageAsync(BufferedStreamMessage message, CancellationToken cancellationToken = default);
+    Task<bool> AddMessageAsync(
+        BufferedStreamMessage message,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Retrieves all messages from the buffer without removing them.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Collection of buffered messages in chronological order</returns>
-    Task<IReadOnlyList<BufferedStreamMessage>> GetMessagesAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<BufferedStreamMessage>> GetMessagesAsync(
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Retrieves and removes messages from the buffer.
@@ -46,7 +51,10 @@ public interface IStreamBuffer
     /// <param name="maxMessages">Maximum number of messages to retrieve (0 for all)</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Collection of buffered messages in chronological order</returns>
-    Task<IReadOnlyList<BufferedStreamMessage>> DrainMessagesAsync(int maxMessages = 0, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<BufferedStreamMessage>> DrainMessagesAsync(
+        int maxMessages = 0,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Clears all messages from the buffer.
@@ -156,7 +164,6 @@ public record BufferConfiguration
     public int MaxMessageSizeBytes { get; init; } = 1024 * 1024; // 1MB default
 }
 
-
 /// <summary>
 /// Statistics about buffer usage.
 /// </summary>
@@ -205,5 +212,6 @@ public record StreamBufferStatistics
     /// <summary>
     /// Gets the average message size in bytes.
     /// </summary>
-    public double AverageMessageSizeBytes => MessageCount > 0 ? (double)TotalSizeBytes / MessageCount : 0;
+    public double AverageMessageSizeBytes =>
+        MessageCount > 0 ? (double)TotalSizeBytes / MessageCount : 0;
 }

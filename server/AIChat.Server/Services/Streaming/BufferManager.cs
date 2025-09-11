@@ -29,7 +29,7 @@ public sealed class BufferManager<T> : IBufferManager<T>
         {
             FullMode = BoundedChannelFullMode.Wait,
             SingleWriter = false,
-            SingleReader = false
+            SingleReader = false,
         };
 
         _channel = Channel.CreateBounded<T>(options);

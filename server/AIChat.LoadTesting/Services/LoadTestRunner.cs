@@ -22,7 +22,8 @@ public class LoadTestRunner
         IServiceProvider serviceProvider,
         ILogger<LoadTestRunner> logger,
         IOptions<ValidationConfiguration> validationConfig,
-        SystemMetricsCollector metricsCollector)
+        SystemMetricsCollector metricsCollector
+    )
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
@@ -45,15 +46,18 @@ public class LoadTestRunner
             TestName = "AIChat Orleans Load Testing",
             TestStartTime = testStartTime,
             Version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0",
-            Environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production"
+            Environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production",
         };
 
         try
         {
             // Get all enabled scenarios
             var scenarios = GetEnabledScenarios(options);
-            _logger.LogInformation("Executing {ScenarioCount} scenarios: {ScenarioNames}",
-                scenarios.Count, string.Join(", ", scenarios.Select(s => s.Name)));
+            _logger.LogInformation(
+                "Executing {ScenarioCount} scenarios: {ScenarioNames}",
+                scenarios.Count,
+                string.Join(", ", scenarios.Select(s => s.Name))
+            );
 
             var scenarioResults = new List<ScenarioResult>();
 
@@ -67,12 +71,18 @@ public class LoadTestRunner
 
                 scenarioResults.Add(scenarioResult);
 
-                _logger.LogInformation("=== {ScenarioName} completed: {Status} ===",
-                    scenario.Name, scenarioResult.Success ? "SUCCESS" : "FAILED");
+                _logger.LogInformation(
+                    "=== {ScenarioName} completed: {Status} ===",
+                    scenario.Name,
+                    scenarioResult.Success ? "SUCCESS" : "FAILED"
+                );
 
                 if (!scenarioResult.Success)
                 {
-                    _logger.LogError("Scenario failed: {FailureReason}", scenarioResult.FailureReason);
+                    _logger.LogError(
+                        "Scenario failed: {FailureReason}",
+                        scenarioResult.FailureReason
+                    );
                 }
 
                 // Brief pause between scenarios
@@ -86,8 +96,11 @@ public class LoadTestRunner
             report.Summary = GenerateTestSummary(scenarioResults);
             report.ValidationResults = ValidateAcceptanceCriteria(scenarioResults);
 
-            _logger.LogInformation("Load testing completed in {Duration}. Overall result: {Result}",
-                report.TotalDuration, report.Summary.TestPassed ? "PASSED" : "FAILED");
+            _logger.LogInformation(
+                "Load testing completed in {Duration}. Overall result: {Result}",
+                report.TotalDuration,
+                report.Summary.TestPassed ? "PASSED" : "FAILED"
+            );
 
             return report;
         }
@@ -111,13 +124,20 @@ public class LoadTestRunner
         {
             // Filter to only requested scenarios
             var requestedScenarios = allScenarios
-                .Where(s => options.SpecificScenarios.Contains(s.Name.Replace(" ", ""), StringComparer.OrdinalIgnoreCase))
+                .Where(s =>
+                    options.SpecificScenarios.Contains(
+                        s.Name.Replace(" ", ""),
+                        StringComparer.OrdinalIgnoreCase
+                    )
+                )
                 .ToList();
 
             if (requestedScenarios.Count == 0)
             {
-                _logger.LogWarning("No matching scenarios found for: {RequestedScenarios}",
-                    string.Join(", ", options.SpecificScenarios));
+                _logger.LogWarning(
+                    "No matching scenarios found for: {RequestedScenarios}",
+                    string.Join(", ", options.SpecificScenarios)
+                );
             }
 
             return requestedScenarios;
@@ -127,7 +147,10 @@ public class LoadTestRunner
         return [.. allScenarios.Where(s => s.IsEnabled)];
     }
 
-    private async Task<ScenarioResult> ExecuteScenarioWithRetryAsync(ILoadTestScenario scenario, IProgress<TestProgress> progress)
+    private async Task<ScenarioResult> ExecuteScenarioWithRetryAsync(
+        ILoadTestScenario scenario,
+        IProgress<TestProgress> progress
+    )
     {
         const int maxRetries = 1; // Allow one retry for transient failures
 
@@ -137,8 +160,12 @@ public class LoadTestRunner
             {
                 if (attempt > 1)
                 {
-                    _logger.LogInformation("Retrying {ScenarioName} (attempt {Attempt}/{MaxAttempts})",
-                        scenario.Name, attempt, maxRetries + 1);
+                    _logger.LogInformation(
+                        "Retrying {ScenarioName} (attempt {Attempt}/{MaxAttempts})",
+                        scenario.Name,
+                        attempt,
+                        maxRetries + 1
+                    );
 
                     // Wait before retry
                     await Task.Delay(TimeSpan.FromSeconds(10));
@@ -151,12 +178,21 @@ public class LoadTestRunner
                     return result;
                 }
 
-                _logger.LogWarning("Scenario {ScenarioName} failed on attempt {Attempt}: {FailureReason}. Retrying...",
-                    scenario.Name, attempt, result.FailureReason);
+                _logger.LogWarning(
+                    "Scenario {ScenarioName} failed on attempt {Attempt}: {FailureReason}. Retrying...",
+                    scenario.Name,
+                    attempt,
+                    result.FailureReason
+                );
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Scenario {ScenarioName} threw exception on attempt {Attempt}", scenario.Name, attempt);
+                _logger.LogError(
+                    ex,
+                    "Scenario {ScenarioName} threw exception on attempt {Attempt}",
+                    scenario.Name,
+                    attempt
+                );
 
                 if (attempt == maxRetries + 1)
                 {
@@ -166,7 +202,7 @@ public class LoadTestRunner
                         StartTime = DateTime.UtcNow,
                         EndTime = DateTime.UtcNow,
                         Success = false,
-                        FailureReason = $"Exception after {maxRetries + 1} attempts: {ex.Message}"
+                        FailureReason = $"Exception after {maxRetries + 1} attempts: {ex.Message}",
                     };
                 }
             }
@@ -177,8 +213,14 @@ public class LoadTestRunner
 
     private void ReportProgress(string scenarioName, TestProgress progress)
     {
-        _logger.LogInformation("{Scenario}: {Progress:F1}% - {ActiveUsers} users, {TotalMessages} messages, Latency: {CurrentLatency:F1}ms",
-            scenarioName, progress.ProgressPercent, progress.ActiveUsers, progress.TotalMessages, progress.CurrentLatencyMs);
+        _logger.LogInformation(
+            "{Scenario}: {Progress:F1}% - {ActiveUsers} users, {TotalMessages} messages, Latency: {CurrentLatency:F1}ms",
+            scenarioName,
+            progress.ProgressPercent,
+            progress.ActiveUsers,
+            progress.TotalMessages,
+            progress.CurrentLatencyMs
+        );
     }
 
     private LoadTestSummary GenerateTestSummary(List<ScenarioResult> scenarioResults)
@@ -193,7 +235,7 @@ public class LoadTestRunner
             SuccessfulConnections = scenarioResults.Sum(r => r.SuccessfulConnections),
 
             TotalMessages = scenarioResults.Sum(r => r.TotalMessages),
-            DeliveredMessages = scenarioResults.Sum(r => r.DeliveredMessages)
+            DeliveredMessages = scenarioResults.Sum(r => r.DeliveredMessages),
         };
 
         // Calculate latency statistics
@@ -219,7 +261,9 @@ public class LoadTestRunner
         summary.PeakMemoryMB = resourceStats.MaxMemoryMB;
 
         // Find max concurrent users from connection load scenario
-        var connectionLoadResult = scenarioResults.FirstOrDefault(r => r.ScenarioName.Contains("Connection Load"));
+        var connectionLoadResult = scenarioResults.FirstOrDefault(r =>
+            r.ScenarioName.Contains("Connection Load")
+        );
         summary.MaxConcurrentUsers = connectionLoadResult?.SuccessfulConnections ?? 0;
 
         // Check for critical issues
@@ -232,23 +276,31 @@ public class LoadTestRunner
 
             if (result.LatencyStats.AverageMs > _validationConfig.MaxAllowedLatencyMs)
             {
-                summary.CriticalIssues.Add($"{result.ScenarioName}: High latency {result.LatencyStats.AverageMs:F1}ms > {_validationConfig.MaxAllowedLatencyMs}ms");
+                summary.CriticalIssues.Add(
+                    $"{result.ScenarioName}: High latency {result.LatencyStats.AverageMs:F1}ms > {_validationConfig.MaxAllowedLatencyMs}ms"
+                );
             }
 
             if (result.ConnectionSuccessRate < _validationConfig.MinConnectionSuccessRate)
             {
-                summary.CriticalIssues.Add($"{result.ScenarioName}: Low connection success rate {result.ConnectionSuccessRate:P2} < {_validationConfig.MinConnectionSuccessRate:P2}");
+                summary.CriticalIssues.Add(
+                    $"{result.ScenarioName}: Low connection success rate {result.ConnectionSuccessRate:P2} < {_validationConfig.MinConnectionSuccessRate:P2}"
+                );
             }
         }
 
         if (resourceStats.MaxCpuPercent > _validationConfig.MaxCpuUsagePercent)
         {
-            summary.CriticalIssues.Add($"CPU usage exceeded limit: {resourceStats.MaxCpuPercent:F1}% > {_validationConfig.MaxCpuUsagePercent}%");
+            summary.CriticalIssues.Add(
+                $"CPU usage exceeded limit: {resourceStats.MaxCpuPercent:F1}% > {_validationConfig.MaxCpuUsagePercent}%"
+            );
         }
 
         if (resourceStats.MaxMemoryMB > _validationConfig.MaxMemoryUsageMB)
         {
-            summary.CriticalIssues.Add($"Memory usage exceeded limit: {resourceStats.MaxMemoryMB}MB > {_validationConfig.MaxMemoryUsageMB}MB");
+            summary.CriticalIssues.Add(
+                $"Memory usage exceeded limit: {resourceStats.MaxMemoryMB}MB > {_validationConfig.MaxMemoryUsageMB}MB"
+            );
         }
 
         // Overall test pass/fail determination
@@ -262,15 +314,24 @@ public class LoadTestRunner
         var validation = new ValidationResults();
 
         // Find relevant scenario results
-        var connectionLoadResult = scenarioResults.FirstOrDefault(r => r.ScenarioName.Contains("Connection Load"));
-        var messageLatencyResult = scenarioResults.FirstOrDefault(r => r.ScenarioName.Contains("Message Latency"));
-        var grainScalingResult = scenarioResults.FirstOrDefault(r => r.ScenarioName.Contains("Grain Scaling"));
+        var connectionLoadResult = scenarioResults.FirstOrDefault(r =>
+            r.ScenarioName.Contains("Connection Load")
+        );
+        var messageLatencyResult = scenarioResults.FirstOrDefault(r =>
+            r.ScenarioName.Contains("Message Latency")
+        );
+        var grainScalingResult = scenarioResults.FirstOrDefault(r =>
+            r.ScenarioName.Contains("Grain Scaling")
+        );
 
         // 1. 10K Users Connect Successfully
         validation.Users10kConnected = ValidateUsers10kConnected(connectionLoadResult);
 
         // 2. Messages Delivered < 100ms
-        validation.MessagesUnder100ms = ValidateMessagesUnder100ms(messageLatencyResult, scenarioResults);
+        validation.MessagesUnder100ms = ValidateMessagesUnder100ms(
+            messageLatencyResult,
+            scenarioResults
+        );
 
         // 3. No Messages Lost
         validation.NoMessagesLost = ValidateNoMessagesLost(scenarioResults);
@@ -288,15 +349,16 @@ public class LoadTestRunner
             validation.MessagesUnder100ms,
             validation.NoMessagesLost,
             validation.SystemScales,
-            validation.ResourcesWithinLimits
+            validation.ResourcesWithinLimits,
         };
 
         validation.AllCriteriaPass = criteriaResults.All(c => c.Pass);
 
         // Collect failure reasons
-        validation.FailureReasons = [.. criteriaResults
-            .Where(c => !c.Pass)
-            .Select(c => $"{c.Name}: {c.FailureReason}")];
+        validation.FailureReasons =
+        [
+            .. criteriaResults.Where(c => !c.Pass).Select(c => $"{c.Name}: {c.FailureReason}"),
+        ];
 
         return validation;
     }
@@ -307,7 +369,7 @@ public class LoadTestRunner
         {
             Name = "10K Users Connected",
             Description = "System must successfully connect 10,000 concurrent users",
-            ExpectedValue = ">= 9,900 connections (99% success rate)"
+            ExpectedValue = ">= 9,900 connections (99% success rate)",
         };
 
         if (connectionResult == null)
@@ -319,7 +381,8 @@ public class LoadTestRunner
         }
 
         var minRequired = 9900; // 99% of 10,000
-        criterion.ActualValue = $"{connectionResult.SuccessfulConnections:N0} connections ({connectionResult.ConnectionSuccessRate:P2})";
+        criterion.ActualValue =
+            $"{connectionResult.SuccessfulConnections:N0} connections ({connectionResult.ConnectionSuccessRate:P2})";
 
         if (connectionResult.SuccessfulConnections >= minRequired)
         {
@@ -328,25 +391,28 @@ public class LoadTestRunner
         else
         {
             criterion.Pass = false;
-            criterion.FailureReason = $"Only {connectionResult.SuccessfulConnections:N0} users connected, need >= {minRequired:N0}";
+            criterion.FailureReason =
+                $"Only {connectionResult.SuccessfulConnections:N0} users connected, need >= {minRequired:N0}";
         }
 
         return criterion;
     }
 
-    private ValidationCriterion ValidateMessagesUnder100ms(ScenarioResult? latencyResult, List<ScenarioResult> allResults)
+    private ValidationCriterion ValidateMessagesUnder100ms(
+        ScenarioResult? latencyResult,
+        List<ScenarioResult> allResults
+    )
     {
         var criterion = new ValidationCriterion
         {
             Name = "Messages Under 100ms",
             Description = "Messages must be delivered with average latency < 100ms",
-            ExpectedValue = "< 100ms average latency"
+            ExpectedValue = "< 100ms average latency",
         };
 
         // Use latency-specific result if available, otherwise use all scenarios with messages
-        var resultsWithMessages = latencyResult != null
-            ? [latencyResult]
-            : allResults.Where(r => r.TotalMessages > 0);
+        var resultsWithMessages =
+            latencyResult != null ? [latencyResult] : allResults.Where(r => r.TotalMessages > 0);
 
         if (!resultsWithMessages.Any())
         {
@@ -369,7 +435,8 @@ public class LoadTestRunner
         else
         {
             criterion.Pass = false;
-            criterion.FailureReason = $"Average latency {avgLatency:F1}ms exceeds {_validationConfig.MaxAllowedLatencyMs}ms limit";
+            criterion.FailureReason =
+                $"Average latency {avgLatency:F1}ms exceeds {_validationConfig.MaxAllowedLatencyMs}ms limit";
         }
 
         return criterion;
@@ -381,7 +448,7 @@ public class LoadTestRunner
         {
             Name = "No Messages Lost",
             Description = "All sent messages must be delivered successfully",
-            ExpectedValue = ">= 99% delivery rate"
+            ExpectedValue = ">= 99% delivery rate",
         };
 
         var resultsWithMessages = scenarioResults.Where(r => r.TotalMessages > 0).ToList();
@@ -393,8 +460,9 @@ public class LoadTestRunner
             return criterion;
         }
 
-        var overallDeliveryRate = resultsWithMessages.Sum(r => r.DeliveredMessages) /
-                                 (double)resultsWithMessages.Sum(r => r.TotalMessages);
+        var overallDeliveryRate =
+            resultsWithMessages.Sum(r => r.DeliveredMessages)
+            / (double)resultsWithMessages.Sum(r => r.TotalMessages);
 
         criterion.ActualValue = $"{overallDeliveryRate:P2} delivery rate";
 
@@ -405,19 +473,23 @@ public class LoadTestRunner
         else
         {
             criterion.Pass = false;
-            criterion.FailureReason = $"Message delivery rate {overallDeliveryRate:P2} below required 99%";
+            criterion.FailureReason =
+                $"Message delivery rate {overallDeliveryRate:P2} below required 99%";
         }
 
         return criterion;
     }
 
-    private ValidationCriterion ValidateSystemScales(ScenarioResult? grainScalingResult, ScenarioResult? connectionResult)
+    private ValidationCriterion ValidateSystemScales(
+        ScenarioResult? grainScalingResult,
+        ScenarioResult? connectionResult
+    )
     {
         var criterion = new ValidationCriterion
         {
             Name = "System Scales Appropriately",
             Description = "Orleans grains must scale appropriately with load",
-            ExpectedValue = "Grain activation responds to load increases"
+            ExpectedValue = "Grain activation responds to load increases",
         };
 
         // Check if we have scaling data from grain scaling scenario
@@ -432,12 +504,14 @@ public class LoadTestRunner
         if (connectionResult?.Success == true && connectionResult.SuccessfulConnections >= 5000)
         {
             criterion.Pass = true;
-            criterion.ActualValue = $"System handled {connectionResult.SuccessfulConnections:N0} concurrent users successfully";
+            criterion.ActualValue =
+                $"System handled {connectionResult.SuccessfulConnections:N0} concurrent users successfully";
             return criterion;
         }
 
         criterion.Pass = false;
-        criterion.ActualValue = grainScalingResult?.FailureReason ?? "No scaling validation data available";
+        criterion.ActualValue =
+            grainScalingResult?.FailureReason ?? "No scaling validation data available";
         criterion.FailureReason = "Unable to validate grain scaling behavior";
 
         return criterion;
@@ -449,7 +523,8 @@ public class LoadTestRunner
         {
             Name = "Resources Within Limits",
             Description = "System resources must stay within acceptable limits during testing",
-            ExpectedValue = $"CPU < {_validationConfig.MaxCpuUsagePercent}%, Memory < {_validationConfig.MaxMemoryUsageMB}MB"
+            ExpectedValue =
+                $"CPU < {_validationConfig.MaxCpuUsagePercent}%, Memory < {_validationConfig.MaxMemoryUsageMB}MB",
         };
 
         var resourceStats = _metricsCollector.GetResourceUsageStatistics();
@@ -457,7 +532,8 @@ public class LoadTestRunner
         var cpuOk = resourceStats.MaxCpuPercent <= _validationConfig.MaxCpuUsagePercent;
         var memoryOk = resourceStats.MaxMemoryMB <= _validationConfig.MaxMemoryUsageMB;
 
-        criterion.ActualValue = $"Peak: {resourceStats.MaxCpuPercent:F1}% CPU, {resourceStats.MaxMemoryMB:N0}MB Memory";
+        criterion.ActualValue =
+            $"Peak: {resourceStats.MaxCpuPercent:F1}% CPU, {resourceStats.MaxMemoryMB:N0}MB Memory";
 
         if (cpuOk && memoryOk)
         {
@@ -470,12 +546,16 @@ public class LoadTestRunner
 
             if (!cpuOk)
             {
-                issues.Add($"CPU {resourceStats.MaxCpuPercent:F1}% > {_validationConfig.MaxCpuUsagePercent}%");
+                issues.Add(
+                    $"CPU {resourceStats.MaxCpuPercent:F1}% > {_validationConfig.MaxCpuUsagePercent}%"
+                );
             }
 
             if (!memoryOk)
             {
-                issues.Add($"Memory {resourceStats.MaxMemoryMB:N0}MB > {_validationConfig.MaxMemoryUsageMB}MB");
+                issues.Add(
+                    $"Memory {resourceStats.MaxMemoryMB:N0}MB > {_validationConfig.MaxMemoryUsageMB}MB"
+                );
             }
 
             criterion.FailureReason = string.Join(", ", issues);

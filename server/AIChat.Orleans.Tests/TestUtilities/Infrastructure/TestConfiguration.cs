@@ -24,11 +24,7 @@ public class TestConfiguration
     /// </summary>
     public static TestConfiguration ForOrleans()
     {
-        return new()
-        {
-            OrleansEnabled = true,
-            ResilientStreamingEnabled = false
-        };
+        return new() { OrleansEnabled = true, ResilientStreamingEnabled = false };
     }
 
     /// <summary>
@@ -36,11 +32,7 @@ public class TestConfiguration
     /// </summary>
     public static TestConfiguration ForDirect()
     {
-        return new()
-        {
-            OrleansEnabled = false,
-            ResilientStreamingEnabled = false
-        };
+        return new() { OrleansEnabled = false, ResilientStreamingEnabled = false };
     }
 
     /// <summary>
@@ -48,11 +40,7 @@ public class TestConfiguration
     /// </summary>
     public static TestConfiguration ForResilientStreaming()
     {
-        return new()
-        {
-            OrleansEnabled = true,
-            ResilientStreamingEnabled = true
-        };
+        return new() { OrleansEnabled = true, ResilientStreamingEnabled = true };
     }
 
     /// <summary>
@@ -70,8 +58,8 @@ public class TestConfiguration
                 TestIterations = 20,
                 MaxAcceptableOverheadPercent = 50,
                 MaxResponseTimeMs = 5000,
-                ConcurrentUsers = 100
-            }
+                ConcurrentUsers = 100,
+            },
         };
     }
 }

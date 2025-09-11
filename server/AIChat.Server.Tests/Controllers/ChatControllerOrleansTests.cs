@@ -8,6 +8,7 @@ using Lib.AspNetCore.ServerSentEvents;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.FeatureManagement;
 using Moq;
@@ -42,6 +43,7 @@ public class ChatControllerOrleansTests
     private readonly Mock<IChatStorage> _mockChatStorage;
     private readonly Mock<IHubContext<ChatHub>> _mockHubContext;
     private readonly Mock<IFeatureManager> _mockFeatureManager;
+    private readonly Mock<IHostEnvironment> _mockHostEnvironment;
     private readonly Mock<IClusterClient> _mockClusterClient;
     private readonly Mock<IStreamingBridge> _mockStreamingBridge;
     private readonly ChatController _controller;
@@ -55,6 +57,7 @@ public class ChatControllerOrleansTests
         _mockChatStorage = new Mock<IChatStorage>();
         _mockHubContext = new Mock<IHubContext<ChatHub>>();
         _mockFeatureManager = new Mock<IFeatureManager>();
+        _mockHostEnvironment = new Mock<IHostEnvironment>();
         _mockClusterClient = new Mock<IClusterClient>();
         _mockStreamingBridge = new Mock<IStreamingBridge>();
 
@@ -66,20 +69,18 @@ public class ChatControllerOrleansTests
             _mockChatStorage.Object,
             _mockHubContext.Object,
             _mockFeatureManager.Object,
+            _mockHostEnvironment.Object,
             _mockClusterClient.Object,
             null, // backgroundChatService
             null, // operationTrackingService
             _mockStreamingBridge.Object,
-            null  // resilientStreamManager
+            null // resilientStreamManager
         );
 
         // Setup HTTP context
         var httpContext = new DefaultHttpContext();
         httpContext.Response.Body = new MemoryStream();
-        _controller.ControllerContext = new ControllerContext
-        {
-            HttpContext = httpContext
-        };
+        _controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
     }
 
     [Fact]
@@ -99,27 +100,33 @@ public class ChatControllerOrleansTests
             ChatId = "test-chat",
             UserMessageId = "test-message",
             UserTimestamp = DateTime.UtcNow,
-            UserSequenceNumber = 1
+            UserSequenceNumber = 1,
         };
 
         // Setup Orleans as enabled
-        _ = _mockFeatureManager.Setup(fm => fm.IsEnabledAsync("OrleansIntegration"))
+        _ = _mockFeatureManager
+            .Setup(fm => fm.IsEnabledAsync("OrleansIntegration"))
             .ReturnsAsync(true);
 
         // Setup cluster client and streaming bridge as available
         var mockUserGrain = new Mock<IUserGrain>();
-        _ = _mockClusterClient.Setup(c => c.GetGrain<IUserGrain>("health-check-user", null))
+        _ = _mockClusterClient
+            .Setup(c => c.GetGrain<IUserGrain>("health-check-user", null))
             .Returns(mockUserGrain.Object);
 
-        _ = mockUserGrain.Setup(g => g.CheckHealth())
-            .ReturnsAsync(new HealthCheckResult
-            {
-                IsHealthy = true,
-                GrainId = "health-check-user",
-                CheckedAt = DateTime.UtcNow
-            });
+        _ = mockUserGrain
+            .Setup(g => g.CheckHealth())
+            .ReturnsAsync(
+                new HealthCheckResult
+                {
+                    IsHealthy = true,
+                    GrainId = "health-check-user",
+                    CheckedAt = DateTime.UtcNow,
+                }
+            );
 
-        _ = _mockChatService.Setup(cs => cs.PrepareUnifiedStreamChatAsync(It.IsAny<StreamChatRequest>()))
+        _ = _mockChatService
+            .Setup(cs => cs.PrepareUnifiedStreamChatAsync(It.IsAny<StreamChatRequest>()))
             .ReturnsAsync(initResult);
 
         // Act
@@ -150,17 +157,22 @@ public class ChatControllerOrleansTests
             ChatId = "test-chat",
             UserMessageId = "test-message",
             UserTimestamp = DateTime.UtcNow,
-            UserSequenceNumber = 1
+            UserSequenceNumber = 1,
         };
 
         // Setup Orleans as disabled
-        _ = _mockFeatureManager.Setup(fm => fm.IsEnabledAsync("OrleansIntegration"))
+        _ = _mockFeatureManager
+            .Setup(fm => fm.IsEnabledAsync("OrleansIntegration"))
             .ReturnsAsync(false);
 
-        _ = _mockChatService.Setup(cs => cs.PrepareUnifiedStreamChatAsync(It.IsAny<StreamChatRequest>()))
+        _ = _mockChatService
+            .Setup(cs => cs.PrepareUnifiedStreamChatAsync(It.IsAny<StreamChatRequest>()))
             .ReturnsAsync(initResult);
 
-        _ = _mockChatService.Setup(cs => cs.StreamAssistantResponseAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        _ = _mockChatService
+            .Setup(cs =>
+                cs.StreamAssistantResponseAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())
+            )
             .Returns(Task.CompletedTask);
 
         // Act
@@ -191,25 +203,32 @@ public class ChatControllerOrleansTests
             ChatId = "test-chat",
             UserMessageId = "test-message",
             UserTimestamp = DateTime.UtcNow,
-            UserSequenceNumber = 1
+            UserSequenceNumber = 1,
         };
 
         // Setup Orleans as enabled but failing
-        _ = _mockFeatureManager.Setup(fm => fm.IsEnabledAsync("OrleansIntegration"))
+        _ = _mockFeatureManager
+            .Setup(fm => fm.IsEnabledAsync("OrleansIntegration"))
             .ReturnsAsync(true);
 
         var mockUserGrain = new Mock<IUserGrain>();
-        _ = _mockClusterClient.Setup(c => c.GetGrain<IUserGrain>("health-check-user", null))
+        _ = _mockClusterClient
+            .Setup(c => c.GetGrain<IUserGrain>("health-check-user", null))
             .Returns(mockUserGrain.Object);
 
         // Make health check fail
-        _ = mockUserGrain.Setup(g => g.CheckHealth())
+        _ = mockUserGrain
+            .Setup(g => g.CheckHealth())
             .ThrowsAsync(new InvalidOperationException("Orleans not available"));
 
-        _ = _mockChatService.Setup(cs => cs.PrepareUnifiedStreamChatAsync(It.IsAny<StreamChatRequest>()))
+        _ = _mockChatService
+            .Setup(cs => cs.PrepareUnifiedStreamChatAsync(It.IsAny<StreamChatRequest>()))
             .ReturnsAsync(initResult);
 
-        _ = _mockChatService.Setup(cs => cs.StreamAssistantResponseAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        _ = _mockChatService
+            .Setup(cs =>
+                cs.StreamAssistantResponseAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())
+            )
             .Returns(Task.CompletedTask);
 
         // Act
@@ -223,7 +242,11 @@ public class ChatControllerOrleansTests
         Assert.Equal("direct", response.Headers["X-Processing-Mode"]);
 
         // Verify direct processing was called
-        _mockChatService.Verify(cs => cs.StreamAssistantResponseAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+        _mockChatService.Verify(
+            cs =>
+                cs.StreamAssistantResponseAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Once
+        );
     }
 
     [Fact]
@@ -243,45 +266,69 @@ public class ChatControllerOrleansTests
             ChatId = "test-chat",
             UserMessageId = "test-message",
             UserTimestamp = DateTime.UtcNow,
-            UserSequenceNumber = 1
+            UserSequenceNumber = 1,
         };
 
         // Setup Orleans as enabled
-        _ = _mockFeatureManager.Setup(fm => fm.IsEnabledAsync("OrleansIntegration"))
+        _ = _mockFeatureManager
+            .Setup(fm => fm.IsEnabledAsync("OrleansIntegration"))
             .ReturnsAsync(true);
 
         var mockUserGrain = new Mock<IUserGrain>();
-        _ = _mockClusterClient.Setup(c => c.GetGrain<IUserGrain>("health-check-user", null))
+        _ = _mockClusterClient
+            .Setup(c => c.GetGrain<IUserGrain>("health-check-user", null))
             .Returns(mockUserGrain.Object);
-        _ = _mockClusterClient.Setup(c => c.GetGrain<IUserGrain>(request.UserId, null))
+        _ = _mockClusterClient
+            .Setup(c => c.GetGrain<IUserGrain>(request.UserId, null))
             .Returns(mockUserGrain.Object);
 
-        _ = mockUserGrain.Setup(g => g.CheckHealth())
-            .ReturnsAsync(new HealthCheckResult
-            {
-                IsHealthy = true,
-                GrainId = "health-check-user",
-                CheckedAt = DateTime.UtcNow
-            });
+        _ = mockUserGrain
+            .Setup(g => g.CheckHealth())
+            .ReturnsAsync(
+                new HealthCheckResult
+                {
+                    IsHealthy = true,
+                    GrainId = "health-check-user",
+                    CheckedAt = DateTime.UtcNow,
+                }
+            );
 
         // Setup the grain streaming
         var streamChunks = new List<StreamChunk>
         {
-            new() { Content = "Test", IsComplete = false, ChunkIndex = 0 },
-            new() { Content = " response", IsComplete = true, ChunkIndex = 1 }
+            new()
+            {
+                Content = "Test",
+                IsComplete = false,
+                ChunkIndex = 0,
+            },
+            new()
+            {
+                Content = " response",
+                IsComplete = true,
+                ChunkIndex = 1,
+            },
         };
 
-        _ = mockUserGrain.Setup(g => g.ProcessChatStreamAsync(It.IsAny<ChatRequest>(), It.IsAny<CancellationToken>()))
+        _ = mockUserGrain
+            .Setup(g =>
+                g.ProcessChatStreamAsync(It.IsAny<ChatRequest>(), It.IsAny<CancellationToken>())
+            )
             .Returns(streamChunks.ToAsyncEnumerable());
 
-        _ = _mockChatService.Setup(cs => cs.PrepareUnifiedStreamChatAsync(It.IsAny<StreamChatRequest>()))
+        _ = _mockChatService
+            .Setup(cs => cs.PrepareUnifiedStreamChatAsync(It.IsAny<StreamChatRequest>()))
             .ReturnsAsync(initResult);
 
-        _ = _mockStreamingBridge.Setup(sb => sb.ConvertGrainToHttpStreamAsync(
-            It.IsAny<IAsyncEnumerable<StreamChunk>>(),
-            It.IsAny<HttpResponse>(),
-            It.IsAny<Func<StreamChunk, string>>(),
-            It.IsAny<CancellationToken>()))
+        _ = _mockStreamingBridge
+            .Setup(sb =>
+                sb.ConvertGrainToHttpStreamAsync(
+                    It.IsAny<IAsyncEnumerable<StreamChunk>>(),
+                    It.IsAny<HttpResponse>(),
+                    It.IsAny<Func<StreamChunk, string>>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
             .Returns(Task.CompletedTask);
 
         // Act
@@ -295,10 +342,15 @@ public class ChatControllerOrleansTests
         Assert.Equal("orleans", response.Headers["X-Processing-Mode"]);
 
         // Verify Orleans processing was used
-        _mockStreamingBridge.Verify(sb => sb.ConvertGrainToHttpStreamAsync(
-            It.IsAny<IAsyncEnumerable<StreamChunk>>(),
-            It.IsAny<HttpResponse>(),
-            It.IsAny<Func<StreamChunk, string>>(),
-            It.IsAny<CancellationToken>()), Times.Once);
+        _mockStreamingBridge.Verify(
+            sb =>
+                sb.ConvertGrainToHttpStreamAsync(
+                    It.IsAny<IAsyncEnumerable<StreamChunk>>(),
+                    It.IsAny<HttpResponse>(),
+                    It.IsAny<Func<StreamChunk, string>>(),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Once
+        );
     }
 }

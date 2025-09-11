@@ -18,9 +18,7 @@ namespace AIChat.Orleans.Tests.Phase4;
 public class SseRoutingTests : OrleansTestBase
 {
     public SseRoutingTests(OrleansTestFixture fixture, ITestOutputHelper output)
-        : base(fixture, output)
-    {
-    }
+        : base(fixture, output) { }
 
     [Fact]
     public async Task StreamChatCompletionSseWithOrleansEnabledShouldRouteToOrleans()
@@ -29,9 +27,7 @@ public class SseRoutingTests : OrleansTestBase
         Fixture.OrleansEnabled = true;
         await Fixture.InitializeAsync();
 
-        var request = CreateChatRequestBuilder.Create()
-            .ForOrleansRouting()
-            .Build();
+        var request = CreateChatRequestBuilder.Create().ForOrleansRouting().Build();
 
         // Act
         var response = await MakeStreamRequestAsync(request);
@@ -48,9 +44,7 @@ public class SseRoutingTests : OrleansTestBase
         Fixture.OrleansEnabled = false;
         await Fixture.InitializeAsync();
 
-        var request = CreateChatRequestBuilder.Create()
-            .ForDirectProcessing()
-            .Build();
+        var request = CreateChatRequestBuilder.Create().ForDirectProcessing().Build();
 
         // Act
         var response = await MakeStreamRequestAsync(request);
@@ -88,7 +82,8 @@ public class SseRoutingTests : OrleansTestBase
         using var client = Fixture.WebAppFactory.CreateClient();
         client.DefaultRequestHeaders.Add("X-Preferred-Protocol", "SignalR");
 
-        var request = CreateChatRequestBuilder.Create()
+        var request = CreateChatRequestBuilder
+            .Create()
             .WithUserId("test-user-signalr")
             .WithMessage("Test message for SignalR")
             .Build();
@@ -118,7 +113,8 @@ public class SseRoutingTests : OrleansTestBase
         await Fixture.Cluster.StopAllSilosAsync();
 
         using var client = CreateSseClient();
-        var request = CreateChatRequestBuilder.Create()
+        var request = CreateChatRequestBuilder
+            .Create()
             .WithUserId("test-user-fallback")
             .WithMessage("Test message for fallback")
             .Build();
@@ -144,7 +140,8 @@ public class SseRoutingTests : OrleansTestBase
         await Fixture.InitializeAsync();
 
         using var client = CreateSseClient();
-        var request = CreateChatRequestBuilder.Create()
+        var request = CreateChatRequestBuilder
+            .Create()
             .WithUserId("test-user-resilient")
             .WithMessage("Test message for resilient streaming")
             .Build();
@@ -158,7 +155,8 @@ public class SseRoutingTests : OrleansTestBase
         _ = response.Headers.GetValues("X-Orleans-Routed").First().Should().Be("true");
 
         // Verify resilient streaming is being used by checking service registration
-        var resilientManager = Fixture.WebAppFactory.Services.GetService<Server.Services.Streaming.IResilientStreamManager>();
+        var resilientManager =
+            Fixture.WebAppFactory.Services.GetService<Server.Services.Streaming.IResilientStreamManager>();
         _ = resilientManager.Should().NotBeNull();
 
         LogTestStep("Resilient streaming enabled and used for Orleans routing");
@@ -177,7 +175,8 @@ public class SseRoutingTests : OrleansTestBase
         // Act - Make multiple requests
         for (var i = 0; i < 5; i++)
         {
-            var request = CreateChatRequestBuilder.Create()
+            var request = CreateChatRequestBuilder
+                .Create()
                 .WithUserId($"test-user-{i}")
                 .WithMessage($"Test message {i}")
                 .Build();
@@ -201,9 +200,7 @@ public class SseRoutingTests : OrleansTestBase
         Fixture.OrleansEnabled = true;
         await Fixture.InitializeAsync();
 
-        var request = CreateChatRequestBuilder.Create()
-            .WithInvalidData()
-            .Build();
+        var request = CreateChatRequestBuilder.Create().WithInvalidData().Build();
 
         // Act
         var response = await MakeStreamRequestAsync(request);
@@ -225,7 +222,8 @@ public class SseRoutingTests : OrleansTestBase
         using var client = CreateSseClient();
         var existingChatId = Guid.NewGuid().ToString();
 
-        var request = CreateChatRequestBuilder.Create()
+        var request = CreateChatRequestBuilder
+            .Create()
             .WithChatId(existingChatId)
             .WithUserId("test-user")
             .WithMessage("Continue conversation")

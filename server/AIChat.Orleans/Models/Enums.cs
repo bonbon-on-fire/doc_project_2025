@@ -43,7 +43,7 @@ public enum ActivityType
     /// <summary>
     /// Error occurred during processing.
     /// </summary>
-    ErrorOccurred
+    ErrorOccurred,
 }
 
 /// <summary>
@@ -64,7 +64,7 @@ public enum SubscriptionState
     /// <summary>
     /// Subscription is inactive (no connections).
     /// </summary>
-    Inactive
+    Inactive,
 }
 
 /// <summary>
@@ -90,7 +90,7 @@ public enum OperationType
     /// <summary>
     /// Delete a message.
     /// </summary>
-    DeleteMessage
+    DeleteMessage,
 }
 
 /// <summary>
@@ -126,7 +126,7 @@ public enum OperationStatus
     /// <summary>
     /// Operation status is unknown.
     /// </summary>
-    Unknown
+    Unknown,
 }
 
 /// <summary>
@@ -142,7 +142,7 @@ public enum BufferPriority
     /// <summary>
     /// High priority message (delivered first).
     /// </summary>
-    High
+    High,
 }
 
 /// <summary>
@@ -158,5 +158,5 @@ public enum BufferOverflowStrategy
     /// <summary>
     /// Reject new messages when buffer is full.
     /// </summary>
-    RejectNew
+    RejectNew,
 }

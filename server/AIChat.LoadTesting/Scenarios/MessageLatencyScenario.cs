@@ -20,7 +20,8 @@ public class MessageLatencyScenario : LoadTestScenarioBase
         IServiceProvider serviceProvider,
         IOptions<ScenariosConfiguration> scenarios,
         SignalRConnectionManager connectionManager,
-        SystemMetricsCollector metricsCollector)
+        SystemMetricsCollector metricsCollector
+    )
         : base(logger, serviceProvider)
     {
         _config = scenarios.Value.MessageLatency;
@@ -29,7 +30,8 @@ public class MessageLatencyScenario : LoadTestScenarioBase
     }
 
     public override string Name => "Message Latency Test";
-    public override string Description => $"Tests message delivery latency with {_config.MaxUsers:N0} users sending {_config.MessagesPerSecond}/s messages";
+    public override string Description =>
+        $"Tests message delivery latency with {_config.MaxUsers:N0} users sending {_config.MessagesPerSecond}/s messages";
     public override bool IsEnabled => _config.Enabled;
 
     public override Task<List<string>> ValidateConfigurationAsync()
@@ -59,25 +61,43 @@ public class MessageLatencyScenario : LoadTestScenarioBase
         return Task.FromResult(errors);
     }
 
-    public override async Task<ScenarioResult> ExecuteAsync(IProgress<TestProgress>? progress = null, CancellationToken cancellationToken = default)
+    public override async Task<ScenarioResult> ExecuteAsync(
+        IProgress<TestProgress>? progress = null,
+        CancellationToken cancellationToken = default
+    )
     {
         var startTime = DateTime.UtcNow;
-        Logger.LogInformation("Starting Message Latency Test: {MaxUsers} users, {MessagesPerSecond}/s rate, {Duration}s duration",
-            _config.MaxUsers, _config.MessagesPerSecond, _config.TestDurationSeconds);
+        Logger.LogInformation(
+            "Starting Message Latency Test: {MaxUsers} users, {MessagesPerSecond}/s rate, {Duration}s duration",
+            _config.MaxUsers,
+            _config.MessagesPerSecond,
+            _config.TestDurationSeconds
+        );
 
         try
         {
             // Phase 1: Establish connections
-            Logger.LogInformation("Phase 1: Establishing {MaxUsers} connections for latency testing", _config.MaxUsers);
+            Logger.LogInformation(
+                "Phase 1: Establishing {MaxUsers} connections for latency testing",
+                _config.MaxUsers
+            );
             var connectionResult = await EstablishConnectionsAsync(progress, cancellationToken);
 
             if (!connectionResult.Success)
             {
-                return CreateResult(startTime, DateTime.UtcNow, false, connectionResult.FailureReason);
+                return CreateResult(
+                    startTime,
+                    DateTime.UtcNow,
+                    false,
+                    connectionResult.FailureReason
+                );
             }
 
             // Phase 2: Run message latency test
-            Logger.LogInformation("Phase 2: Running message latency test for {Duration} seconds", _config.TestDurationSeconds);
+            Logger.LogInformation(
+                "Phase 2: Running message latency test for {Duration} seconds",
+                _config.TestDurationSeconds
+            );
             var latencyResult = await RunMessageLatencyTestAsync(progress, cancellationToken);
 
             if (!latencyResult.Success)
@@ -95,11 +115,16 @@ public class MessageLatencyScenario : LoadTestScenarioBase
             if (result.LatencyStats.AverageMs > _config.MaxLatencyMs)
             {
                 result.Success = false;
-                result.FailureReason = $"Average latency {result.LatencyStats.AverageMs:F1}ms exceeds limit {_config.MaxLatencyMs}ms";
+                result.FailureReason =
+                    $"Average latency {result.LatencyStats.AverageMs:F1}ms exceeds limit {_config.MaxLatencyMs}ms";
             }
 
-            Logger.LogInformation("Message Latency Test completed: avg {AvgLatency:F1}ms, p95 {P95Latency:F1}ms, {MessageCount} messages",
-                result.LatencyStats.AverageMs, result.LatencyStats.P95Ms, result.TotalMessages);
+            Logger.LogInformation(
+                "Message Latency Test completed: avg {AvgLatency:F1}ms, p95 {P95Latency:F1}ms, {MessageCount} messages",
+                result.LatencyStats.AverageMs,
+                result.LatencyStats.P95Ms,
+                result.TotalMessages
+            );
 
             return result;
         }
@@ -115,63 +140,90 @@ public class MessageLatencyScenario : LoadTestScenarioBase
         }
     }
 
-    private async Task<(bool Success, string FailureReason)> EstablishConnectionsAsync(IProgress<TestProgress>? progress, CancellationToken cancellationToken)
+    private async Task<(bool Success, string FailureReason)> EstablishConnectionsAsync(
+        IProgress<TestProgress>? progress,
+        CancellationToken cancellationToken
+    )
     {
         var connectedUsers = 0;
         var failedConnections = 0;
         var chatId = GenerateTestChatId();
 
         // Connection tasks with controlled concurrency
-        var connectionTasks = Enumerable.Range(0, _config.MaxUsers)
+        var connectionTasks = Enumerable
+            .Range(0, _config.MaxUsers)
             .Select(i => new Func<Task>(async () =>
             {
                 var userId = GenerateTestUserId();
                 try
                 {
-                    var user = await _connectionManager.CreateConnectionAsync(userId, cancellationToken);
+                    var user = await _connectionManager.CreateConnectionAsync(
+                        userId,
+                        cancellationToken
+                    );
                     await _connectionManager.JoinChatAsync(userId, chatId, cancellationToken);
                     _ = Interlocked.Increment(ref connectedUsers);
 
                     // Report progress during connection phase
                     if (connectedUsers % 50 == 0) // Report every 50 connections
                     {
-                        ReportProgress(progress, new TestProgress
-                        {
-                            CurrentScenario = "Connecting Users for Latency Test",
-                            ActiveUsers = connectedUsers,
-                            ProgressPercent = (double)connectedUsers / _config.MaxUsers * 25, // 25% for connection phase
-                            LastUpdated = DateTime.UtcNow
-                        });
+                        ReportProgress(
+                            progress,
+                            new TestProgress
+                            {
+                                CurrentScenario = "Connecting Users for Latency Test",
+                                ActiveUsers = connectedUsers,
+                                ProgressPercent = (double)connectedUsers / _config.MaxUsers * 25, // 25% for connection phase
+                                LastUpdated = DateTime.UtcNow,
+                            }
+                        );
                     }
                 }
                 catch (Exception ex)
                 {
                     _ = Interlocked.Increment(ref failedConnections);
-                    Logger.LogWarning(ex, "Failed to connect user {UserId} for latency test", userId);
+                    Logger.LogWarning(
+                        ex,
+                        "Failed to connect user {UserId} for latency test",
+                        userId
+                    );
                 }
             }));
 
         // Execute connection tasks with limited concurrency
         _ = await ExecuteConcurrentlyAsync(
-            connectionTasks.Select(task => new Func<Task<object?>>(() => task().ContinueWith(t => (object?)null))),
+            connectionTasks.Select(task => new Func<Task<object?>>(
+                () => task().ContinueWith(t => (object?)null)
+            )),
             maxConcurrency: 100,
             progress: progress,
             operationName: "Connection",
-            cancellationToken: cancellationToken);
+            cancellationToken: cancellationToken
+        );
 
         var connectionSuccessRate = connectedUsers / (double)_config.MaxUsers;
-        Logger.LogInformation("Connection phase: {ConnectedUsers}/{MaxUsers} connected ({SuccessRate:P2})",
-            connectedUsers, _config.MaxUsers, connectionSuccessRate);
+        Logger.LogInformation(
+            "Connection phase: {ConnectedUsers}/{MaxUsers} connected ({SuccessRate:P2})",
+            connectedUsers,
+            _config.MaxUsers,
+            connectionSuccessRate
+        );
 
         if (connectionSuccessRate < 0.95) // Allow 5% connection failures
         {
-            return (false, $"Connection success rate {connectionSuccessRate:P2} below required 95%");
+            return (
+                false,
+                $"Connection success rate {connectionSuccessRate:P2} below required 95%"
+            );
         }
 
         return (true, string.Empty);
     }
 
-    private async Task<(bool Success, string FailureReason)> RunMessageLatencyTestAsync(IProgress<TestProgress>? progress, CancellationToken cancellationToken)
+    private async Task<(bool Success, string FailureReason)> RunMessageLatencyTestAsync(
+        IProgress<TestProgress>? progress,
+        CancellationToken cancellationToken
+    )
     {
         var testStart = DateTime.UtcNow;
         var testEnd = testStart.AddSeconds(_config.TestDurationSeconds);
@@ -180,8 +232,11 @@ public class MessageLatencyScenario : LoadTestScenarioBase
         var users = _connectionManager.GetUsers().Where(u => u.IsConnected).ToList();
         var chatId = users.FirstOrDefault()?.JoinedChats.FirstOrDefault() ?? GenerateTestChatId();
 
-        Logger.LogInformation("Starting latency test with {UserCount} users, message interval {MessageInterval}ms",
-            users.Count, messageInterval.TotalMilliseconds);
+        Logger.LogInformation(
+            "Starting latency test with {UserCount} users, message interval {MessageInterval}ms",
+            users.Count,
+            messageInterval.TotalMilliseconds
+        );
 
         var messagesSent = 0;
         var messagesReceived = 0;
@@ -202,30 +257,46 @@ public class MessageLatencyScenario : LoadTestScenarioBase
                 var messageContent = GenerateTestMessage();
 
                 // Create message task with latency tracking
-                var messageTask = Task.Run(async () =>
-                {
-                    try
+                var messageTask = Task.Run(
+                    async () =>
                     {
-                        var message = await _connectionManager.SendMessageAsync(user.UserId, chatId, messageContent, cancellationToken);
-                        _ = Interlocked.Increment(ref messagesSent);
-
-                        // Wait for message delivery confirmation (with timeout)
-                        var deliveryTimeout = DateTime.UtcNow.AddSeconds(10);
-                        while (!message.IsDelivered && DateTime.UtcNow < deliveryTimeout && !cancellationToken.IsCancellationRequested)
+                        try
                         {
-                            await Task.Delay(10, cancellationToken);
-                        }
+                            var message = await _connectionManager.SendMessageAsync(
+                                user.UserId,
+                                chatId,
+                                messageContent,
+                                cancellationToken
+                            );
+                            _ = Interlocked.Increment(ref messagesSent);
 
-                        if (message.IsDelivered)
-                        {
-                            _ = Interlocked.Increment(ref messagesReceived);
+                            // Wait for message delivery confirmation (with timeout)
+                            var deliveryTimeout = DateTime.UtcNow.AddSeconds(10);
+                            while (
+                                !message.IsDelivered
+                                && DateTime.UtcNow < deliveryTimeout
+                                && !cancellationToken.IsCancellationRequested
+                            )
+                            {
+                                await Task.Delay(10, cancellationToken);
+                            }
+
+                            if (message.IsDelivered)
+                            {
+                                _ = Interlocked.Increment(ref messagesReceived);
+                            }
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.LogTrace(ex, "Failed to send message for user {UserId}", user.UserId);
-                    }
-                }, cancellationToken);
+                        catch (Exception ex)
+                        {
+                            Logger.LogTrace(
+                                ex,
+                                "Failed to send message for user {UserId}",
+                                user.UserId
+                            );
+                        }
+                    },
+                    cancellationToken
+                );
 
                 messageTasks.Add(messageTask);
 
@@ -237,22 +308,30 @@ public class MessageLatencyScenario : LoadTestScenarioBase
             if (DateTime.UtcNow - lastProgressReport >= progressReportInterval)
             {
                 var elapsed = DateTime.UtcNow - testStart;
-                var progressPercent = 25 + (elapsed.TotalSeconds / _config.TestDurationSeconds * 70); // 25-95% for test phase
+                var progressPercent =
+                    25 + (elapsed.TotalSeconds / _config.TestDurationSeconds * 70); // 25-95% for test phase
                 var metrics = _metricsCollector.GetLatestMetrics();
 
-                ReportProgress(progress, new TestProgress
-                {
-                    CurrentScenario = "Message Latency Testing",
-                    ActiveUsers = users.Count(u => u.IsConnected),
-                    TotalMessages = messagesSent,
-                    CurrentThroughput = messagesSent / elapsed.TotalSeconds,
-                    ProgressPercent = progressPercent,
-                    CurrentMetrics = metrics ?? new SystemMetrics(),
-                    LastUpdated = DateTime.UtcNow
-                });
+                ReportProgress(
+                    progress,
+                    new TestProgress
+                    {
+                        CurrentScenario = "Message Latency Testing",
+                        ActiveUsers = users.Count(u => u.IsConnected),
+                        TotalMessages = messagesSent,
+                        CurrentThroughput = messagesSent / elapsed.TotalSeconds,
+                        ProgressPercent = progressPercent,
+                        CurrentMetrics = metrics ?? new SystemMetrics(),
+                        LastUpdated = DateTime.UtcNow,
+                    }
+                );
 
-                Logger.LogDebug("Latency test progress: {MessagesSent} sent, {MessagesReceived} received, {Duration} elapsed",
-                    messagesSent, messagesReceived, elapsed);
+                Logger.LogDebug(
+                    "Latency test progress: {MessagesSent} sent, {MessagesReceived} received, {Duration} elapsed",
+                    messagesSent,
+                    messagesReceived,
+                    elapsed
+                );
 
                 lastProgressReport = DateTime.UtcNow;
             }
@@ -274,8 +353,13 @@ public class MessageLatencyScenario : LoadTestScenarioBase
         var actualDuration = DateTime.UtcNow - testStart;
         var messageDeliveryRate = messagesReceived / (double)messagesSent;
 
-        Logger.LogInformation("Message latency test completed: {MessagesSent} sent, {MessagesReceived} received ({DeliveryRate:P2}) in {Duration}",
-            messagesSent, messagesReceived, messageDeliveryRate, actualDuration);
+        Logger.LogInformation(
+            "Message latency test completed: {MessagesSent} sent, {MessagesReceived} received ({DeliveryRate:P2}) in {Duration}",
+            messagesSent,
+            messagesReceived,
+            messageDeliveryRate,
+            actualDuration
+        );
 
         // Check message delivery rate
         if (messageDeliveryRate < 0.99) // Require 99% delivery rate
@@ -312,28 +396,41 @@ public class MessageLatencyScenario : LoadTestScenarioBase
             ConnectionsPerSecond = result.SuccessfulConnections / testDuration,
             MessagesPerSecond = result.TotalMessages / testDuration,
             PeakMessagesPerSecond = _config.MessagesPerSecond * _config.MaxUsers,
-            AverageResponseTime = result.LatencyStats.AverageMs
+            AverageResponseTime = result.LatencyStats.AverageMs,
         };
 
         // Resource statistics
         result.ResourceStats = resourceStats;
 
         // Collect errors
-        result.Errors = [.. users
-            .Where(u => !string.IsNullOrEmpty(u.Metrics.LastErrorMessage))
-            .Select(u => $"User {u.UserId}: {u.Metrics.LastErrorMessage}")
-            .Take(10)];
+        result.Errors =
+        [
+            .. users
+                .Where(u => !string.IsNullOrEmpty(u.Metrics.LastErrorMessage))
+                .Select(u => $"User {u.UserId}: {u.Metrics.LastErrorMessage}")
+                .Take(10),
+        ];
 
         // Log detailed results
         Logger.LogInformation("Message Latency Results:");
-        Logger.LogInformation("  Average Latency: {AvgLatency:F1}ms (target: <{MaxLatency}ms)",
-            result.LatencyStats.AverageMs, _config.MaxLatencyMs);
+        Logger.LogInformation(
+            "  Average Latency: {AvgLatency:F1}ms (target: <{MaxLatency}ms)",
+            result.LatencyStats.AverageMs,
+            _config.MaxLatencyMs
+        );
         Logger.LogInformation("  95th Percentile: {P95Latency:F1}ms", result.LatencyStats.P95Ms);
         Logger.LogInformation("  99th Percentile: {P99Latency:F1}ms", result.LatencyStats.P99Ms);
         Logger.LogInformation("  Max Latency: {MaxLatency:F1}ms", result.LatencyStats.MaxMs);
-        Logger.LogInformation("  Message Delivery: {DeliveredMessages}/{TotalMessages} ({DeliveryRate:P2})",
-            result.DeliveredMessages, result.TotalMessages, result.MessageDeliveryRate);
-        Logger.LogInformation("  Throughput: {Throughput:F1} messages/second", result.ThroughputStats.MessagesPerSecond);
+        Logger.LogInformation(
+            "  Message Delivery: {DeliveredMessages}/{TotalMessages} ({DeliveryRate:P2})",
+            result.DeliveredMessages,
+            result.TotalMessages,
+            result.MessageDeliveryRate
+        );
+        Logger.LogInformation(
+            "  Throughput: {Throughput:F1} messages/second",
+            result.ThroughputStats.MessagesPerSecond
+        );
 
         return Task.CompletedTask;
     }

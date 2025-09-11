@@ -24,18 +24,25 @@ public sealed class BackpressureHandler : IBackpressureHandler
         ILogger<BackpressureHandler> logger,
         float threshold = 80.0f,
         int baseDelayMs = 100,
-        bool isAdaptive = true)
+        bool isAdaptive = true
+    )
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         if (threshold is < 0 or > 100)
         {
-            throw new ArgumentOutOfRangeException(nameof(threshold), "Threshold must be between 0 and 100");
+            throw new ArgumentOutOfRangeException(
+                nameof(threshold),
+                "Threshold must be between 0 and 100"
+            );
         }
 
         if (baseDelayMs < 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(baseDelayMs), "Base delay must be non-negative");
+            throw new ArgumentOutOfRangeException(
+                nameof(baseDelayMs),
+                "Base delay must be non-negative"
+            );
         }
 
         Threshold = threshold;
@@ -48,14 +55,18 @@ public sealed class BackpressureHandler : IBackpressureHandler
     public bool ShouldApplyBackpressure(float utilization)
     {
         return utilization is < 0 or > 100
-            ? throw new ArgumentOutOfRangeException(nameof(utilization), "Utilization must be between 0 and 100")
+            ? throw new ArgumentOutOfRangeException(
+                nameof(utilization),
+                "Utilization must be between 0 and 100"
+            )
             : utilization >= Threshold;
     }
 
     /// <inheritdoc />
     public async Task<int> ApplyBackpressureAsync(
         float utilization,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         if (!ShouldApplyBackpressure(utilization))
         {
@@ -71,7 +82,8 @@ public sealed class BackpressureHandler : IBackpressureHandler
             "Backpressure applied. Utilization: {Utilization:F1}%, Delay: {Delay}ms, Total events: {Count}",
             utilization,
             delay,
-            _eventCount);
+            _eventCount
+        );
 
         try
         {

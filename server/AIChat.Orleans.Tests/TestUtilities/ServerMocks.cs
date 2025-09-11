@@ -13,16 +13,19 @@ namespace AIChat.Server.Services.Streaming
             IAsyncEnumerable<T> grainStream,
             HttpResponse httpResponse,
             Func<T, string> formatter,
-            CancellationToken cancellationToken = default);
+            CancellationToken cancellationToken = default
+        );
 
         Task<bool> HandleBackpressureAsync(
             float bufferUtilization,
-            CancellationToken cancellationToken = default);
+            CancellationToken cancellationToken = default
+        );
 
         Task PropagateErrorAsync(
             Exception exception,
             HttpResponse httpResponse,
-            CancellationToken cancellationToken = default);
+            CancellationToken cancellationToken = default
+        );
 
         BufferStatistics GetBufferStatistics();
     }
@@ -38,7 +41,8 @@ namespace AIChat.Server.Services.Streaming
             string streamId,
             string userId,
             Func<IStreamingBridge, CancellationToken, Task<T>> streamProcessor,
-            CancellationToken cancellationToken = default);
+            CancellationToken cancellationToken = default
+        );
 
         Task<StreamMetrics> GetMetricsAsync();
     }
@@ -61,7 +65,6 @@ namespace AIChat.Server.Services.Streaming
         public long TotalMessagesProcessed { get; init; }
         public TimeSpan Uptime { get; init; }
     }
-
 } // End namespace AIChat.Server.Services.Streaming
 
 namespace AIChat.Server.Configuration
@@ -150,7 +153,8 @@ namespace AIChat.Server.Models.SSE
             string chatId,
             string messageId,
             DateTime timestamp,
-            int sequenceNumber)
+            int sequenceNumber
+        )
         {
             return new SSEEnvelope
             {
@@ -160,8 +164,8 @@ namespace AIChat.Server.Models.SSE
                 Metadata = new Dictionary<string, object?>
                 {
                     ["sequenceNumber"] = sequenceNumber,
-                    ["type"] = "init"
-                }
+                    ["type"] = "init",
+                },
             };
         }
 
@@ -171,10 +175,7 @@ namespace AIChat.Server.Models.SSE
             {
                 ChatId = chatId,
                 Timestamp = DateTime.UtcNow,
-                Metadata = new Dictionary<string, object?>
-                {
-                    ["type"] = "complete"
-                }
+                Metadata = new Dictionary<string, object?> { ["type"] = "complete" },
             };
         }
 
@@ -182,7 +183,8 @@ namespace AIChat.Server.Models.SSE
             string chatId,
             string? messageId,
             int sequenceNumber,
-            string error)
+            string error
+        )
         {
             return new SSEEnvelope
             {
@@ -194,8 +196,8 @@ namespace AIChat.Server.Models.SSE
                 {
                     ["sequenceNumber"] = sequenceNumber,
                     ["type"] = "error",
-                    ["error"] = error
-                }
+                    ["error"] = error,
+                },
             };
         }
     }
@@ -216,7 +218,8 @@ namespace AIChat.Server.Services.Streaming
 
         public StreamingBridge(
             ILogger<StreamingBridge> logger,
-            IOptions<StreamingConfiguration> configuration)
+            IOptions<StreamingConfiguration> configuration
+        )
         {
             _logger = logger;
             _configuration = configuration.Value;
@@ -226,14 +229,16 @@ namespace AIChat.Server.Services.Streaming
             IAsyncEnumerable<T> grainStream,
             HttpResponse httpResponse,
             Func<T, string> formatter,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default
+        )
         {
             return Task.CompletedTask;
         }
 
         public Task<bool> HandleBackpressureAsync(
             float bufferUtilization,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default
+        )
         {
             return Task.FromResult(true);
         }
@@ -241,7 +246,8 @@ namespace AIChat.Server.Services.Streaming
         public Task PropagateErrorAsync(
             Exception exception,
             HttpResponse httpResponse,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default
+        )
         {
             return Task.CompletedTask;
         }
@@ -286,7 +292,8 @@ namespace AIChat.Server.Services.Streaming
         public ResilientStreamManager(
             ILogger<ResilientStreamManager> logger,
             IStreamingBridgeFactory bridgeFactory,
-            IOptions<ResilientStreamingConfiguration> configuration)
+            IOptions<ResilientStreamingConfiguration> configuration
+        )
         {
             _logger = logger;
             _bridgeFactory = bridgeFactory;
@@ -297,7 +304,8 @@ namespace AIChat.Server.Services.Streaming
             string streamId,
             string userId,
             Func<IStreamingBridge, CancellationToken, Task<T>> streamProcessor,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default
+        )
         {
             var bridge = _bridgeFactory.CreateBridge();
             return await streamProcessor(bridge, cancellationToken);
@@ -305,14 +313,16 @@ namespace AIChat.Server.Services.Streaming
 
         public Task<StreamMetrics> GetMetricsAsync()
         {
-            return Task.FromResult(new StreamMetrics
-            {
-                TotalStreamsProcessed = 0,
-                TotalRecoveryAttempts = 0,
-                SuccessfulRecoveries = 0,
-                TotalMessagesProcessed = 0,
-                Uptime = TimeSpan.Zero
-            });
+            return Task.FromResult(
+                new StreamMetrics
+                {
+                    TotalStreamsProcessed = 0,
+                    TotalRecoveryAttempts = 0,
+                    SuccessfulRecoveries = 0,
+                    TotalMessagesProcessed = 0,
+                    Uptime = TimeSpan.Zero,
+                }
+            );
         }
 
         public ValueTask DisposeAsync()

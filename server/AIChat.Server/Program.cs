@@ -30,8 +30,9 @@ var builder = WebApplication.CreateBuilder(args);
 // Configure Serilog for JSON file logging - ensure logs go to project root
 // When running from server/AIChat.Server, we need to go up two levels to reach project root
 var currentDir = Directory.GetCurrentDirectory();
-var projectRoot = currentDir.EndsWith("AIChat.Server")
-    ? Directory.GetParent(Directory.GetParent(currentDir)?.FullName ?? currentDir)?.FullName ?? currentDir
+var projectRoot = currentDir.EndsWith("AIChat.Server", StringComparison.Ordinal)
+    ? Directory.GetParent(Directory.GetParent(currentDir)?.FullName ?? currentDir)?.FullName
+        ?? currentDir
     : Directory.GetParent(currentDir)?.FullName ?? currentDir;
 var logFileName = builder.Environment.EnvironmentName switch
 {
@@ -128,10 +129,16 @@ builder.Services.AddSignalR(hubOptions =>
     var signalRConfig = builder.Configuration.GetSection("SignalR:HubOptions");
 
     // Configure hub options from appsettings or use defaults
-    hubOptions.ClientTimeoutInterval = signalRConfig.GetValue<TimeSpan?>("ClientTimeoutInterval") ?? TimeSpan.FromMinutes(10);
-    hubOptions.KeepAliveInterval = signalRConfig.GetValue<TimeSpan?>("KeepAliveInterval") ?? TimeSpan.FromMinutes(4);
-    hubOptions.EnableDetailedErrors = signalRConfig.GetValue("EnableDetailedErrors", builder.Environment.IsDevelopment());
-    hubOptions.MaximumReceiveMessageSize = signalRConfig.GetValue<long?>("MaximumReceiveMessageSize") ?? (32 * 1024); // 32KB default
+    hubOptions.ClientTimeoutInterval =
+        signalRConfig.GetValue<TimeSpan?>("ClientTimeoutInterval") ?? TimeSpan.FromMinutes(10);
+    hubOptions.KeepAliveInterval =
+        signalRConfig.GetValue<TimeSpan?>("KeepAliveInterval") ?? TimeSpan.FromMinutes(4);
+    hubOptions.EnableDetailedErrors = signalRConfig.GetValue(
+        "EnableDetailedErrors",
+        builder.Environment.IsDevelopment()
+    );
+    hubOptions.MaximumReceiveMessageSize =
+        signalRConfig.GetValue<long?>("MaximumReceiveMessageSize") ?? (32 * 1024); // 32KB default
     hubOptions.StreamBufferCapacity = signalRConfig.GetValue("StreamBufferCapacity", 10);
 
     // Configure for sticky sessions if needed
@@ -163,18 +170,26 @@ else
 }
 
 // Configure OpenTelemetry for distributed tracing
-builder.Services.AddOpenTelemetry()
+builder
+    .Services.AddOpenTelemetry()
     .WithTracing(tracing =>
     {
         _ = tracing
             .AddSource(OrleansActivitySource.ActivitySourceName)
-            .SetResourceBuilder(ResourceBuilder.CreateDefault()
-                .AddService("AIChat.Server", "1.0.0")
-                .AddAttributes(
-                [
-                    new KeyValuePair<string, object>("environment", builder.Environment.EnvironmentName),
-                    new KeyValuePair<string, object>("version", "1.0.0")
-                ]))
+            .SetResourceBuilder(
+                ResourceBuilder
+                    .CreateDefault()
+                    .AddService("AIChat.Server", "1.0.0")
+                    .AddAttributes(
+                        [
+                            new KeyValuePair<string, object>(
+                                "environment",
+                                builder.Environment.EnvironmentName
+                            ),
+                            new KeyValuePair<string, object>("version", "1.0.0"),
+                        ]
+                    )
+            )
             .AddAspNetCoreInstrumentation()
             .AddHttpClientInstrumentation();
 
@@ -199,9 +214,11 @@ builder.Services.AddOpenTelemetry()
         }
 
         // Configure sampling - more aggressive in development, conservative in production
-        _ = tracing.SetSampler(builder.Environment.IsDevelopment()
-            ? new AlwaysOnSampler()
-            : new TraceIdRatioBasedSampler(0.1)); // Sample 10% in production
+        _ = tracing.SetSampler(
+            builder.Environment.IsDevelopment()
+                ? new AlwaysOnSampler()
+                : new TraceIdRatioBasedSampler(0.1)
+        ); // Sample 10% in production
     });
 
 // Configure Orleans based on environment
@@ -218,45 +235,57 @@ if (!orleansDisabled)
         // Co-host Orleans silo in Development/Test environments
         if (isDevelopmentEnvironment || isTestEnvironment)
         {
-            Log.Information("Configuring Orleans co-hosting for {Environment} environment", builder.Environment.EnvironmentName);
+            Log.Information(
+                "Configuring Orleans co-hosting for {Environment} environment",
+                builder.Environment.EnvironmentName
+            );
 
             // Configure Orleans silo co-hosting
-            _ = builder.Host.UseOrleans((context, siloBuilder) =>
-            {
-                var configuration = context.Configuration;
+            _ = builder.Host.UseOrleans(
+                (context, siloBuilder) =>
+                {
+                    var configuration = context.Configuration;
 
-                _ = siloBuilder
-                    .UseLocalhostClustering()
-                    .Configure<ClusterOptions>(options =>
-                    {
-                        options.ClusterId = configuration.GetValue<string>("Orleans:ClusterId") ?? "doc-chat-cluster";
-                        options.ServiceId = configuration.GetValue<string>("Orleans:ServiceId") ?? "doc-chat-service";
-                    })
-                    .ConfigureEndpoints(
-                        siloPort: configuration.GetValue("Orleans:SiloPort", 11111),
-                        gatewayPort: configuration.GetValue("Orleans:GatewayPort", 30000)
-                    )
-                    .AddMemoryGrainStorage("UserGrainStorage")
-                    .AddMemoryGrainStorage("PubSubStore")
-                    .ConfigureLogging(logging =>
-                    {
-                        _ = logging.SetMinimumLevel(LogLevel.Warning);
-                        _ = logging.AddFilter("Orleans", LogLevel.Warning);
-                        _ = logging.AddFilter("Orleans.Runtime", LogLevel.Warning);
-                        _ = logging.AddFilter("AIChat.Orleans", LogLevel.Debug);
-                    });
+                    _ = siloBuilder
+                        .UseLocalhostClustering()
+                        .Configure<ClusterOptions>(options =>
+                        {
+                            options.ClusterId =
+                                configuration.GetValue<string>("Orleans:ClusterId")
+                                ?? "doc-chat-cluster";
+                            options.ServiceId =
+                                configuration.GetValue<string>("Orleans:ServiceId")
+                                ?? "doc-chat-service";
+                        })
+                        .ConfigureEndpoints(
+                            siloPort: configuration.GetValue("Orleans:SiloPort", 11111),
+                            gatewayPort: configuration.GetValue("Orleans:GatewayPort", 30000)
+                        )
+                        .AddMemoryGrainStorage("UserGrainStorage")
+                        .AddMemoryGrainStorage("PubSubStore")
+                        .ConfigureLogging(logging =>
+                        {
+                            _ = logging.SetMinimumLevel(LogLevel.Warning);
+                            _ = logging.AddFilter("Orleans", LogLevel.Warning);
+                            _ = logging.AddFilter("Orleans.Runtime", LogLevel.Warning);
+                            _ = logging.AddFilter("AIChat.Orleans", LogLevel.Debug);
+                        });
 
-                // Add startup task for initialization
-                _ = siloBuilder.AddStartupTask<AIChat.Server.OrleansCoHostStartupTask>();
+                    // Add startup task for initialization
+                    _ = siloBuilder.AddStartupTask<AIChat.Server.OrleansCoHostStartupTask>();
 
-                Log.Information("Orleans silo co-hosting configured successfully");
-            });
+                    Log.Information("Orleans silo co-hosting configured successfully");
+                }
+            );
 
             // When co-hosting, Orleans registers IGrainFactory but not IClusterClient
             // We don't need to register IClusterClient for co-hosting as IGrainFactory is sufficient
 
             // Register ChatServiceProxy for grains (required for co-hosting)
-            _ = builder.Services.AddSingleton<AIChat.Orleans.Services.IChatServiceProxy, AIChat.Orleans.Services.DefaultChatServiceProxy>();
+            _ = builder.Services.AddSingleton<
+                AIChat.Orleans.Services.IChatServiceProxy,
+                AIChat.Orleans.Services.DefaultChatServiceProxy
+            >();
         }
         else
         {
@@ -268,7 +297,8 @@ if (!orleansDisabled)
         Log.Information("Orleans configured successfully");
 
         // Add health checks including Orleans
-        _ = builder.Services.AddHealthChecks()
+        _ = builder
+            .Services.AddHealthChecks()
             .AddCheck<OrleansClientHealthCheck>("orleans-client")
             .AddCheck<OrleansHealthCheck>("orleans")
             .AddResilientStreamingHealthCheck("resilient-streaming", tags: tags);
@@ -276,10 +306,7 @@ if (!orleansDisabled)
     catch (Exception ex)
     {
         // Log warning but don't fail startup - Orleans is optional in Phase 1
-        Log.Warning(
-            ex,
-            "Failed to configure Orleans - Orleans integration will be disabled"
-        );
+        Log.Warning(ex, "Failed to configure Orleans - Orleans integration will be disabled");
 
         // Add basic health checks without Orleans
         _ = builder.Services.AddHealthChecks();
@@ -300,10 +327,14 @@ builder.Services.AddLmConfig(builder.Configuration.GetSection("LmConfig"));
 builder.Services.Configure<AiOptions>(builder.Configuration.GetSection("AI"));
 
 // Configure background processing options
-builder.Services.Configure<BackgroundProcessingOptions>(builder.Configuration.GetSection(BackgroundProcessingOptions.SectionName));
+builder.Services.Configure<BackgroundProcessingOptions>(
+    builder.Configuration.GetSection(BackgroundProcessingOptions.SectionName)
+);
 
 // Configure Orleans resilience options
-builder.Services.Configure<OrleansResilienceConfiguration>(builder.Configuration.GetSection(OrleansResilienceConfiguration.SectionName));
+builder.Services.Configure<OrleansResilienceConfiguration>(
+    builder.Configuration.GetSection(OrleansResilienceConfiguration.SectionName)
+);
 
 // Configure MCP servers
 builder.Services.Configure<McpConfiguration>(builder.Configuration.GetSection("Mcp"));
@@ -443,66 +474,107 @@ builder.Services.AddScoped<IToolingService, ToolingService>();
 builder.Services.AddSingleton<ChatService>();
 builder.Services.AddScoped<IChatService, ChatServiceFacade>();
 builder.Services.AddScoped<IChatServiceFacade, ChatServiceFacade>();
-builder.Services.AddScoped<IChatServiceStreaming>(provider => provider.GetRequiredService<ChatService>());
+builder.Services.AddScoped<IChatServiceStreaming>(provider =>
+    provider.GetRequiredService<ChatService>()
+);
 
 // Add mode service
 builder.Services.AddScoped<IModeService, ModeService>();
 
 // Add SignalR broadcasting service for Orleans integration (Phase 2/3)
-builder.Services.AddScoped<AIChat.Orleans.Services.ISignalRBroadcastService, SignalRBroadcastService>();
+builder.Services.AddScoped<
+    AIChat.Orleans.Services.ISignalRBroadcastService,
+    SignalRBroadcastService
+>();
 
 // Add operation tracking service for Orleans background processing (Phase 3)
 builder.Services.AddSingleton<IOperationTrackingService, InMemoryOperationTrackingService>();
 
 // Configure StreamingBridge for Orleans-to-SSE conversion (Phase 4)
 builder.Services.Configure<AIChat.Server.Configuration.StreamingConfiguration>(
-    builder.Configuration.GetSection(AIChat.Server.Configuration.StreamingConfiguration.SectionName));
-builder.Services.AddSingleton<AIChat.Server.Services.Streaming.IStreamingBridge, AIChat.Server.Services.Streaming.StreamingBridge>();
-builder.Services.AddSingleton<AIChat.Server.Services.Streaming.IStreamingBridgeFactory, AIChat.Server.Services.Streaming.StreamingBridgeFactory>();
+    builder.Configuration.GetSection(AIChat.Server.Configuration.StreamingConfiguration.SectionName)
+);
+builder.Services.AddSingleton<
+    AIChat.Server.Services.Streaming.IStreamingBridge,
+    AIChat.Server.Services.Streaming.StreamingBridge
+>();
+builder.Services.AddSingleton<
+    AIChat.Server.Services.Streaming.IStreamingBridgeFactory,
+    AIChat.Server.Services.Streaming.StreamingBridgeFactory
+>();
 
 // Configure Resilient Streaming services (Phase 4 - ORL-P4-004)
 builder.Services.Configure<AIChat.Server.Configuration.ResilientStreamingConfiguration>(
-    builder.Configuration.GetSection("ResilientStreaming"));
-builder.Services.AddSingleton<AIChat.Server.Services.Streaming.IResilientStreamManager, AIChat.Server.Services.Streaming.ResilientStreamManager>();
+    builder.Configuration.GetSection("ResilientStreaming")
+);
+builder.Services.AddSingleton<
+    AIChat.Server.Services.Streaming.IResilientStreamManager,
+    AIChat.Server.Services.Streaming.ResilientStreamManager
+>();
 
 // Configure Buffer Management services (Phase 4 - ORL-P4-007)
 builder.Services.Configure<AIChat.Server.Services.Streaming.Implementations.FileBasedBufferStoreOptions>(
-    builder.Configuration.GetSection("BufferStore"));
+    builder.Configuration.GetSection("BufferStore")
+);
 builder.Services.Configure<AIChat.Server.Services.Streaming.Implementations.BufferManagementOptions>(
-    builder.Configuration.GetSection("BufferManagement"));
+    builder.Configuration.GetSection("BufferManagement")
+);
 
 // Register buffer management components
-builder.Services.AddSingleton<AIChat.Server.Services.Streaming.Abstractions.IPersistentBufferStore,
-    AIChat.Server.Services.Streaming.Implementations.FileBasedBufferStore>();
+builder.Services.AddSingleton<
+    AIChat.Server.Services.Streaming.Abstractions.IPersistentBufferStore,
+    AIChat.Server.Services.Streaming.Implementations.FileBasedBufferStore
+>();
+
 // Note: IStreamBuffer instances are created by BufferManagementService, not injected directly
-builder.Services.AddSingleton<AIChat.Server.Services.Streaming.Abstractions.IConnectionStateTracker,
-    AIChat.Server.Services.Streaming.Implementations.ConnectionStateTracker>();
-builder.Services.AddSingleton<AIChat.Server.Services.Streaming.Abstractions.IBufferReplayService,
-    AIChat.Server.Services.Streaming.Implementations.BufferReplayService>();
-builder.Services.AddSingleton<AIChat.Server.Services.Streaming.Abstractions.IBufferManagementService,
-    AIChat.Server.Services.Streaming.Implementations.BufferManagementService>();
+builder.Services.AddSingleton<
+    AIChat.Server.Services.Streaming.Abstractions.IConnectionStateTracker,
+    AIChat.Server.Services.Streaming.Implementations.ConnectionStateTracker
+>();
+builder.Services.AddSingleton<
+    AIChat.Server.Services.Streaming.Abstractions.IBufferReplayService,
+    AIChat.Server.Services.Streaming.Implementations.BufferReplayService
+>();
+builder.Services.AddSingleton<
+    AIChat.Server.Services.Streaming.Abstractions.IBufferManagementService,
+    AIChat.Server.Services.Streaming.Implementations.BufferManagementService
+>();
 
 // Register BufferManagementService as hosted service for lifecycle management
-builder.Services.AddHostedService(
-    provider => (AIChat.Server.Services.Streaming.Implementations.BufferManagementService)
-        provider.GetRequiredService<AIChat.Server.Services.Streaming.Abstractions.IBufferManagementService>());
+builder.Services.AddHostedService(provider =>
+    (AIChat.Server.Services.Streaming.Implementations.BufferManagementService)
+        provider.GetRequiredService<AIChat.Server.Services.Streaming.Abstractions.IBufferManagementService>()
+);
 
 // Configure Background Chat Service options
 builder.Services.Configure<BackgroundServiceOptions>(options =>
 {
-    options.MaxConcurrentOperations = builder.Configuration.GetValue("BackgroundService:MaxConcurrentOperations", 10);
-    options.DefaultTimeoutMs = builder.Configuration.GetValue("BackgroundService:DefaultTimeoutMs", 300000); // 5 minutes
-    options.OperationHistoryHours = builder.Configuration.GetValue("BackgroundService:OperationHistoryHours", 2);
+    options.MaxConcurrentOperations = builder.Configuration.GetValue(
+        "BackgroundService:MaxConcurrentOperations",
+        10
+    );
+    options.DefaultTimeoutMs = builder.Configuration.GetValue(
+        "BackgroundService:DefaultTimeoutMs",
+        300000
+    ); // 5 minutes
+    options.OperationHistoryHours = builder.Configuration.GetValue(
+        "BackgroundService:OperationHistoryHours",
+        2
+    );
 });
 
 // Add Background Chat Service (Phase 3)
 // Register as both IHostedService (for background processing) and IBackgroundChatService (for API access)
 builder.Services.AddSingleton<BackgroundChatService>();
-builder.Services.AddSingleton<IBackgroundChatService>(provider => provider.GetRequiredService<BackgroundChatService>());
+builder.Services.AddSingleton<IBackgroundChatService>(provider =>
+    provider.GetRequiredService<BackgroundChatService>()
+);
 builder.Services.AddHostedService(provider => provider.GetRequiredService<BackgroundChatService>());
 
 // Add Production Monitoring Service (Phase 3)
-builder.Services.Configure<ProductionMonitoringOptions>(builder.Configuration.GetSection("ProductionMonitoring"));
+builder.Services.Configure<ProductionMonitoringOptions>(
+    builder.Configuration.GetSection("ProductionMonitoring")
+);
 builder.Services.AddSingleton(provider =>
 {
     var logger = provider.GetRequiredService<ILogger<ProductionMonitoringService>>();
@@ -512,7 +584,9 @@ builder.Services.AddSingleton(provider =>
 
     return new ProductionMonitoringService(logger, orleansService, grainFactory, provider, options);
 });
-builder.Services.AddHostedService(provider => provider.GetRequiredService<ProductionMonitoringService>());
+builder.Services.AddHostedService(provider =>
+    provider.GetRequiredService<ProductionMonitoringService>()
+);
 
 var app = builder.Build();
 
@@ -657,7 +731,9 @@ namespace AIChat.Server
             try
             {
                 _logger.LogInformation("Orleans co-hosting startup task beginning...");
-                _logger.LogInformation("Orleans silo co-hosted successfully. Grains are ready to accept requests");
+                _logger.LogInformation(
+                    "Orleans silo co-hosted successfully. Grains are ready to accept requests"
+                );
                 return Task.CompletedTask;
             }
             catch (Exception ex)

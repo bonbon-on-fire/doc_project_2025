@@ -6,19 +6,23 @@ namespace AIChat.Orleans.Contracts;
 /// Comprehensive grain interface representing a user in the chat system.
 /// This interface extends all segregated interfaces to provide backward compatibility
 /// while supporting the new Interface Segregation Principle-based architecture.
-/// 
+///
 /// For new code, prefer using the specific segregated interfaces:
 /// - IUserActivityGrain for activity tracking and monitoring
-/// - IUserConnectionGrain for connection and subscription management  
+/// - IUserConnectionGrain for connection and subscription management
 /// - IUserOperationGrain for background operations and message routing
 /// - IUserMessageBufferGrain for message buffering functionality
 /// </summary>
 [Alias("AIChat.Orleans.Contracts.IUserGrain")]
-public interface IUserGrain : IUserActivityGrain, IUserConnectionGrain, IUserOperationGrain, IUserMessageBufferGrain
+public interface IUserGrain
+    : IUserActivityGrain,
+        IUserConnectionGrain,
+        IUserOperationGrain,
+        IUserMessageBufferGrain
 {
     // This interface now inherits all methods from the four segregated interfaces.
     // No additional methods are defined here to maintain clean separation of concerns.
-    // 
+    //
     // Inherited from IUserActivityGrain:
     // - RecordActivity(ActivityType type, string metadata)
     // - GetState()

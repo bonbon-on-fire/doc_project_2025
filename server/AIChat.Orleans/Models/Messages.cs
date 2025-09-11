@@ -175,7 +175,7 @@ public enum StreamChunkType
     /// <summary>
     /// Error information.
     /// </summary>
-    Error = 6
+    Error = 6,
 }
 
 /// <summary>

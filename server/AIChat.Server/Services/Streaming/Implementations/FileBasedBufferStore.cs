@@ -22,7 +22,8 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
     /// </summary>
     public FileBasedBufferStore(
         ILogger<FileBasedBufferStore> logger,
-        IOptions<FileBasedBufferStoreOptions> options)
+        IOptions<FileBasedBufferStoreOptions> options
+    )
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
@@ -33,7 +34,12 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
         {
             WriteIndented = true,
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+            DefaultIgnoreCondition = System
+                .Text
+                .Json
+                .Serialization
+                .JsonIgnoreCondition
+                .WhenWritingNull,
         };
 
         // Ensure storage directory exists
@@ -45,7 +51,8 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
         string streamId,
         IEnumerable<BufferedStreamMessage> messages,
         BufferMetadata? metadata,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
         ArgumentNullException.ThrowIfNull(messages);
@@ -75,7 +82,7 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
                 Messages = messageList,
                 Metadata = metadata ?? CreateMetadata(streamId, messageList),
                 PersistedAt = DateTime.UtcNow,
-                FormatVersion = "1.0"
+                FormatVersion = "1.0",
             };
 
             // Serialize to JSON
@@ -89,7 +96,10 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
 
             _logger.LogInformation(
                 "Persisted {MessageCount} messages for stream {StreamId} to {FilePath}",
-                messageList.Count, streamId, filePath);
+                messageList.Count,
+                streamId,
+                filePath
+            );
 
             // Clean up old files if rotation is enabled
             if (_options.EnableRotation)
@@ -111,7 +121,10 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
     }
 
     /// <inheritdoc/>
-    public async Task<PersistedBuffer?> LoadBufferAsync(string streamId, CancellationToken cancellationToken = default)
+    public async Task<PersistedBuffer?> LoadBufferAsync(
+        string streamId,
+        CancellationToken cancellationToken = default
+    )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
 
@@ -126,7 +139,8 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
             }
 
             // Get all buffer files sorted by creation time (newest first)
-            var files = Directory.GetFiles(streamDir, "*.json")
+            var files = Directory
+                .GetFiles(streamDir, "*.json")
                 .OrderByDescending(f => new FileInfo(f).CreationTimeUtc)
                 .ToList();
 
@@ -145,13 +159,17 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
             {
                 try
                 {
-                    var json = await File.ReadAllTextAsync(file, cancellationToken).ConfigureAwait(false);
+                    var json = await File.ReadAllTextAsync(file, cancellationToken)
+                        .ConfigureAwait(false);
                     var data = JsonSerializer.Deserialize<PersistedBufferData>(json, _jsonOptions);
 
                     if (data != null)
                     {
                         allMessages.AddRange(data.Messages);
-                        if (latestMetadata == null || data.Metadata.LastUpdatedAt > latestMetadata.LastUpdatedAt)
+                        if (
+                            latestMetadata == null
+                            || data.Metadata.LastUpdatedAt > latestMetadata.LastUpdatedAt
+                        )
                         {
                             latestMetadata = data.Metadata;
                         }
@@ -166,14 +184,17 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
 
             if (allMessages.Count == 0 && latestMetadata == null)
             {
-                _logger.LogWarning("All buffer files for stream {StreamId} are corrupted", streamId);
+                _logger.LogWarning(
+                    "All buffer files for stream {StreamId} are corrupted",
+                    streamId
+                );
                 return new PersistedBuffer
                 {
                     StreamId = streamId,
                     Messages = [],
                     Metadata = CreateMetadata(streamId, []),
                     IsCorrupted = true,
-                    CorruptionDetails = $"All {corruptedFiles.Count} files are corrupted"
+                    CorruptionDetails = $"All {corruptedFiles.Count} files are corrupted",
                 };
             }
 
@@ -186,7 +207,10 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
 
             _logger.LogInformation(
                 "Loaded {MessageCount} unique messages for stream {StreamId} from {FileCount} files",
-                uniqueMessages.Count, streamId, files.Count);
+                uniqueMessages.Count,
+                streamId,
+                files.Count
+            );
 
             return new PersistedBuffer
             {
@@ -194,9 +218,10 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
                 Messages = uniqueMessages,
                 Metadata = latestMetadata ?? CreateMetadata(streamId, uniqueMessages),
                 IsCorrupted = corruptedFiles.Count > 0,
-                CorruptionDetails = corruptedFiles.Count > 0
-                    ? $"{corruptedFiles.Count} corrupted files detected"
-                    : null
+                CorruptionDetails =
+                    corruptedFiles.Count > 0
+                        ? $"{corruptedFiles.Count} corrupted files detected"
+                        : null,
             };
         }
         catch (Exception ex)
@@ -211,7 +236,10 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
     }
 
     /// <inheritdoc/>
-    public async Task<bool> DeleteBufferAsync(string streamId, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteBufferAsync(
+        string streamId,
+        CancellationToken cancellationToken = default
+    )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
 
@@ -240,7 +268,9 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
     }
 
     /// <inheritdoc/>
-    public async Task<IReadOnlyList<string>> ListPersistedBuffersAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<string>> ListPersistedBuffersAsync(
+        CancellationToken cancellationToken = default
+    )
     {
         await _accessLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -250,7 +280,8 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
                 return [];
             }
 
-            var streamIds = Directory.GetDirectories(_options.StoragePath)
+            var streamIds = Directory
+                .GetDirectories(_options.StoragePath)
                 .Select(Path.GetFileName)
                 .Where(name => !string.IsNullOrEmpty(name))
                 .Cast<string>()
@@ -270,7 +301,10 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
     }
 
     /// <inheritdoc/>
-    public async Task<BufferMetadata?> GetBufferMetadataAsync(string streamId, CancellationToken cancellationToken = default)
+    public async Task<BufferMetadata?> GetBufferMetadataAsync(
+        string streamId,
+        CancellationToken cancellationToken = default
+    )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
 
@@ -287,19 +321,22 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
             var metadataFile = Path.Combine(streamDir, "metadata.json");
             if (File.Exists(metadataFile))
             {
-                var json = await File.ReadAllTextAsync(metadataFile, cancellationToken).ConfigureAwait(false);
+                var json = await File.ReadAllTextAsync(metadataFile, cancellationToken)
+                    .ConfigureAwait(false);
                 return JsonSerializer.Deserialize<BufferMetadata>(json, _jsonOptions);
             }
 
             // Fall back to loading from buffer files
-            var files = Directory.GetFiles(streamDir, "*.json")
+            var files = Directory
+                .GetFiles(streamDir, "*.json")
                 .Where(f => !f.EndsWith("metadata.json", StringComparison.OrdinalIgnoreCase))
                 .OrderByDescending(f => new FileInfo(f).CreationTimeUtc)
                 .FirstOrDefault();
 
             if (files != null)
             {
-                var json = await File.ReadAllTextAsync(files, cancellationToken).ConfigureAwait(false);
+                var json = await File.ReadAllTextAsync(files, cancellationToken)
+                    .ConfigureAwait(false);
                 var data = JsonSerializer.Deserialize<PersistedBufferData>(json, _jsonOptions);
                 return data?.Metadata;
             }
@@ -318,7 +355,10 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
     }
 
     /// <inheritdoc/>
-    public async Task<int> CleanupExpiredBuffersAsync(TimeSpan retentionPeriod, CancellationToken cancellationToken = default)
+    public async Task<int> CleanupExpiredBuffersAsync(
+        TimeSpan retentionPeriod,
+        CancellationToken cancellationToken = default
+    )
     {
         await _accessLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -343,11 +383,18 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
                     {
                         Directory.Delete(streamDir, recursive: true);
                         deletedCount++;
-                        _logger.LogInformation("Cleaned up expired buffer for stream {StreamId}", Path.GetFileName(streamDir));
+                        _logger.LogInformation(
+                            "Cleaned up expired buffer for stream {StreamId}",
+                            Path.GetFileName(streamDir)
+                        );
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to delete expired buffer directory {Path}", streamDir);
+                        _logger.LogWarning(
+                            ex,
+                            "Failed to delete expired buffer directory {Path}",
+                            streamDir
+                        );
                     }
                 }
             }
@@ -366,7 +413,9 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
     }
 
     /// <inheritdoc/>
-    public async Task<PersistenceStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default)
+    public async Task<PersistenceStatistics> GetStatisticsAsync(
+        CancellationToken cancellationToken = default
+    )
     {
         await _accessLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -378,7 +427,7 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
                     TotalBuffers = 0,
                     TotalSizeBytes = 0,
                     TotalMessages = 0,
-                    StoragePath = _options.StoragePath
+                    StoragePath = _options.StoragePath,
                 };
             }
 
@@ -387,7 +436,7 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
                 TotalBuffers = 0,
                 TotalSizeBytes = 0,
                 TotalMessages = 0,
-                StoragePath = _options.StoragePath
+                StoragePath = _options.StoragePath,
             };
 
             var streamDirs = Directory.GetDirectories(_options.StoragePath);
@@ -426,8 +475,12 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
                     // Try to count messages
                     try
                     {
-                        var json = await File.ReadAllTextAsync(file.FullName, cancellationToken).ConfigureAwait(false);
-                        var data = JsonSerializer.Deserialize<PersistedBufferData>(json, _jsonOptions);
+                        var json = await File.ReadAllTextAsync(file.FullName, cancellationToken)
+                            .ConfigureAwait(false);
+                        var data = JsonSerializer.Deserialize<PersistedBufferData>(
+                            json,
+                            _jsonOptions
+                        );
                         if (data != null)
                         {
                             totalMessages += data.Messages.Count;
@@ -450,7 +503,7 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
                 LargestBufferSizeBytes = largestSize,
                 TotalMessages = totalMessages,
                 CorruptedBuffers = corruptedCount,
-                AvailableStorageBytes = driveInfo.AvailableFreeSpace
+                AvailableStorageBytes = driveInfo.AvailableFreeSpace,
             };
         }
         catch (Exception ex)
@@ -461,7 +514,7 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
                 TotalBuffers = 0,
                 TotalSizeBytes = 0,
                 TotalMessages = 0,
-                StoragePath = _options.StoragePath
+                StoragePath = _options.StoragePath,
             };
         }
         finally
@@ -483,7 +536,8 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
 
             // Try to write a test file
             var testFile = Path.Combine(_options.StoragePath, $".health_check_{Guid.NewGuid():N}");
-            await File.WriteAllTextAsync(testFile, DateTime.UtcNow.ToString("O"), cancellationToken).ConfigureAwait(false);
+            await File.WriteAllTextAsync(testFile, DateTime.UtcNow.ToString("O"), cancellationToken)
+                .ConfigureAwait(false);
             File.Delete(testFile);
 
             // Check available space
@@ -492,7 +546,9 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
             {
                 _logger.LogWarning(
                     "Low disk space. Available: {AvailableBytes}, Required: {RequiredBytes}",
-                    driveInfo.AvailableFreeSpace, _options.MinimumFreeSpaceBytes);
+                    driveInfo.AvailableFreeSpace,
+                    _options.MinimumFreeSpaceBytes
+                );
                 return false;
             }
 
@@ -520,7 +576,11 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to create storage directory at {Path}", _options.StoragePath);
+            _logger.LogError(
+                ex,
+                "Failed to create storage directory at {Path}",
+                _options.StoragePath
+            );
             throw;
         }
     }
@@ -538,7 +598,10 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
     /// <summary>
     /// Creates metadata for a buffer.
     /// </summary>
-    private static BufferMetadata CreateMetadata(string streamId, List<BufferedStreamMessage> messages)
+    private static BufferMetadata CreateMetadata(
+        string streamId,
+        List<BufferedStreamMessage> messages
+    )
     {
         var now = DateTime.UtcNow;
         var totalSize = messages.Sum(m => (long)m.SizeBytes);
@@ -554,7 +617,7 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
             LastSequenceNumber = messages.Count > 0 ? messages[^1].SequenceNumber : null,
             FormatVersion = "1.0",
             IsCompressed = false,
-            IsEncrypted = false
+            IsEncrypted = false,
         };
     }
 
@@ -565,7 +628,8 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
     {
         try
         {
-            var files = Directory.GetFiles(streamDir, "*.json")
+            var files = Directory
+                .GetFiles(streamDir, "*.json")
                 .Select(f => new FileInfo(f))
                 .OrderByDescending(f => f.CreationTimeUtc)
                 .Skip(_options.MaxFilesPerStream)
@@ -580,7 +644,11 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to delete old buffer file {FilePath}", file.FullName);
+                    _logger.LogWarning(
+                        ex,
+                        "Failed to delete old buffer file {FilePath}",
+                        file.FullName
+                    );
                 }
             }
         }

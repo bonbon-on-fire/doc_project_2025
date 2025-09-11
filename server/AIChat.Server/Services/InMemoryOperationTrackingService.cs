@@ -22,7 +22,12 @@ public class InMemoryOperationTrackingService : IOperationTrackingService
     }
 
     /// <inheritdoc />
-    public Task RegisterOperationAsync(string operationId, string userId, string chatId, string operationType)
+    public Task RegisterOperationAsync(
+        string operationId,
+        string userId,
+        string chatId,
+        string operationType
+    )
     {
         try
         {
@@ -32,20 +37,27 @@ public class InMemoryOperationTrackingService : IOperationTrackingService
                 UserId = userId,
                 ChatId = chatId,
                 OperationType = operationType,
-                RegisteredAt = DateTime.UtcNow
+                RegisteredAt = DateTime.UtcNow,
             };
 
             _operations[operationId] = context;
 
             _logger.LogDebug(
                 "Registered operation {OperationId} for user {UserId} in chat {ChatId} of type {OperationType}",
-                operationId, userId, chatId, operationType);
+                operationId,
+                userId,
+                chatId,
+                operationType
+            );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Failed to register operation {OperationId} for user {UserId}",
-                operationId, userId);
+                operationId,
+                userId
+            );
         }
 
         return Task.CompletedTask;
@@ -62,7 +74,10 @@ public class InMemoryOperationTrackingService : IOperationTrackingService
             {
                 _logger.LogDebug(
                     "Found operation context for {OperationId}: user {UserId}, chat {ChatId}",
-                    operationId, context.UserId, context.ChatId);
+                    operationId,
+                    context.UserId,
+                    context.ChatId
+                );
             }
             else
             {
@@ -87,11 +102,16 @@ public class InMemoryOperationTrackingService : IOperationTrackingService
             {
                 _logger.LogDebug(
                     "Unregistered operation {OperationId} for user {UserId}",
-                    operationId, context.UserId);
+                    operationId,
+                    context.UserId
+                );
             }
             else
             {
-                _logger.LogDebug("Operation {OperationId} was not registered for unregistration", operationId);
+                _logger.LogDebug(
+                    "Operation {OperationId} was not registered for unregistration",
+                    operationId
+                );
             }
         }
         catch (Exception ex)
@@ -107,11 +127,15 @@ public class InMemoryOperationTrackingService : IOperationTrackingService
     {
         try
         {
-            var userOperations = _operations.Values
-                .Where(op => op.UserId.Equals(userId, StringComparison.OrdinalIgnoreCase))
+            var userOperations = _operations
+                .Values.Where(op => op.UserId.Equals(userId, StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
-            _logger.LogDebug("Found {Count} operations for user {UserId}", userOperations.Count, userId);
+            _logger.LogDebug(
+                "Found {Count} operations for user {UserId}",
+                userOperations.Count,
+                userId
+            );
 
             return Task.FromResult<IEnumerable<OperationUserContext>>(userOperations);
         }
@@ -127,11 +151,15 @@ public class InMemoryOperationTrackingService : IOperationTrackingService
     {
         try
         {
-            var chatOperations = _operations.Values
-                .Where(op => op.ChatId.Equals(chatId, StringComparison.OrdinalIgnoreCase))
+            var chatOperations = _operations
+                .Values.Where(op => op.ChatId.Equals(chatId, StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
-            _logger.LogDebug("Found {Count} operations for chat {ChatId}", chatOperations.Count, chatId);
+            _logger.LogDebug(
+                "Found {Count} operations for chat {ChatId}",
+                chatOperations.Count,
+                chatId
+            );
 
             return Task.FromResult<IEnumerable<OperationUserContext>>(chatOperations);
         }

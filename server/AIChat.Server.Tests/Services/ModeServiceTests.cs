@@ -692,9 +692,7 @@ Incomplete";
         {
             _ = _modeStorageMock
                 .Setup(x => x.GetModesByUserAsync(userId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(
-                    (true, null, userId == userIds[0] ? customModes : [])
-                );
+                .ReturnsAsync((true, null, userId == userIds[0] ? customModes : []));
         }
 
         // Act - Concurrent calls

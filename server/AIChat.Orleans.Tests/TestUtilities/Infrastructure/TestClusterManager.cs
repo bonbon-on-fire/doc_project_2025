@@ -17,7 +17,8 @@ public class TestClusterManager : IAsyncDisposable
     /// <summary>
     /// Gets the test cluster instance.
     /// </summary>
-    public TestCluster Cluster => _cluster ?? throw new InvalidOperationException("Cluster not initialized");
+    public TestCluster Cluster =>
+        _cluster ?? throw new InvalidOperationException("Cluster not initialized");
 
     /// <summary>
     /// Gets the cluster client for grain interactions.
@@ -91,10 +92,13 @@ public class TestClusterManager : IAsyncDisposable
         {
             _ = siloBuilder
                 // Let TestClusterBuilder handle the ClusterId to avoid conflicts
-                .Configure<EndpointOptions>(options => options.AdvertisedIPAddress = System.Net.IPAddress.Loopback)
+                .Configure<EndpointOptions>(options =>
+                    options.AdvertisedIPAddress = System.Net.IPAddress.Loopback
+                )
                 .ConfigureServices(services =>
                     // Register grain assemblies
-                    _ = services.AddSingleton(typeof(UserGrain).Assembly));
+                    _ = services.AddSingleton(typeof(UserGrain).Assembly)
+                );
         }
     }
 }

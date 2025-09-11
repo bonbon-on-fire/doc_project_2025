@@ -83,8 +83,7 @@ public sealed class ModeService : IModeService, IDisposable
             {
                 var tools = string.IsNullOrEmpty(userMode.Tools)
                     ? []
-                    : JsonSerializer.Deserialize<List<string>>(userMode.Tools, _jsonOptions)
-                        ?? [];
+                    : JsonSerializer.Deserialize<List<string>>(userMode.Tools, _jsonOptions) ?? [];
 
                 allModes.Add(
                     new ModeDto
@@ -159,8 +158,7 @@ public sealed class ModeService : IModeService, IDisposable
             {
                 var tools = string.IsNullOrEmpty(Mode.Tools)
                     ? []
-                    : JsonSerializer.Deserialize<List<string>>(Mode.Tools, _jsonOptions)
-                        ?? [];
+                    : JsonSerializer.Deserialize<List<string>>(Mode.Tools, _jsonOptions) ?? [];
 
                 var dto = new ModeDto
                 {

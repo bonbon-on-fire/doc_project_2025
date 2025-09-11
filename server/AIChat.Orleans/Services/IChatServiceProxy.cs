@@ -17,5 +17,6 @@ public interface IChatServiceProxy
     /// <returns>Async enumerable of stream chunks</returns>
     IAsyncEnumerable<StreamChunk> ProcessChatStreamAsync(
         ChatRequest request,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 }

@@ -24,7 +24,8 @@ public sealed class OrleansHealthCheck : IHealthCheck
     public OrleansHealthCheck(
         IOrleansIntegrationService orleansService,
         IGrainFactory? grainFactory,
-        ILogger<OrleansHealthCheck> logger)
+        ILogger<OrleansHealthCheck> logger
+    )
     {
         _orleansService = orleansService ?? throw new ArgumentNullException(nameof(orleansService));
         _grainFactory = grainFactory;
@@ -34,7 +35,8 @@ public sealed class OrleansHealthCheck : IHealthCheck
     /// <inheritdoc />
     public async Task<AspNetHealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
@@ -46,20 +48,27 @@ public sealed class OrleansHealthCheck : IHealthCheck
             if (!isOrleansEnabled)
             {
                 _logger.LogDebug("Orleans integration is disabled via feature flags");
-                return AspNetHealthCheckResult.Healthy("Orleans integration is disabled by feature flag");
+                return AspNetHealthCheckResult.Healthy(
+                    "Orleans integration is disabled by feature flag"
+                );
             }
 
             // If Orleans is enabled but we don't have a grain factory, that's unhealthy
             if (_grainFactory == null)
             {
                 _logger.LogWarning("Orleans is enabled but grain factory is not available");
-                return AspNetHealthCheckResult.Unhealthy("Orleans is enabled but grain factory is not available");
+                return AspNetHealthCheckResult.Unhealthy(
+                    "Orleans is enabled but grain factory is not available"
+                );
             }
 
             // Perform comprehensive Orleans health check using the dedicated grain
             var healthCheckResult = await PerformOrleansHealthCheckAsync(cancellationToken);
 
-            _logger.LogDebug("Orleans health check completed with status: {IsHealthy}", healthCheckResult.Status);
+            _logger.LogDebug(
+                "Orleans health check completed with status: {IsHealthy}",
+                healthCheckResult.Status
+            );
             return healthCheckResult;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -79,13 +88,17 @@ public sealed class OrleansHealthCheck : IHealthCheck
     /// </summary>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Health check result</returns>
-    private async Task<AspNetHealthCheckResult> PerformOrleansHealthCheckAsync(CancellationToken cancellationToken)
+    private async Task<AspNetHealthCheckResult> PerformOrleansHealthCheckAsync(
+        CancellationToken cancellationToken
+    )
     {
         const int timeoutMs = 5000; // 5 second timeout as specified in task requirements
 
         try
         {
-            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken
+            );
             timeoutCts.CancelAfter(timeoutMs);
 
             // Get the health check grain
@@ -102,13 +115,16 @@ public sealed class OrleansHealthCheck : IHealthCheck
                     ["grainId"] = result.GrainId,
                     ["lastActivity"] = result.LastActivity,
                     ["checkedAt"] = result.CheckedAt,
-                    ["additionalInfo"] = result.AdditionalInfo ?? "No additional information"
+                    ["additionalInfo"] = result.AdditionalInfo ?? "No additional information",
                 };
 
                 if (result.Warnings.Count > 0)
                 {
                     data["warnings"] = result.Warnings;
-                    return AspNetHealthCheckResult.Degraded("Orleans is healthy but has warnings", data: data);
+                    return AspNetHealthCheckResult.Degraded(
+                        "Orleans is healthy but has warnings",
+                        data: data
+                    );
                 }
 
                 return AspNetHealthCheckResult.Healthy("Orleans cluster is healthy", data);
@@ -120,16 +136,21 @@ public sealed class OrleansHealthCheck : IHealthCheck
                     ["grainId"] = result.GrainId,
                     ["checkedAt"] = result.CheckedAt,
                     ["additionalInfo"] = result.AdditionalInfo ?? "No additional information",
-                    ["warnings"] = result.Warnings
+                    ["warnings"] = result.Warnings,
                 };
 
-                return AspNetHealthCheckResult.Unhealthy("Orleans cluster is unhealthy", data: data);
+                return AspNetHealthCheckResult.Unhealthy(
+                    "Orleans cluster is unhealthy",
+                    data: data
+                );
             }
         }
         catch (TimeoutException)
         {
             _logger.LogWarning("Orleans health check timed out after {TimeoutMs}ms", timeoutMs);
-            return AspNetHealthCheckResult.Unhealthy($"Orleans health check timed out after {timeoutMs}ms");
+            return AspNetHealthCheckResult.Unhealthy(
+                $"Orleans health check timed out after {timeoutMs}ms"
+            );
         }
         catch (TaskCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -139,7 +160,9 @@ public sealed class OrleansHealthCheck : IHealthCheck
         catch (Exception ex)
         {
             _logger.LogError(ex, "Orleans health check grain operation failed");
-            return AspNetHealthCheckResult.Unhealthy($"Orleans health check grain failed: {ex.Message}");
+            return AspNetHealthCheckResult.Unhealthy(
+                $"Orleans health check grain failed: {ex.Message}"
+            );
         }
     }
 }

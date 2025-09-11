@@ -28,21 +28,30 @@ public class ConnectionStateTracker : IConnectionStateTracker, IDisposable
             async _ => await PerformHealthCheckAsync(),
             null,
             _healthCheckInterval,
-            _healthCheckInterval);
+            _healthCheckInterval
+        );
 
-        _logger.LogInformation("ConnectionStateTracker initialized with health check interval: {Interval}", _healthCheckInterval);
+        _logger.LogInformation(
+            "ConnectionStateTracker initialized with health check interval: {Interval}",
+            _healthCheckInterval
+        );
     }
 
     /// <inheritdoc />
     public async Task<ConnectionState?> GetConnectionStateAsync(string streamId)
     {
-        return string.IsNullOrEmpty(streamId)
-            ? throw new ArgumentNullException(nameof(streamId))
-            : _connectionStates.TryGetValue(streamId, out var data) ? await Task.FromResult(data.ToConnectionState()) : null;
+        return string.IsNullOrEmpty(streamId) ? throw new ArgumentNullException(nameof(streamId))
+            : _connectionStates.TryGetValue(streamId, out var data)
+                ? await Task.FromResult(data.ToConnectionState())
+            : null;
     }
 
     /// <inheritdoc />
-    public async Task UpdateConnectionStateAsync(string streamId, ConnectionState state, CancellationToken cancellationToken = default)
+    public async Task UpdateConnectionStateAsync(
+        string streamId,
+        ConnectionState state,
+        CancellationToken cancellationToken = default
+    )
     {
         if (string.IsNullOrEmpty(streamId))
         {
@@ -56,13 +65,19 @@ public class ConnectionStateTracker : IConnectionStateTracker, IDisposable
 
         _logger.LogDebug(
             "Updated connection state for {StreamId}: Status={Status}, ReconnectionAttempts={Attempts}",
-            streamId, state.Status, state.ReconnectionAttempts);
+            streamId,
+            state.Status,
+            state.ReconnectionAttempts
+        );
 
         await Task.CompletedTask;
     }
 
     /// <inheritdoc />
-    public async Task RecordConnectionAsync(string streamId, CancellationToken cancellationToken = default)
+    public async Task RecordConnectionAsync(
+        string streamId,
+        CancellationToken cancellationToken = default
+    )
     {
         if (string.IsNullOrEmpty(streamId))
         {
@@ -70,14 +85,15 @@ public class ConnectionStateTracker : IConnectionStateTracker, IDisposable
         }
 
         var now = DateTime.UtcNow;
-        var data = _connectionStates.AddOrUpdate(streamId,
+        var data = _connectionStates.AddOrUpdate(
+            streamId,
             key => new ConnectionStateData
             {
                 StreamId = key,
                 Status = ConnectionStatus.Connected,
                 ConnectedAt = now,
                 LastActivityAt = now,
-                ConnectionStartTime = now
+                ConnectionStartTime = now,
             },
             (key, existing) =>
             {
@@ -91,14 +107,19 @@ public class ConnectionStateTracker : IConnectionStateTracker, IDisposable
                 }
 
                 return existing;
-            });
+            }
+        );
 
         _logger.LogInformation("Connection established for stream {StreamId}", streamId);
         await Task.CompletedTask;
     }
 
     /// <inheritdoc />
-    public async Task RecordDisconnectionAsync(string streamId, string? reason = null, CancellationToken cancellationToken = default)
+    public async Task RecordDisconnectionAsync(
+        string streamId,
+        string? reason = null,
+        CancellationToken cancellationToken = default
+    )
     {
         if (string.IsNullOrEmpty(streamId))
         {
@@ -106,7 +127,8 @@ public class ConnectionStateTracker : IConnectionStateTracker, IDisposable
         }
 
         var now = DateTime.UtcNow;
-        var data = _connectionStates.AddOrUpdate(streamId,
+        var data = _connectionStates.AddOrUpdate(
+            streamId,
             key => new ConnectionStateData
             {
                 StreamId = key,
@@ -114,7 +136,7 @@ public class ConnectionStateTracker : IConnectionStateTracker, IDisposable
                 DisconnectedAt = now,
                 LastActivityAt = now,
                 LastDisconnectionReason = reason,
-                DisconnectionCount = 1
+                DisconnectionCount = 1,
             },
             (key, existing) =>
             {
@@ -122,7 +144,9 @@ public class ConnectionStateTracker : IConnectionStateTracker, IDisposable
                 if (existing.ConnectedAt.HasValue)
                 {
                     var connectionDuration = now - existing.ConnectedAt.Value;
-                    existing.TotalConnectionTime = existing.TotalConnectionTime.Add(connectionDuration);
+                    existing.TotalConnectionTime = existing.TotalConnectionTime.Add(
+                        connectionDuration
+                    );
 
                     if (connectionDuration > existing.LongestConnectionDuration)
                     {
@@ -137,17 +161,25 @@ public class ConnectionStateTracker : IConnectionStateTracker, IDisposable
                 existing.DisconnectionCount++;
                 existing.DisconnectionStartTime = now;
                 return existing;
-            });
+            }
+        );
 
         _logger.LogWarning(
             "Disconnection recorded for stream {StreamId}. Reason: {Reason}, Total disconnections: {Count}",
-            streamId, reason ?? "Unknown", data.DisconnectionCount);
+            streamId,
+            reason ?? "Unknown",
+            data.DisconnectionCount
+        );
 
         await Task.CompletedTask;
     }
 
     /// <inheritdoc />
-    public async Task RecordReconnectionAttemptAsync(string streamId, bool success, CancellationToken cancellationToken = default)
+    public async Task RecordReconnectionAttemptAsync(
+        string streamId,
+        bool success,
+        CancellationToken cancellationToken = default
+    )
     {
         if (string.IsNullOrEmpty(streamId))
         {
@@ -155,14 +187,15 @@ public class ConnectionStateTracker : IConnectionStateTracker, IDisposable
         }
 
         var now = DateTime.UtcNow;
-        var data = _connectionStates.AddOrUpdate(streamId,
+        var data = _connectionStates.AddOrUpdate(
+            streamId,
             key => new ConnectionStateData
             {
                 StreamId = key,
                 Status = success ? ConnectionStatus.Connected : ConnectionStatus.Reconnecting,
                 LastActivityAt = now,
                 ReconnectionAttempts = 1,
-                SuccessfulReconnections = success ? 1 : 0
+                SuccessfulReconnections = success ? 1 : 0,
             },
             (key, existing) =>
             {
@@ -179,7 +212,9 @@ public class ConnectionStateTracker : IConnectionStateTracker, IDisposable
                     if (existing.DisconnectionStartTime.HasValue)
                     {
                         var reconnectionTime = now - existing.DisconnectionStartTime.Value;
-                        existing.TotalReconnectionTime = existing.TotalReconnectionTime.Add(reconnectionTime);
+                        existing.TotalReconnectionTime = existing.TotalReconnectionTime.Add(
+                            reconnectionTime
+                        );
                         existing.ReconnectionTimes.Add(reconnectionTime);
                         existing.DisconnectionStartTime = null;
                     }
@@ -188,7 +223,9 @@ public class ConnectionStateTracker : IConnectionStateTracker, IDisposable
                     if (existing.DisconnectedAt.HasValue)
                     {
                         var disconnectionDuration = now - existing.DisconnectedAt.Value;
-                        existing.TotalDisconnectionTime = existing.TotalDisconnectionTime.Add(disconnectionDuration);
+                        existing.TotalDisconnectionTime = existing.TotalDisconnectionTime.Add(
+                            disconnectionDuration
+                        );
                     }
                 }
                 else
@@ -197,11 +234,16 @@ public class ConnectionStateTracker : IConnectionStateTracker, IDisposable
                 }
 
                 return existing;
-            });
+            }
+        );
 
         _logger.LogInformation(
             "Reconnection attempt {Result} for stream {StreamId}. Total attempts: {Attempts}, Successful: {Successful}",
-            success ? "succeeded" : "failed", streamId, data.ReconnectionAttempts, data.SuccessfulReconnections);
+            success ? "succeeded" : "failed",
+            streamId,
+            data.ReconnectionAttempts,
+            data.SuccessfulReconnections
+        );
 
         await Task.CompletedTask;
     }
@@ -226,9 +268,10 @@ public class ConnectionStateTracker : IConnectionStateTracker, IDisposable
         // 1. Status is Connected
         // 2. Last activity was within the threshold
         // 3. Not too many recent failures
-        var isHealthy = data.Status == ConnectionStatus.Connected &&
-                       timeSinceLastActivity < _inactivityThreshold &&
-                       data.RecentFailureCount < 3;
+        var isHealthy =
+            data.Status == ConnectionStatus.Connected
+            && timeSinceLastActivity < _inactivityThreshold
+            && data.RecentFailureCount < 3;
 
         return await Task.FromResult(isHealthy);
     }
@@ -249,13 +292,15 @@ public class ConnectionStateTracker : IConnectionStateTracker, IDisposable
         var now = DateTime.UtcNow;
 
         // Calculate current session times
-        var currentConnectionTime = data.Status == ConnectionStatus.Connected && data.ConnectedAt.HasValue
-            ? now - data.ConnectedAt.Value
-            : TimeSpan.Zero;
+        var currentConnectionTime =
+            data.Status == ConnectionStatus.Connected && data.ConnectedAt.HasValue
+                ? now - data.ConnectedAt.Value
+                : TimeSpan.Zero;
 
-        var currentDisconnectionTime = data.Status == ConnectionStatus.Disconnected && data.DisconnectedAt.HasValue
-            ? now - data.DisconnectedAt.Value
-            : TimeSpan.Zero;
+        var currentDisconnectionTime =
+            data.Status == ConnectionStatus.Disconnected && data.DisconnectedAt.HasValue
+                ? now - data.DisconnectedAt.Value
+                : TimeSpan.Zero;
 
         var totalConnectionTime = data.TotalConnectionTime.Add(currentConnectionTime);
         var totalDisconnectionTime = data.TotalDisconnectionTime.Add(currentDisconnectionTime);
@@ -269,20 +314,27 @@ public class ConnectionStateTracker : IConnectionStateTracker, IDisposable
             DisconnectionCount = data.DisconnectionCount,
             ReconnectionAttempts = data.ReconnectionAttempts,
             SuccessfulReconnections = data.SuccessfulReconnections,
-            AverageReconnectionTime = data.ReconnectionTimes.Count != 0
-                ? TimeSpan.FromMilliseconds(data.ReconnectionTimes.Average(t => t.TotalMilliseconds))
-                : TimeSpan.Zero,
-            UptimePercentage = totalTime.TotalSeconds > 0
-                ? totalConnectionTime.TotalSeconds / totalTime.TotalSeconds * 100
-                : 100,
-            LongestConnectionDuration = data.LongestConnectionDuration
+            AverageReconnectionTime =
+                data.ReconnectionTimes.Count != 0
+                    ? TimeSpan.FromMilliseconds(
+                        data.ReconnectionTimes.Average(t => t.TotalMilliseconds)
+                    )
+                    : TimeSpan.Zero,
+            UptimePercentage =
+                totalTime.TotalSeconds > 0
+                    ? totalConnectionTime.TotalSeconds / totalTime.TotalSeconds * 100
+                    : 100,
+            LongestConnectionDuration = data.LongestConnectionDuration,
         };
 
         return await Task.FromResult(metrics);
     }
 
     /// <inheritdoc />
-    public async Task RemoveTrackingAsync(string streamId, CancellationToken cancellationToken = default)
+    public async Task RemoveTrackingAsync(
+        string streamId,
+        CancellationToken cancellationToken = default
+    )
     {
         if (string.IsNullOrEmpty(streamId))
         {
@@ -293,7 +345,9 @@ public class ConnectionStateTracker : IConnectionStateTracker, IDisposable
         {
             _logger.LogInformation(
                 "Removed tracking for stream {StreamId}. Final status: {Status}",
-                streamId, removed.Status);
+                streamId,
+                removed.Status
+            );
         }
 
         await Task.CompletedTask;
@@ -306,7 +360,9 @@ public class ConnectionStateTracker : IConnectionStateTracker, IDisposable
     }
 
     /// <inheritdoc />
-    public async Task<ConnectionHealthReport> PerformHealthCheckAsync(CancellationToken cancellationToken = default)
+    public async Task<ConnectionHealthReport> PerformHealthCheckAsync(
+        CancellationToken cancellationToken = default
+    )
     {
         var now = DateTime.UtcNow;
         var states = new List<ConnectionState>();
@@ -323,13 +379,18 @@ public class ConnectionStateTracker : IConnectionStateTracker, IDisposable
 
             // Update status based on activity
             var timeSinceLastActivity = now - data.LastActivityAt;
-            if (data.Status == ConnectionStatus.Connected && timeSinceLastActivity > _inactivityThreshold)
+            if (
+                data.Status == ConnectionStatus.Connected
+                && timeSinceLastActivity > _inactivityThreshold
+            )
             {
                 // Mark as unstable if no recent activity
                 data.Status = ConnectionStatus.Unstable;
                 _logger.LogWarning(
                     "Stream {StreamId} marked as unstable due to inactivity: {Duration}",
-                    kvp.Key, timeSinceLastActivity);
+                    kvp.Key,
+                    timeSinceLastActivity
+                );
             }
 
             // Count by status
@@ -371,14 +432,19 @@ public class ConnectionStateTracker : IConnectionStateTracker, IDisposable
             UnstableConnections = unstableCount,
             DisconnectedConnections = disconnectedCount,
             FailedConnections = failedCount,
-            ConnectionStates = states
+            ConnectionStates = states,
         };
 
         if (!report.IsHealthy)
         {
             _logger.LogWarning(
                 "Connection health check: {Healthy}/{Total} healthy, {Unstable} unstable, {Disconnected} disconnected, {Failed} failed",
-                healthyCount, states.Count, unstableCount, disconnectedCount, failedCount);
+                healthyCount,
+                states.Count,
+                unstableCount,
+                disconnectedCount,
+                failedCount
+            );
         }
 
         return await Task.FromResult(report);
@@ -444,7 +510,7 @@ public class ConnectionStateTracker : IConnectionStateTracker, IDisposable
                 LastActivityAt = LastActivityAt,
                 ReconnectionAttempts = ReconnectionAttempts,
                 SuccessfulReconnections = SuccessfulReconnections,
-                LastDisconnectionReason = LastDisconnectionReason
+                LastDisconnectionReason = LastDisconnectionReason,
             };
         }
 
@@ -459,7 +525,7 @@ public class ConnectionStateTracker : IConnectionStateTracker, IDisposable
                 LastActivityAt = state.LastActivityAt,
                 ReconnectionAttempts = state.ReconnectionAttempts,
                 SuccessfulReconnections = state.SuccessfulReconnections,
-                LastDisconnectionReason = state.LastDisconnectionReason
+                LastDisconnectionReason = state.LastDisconnectionReason,
             };
         }
     }

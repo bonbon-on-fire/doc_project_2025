@@ -36,7 +36,8 @@ public class InMemoryStreamBuffer : IStreamBuffer, IDisposable
     public InMemoryStreamBuffer(
         string bufferId,
         BufferConfiguration configuration,
-        ILogger<InMemoryStreamBuffer> logger)
+        ILogger<InMemoryStreamBuffer> logger
+    )
     {
         BufferId = bufferId ?? throw new ArgumentNullException(nameof(bufferId));
         Configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
@@ -50,15 +51,22 @@ public class InMemoryStreamBuffer : IStreamBuffer, IDisposable
             async _ => await RemoveExpiredMessagesAsync(),
             null,
             TimeSpan.FromMinutes(1),
-            TimeSpan.FromMinutes(1));
+            TimeSpan.FromMinutes(1)
+        );
 
         _logger.LogInformation(
             "InMemoryStreamBuffer created for {BufferId} with capacity {Capacity}, TTL {TTL}",
-            BufferId, Capacity, Configuration.MessageTTL);
+            BufferId,
+            Capacity,
+            Configuration.MessageTTL
+        );
     }
 
     /// <inheritdoc />
-    public async Task<bool> AddMessageAsync(BufferedStreamMessage message, CancellationToken cancellationToken = default)
+    public async Task<bool> AddMessageAsync(
+        BufferedStreamMessage message,
+        CancellationToken cancellationToken = default
+    )
     {
         ArgumentNullException.ThrowIfNull(message);
 
@@ -66,11 +74,17 @@ public class InMemoryStreamBuffer : IStreamBuffer, IDisposable
         try
         {
             // Check message size limit
-            if (Configuration.MaxMessageSizeBytes > 0 && message.SizeBytes > Configuration.MaxMessageSizeBytes)
+            if (
+                Configuration.MaxMessageSizeBytes > 0
+                && message.SizeBytes > Configuration.MaxMessageSizeBytes
+            )
             {
                 _logger.LogWarning(
                     "Message exceeds size limit for buffer {BufferId}: {Size} > {MaxSize}",
-                    BufferId, message.SizeBytes, Configuration.MaxMessageSizeBytes);
+                    BufferId,
+                    message.SizeBytes,
+                    Configuration.MaxMessageSizeBytes
+                );
                 return false;
             }
 
@@ -94,7 +108,10 @@ public class InMemoryStreamBuffer : IStreamBuffer, IDisposable
 
             _logger.LogDebug(
                 "Message {Sequence} added to buffer {BufferId}, current count: {Count}",
-                message.SequenceNumber, BufferId, _messages.Count);
+                message.SequenceNumber,
+                BufferId,
+                _messages.Count
+            );
 
             return true;
         }
@@ -105,7 +122,9 @@ public class InMemoryStreamBuffer : IStreamBuffer, IDisposable
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<BufferedStreamMessage>> GetMessagesAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<BufferedStreamMessage>> GetMessagesAsync(
+        CancellationToken cancellationToken = default
+    )
     {
         await _semaphore.WaitAsync(cancellationToken);
         try
@@ -123,7 +142,10 @@ public class InMemoryStreamBuffer : IStreamBuffer, IDisposable
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<BufferedStreamMessage>> DrainMessagesAsync(int maxMessages = 0, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<BufferedStreamMessage>> DrainMessagesAsync(
+        int maxMessages = 0,
+        CancellationToken cancellationToken = default
+    )
     {
         await _semaphore.WaitAsync(cancellationToken);
         try
@@ -132,7 +154,8 @@ public class InMemoryStreamBuffer : IStreamBuffer, IDisposable
             _ = await RemoveExpiredMessagesInternalAsync();
 
             var drainedMessages = new List<BufferedStreamMessage>();
-            var messagesToDrain = maxMessages > 0 ? Math.Min(maxMessages, _messages.Count) : _messages.Count;
+            var messagesToDrain =
+                maxMessages > 0 ? Math.Min(maxMessages, _messages.Count) : _messages.Count;
 
             for (var i = 0; i < messagesToDrain; i++)
             {
@@ -144,7 +167,10 @@ public class InMemoryStreamBuffer : IStreamBuffer, IDisposable
 
             _logger.LogDebug(
                 "Drained {Count} messages from buffer {BufferId}, remaining: {Remaining}",
-                drainedMessages.Count, BufferId, _messages.Count);
+                drainedMessages.Count,
+                BufferId,
+                _messages.Count
+            );
 
             return drainedMessages;
         }
@@ -170,7 +196,9 @@ public class InMemoryStreamBuffer : IStreamBuffer, IDisposable
 
             _logger.LogInformation(
                 "Cleared {Count} messages from buffer {BufferId}",
-                count, BufferId);
+                count,
+                BufferId
+            );
 
             return count;
         }
@@ -212,7 +240,7 @@ public class InMemoryStreamBuffer : IStreamBuffer, IDisposable
                 TotalMessagesAdded = _totalMessagesAdded,
                 TotalMessagesDropped = _totalMessagesDropped,
                 TotalMessagesExpired = _totalMessagesExpired,
-                TotalMessagesReplayed = _totalMessagesReplayed
+                TotalMessagesReplayed = _totalMessagesReplayed,
             };
         }
         finally
@@ -265,7 +293,9 @@ public class InMemoryStreamBuffer : IStreamBuffer, IDisposable
                     _ = Interlocked.Increment(ref _totalMessagesDropped);
                     _logger.LogDebug(
                         "Dropped oldest message {Sequence} from buffer {BufferId} due to overflow",
-                        oldestMessage.SequenceNumber, BufferId);
+                        oldestMessage.SequenceNumber,
+                        BufferId
+                    );
                     return Task.FromResult(true);
                 }
                 return Task.FromResult(false);
@@ -274,14 +304,18 @@ public class InMemoryStreamBuffer : IStreamBuffer, IDisposable
                 // Reject the new message
                 _logger.LogDebug(
                     "Dropping new message {Sequence} for buffer {BufferId} due to overflow",
-                    newMessage.SequenceNumber, BufferId);
+                    newMessage.SequenceNumber,
+                    BufferId
+                );
                 return Task.FromResult(false);
 
             case OverflowStrategy.RejectNew:
                 // Reject the new message
                 _logger.LogDebug(
                     "Rejecting new message {Sequence} for buffer {BufferId} due to overflow",
-                    newMessage.SequenceNumber, BufferId);
+                    newMessage.SequenceNumber,
+                    BufferId
+                );
                 return Task.FromResult(false);
             case OverflowStrategy.DropLowPriority:
                 // TODO: Implement priority-based dropping
@@ -313,7 +347,10 @@ public class InMemoryStreamBuffer : IStreamBuffer, IDisposable
                 _ = Interlocked.Increment(ref _totalMessagesExpired);
                 _logger.LogDebug(
                     "Expired message {Sequence} from buffer {BufferId}, age: {Age}",
-                    message.SequenceNumber, BufferId, now - message.Timestamp);
+                    message.SequenceNumber,
+                    BufferId,
+                    now - message.Timestamp
+                );
             }
             else
             {
@@ -331,7 +368,9 @@ public class InMemoryStreamBuffer : IStreamBuffer, IDisposable
         {
             _logger.LogInformation(
                 "Removed {Count} expired messages from buffer {BufferId}",
-                expiredCount, BufferId);
+                expiredCount,
+                BufferId
+            );
         }
 
         return await Task.FromResult(expiredCount);

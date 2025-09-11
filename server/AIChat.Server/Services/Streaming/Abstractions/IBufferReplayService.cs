@@ -19,7 +19,8 @@ public interface IBufferReplayService
         IEnumerable<BufferedStreamMessage> messages,
         HttpResponse httpResponse,
         ReplayOptions? options = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Checks if a message is a duplicate based on sequence tracking.
@@ -35,7 +36,11 @@ public interface IBufferReplayService
     /// <param name="streamId">The stream identifier</param>
     /// <param name="sequenceNumber">The message sequence number</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    Task RecordMessageDeliveryAsync(string streamId, long sequenceNumber, CancellationToken cancellationToken = default);
+    Task RecordMessageDeliveryAsync(
+        string streamId,
+        long sequenceNumber,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Merges partial messages for a stream.
@@ -47,7 +52,8 @@ public interface IBufferReplayService
     Task<IReadOnlyList<BufferedStreamMessage>> MergePartialMessagesAsync(
         string streamId,
         IEnumerable<PartialMessage> partialMessages,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Clears the delivery tracking for a stream.
@@ -158,9 +164,8 @@ public record ReplayResult
     /// <summary>
     /// Gets the throughput in messages per second.
     /// </summary>
-    public double MessageThroughput => Duration.TotalSeconds > 0
-        ? MessagesReplayed / Duration.TotalSeconds
-        : 0;
+    public double MessageThroughput =>
+        Duration.TotalSeconds > 0 ? MessagesReplayed / Duration.TotalSeconds : 0;
 }
 
 /// <summary>
@@ -252,7 +257,10 @@ public record ReplayStatistics
     /// <summary>
     /// Gets the duplicate detection rate.
     /// </summary>
-    public double DuplicateRate => TotalMessagesReplayed > 0
-        ? (double)TotalDuplicatesDetected / (TotalMessagesReplayed + TotalDuplicatesDetected) * 100
-        : 0;
+    public double DuplicateRate =>
+        TotalMessagesReplayed > 0
+            ? (double)TotalDuplicatesDetected
+                / (TotalMessagesReplayed + TotalDuplicatesDetected)
+                * 100
+            : 0;
 }

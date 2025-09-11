@@ -34,7 +34,11 @@ public interface IStreamMetricsCollector
     /// <param name="streamId">The stream identifier</param>
     /// <param name="messageSize">Size of the message in bytes</param>
     /// <param name="processingTime">Time taken to process the message</param>
-    void RecordMessageProcessed(string streamId, long messageSize = 0, TimeSpan? processingTime = null);
+    void RecordMessageProcessed(
+        string streamId,
+        long messageSize = 0,
+        TimeSpan? processingTime = null
+    );
 
     /// <summary>
     /// Records a reconnection attempt.
@@ -50,7 +54,11 @@ public interface IStreamMetricsCollector
     /// <param name="streamId">The stream identifier</param>
     /// <param name="newState">The new circuit state</param>
     /// <param name="reason">Optional reason for the state change</param>
-    void RecordCircuitBreakerStateChange(string streamId, CircuitState newState, string? reason = null);
+    void RecordCircuitBreakerStateChange(
+        string streamId,
+        CircuitState newState,
+        string? reason = null
+    );
 
     /// <summary>
     /// Records a recovery operation.
@@ -59,7 +67,12 @@ public interface IStreamMetricsCollector
     /// <param name="recoveryType">Type of recovery performed</param>
     /// <param name="success">Whether recovery was successful</param>
     /// <param name="duration">Duration of the recovery operation</param>
-    void RecordRecoveryOperation(string streamId, RecoveryType recoveryType, bool success, TimeSpan duration);
+    void RecordRecoveryOperation(
+        string streamId,
+        RecoveryType recoveryType,
+        bool success,
+        TimeSpan duration
+    );
 
     /// <summary>
     /// Gets metrics for a specific stream.
@@ -145,7 +158,7 @@ public enum RecoveryType
     /// <summary>
     /// Circuit breaker reset.
     /// </summary>
-    CircuitReset
+    CircuitReset,
 }
 
 /// <summary>
@@ -247,5 +260,5 @@ public enum MetricsExportFormat
     /// <summary>
     /// Plain text format.
     /// </summary>
-    PlainText
+    PlainText,
 }

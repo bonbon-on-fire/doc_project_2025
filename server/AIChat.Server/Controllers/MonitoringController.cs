@@ -16,10 +16,12 @@ public class MonitoringController : ControllerBase
 
     public MonitoringController(
         ILogger<MonitoringController> logger,
-        ProductionMonitoringService monitoringService)
+        ProductionMonitoringService monitoringService
+    )
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _monitoringService = monitoringService ?? throw new ArgumentNullException(nameof(monitoringService));
+        _monitoringService =
+            monitoringService ?? throw new ArgumentNullException(nameof(monitoringService));
     }
 
     /// <summary>
@@ -42,7 +44,7 @@ public class MonitoringController : ControllerBase
                     {
                         value = kvp.Value.Value,
                         timestamp = kvp.Value.Timestamp,
-                        tags = kvp.Value.Tags
+                        tags = kvp.Value.Tags,
                     }
                 ),
                 ["alerts"] = alertStates.ToDictionary(
@@ -51,15 +53,17 @@ public class MonitoringController : ControllerBase
                     {
                         isActive = kvp.Value.IsActive,
                         lastTriggered = kvp.Value.LastTriggered,
-                        triggeredCount = kvp.Value.TriggeredCount
+                        triggeredCount = kvp.Value.TriggeredCount,
                     }
                 ),
                 ["summary"] = new
                 {
                     totalMetrics = metrics.Count,
                     activeAlerts = alertStates.Count(a => a.Value.IsActive),
-                    systemHealthy = !alertStates.Any(a => a.Value.IsActive && a.Key.Contains("critical"))
-                }
+                    systemHealthy = !alertStates.Any(a =>
+                        a.Value.IsActive && a.Key.Contains("critical")
+                    ),
+                },
             };
 
             return Ok(response);
@@ -67,7 +71,10 @@ public class MonitoringController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to retrieve current metrics");
-            return StatusCode(500, new { error = "Failed to retrieve metrics", details = ex.Message });
+            return StatusCode(
+                500,
+                new { error = "Failed to retrieve metrics", details = ex.Message }
+            );
         }
     }
 
@@ -86,19 +93,17 @@ public class MonitoringController : ControllerBase
             {
                 metricName,
                 timeRange = timeRange.TotalHours,
-                dataPoints = historicalData.Select(h => new
-                {
-                    value = h.Value,
-                    timestamp = h.Timestamp
-                }).OrderBy(d => d.timestamp),
+                dataPoints = historicalData
+                    .Select(h => new { value = h.Value, timestamp = h.Timestamp })
+                    .OrderBy(d => d.timestamp),
                 summary = new
                 {
                     count = historicalData.Count,
                     average = historicalData.Count != 0 ? historicalData.Average(h => h.Value) : 0,
                     min = historicalData.Count != 0 ? historicalData.Min(h => h.Value) : 0,
                     max = historicalData.Count != 0 ? historicalData.Max(h => h.Value) : 0,
-                    latest = historicalData.LastOrDefault()?.Value ?? 0
-                }
+                    latest = historicalData.LastOrDefault()?.Value ?? 0,
+                },
             };
 
             return Ok(response);
@@ -106,7 +111,10 @@ public class MonitoringController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to retrieve metric history for {MetricName}", metricName);
-            return StatusCode(500, new { error = "Failed to retrieve metric history", details = ex.Message });
+            return StatusCode(
+                500,
+                new { error = "Failed to retrieve metric history", details = ex.Message }
+            );
         }
     }
 
@@ -122,15 +130,22 @@ public class MonitoringController : ControllerBase
             var alertStates = _monitoringService.GetAlertStates();
 
             // Determine overall system health
-            var criticalAlerts = alertStates.Where(a =>
-                a.Value.IsActive &&
-                (a.Key.Contains("critical", StringComparison.CurrentCultureIgnoreCase) || a.Key.Contains("silo down", StringComparison.CurrentCultureIgnoreCase))).ToList();
+            var criticalAlerts = alertStates
+                .Where(a =>
+                    a.Value.IsActive
+                    && (
+                        a.Key.Contains("critical", StringComparison.CurrentCultureIgnoreCase)
+                        || a.Key.Contains("silo down", StringComparison.CurrentCultureIgnoreCase)
+                    )
+                )
+                .ToList();
 
-            var warningAlerts = alertStates.Where(a =>
-                a.Value.IsActive &&
-                !criticalAlerts.Any(c => c.Key == a.Key)).ToList();
+            var warningAlerts = alertStates
+                .Where(a => a.Value.IsActive && !criticalAlerts.Any(c => c.Key == a.Key))
+                .ToList();
 
-            var healthStatus = criticalAlerts.Count != 0 ? "Critical"
+            var healthStatus =
+                criticalAlerts.Count != 0 ? "Critical"
                 : warningAlerts.Count != 0 ? "Warning"
                 : "Healthy";
 
@@ -145,7 +160,7 @@ public class MonitoringController : ControllerBase
                     orleans = GetComponentHealth(metrics, "orleans"),
                     backgroundProcessing = GetComponentHealth(metrics, "background"),
                     signalr = GetComponentHealth(metrics, "signalr"),
-                    system = GetComponentHealth(metrics, "system")
+                    system = GetComponentHealth(metrics, "system"),
                 },
                 activeAlerts = alertStates
                     .Where(a => a.Value.IsActive)
@@ -153,8 +168,8 @@ public class MonitoringController : ControllerBase
                     {
                         name = a.Key,
                         lastTriggered = a.Value.LastTriggered,
-                        count = a.Value.TriggeredCount
-                    })
+                        count = a.Value.TriggeredCount,
+                    }),
             };
 
             return Ok(response);
@@ -162,7 +177,10 @@ public class MonitoringController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to retrieve system health");
-            return StatusCode(500, new { error = "Failed to retrieve system health", details = ex.Message });
+            return StatusCode(
+                500,
+                new { error = "Failed to retrieve system health", details = ex.Message }
+            );
         }
     }
 
@@ -183,12 +201,26 @@ public class MonitoringController : ControllerBase
             var queueDepth = GetMetricValue(metrics, "background.queue.depth", 0);
 
             // Historical trends (last 24 hours)
-            var memoryTrend = _monitoringService.GetHistoricalMetrics("system.memory.working_set_mb", TimeSpan.FromHours(24));
-            var cpuTrend = _monitoringService.GetHistoricalMetrics("system.cpu.usage_percent", TimeSpan.FromHours(24));
-            var grainsTrend = _monitoringService.GetHistoricalMetrics("orleans.grains.active", TimeSpan.FromHours(24));
+            var memoryTrend = _monitoringService.GetHistoricalMetrics(
+                "system.memory.working_set_mb",
+                TimeSpan.FromHours(24)
+            );
+            var cpuTrend = _monitoringService.GetHistoricalMetrics(
+                "system.cpu.usage_percent",
+                TimeSpan.FromHours(24)
+            );
+            var grainsTrend = _monitoringService.GetHistoricalMetrics(
+                "orleans.grains.active",
+                TimeSpan.FromHours(24)
+            );
 
             // Calculate trends and recommendations
-            var recommendations = GenerateCapacityRecommendations(memoryUsage, cpuUsage, activeGrains, queueDepth);
+            var recommendations = GenerateCapacityRecommendations(
+                memoryUsage,
+                cpuUsage,
+                activeGrains,
+                queueDepth
+            );
 
             var response = new
             {
@@ -198,13 +230,13 @@ public class MonitoringController : ControllerBase
                     memoryUsageMB = memoryUsage,
                     cpuUsagePercent = cpuUsage,
                     activeGrains,
-                    backgroundQueueDepth = queueDepth
+                    backgroundQueueDepth = queueDepth,
                 },
                 trends = new
                 {
                     memory = CalculateTrend(memoryTrend),
                     cpu = CalculateTrend(cpuTrend),
-                    grains = CalculateTrend(grainsTrend)
+                    grains = CalculateTrend(grainsTrend),
                 },
                 thresholds = new
                 {
@@ -213,9 +245,9 @@ public class MonitoringController : ControllerBase
                     cpuWarning = 80,
                     cpuCritical = 95,
                     queueWarning = 100,
-                    queueCritical = 500
+                    queueCritical = 500,
                 },
-                recommendations
+                recommendations,
             };
 
             return Ok(response);
@@ -223,7 +255,10 @@ public class MonitoringController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to retrieve capacity metrics");
-            return StatusCode(500, new { error = "Failed to retrieve capacity metrics", details = ex.Message });
+            return StatusCode(
+                500,
+                new { error = "Failed to retrieve capacity metrics", details = ex.Message }
+            );
         }
     }
 
@@ -242,20 +277,81 @@ public class MonitoringController : ControllerBase
                 refreshInterval = 30, // seconds
                 panels = new object[]
                 {
-                    new { id = "system-health", title = "System Health", type = "status", order = 1 },
-                    new { id = "active-grains", title = "Active Grains", type = "gauge", metric = "orleans.grains.active", order = 2 },
-                    new { id = "message-latency", title = "Message Latency", type = "histogram", metric = "orleans.message.relay.latency_ms", order = 3 },
-                    new { id = "queue-depth", title = "Background Queue", type = "gauge", metric = "background.queue.depth", order = 4 },
-                    new { id = "error-rate", title = "Error Rate", type = "counter", metric = "errors.total", order = 5 },
-                    new { id = "memory-usage", title = "Memory Usage", type = "gauge", metric = "system.memory.working_set_mb", order = 6 }
+                    new
+                    {
+                        id = "system-health",
+                        title = "System Health",
+                        type = "status",
+                        order = 1,
+                    },
+                    new
+                    {
+                        id = "active-grains",
+                        title = "Active Grains",
+                        type = "gauge",
+                        metric = "orleans.grains.active",
+                        order = 2,
+                    },
+                    new
+                    {
+                        id = "message-latency",
+                        title = "Message Latency",
+                        type = "histogram",
+                        metric = "orleans.message.relay.latency_ms",
+                        order = 3,
+                    },
+                    new
+                    {
+                        id = "queue-depth",
+                        title = "Background Queue",
+                        type = "gauge",
+                        metric = "background.queue.depth",
+                        order = 4,
+                    },
+                    new
+                    {
+                        id = "error-rate",
+                        title = "Error Rate",
+                        type = "counter",
+                        metric = "errors.total",
+                        order = 5,
+                    },
+                    new
+                    {
+                        id = "memory-usage",
+                        title = "Memory Usage",
+                        type = "gauge",
+                        metric = "system.memory.working_set_mb",
+                        order = 6,
+                    },
                 },
                 alertRules = new object[]
                 {
-                    new { name = "High Memory Usage", threshold = "1024MB", severity = "warning" },
-                    new { name = "Orleans Silo Down", threshold = "0", severity = "critical" },
-                    new { name = "High Error Rate", threshold = "5%", severity = "warning" },
-                    new { name = "Queue Overload", threshold = "100", severity = "warning" }
-                }
+                    new
+                    {
+                        name = "High Memory Usage",
+                        threshold = "1024MB",
+                        severity = "warning",
+                    },
+                    new
+                    {
+                        name = "Orleans Silo Down",
+                        threshold = "0",
+                        severity = "critical",
+                    },
+                    new
+                    {
+                        name = "High Error Rate",
+                        threshold = "5%",
+                        severity = "warning",
+                    },
+                    new
+                    {
+                        name = "Queue Overload",
+                        threshold = "100",
+                        severity = "warning",
+                    },
+                },
             };
 
             return Ok(response);
@@ -263,7 +359,10 @@ public class MonitoringController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to retrieve dashboard configuration");
-            return StatusCode(500, new { error = "Failed to retrieve dashboard configuration", details = ex.Message });
+            return StatusCode(
+                500,
+                new { error = "Failed to retrieve dashboard configuration", details = ex.Message }
+            );
         }
     }
 
@@ -289,9 +388,14 @@ public class MonitoringController : ControllerBase
 
     #region Private Helper Methods
 
-    private static object GetComponentHealth(Dictionary<string, MetricValue> metrics, string component)
+    private static object GetComponentHealth(
+        Dictionary<string, MetricValue> metrics,
+        string component
+    )
     {
-        var componentMetrics = metrics.Where(m => m.Key.StartsWith(component, StringComparison.Ordinal)).ToList();
+        var componentMetrics = metrics
+            .Where(m => m.Key.StartsWith(component, StringComparison.Ordinal))
+            .ToList();
 
         if (componentMetrics.Count == 0)
         {
@@ -303,18 +407,22 @@ public class MonitoringController : ControllerBase
         {
             "orleans" => GetMetricValue(metrics, "orleans.silo.healthy", 0) > 0,
             "system" => GetMetricValue(metrics, "system.cpu.usage_percent", 0) < 90,
-            _ => true
+            _ => true,
         };
 
         return new
         {
             status = isHealthy ? "Healthy" : "Unhealthy",
             lastUpdate = latestUpdate,
-            metricsCount = componentMetrics.Count
+            metricsCount = componentMetrics.Count,
         };
     }
 
-    private static double GetMetricValue(Dictionary<string, MetricValue> metrics, string metricName, double defaultValue)
+    private static double GetMetricValue(
+        Dictionary<string, MetricValue> metrics,
+        string metricName,
+        double defaultValue
+    )
     {
         return metrics.TryGetValue(metricName, out var metric) ? metric.Value : defaultValue;
     }
@@ -323,7 +431,12 @@ public class MonitoringController : ControllerBase
     {
         if (historicalData.Count < 2)
         {
-            return new { direction = "stable", change = 0.0, confidence = "low" };
+            return new
+            {
+                direction = "stable",
+                change = 0.0,
+                confidence = "low",
+            };
         }
 
         var values = historicalData.Select(h => h.Value).ToList();
@@ -331,7 +444,8 @@ public class MonitoringController : ControllerBase
         var older = values.Take(values.Count / 3).Average();
 
         var change = recent - older;
-        var direction = Math.Abs(change) < 0.1 ? "stable"
+        var direction =
+            Math.Abs(change) < 0.1 ? "stable"
             : change > 0 ? "increasing"
             : "decreasing";
 
@@ -339,32 +453,45 @@ public class MonitoringController : ControllerBase
         {
             direction,
             change = Math.Round(change, 2),
-            confidence = values.Count > 10 ? "high" : "medium"
+            confidence = values.Count > 10 ? "high" : "medium",
         };
     }
 
-    private static List<string> GenerateCapacityRecommendations(double memory, double cpu, double grains, double queue)
+    private static List<string> GenerateCapacityRecommendations(
+        double memory,
+        double cpu,
+        double grains,
+        double queue
+    )
     {
         var recommendations = new List<string>();
 
         if (memory > 1536) // 1.5GB
         {
-            recommendations.Add("Consider increasing memory allocation or optimizing grain state storage");
+            recommendations.Add(
+                "Consider increasing memory allocation or optimizing grain state storage"
+            );
         }
 
         if (cpu > 75)
         {
-            recommendations.Add("CPU usage is high - consider horizontal scaling or optimizing processing logic");
+            recommendations.Add(
+                "CPU usage is high - consider horizontal scaling or optimizing processing logic"
+            );
         }
 
         if (queue > 50)
         {
-            recommendations.Add("Background queue is building up - consider increasing worker pool size");
+            recommendations.Add(
+                "Background queue is building up - consider increasing worker pool size"
+            );
         }
 
         if (grains > 1000)
         {
-            recommendations.Add("High grain count detected - monitor for potential memory pressure");
+            recommendations.Add(
+                "High grain count detected - monitor for potential memory pressure"
+            );
         }
 
         if (recommendations.Count == 0)

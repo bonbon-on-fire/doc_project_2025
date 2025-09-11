@@ -91,8 +91,14 @@ FROM user_modes WHERE Id=$id AND UserId=$userId LIMIT 1";
                     Tools = reader.GetString(5),
                     DefaultModel = reader.IsDBNull(6) ? null : reader.GetString(6),
                     Category = reader.GetString(7),
-                    CreatedAtUtc = DateTime.Parse(reader.GetString(8), CultureInfo.InvariantCulture),
-                    UpdatedAtUtc = DateTime.Parse(reader.GetString(9), CultureInfo.InvariantCulture),
+                    CreatedAtUtc = DateTime.Parse(
+                        reader.GetString(8),
+                        CultureInfo.InvariantCulture
+                    ),
+                    UpdatedAtUtc = DateTime.Parse(
+                        reader.GetString(9),
+                        CultureInfo.InvariantCulture
+                    ),
                 };
                 return (true, null, mode);
             }
@@ -136,8 +142,14 @@ FROM user_modes WHERE UserId=$userId ORDER BY CreatedAtUtc DESC";
                         Tools = reader.GetString(5),
                         DefaultModel = reader.IsDBNull(6) ? null : reader.GetString(6),
                         Category = reader.GetString(7),
-                        CreatedAtUtc = DateTime.Parse(reader.GetString(8), CultureInfo.InvariantCulture),
-                        UpdatedAtUtc = DateTime.Parse(reader.GetString(9), CultureInfo.InvariantCulture),
+                        CreatedAtUtc = DateTime.Parse(
+                            reader.GetString(8),
+                            CultureInfo.InvariantCulture
+                        ),
+                        UpdatedAtUtc = DateTime.Parse(
+                            reader.GetString(9),
+                            CultureInfo.InvariantCulture
+                        ),
                     }
                 );
             }

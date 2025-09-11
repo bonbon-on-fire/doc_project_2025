@@ -94,7 +94,9 @@ public class StreamingConfiguration
 
         if (!Validator.TryValidateObject(this, validationContext, validationResults, true))
         {
-            errors.AddRange(validationResults.Select(r => r.ErrorMessage ?? "Unknown validation error"));
+            errors.AddRange(
+                validationResults.Select(r => r.ErrorMessage ?? "Unknown validation error")
+            );
         }
 
         // Additional custom validation

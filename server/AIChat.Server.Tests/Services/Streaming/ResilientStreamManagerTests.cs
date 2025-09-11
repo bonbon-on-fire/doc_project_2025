@@ -39,14 +39,14 @@ public class ResilientStreamManagerTests : IAsyncDisposable
                 InitialDelayMs = 100,
                 MaxDelayMs = 1000,
                 JitterMs = 50,
-                UseExponentialBackoff = true
+                UseExponentialBackoff = true,
             },
             Buffer = new BufferConfiguration
             {
                 Size = 100,
                 TTLMinutes = 5,
                 HighPrioritySize = 10,
-                OverflowStrategy = "DropOldest"
+                OverflowStrategy = "DropOldest",
             },
             CircuitBreaker = new CircuitBreakerConfiguration
             {
@@ -54,7 +54,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
                 FailureWindowSeconds = 60,
                 RecoveryTimeoutSeconds = 5,
                 SuccessThreshold = 2,
-                UseFallback = true
+                UseFallback = true,
             },
             PartialRecovery = new PartialRecoveryConfiguration
             {
@@ -62,26 +62,35 @@ public class ResilientStreamManagerTests : IAsyncDisposable
                 MaxPartialMessages = 5,
                 ChunkTimeoutSeconds = 10,
                 EnableDeduplication = true,
-                MaxStorageSizeKb = 100
+                MaxStorageSizeKb = 100,
             },
             HealthCheck = new HealthCheckConfiguration
             {
                 Enabled = true,
                 EndpointPath = "/api/health/streaming",
                 CheckIntervalSeconds = 30,
-                IncludeDetailedMetrics = true
-            }
+                IncludeDetailedMetrics = true,
+            },
         };
 
         _ = _bridgeFactoryMock.Setup(f => f.CreateBridge()).Returns(_bridgeMock.Object);
 
         // Setup the bridge mock to properly handle the stream
-        _ = _bridgeMock.Setup(b => b.ConvertGrainToHttpStreamAsync(
-            It.IsAny<IAsyncEnumerable<string>>(),
-            It.IsAny<HttpResponse>(),
-            It.IsAny<Func<string, string>>(),
-            It.IsAny<CancellationToken>()))
-            .Returns<IAsyncEnumerable<string>, HttpResponse, Func<string, string>, CancellationToken>(
+        _ = _bridgeMock
+            .Setup(b =>
+                b.ConvertGrainToHttpStreamAsync(
+                    It.IsAny<IAsyncEnumerable<string>>(),
+                    It.IsAny<HttpResponse>(),
+                    It.IsAny<Func<string, string>>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .Returns<
+                IAsyncEnumerable<string>,
+                HttpResponse,
+                Func<string, string>,
+                CancellationToken
+            >(
                 async (stream, response, formatter, ct) =>
                 {
                     // Consume the stream to keep it active
@@ -90,12 +99,17 @@ public class ResilientStreamManagerTests : IAsyncDisposable
                         // Simulate processing
                         await Task.Delay(1, ct);
                     }
-                });
+                }
+            );
 
         _ = _bridgeMock.Setup(b => b.DisposeAsync()).Returns(ValueTask.CompletedTask);
 
         var options = Options.Create(_configuration);
-        _manager = new ResilientStreamManager(_loggerMock.Object, _bridgeFactoryMock.Object, options);
+        _manager = new ResilientStreamManager(
+            _loggerMock.Object,
+            _bridgeFactoryMock.Object,
+            options
+        );
 
         // Setup HTTP response mock
         var bodyStream = new MemoryStream();
@@ -119,15 +133,21 @@ public class ResilientStreamManagerTests : IAsyncDisposable
             grainStream,
             _httpResponseMock.Object,
             formatter,
-            CancellationToken.None);
+            CancellationToken.None
+        );
 
         // Assert
         _bridgeFactoryMock.Verify(f => f.CreateBridge(), Times.Once);
-        _bridgeMock.Verify(b => b.ConvertGrainToHttpStreamAsync(
-            It.IsAny<IAsyncEnumerable<string>>(),
-            _httpResponseMock.Object,
-            It.IsAny<Func<string, string>>(),
-            It.IsAny<CancellationToken>()), Times.Once);
+        _bridgeMock.Verify(
+            b =>
+                b.ConvertGrainToHttpStreamAsync(
+                    It.IsAny<IAsyncEnumerable<string>>(),
+                    _httpResponseMock.Object,
+                    It.IsAny<Func<string, string>>(),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Once
+        );
 
         var metrics = await _manager.GetStreamMetricsAsync(streamId);
         Assert.Null(metrics); // Stream should be cleaned up after completion
@@ -148,7 +168,8 @@ public class ResilientStreamManagerTests : IAsyncDisposable
             CreateInfiniteStream(cts.Token),
             _httpResponseMock.Object,
             formatter,
-            cts.Token);
+            cts.Token
+        );
 
         // Wait for the stream to actually start and be added to active streams
         var maxWaitTime = TimeSpan.FromSeconds(2);
@@ -163,17 +184,24 @@ public class ResilientStreamManagerTests : IAsyncDisposable
         }
 
         // Act & Assert
-        _ = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await _manager.ProcessResilientStreamAsync(
-                streamId,
-                grainStream,
-                _httpResponseMock.Object,
-                formatter,
-                CancellationToken.None));
+        _ = await Assert.ThrowsAsync<InvalidOperationException>(
+            async () =>
+                await _manager.ProcessResilientStreamAsync(
+                    streamId,
+                    grainStream,
+                    _httpResponseMock.Object,
+                    formatter,
+                    CancellationToken.None
+                )
+        );
 
         // Cleanup
         cts.Cancel();
-        try { await firstStreamTask; } catch { }
+        try
+        {
+            await firstStreamTask;
+        }
+        catch { }
     }
 
     [Fact]
@@ -216,7 +244,8 @@ public class ResilientStreamManagerTests : IAsyncDisposable
             CreateInfiniteStream(cts.Token),
             _httpResponseMock.Object,
             s => s,
-            cts.Token);
+            cts.Token
+        );
 
         // Wait for the stream to actually start
         var maxWaitTime = TimeSpan.FromSeconds(2);
@@ -241,7 +270,11 @@ public class ResilientStreamManagerTests : IAsyncDisposable
 
         // Cleanup
         cts.Cancel();
-        try { await streamTask; } catch { }
+        try
+        {
+            await streamTask;
+        }
+        catch { }
     }
 
     [Fact]
@@ -255,7 +288,8 @@ public class ResilientStreamManagerTests : IAsyncDisposable
             CreateInfiniteStream(cts.Token),
             _httpResponseMock.Object,
             s => s,
-            cts.Token);
+            cts.Token
+        );
 
         // Wait for the stream to actually start
         var maxWaitTime = TimeSpan.FromSeconds(2);
@@ -277,7 +311,11 @@ public class ResilientStreamManagerTests : IAsyncDisposable
 
         // Cleanup
         cts.Cancel();
-        try { await streamTask; } catch { }
+        try
+        {
+            await streamTask;
+        }
+        catch { }
     }
 
     [Fact]
@@ -291,7 +329,8 @@ public class ResilientStreamManagerTests : IAsyncDisposable
             CreateInfiniteStream(cts.Token),
             _httpResponseMock.Object,
             s => s,
-            cts.Token);
+            cts.Token
+        );
 
         // Wait for the stream to actually start
         var maxWaitTime = TimeSpan.FromSeconds(2);
@@ -313,7 +352,11 @@ public class ResilientStreamManagerTests : IAsyncDisposable
 
         // Cleanup
         cts.Cancel();
-        try { await streamTask; } catch { }
+        try
+        {
+            await streamTask;
+        }
+        catch { }
     }
 
     [Fact]
@@ -328,12 +371,15 @@ public class ResilientStreamManagerTests : IAsyncDisposable
         {
             var cts = new CancellationTokenSource();
             cancellationTokens.Add(cts);
-            tasks.Add(_manager.ProcessResilientStreamAsync(
-                id,
-                CreateInfiniteStream(cts.Token),
-                _httpResponseMock.Object,
-                s => s,
-                cts.Token));
+            tasks.Add(
+                _manager.ProcessResilientStreamAsync(
+                    id,
+                    CreateInfiniteStream(cts.Token),
+                    _httpResponseMock.Object,
+                    s => s,
+                    cts.Token
+                )
+            );
         }
 
         // Wait for all streams to actually start
@@ -363,7 +409,16 @@ public class ResilientStreamManagerTests : IAsyncDisposable
         {
             cts.Cancel();
         }
-        await Task.WhenAll(tasks.Select(async t => { try { await t; } catch { } }));
+        await Task.WhenAll(
+            tasks.Select(async t =>
+            {
+                try
+                {
+                    await t;
+                }
+                catch { }
+            })
+        );
     }
 
     [Fact]
@@ -381,7 +436,8 @@ public class ResilientStreamManagerTests : IAsyncDisposable
             grainStream,
             _httpResponseMock.Object,
             formatter,
-            cts.Token);
+            cts.Token
+        );
 
         // Wait for the stream to actually start
         var maxWaitTime = TimeSpan.FromSeconds(2);
@@ -417,16 +473,19 @@ public class ResilientStreamManagerTests : IAsyncDisposable
                 MaxAttempts = 0, // Invalid: must be at least 1
                 InitialDelayMs = 50, // Invalid: must be at least 100
                 MaxDelayMs = 1000,
-                JitterMs = -10 // Invalid: cannot be negative
-            }
+                JitterMs = -10, // Invalid: cannot be negative
+            },
         };
 
         // Act & Assert
-        _ = Assert.Throws<InvalidOperationException>(() =>
-            new ResilientStreamManager(
-                _loggerMock.Object,
-                _bridgeFactoryMock.Object,
-                Options.Create(invalidConfig)));
+        _ = Assert.Throws<InvalidOperationException>(
+            () =>
+                new ResilientStreamManager(
+                    _loggerMock.Object,
+                    _bridgeFactoryMock.Object,
+                    Options.Create(invalidConfig)
+                )
+        );
     }
 
     private static async IAsyncEnumerable<T> CreateAsyncEnumerable<T>(IEnumerable<T> items)
@@ -438,7 +497,9 @@ public class ResilientStreamManagerTests : IAsyncDisposable
         }
     }
 
-    private static async IAsyncEnumerable<string> CreateInfiniteStream([EnumeratorCancellation] CancellationToken cancellationToken = default)
+    private static async IAsyncEnumerable<string> CreateInfiniteStream(
+        [EnumeratorCancellation] CancellationToken cancellationToken = default
+    )
     {
         var counter = 0;
         while (!cancellationToken.IsCancellationRequested)
@@ -468,7 +529,10 @@ public class ResilientStreamingHealthCheckTests
     {
         _streamManagerMock = new Mock<IResilientStreamManager>();
         _loggerMock = new Mock<ILogger<ResilientStreamingHealthCheck>>();
-        _healthCheck = new ResilientStreamingHealthCheck(_streamManagerMock.Object, _loggerMock.Object);
+        _healthCheck = new ResilientStreamingHealthCheck(
+            _streamManagerMock.Object,
+            _loggerMock.Object
+        );
     }
 
     [Fact]
@@ -483,11 +547,10 @@ public class ResilientStreamingHealthCheckTests
             OpenCircuitBreakers = 0,
             TotalBufferedMessages = 50,
             AverageRecoveryTimeMs = 1000,
-            SuccessRatePercentage = 95
+            SuccessRatePercentage = 95,
         };
 
-        _ = _streamManagerMock.Setup(m => m.GetHealthStatusAsync())
-            .ReturnsAsync(healthStatus);
+        _ = _streamManagerMock.Setup(m => m.GetHealthStatusAsync()).ReturnsAsync(healthStatus);
 
         // Act
         var result = await _healthCheck.CheckHealthAsync(null!, CancellationToken.None);
@@ -510,11 +573,10 @@ public class ResilientStreamingHealthCheckTests
             OpenCircuitBreakers = 10, // Above threshold
             TotalBufferedMessages = 1000,
             AverageRecoveryTimeMs = 6000, // Above 5 second requirement
-            SuccessRatePercentage = 60 // Below threshold
+            SuccessRatePercentage = 60, // Below threshold
         };
 
-        _ = _streamManagerMock.Setup(m => m.GetHealthStatusAsync())
-            .ReturnsAsync(healthStatus);
+        _ = _streamManagerMock.Setup(m => m.GetHealthStatusAsync()).ReturnsAsync(healthStatus);
 
         // Act
         var result = await _healthCheck.CheckHealthAsync(null!, CancellationToken.None);
@@ -536,25 +598,28 @@ public class ResilientStreamingHealthCheckTests
             OpenCircuitBreakers = 2,
             TotalBufferedMessages = 600, // High buffered messages
             AverageRecoveryTimeMs = 3000,
-            SuccessRatePercentage = 85
+            SuccessRatePercentage = 85,
         };
 
-        _ = _streamManagerMock.Setup(m => m.GetHealthStatusAsync())
-            .ReturnsAsync(healthStatus);
+        _ = _streamManagerMock.Setup(m => m.GetHealthStatusAsync()).ReturnsAsync(healthStatus);
 
         // Act
         var result = await _healthCheck.CheckHealthAsync(null!, CancellationToken.None);
 
         // Assert
         Assert.Equal(HealthStatus.Healthy, result.Status);
-        Assert.Contains("warnings", result.Description!.ToLower(System.Globalization.CultureInfo.CurrentCulture));
+        Assert.Contains(
+            "warnings",
+            result.Description!.ToLower(System.Globalization.CultureInfo.CurrentCulture)
+        );
     }
 
     [Fact]
     public async Task CheckHealthAsyncExceptionThrownReturnsUnhealthy()
     {
         // Arrange
-        _ = _streamManagerMock.Setup(m => m.GetHealthStatusAsync())
+        _ = _streamManagerMock
+            .Setup(m => m.GetHealthStatusAsync())
             .ThrowsAsync(new InvalidOperationException("Test exception"));
 
         // Act

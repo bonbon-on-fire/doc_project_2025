@@ -269,7 +269,8 @@ public class InstructionChainParserTests
     public void ExtractInstructionChainWithMissingTagsReturnsNull()
     {
         // Arrange
-        var input = /*lang=json,strict*/ """
+        var input = /*lang=json,strict*/
+            """
             {
                 "id_message": "test",
                 "messages": []

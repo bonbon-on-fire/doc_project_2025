@@ -65,11 +65,10 @@ public abstract class OperationCommandBase : IOperationCommand
             errors.AddRange(customValidation.Errors);
         }
 
-        return errors.Count > 0
-            ? CommandValidationResult.Failed([.. errors])
+        return errors.Count > 0 ? CommandValidationResult.Failed([.. errors])
             : customValidation.IsValid && customValidation.Warnings.Count > 0
                 ? CommandValidationResult.WithWarnings([.. customValidation.Warnings])
-                : CommandValidationResult.Success();
+            : CommandValidationResult.Success();
     }
 
     /// <summary>
@@ -82,7 +81,10 @@ public abstract class OperationCommandBase : IOperationCommand
     }
 
     /// <inheritdoc />
-    public async Task<CommandExecutionResult> ExecuteAsync(ICommandExecutionContext context, CancellationToken cancellationToken = default)
+    public async Task<CommandExecutionResult> ExecuteAsync(
+        ICommandExecutionContext context,
+        CancellationToken cancellationToken = default
+    )
     {
         var stopwatch = Stopwatch.StartNew();
         var logger = context.Logger;
@@ -91,7 +93,10 @@ public abstract class OperationCommandBase : IOperationCommand
         {
             logger.LogInformation(
                 "Executing command {CommandType} with ID {CommandId} for operation {OperationId}",
-                GetType().Name, CommandId, OperationId);
+                GetType().Name,
+                CommandId,
+                OperationId
+            );
 
             // Validate before execution
             var validation = Validate();
@@ -105,8 +110,10 @@ public abstract class OperationCommandBase : IOperationCommand
             // Log warnings if any
             if (validation.Warnings.Count > 0)
             {
-                logger.LogWarning("Command validation warnings: {Warnings}",
-                    string.Join(", ", validation.Warnings));
+                logger.LogWarning(
+                    "Command validation warnings: {Warnings}",
+                    string.Join(", ", validation.Warnings)
+                );
             }
 
             // Execute the command
@@ -117,13 +124,18 @@ public abstract class OperationCommandBase : IOperationCommand
             {
                 logger.LogInformation(
                     "Command {CommandType} completed successfully in {Duration}ms",
-                    GetType().Name, result.ExecutionDurationMs);
+                    GetType().Name,
+                    result.ExecutionDurationMs
+                );
             }
             else
             {
                 logger.LogError(
                     "Command {CommandType} failed after {Duration}ms: {ErrorMessage}",
-                    GetType().Name, result.ExecutionDurationMs, result.ErrorMessage);
+                    GetType().Name,
+                    result.ExecutionDurationMs,
+                    result.ErrorMessage
+                );
             }
 
             return result;
@@ -132,21 +144,28 @@ public abstract class OperationCommandBase : IOperationCommand
         {
             logger.LogWarning(
                 "Command {CommandType} was cancelled after {Duration}ms",
-                GetType().Name, stopwatch.ElapsedMilliseconds);
+                GetType().Name,
+                stopwatch.ElapsedMilliseconds
+            );
 
             return CommandExecutionResult.Failed(
                 "Command execution was cancelled",
-                "OperationCanceledException");
+                "OperationCanceledException"
+            );
         }
         catch (Exception ex)
         {
-            logger.LogError(ex,
+            logger.LogError(
+                ex,
                 "Command {CommandType} threw an exception after {Duration}ms",
-                GetType().Name, stopwatch.ElapsedMilliseconds);
+                GetType().Name,
+                stopwatch.ElapsedMilliseconds
+            );
 
             return CommandExecutionResult.Failed(
                 $"Command execution failed with exception: {ex.Message}",
-                ex.ToString());
+                ex.ToString()
+            );
         }
         finally
         {
@@ -163,15 +182,20 @@ public abstract class OperationCommandBase : IOperationCommand
     /// <returns>Command execution result</returns>
     protected abstract Task<CommandExecutionResult> ExecuteInternalAsync(
         ICommandExecutionContext context,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken
+    );
 
     /// <inheritdoc />
-    public virtual Task<bool> UndoAsync(ICommandExecutionContext context, CancellationToken cancellationToken = default)
+    public virtual Task<bool> UndoAsync(
+        ICommandExecutionContext context,
+        CancellationToken cancellationToken = default
+    )
     {
         // Default implementation - most commands don't support undo
         context.Logger.LogWarning(
             "Undo operation is not supported for command {CommandType}",
-            GetType().Name);
+            GetType().Name
+        );
 
         return Task.FromResult(false);
     }
@@ -186,7 +210,7 @@ public abstract class OperationCommandBase : IOperationCommand
             ["OperationId"] = OperationId,
             ["ChatId"] = ChatId,
             ["UserId"] = UserId,
-            ["CreatedAt"] = CreatedAt
+            ["CreatedAt"] = CreatedAt,
         };
     }
 }
@@ -196,7 +220,9 @@ public abstract class OperationCommandBase : IOperationCommand
 /// </summary>
 /// <typeparam name="TRequest">The request data type</typeparam>
 /// <typeparam name="TResponse">The response data type</typeparam>
-public abstract class OperationCommandBase<TRequest, TResponse> : OperationCommandBase, IOperationCommand<TRequest, TResponse>
+public abstract class OperationCommandBase<TRequest, TResponse>
+    : OperationCommandBase,
+        IOperationCommand<TRequest, TResponse>
 {
     /// <inheritdoc />
     public TRequest Request { get; protected set; }
@@ -208,14 +234,22 @@ public abstract class OperationCommandBase<TRequest, TResponse> : OperationComma
     /// <param name="chatId">The chat ID</param>
     /// <param name="userId">The user ID</param>
     /// <param name="request">The request data</param>
-    protected OperationCommandBase(string operationId, string chatId, string userId, TRequest request)
+    protected OperationCommandBase(
+        string operationId,
+        string chatId,
+        string userId,
+        TRequest request
+    )
         : base(operationId, chatId, userId)
     {
         Request = request ?? throw new ArgumentNullException(nameof(request));
     }
 
     /// <inheritdoc />
-    public new async Task<CommandExecutionResult<TResponse>> ExecuteAsync(ICommandExecutionContext context, CancellationToken cancellationToken = default)
+    public new async Task<CommandExecutionResult<TResponse>> ExecuteAsync(
+        ICommandExecutionContext context,
+        CancellationToken cancellationToken = default
+    )
     {
         var baseResult = await base.ExecuteAsync(context, cancellationToken);
 
@@ -224,7 +258,8 @@ public abstract class OperationCommandBase<TRequest, TResponse> : OperationComma
         {
             return CommandExecutionResult<TResponse>.Failed(
                 baseResult.ErrorMessage!,
-                baseResult.ExceptionDetails);
+                baseResult.ExceptionDetails
+            );
         }
 
         // For typed commands, the ExecuteInternalAsync should populate the result data
@@ -246,14 +281,16 @@ public abstract class OperationCommandBase<TRequest, TResponse> : OperationComma
     /// <returns>Typed command execution result</returns>
     protected abstract Task<CommandExecutionResult<TResponse>> ExecuteTypedInternalAsync(
         ICommandExecutionContext context,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken
+    );
 
     /// <summary>
     /// Default implementation that calls the typed version.
     /// </summary>
     protected sealed override async Task<CommandExecutionResult> ExecuteInternalAsync(
         ICommandExecutionContext context,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var typedResult = await ExecuteTypedInternalAsync(context, cancellationToken);
         return typedResult;
@@ -302,18 +339,21 @@ public class CommandExecutionContext : ICommandExecutionContext
     /// <param name="logger">Logger for command execution</param>
     public CommandExecutionContext(IServiceProvider serviceProvider, ILogger logger)
     {
-        ServiceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        ServiceProvider =
+            serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <inheritdoc />
-    public T GetService<T>() where T : class
+    public T GetService<T>()
+        where T : class
     {
         return ServiceProvider.GetService<T>()!;
     }
 
     /// <inheritdoc />
-    public T GetRequiredService<T>() where T : class
+    public T GetRequiredService<T>()
+        where T : class
     {
         return ServiceProvider.GetRequiredService<T>();
     }

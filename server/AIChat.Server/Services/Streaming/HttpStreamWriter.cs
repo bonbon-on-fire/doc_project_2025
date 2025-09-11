@@ -25,7 +25,8 @@ public sealed class HttpStreamWriter : IHttpStreamWriter
     public HttpStreamWriter(
         HttpResponse httpResponse,
         ILogger<HttpStreamWriter> logger,
-        int writeTimeoutMs = 30000)
+        int writeTimeoutMs = 30000
+    )
     {
         _httpResponse = httpResponse ?? throw new ArgumentNullException(nameof(httpResponse));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -53,7 +54,8 @@ public sealed class HttpStreamWriter : IHttpStreamWriter
     public async Task WriteErrorAsync(
         Exception exception,
         string traceId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(exception);
@@ -63,7 +65,8 @@ public sealed class HttpStreamWriter : IHttpStreamWriter
             null,
             null,
             exception.Message,
-            exception.GetType().Name);
+            exception.GetType().Name
+        );
 
         var errorData = $"data: {System.Text.Json.JsonSerializer.Serialize(errorEnvelope)}\n\n";
         var bytes = Encoding.UTF8.GetBytes(errorData);
@@ -92,7 +95,9 @@ public sealed class HttpStreamWriter : IHttpStreamWriter
         {
             using var cts = new CancellationTokenSource(_writeTimeoutMs);
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
-                cancellationToken, cts.Token);
+                cancellationToken,
+                cts.Token
+            );
 
             await _httpResponse.Body.FlushAsync(linkedCts.Token).ConfigureAwait(false);
         }
@@ -147,7 +152,8 @@ public sealed class HttpStreamWriter : IHttpStreamWriter
             _logger.LogInformation(
                 "HttpStreamWriter disposed. Total bytes: {Bytes}, Total writes: {Writes}",
                 BytesWritten,
-                WriteCount);
+                WriteCount
+            );
         }
 
         GC.SuppressFinalize(this);
@@ -163,14 +169,16 @@ public sealed class HttpStreamWriter : IHttpStreamWriter
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
                 cancellationToken,
                 _httpResponse.HttpContext.RequestAborted,
-                cts.Token);
+                cts.Token
+            );
 
             await _httpResponse.Body.WriteAsync(bytes, linkedCts.Token).ConfigureAwait(false);
 
             _ = Interlocked.Add(ref _bytesWritten, bytes.Length);
             _ = Interlocked.Increment(ref _writeCount);
         }
-        catch (OperationCanceledException) when (cts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException)
+            when (cts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
             _logger.LogError("Write operation timed out after {Timeout}ms", _writeTimeoutMs);
             throw new TimeoutException($"Write operation timed out after {_writeTimeoutMs}ms");

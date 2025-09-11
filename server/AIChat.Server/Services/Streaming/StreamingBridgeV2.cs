@@ -29,10 +29,12 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
     public StreamingBridgeV2(
         ILogger<StreamingBridgeV2> logger,
         IOptions<StreamingConfiguration> configuration,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory
+    )
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _configuration = configuration?.Value ?? throw new ArgumentNullException(nameof(configuration));
+        _configuration =
+            configuration?.Value ?? throw new ArgumentNullException(nameof(configuration));
         _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
 
         // Validate configuration
@@ -46,7 +48,8 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
         _logger.LogInformation(
             "StreamingBridgeV2 initialized with buffer size: {BufferSize}, backpressure threshold: {Threshold}%",
             _configuration.BufferSize,
-            _configuration.BackpressureThreshold);
+            _configuration.BackpressureThreshold
+        );
     }
 
     /// <inheritdoc />
@@ -54,7 +57,8 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
         IAsyncEnumerable<T> grainStream,
         HttpResponse httpResponse,
         Func<T, string> formatter,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         ArgumentNullException.ThrowIfNull(grainStream);
         ArgumentNullException.ThrowIfNull(httpResponse);
@@ -67,13 +71,15 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
         await using var httpWriter = new HttpStreamWriter(
             httpResponse,
             _loggerFactory.CreateLogger<HttpStreamWriter>(),
-            _configuration.WriteTimeoutMs);
+            _configuration.WriteTimeoutMs
+        );
 
         var backpressureHandler = new BackpressureHandler(
             _loggerFactory.CreateLogger<BackpressureHandler>(),
             _configuration.BackpressureThreshold,
             _configuration.BackpressureDelayMs,
-            _configuration.EnableAdaptiveBackpressure);
+            _configuration.EnableAdaptiveBackpressure
+        );
 
         var metrics = new StreamingMetrics(_loggerFactory.CreateLogger<StreamingMetrics>());
 
@@ -85,7 +91,8 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
 
         var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken,
-            httpResponse.HttpContext.RequestAborted);
+            httpResponse.HttpContext.RequestAborted
+        );
 
         try
         {
@@ -94,7 +101,8 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
                 bufferManager,
                 httpWriter,
                 metrics,
-                linkedCts.Token);
+                linkedCts.Token
+            );
 
             // Start producer task
             var producerTask = ProduceFromGrainAsync(
@@ -103,14 +111,16 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
                 bufferManager,
                 backpressureHandler,
                 metrics,
-                linkedCts.Token);
+                linkedCts.Token
+            );
 
             // Wait for both tasks to complete
             await Task.WhenAll(producerTask, consumerTask);
 
             _logger.LogInformation(
                 "Stream conversion completed. Stats: {Stats}",
-                metrics.GetStatistics());
+                metrics.GetStatistics()
+            );
         }
         catch (OperationCanceledException)
         {
@@ -138,7 +148,8 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
     /// <inheritdoc />
     public async Task<bool> HandleBackpressureAsync(
         float bufferUtilization,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         ThrowIfDisposed();
 
@@ -149,13 +160,17 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
                 _loggerFactory.CreateLogger<BackpressureHandler>(),
                 _configuration.BackpressureThreshold,
                 _configuration.BackpressureDelayMs,
-                _configuration.EnableAdaptiveBackpressure);
+                _configuration.EnableAdaptiveBackpressure
+            );
 
             var delay = await handler.ApplyBackpressureAsync(bufferUtilization, cancellationToken);
             return delay > 0;
         }
 
-        var appliedDelay = await _backpressureHandler.ApplyBackpressureAsync(bufferUtilization, cancellationToken);
+        var appliedDelay = await _backpressureHandler.ApplyBackpressureAsync(
+            bufferUtilization,
+            cancellationToken
+        );
         return appliedDelay > 0;
     }
 
@@ -163,7 +178,8 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
     public async Task PropagateErrorAsync(
         Exception exception,
         HttpResponse httpResponse,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         ArgumentNullException.ThrowIfNull(exception);
         ArgumentNullException.ThrowIfNull(httpResponse);
@@ -175,7 +191,8 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
             await _httpWriter.WriteErrorAsync(
                 exception,
                 httpResponse.HttpContext.TraceIdentifier,
-                cancellationToken);
+                cancellationToken
+            );
         }
         else
         {
@@ -183,12 +200,14 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
             await using var writer = new HttpStreamWriter(
                 httpResponse,
                 _loggerFactory.CreateLogger<HttpStreamWriter>(),
-                _configuration.WriteTimeoutMs);
+                _configuration.WriteTimeoutMs
+            );
 
             await writer.WriteErrorAsync(
                 exception,
                 httpResponse.HttpContext.TraceIdentifier,
-                cancellationToken);
+                cancellationToken
+            );
         }
     }
 
@@ -207,7 +226,7 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
                 UtilizationPercentage = 0,
                 ItemsProcessed = 0,
                 BackpressureEvents = 0,
-                AverageProcessingTimeMs = 0
+                AverageProcessingTimeMs = 0,
             };
         }
 
@@ -219,7 +238,7 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
             UtilizationPercentage = _bufferManager.UtilizationPercentage,
             ItemsProcessed = stats.ItemsProcessed,
             BackpressureEvents = stats.BackpressureEvents,
-            AverageProcessingTimeMs = stats.AverageProcessingTimeMs
+            AverageProcessingTimeMs = stats.AverageProcessingTimeMs,
         };
     }
 
@@ -245,7 +264,8 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
         BufferManager<StreamItem> bufferManager,
         BackpressureHandler backpressureHandler,
         StreamingMetrics metrics,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         try
         {
@@ -255,14 +275,17 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
                 var streamItem = new StreamItem
                 {
                     Data = formattedData,
-                    Timestamp = DateTime.UtcNow
+                    Timestamp = DateTime.UtcNow,
                 };
 
                 // Check if backpressure is needed
                 var utilization = bufferManager.UtilizationPercentage;
                 if (backpressureHandler.ShouldApplyBackpressure(utilization))
                 {
-                    var delay = await backpressureHandler.ApplyBackpressureAsync(utilization, cancellationToken);
+                    var delay = await backpressureHandler.ApplyBackpressureAsync(
+                        utilization,
+                        cancellationToken
+                    );
                     metrics.RecordBackpressureEvent(delay);
                 }
 
@@ -270,7 +293,10 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
                 if (!await bufferManager.TryWriteAsync(streamItem))
                 {
                     // Buffer is full, apply maximum backpressure
-                    var delay = await backpressureHandler.ApplyBackpressureAsync(100, cancellationToken);
+                    var delay = await backpressureHandler.ApplyBackpressureAsync(
+                        100,
+                        cancellationToken
+                    );
                     metrics.RecordBackpressureEvent(delay);
 
                     // Then do blocking write
@@ -282,7 +308,8 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
                     _logger.LogDebug(
                         "Produced item to buffer. Current size: {Size}, Utilization: {Utilization:F1}%",
                         bufferManager.Count,
-                        utilization);
+                        utilization
+                    );
                 }
             }
         }
@@ -291,7 +318,8 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
             bufferManager.Complete();
             _logger.LogInformation(
                 "Producer completed. Total backpressure events: {Events}",
-                backpressureHandler.BackpressureEventCount);
+                backpressureHandler.BackpressureEventCount
+            );
         }
     }
 
@@ -299,7 +327,8 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
         IBufferManager<StreamItem> bufferManager,
         HttpStreamWriter httpWriter,
         StreamingMetrics metrics,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var lastFlush = DateTime.UtcNow;
         var flushInterval = TimeSpan.FromMilliseconds(_configuration.FlushIntervalMs);
@@ -330,7 +359,8 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
                 {
                     _logger.LogWarning(
                         "Chunk processing exceeded 10ms threshold: {Time}ms",
-                        processingTime);
+                        processingTime
+                    );
                 }
             }
 
@@ -353,7 +383,8 @@ public sealed class StreamingBridgeV2 : IStreamingBridge
             _logger.LogInformation(
                 "Consumer completed. Total items: {Items}, Total bytes: {Bytes}",
                 metrics.GetStatistics().ItemsProcessed,
-                httpWriter.BytesWritten);
+                httpWriter.BytesWritten
+            );
         }
     }
 

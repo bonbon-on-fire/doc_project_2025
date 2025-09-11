@@ -36,10 +36,9 @@ public abstract class OrleansTestBase : IClassFixture<OrleansTestFixture>
     /// </summary>
     protected HttpClient CreateStandardClient()
     {
-        return Fixture.WebAppFactory.CreateClient(new WebApplicationFactoryClientOptions
-        {
-            AllowAutoRedirect = false
-        });
+        return Fixture.WebAppFactory.CreateClient(
+            new WebApplicationFactoryClientOptions { AllowAutoRedirect = false }
+        );
     }
 
     /// <summary>
@@ -56,9 +55,7 @@ public abstract class OrleansTestBase : IClassFixture<OrleansTestFixture>
     /// </summary>
     protected async Task<HttpResponseMessage> MakeStreamRequestAsync(string userId)
     {
-        var request = CreateChatRequestBuilder.Create()
-            .WithUserId(userId)
-            .Build();
+        var request = CreateChatRequestBuilder.Create().WithUserId(userId).Build();
         return await MakeStreamRequestAsync(request);
     }
 
@@ -67,7 +64,9 @@ public abstract class OrleansTestBase : IClassFixture<OrleansTestFixture>
     /// </summary>
     protected static string? GetHeaderValue(HttpResponseMessage response, string headerName)
     {
-        return response.Headers.TryGetValues(headerName, out var values) ? values.FirstOrDefault() : null;
+        return response.Headers.TryGetValues(headerName, out var values)
+            ? values.FirstOrDefault()
+            : null;
     }
 
     /// <summary>
@@ -75,7 +74,9 @@ public abstract class OrleansTestBase : IClassFixture<OrleansTestFixture>
     /// </summary>
     protected void LogTestStep(string step, params object[] args)
     {
-        Output.WriteLine($"[{DateTime.UtcNow:HH:mm:ss.fff}] {string.Format(CultureInfo.InvariantCulture, step, args)}");
+        Output.WriteLine(
+            $"[{DateTime.UtcNow:HH:mm:ss.fff}] {string.Format(CultureInfo.InvariantCulture, step, args)}"
+        );
     }
 
     /// <summary>
@@ -119,7 +120,8 @@ public abstract class OrleansTestBase : IClassFixture<OrleansTestFixture>
 
         for (var i = 0; i < requestCount; i++)
         {
-            var request = CreateChatRequestBuilder.Create()
+            var request = CreateChatRequestBuilder
+                .Create()
                 .WithUserId($"warmup-{i}")
                 .WithMessage("Warmup request")
                 .Build();
@@ -142,7 +144,11 @@ public abstract class OrleansTestBase : IClassFixture<OrleansTestFixture>
         Assert.Equal("true", orleansRouted);
         Assert.Equal("orleans", processingMode);
 
-        LogTestStep("Verified Orleans routing: routed={0}, mode={1}", orleansRouted ?? "null", processingMode ?? "null");
+        LogTestStep(
+            "Verified Orleans routing: routed={0}, mode={1}",
+            orleansRouted ?? "null",
+            processingMode ?? "null"
+        );
     }
 
     /// <summary>
@@ -156,6 +162,10 @@ public abstract class OrleansTestBase : IClassFixture<OrleansTestFixture>
         Assert.Equal("false", orleansRouted);
         Assert.Equal("direct", processingMode);
 
-        LogTestStep("Verified direct processing: routed={0}, mode={1}", orleansRouted ?? "null", processingMode ?? "null");
+        LogTestStep(
+            "Verified direct processing: routed={0}, mode={1}",
+            orleansRouted ?? "null",
+            processingMode ?? "null"
+        );
     }
 }

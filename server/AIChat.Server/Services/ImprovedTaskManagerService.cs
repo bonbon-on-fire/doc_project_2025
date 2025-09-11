@@ -16,8 +16,7 @@ public class ImprovedTaskManagerService(
     ILogger<ImprovedTaskManagerService> logger
 ) : ITaskManagerService, IDisposable
 {
-    private readonly ConcurrentDictionary<string, CachedTaskManager> _taskManagers =
-        new();
+    private readonly ConcurrentDictionary<string, CachedTaskManager> _taskManagers = new();
     private readonly SemaphoreSlim _saveLock = new(1, 1);
 
     /// <summary>

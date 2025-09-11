@@ -22,7 +22,8 @@ public class SignalRConnectionManager : IDisposable
 
     public SignalRConnectionManager(
         IOptions<LoadTestingConfiguration> config,
-        ILogger<SignalRConnectionManager> logger)
+        ILogger<SignalRConnectionManager> logger
+    )
     {
         _config = config.Value;
         _logger = logger;
@@ -32,7 +33,8 @@ public class SignalRConnectionManager : IDisposable
     /// <summary>
     /// Gets the current number of active connections
     /// </summary>
-    public int ActiveConnectionCount => _connections.Count(kvp => kvp.Value.State == HubConnectionState.Connected);
+    public int ActiveConnectionCount =>
+        _connections.Count(kvp => kvp.Value.State == HubConnectionState.Connected);
 
     /// <summary>
     /// Gets all test users
@@ -45,7 +47,10 @@ public class SignalRConnectionManager : IDisposable
     /// <summary>
     /// Creates and connects a new SignalR connection for a test user
     /// </summary>
-    public async Task<TestUser> CreateConnectionAsync(string userId, CancellationToken cancellationToken = default)
+    public async Task<TestUser> CreateConnectionAsync(
+        string userId,
+        CancellationToken cancellationToken = default
+    )
     {
         await _connectionSemaphore.WaitAsync(cancellationToken);
         try
@@ -54,7 +59,7 @@ public class SignalRConnectionManager : IDisposable
             {
                 UserId = userId,
                 ConnectedAt = DateTime.UtcNow,
-                LastActivity = DateTime.UtcNow
+                LastActivity = DateTime.UtcNow,
             };
 
             var connectionStart = DateTime.UtcNow;
@@ -62,12 +67,20 @@ public class SignalRConnectionManager : IDisposable
 
             // Create connection with optimized settings for load testing
             var connection = new HubConnectionBuilder()
-                .WithUrl(_config.GetFullSignalRUrl(), options =>
-                {
-                    options.SkipNegotiation = true;
-                    options.Transports = Microsoft.AspNetCore.Http.Connections.HttpTransportType.WebSockets;
-                    options.CloseTimeout = TimeSpan.FromSeconds(30);
-                })
+                .WithUrl(
+                    _config.GetFullSignalRUrl(),
+                    options =>
+                    {
+                        options.SkipNegotiation = true;
+                        options.Transports = Microsoft
+                            .AspNetCore
+                            .Http
+                            .Connections
+                            .HttpTransportType
+                            .WebSockets;
+                        options.CloseTimeout = TimeSpan.FromSeconds(30);
+                    }
+                )
                 .WithAutomaticReconnect(new SignalRReconnectPolicy())
                 .Build();
 
@@ -76,7 +89,10 @@ public class SignalRConnectionManager : IDisposable
 
             // Connect with timeout
             using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-            using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+            using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken,
+                timeoutCts.Token
+            );
 
             try
             {
@@ -89,8 +105,11 @@ public class SignalRConnectionManager : IDisposable
                 _connections[userId] = connection;
                 _users[userId] = user;
 
-                _logger.LogDebug("User {UserId} connected successfully in {ConnectionTime}ms",
-                    userId, user.Metrics.ConnectionTime.TotalMilliseconds);
+                _logger.LogDebug(
+                    "User {UserId} connected successfully in {ConnectionTime}ms",
+                    userId,
+                    user.Metrics.ConnectionTime.TotalMilliseconds
+                );
 
                 return user;
             }
@@ -115,9 +134,17 @@ public class SignalRConnectionManager : IDisposable
     /// <summary>
     /// Sends a message through SignalR for a specific user
     /// </summary>
-    public async Task<TestMessage> SendMessageAsync(string userId, string chatId, string content, CancellationToken cancellationToken = default)
+    public async Task<TestMessage> SendMessageAsync(
+        string userId,
+        string chatId,
+        string content,
+        CancellationToken cancellationToken = default
+    )
     {
-        if (!_connections.TryGetValue(userId, out var connection) || !_users.TryGetValue(userId, out var user))
+        if (
+            !_connections.TryGetValue(userId, out var connection)
+            || !_users.TryGetValue(userId, out var user)
+        )
         {
             throw new InvalidOperationException($"User {userId} is not connected");
         }
@@ -127,7 +154,7 @@ public class SignalRConnectionManager : IDisposable
             ChatId = chatId,
             UserId = userId,
             Content = content,
-            SentAt = DateTime.UtcNow
+            SentAt = DateTime.UtcNow,
         };
 
         _pendingMessages[message.Id] = message;
@@ -139,8 +166,12 @@ public class SignalRConnectionManager : IDisposable
             user.MessagesSent++;
             user.LastActivity = DateTime.UtcNow;
 
-            _logger.LogTrace("Message {MessageId} sent for user {UserId} to chat {ChatId}",
-                message.Id, userId, chatId);
+            _logger.LogTrace(
+                "Message {MessageId} sent for user {UserId} to chat {ChatId}",
+                message.Id,
+                userId,
+                chatId
+            );
 
             return message;
         }
@@ -160,9 +191,16 @@ public class SignalRConnectionManager : IDisposable
     /// <summary>
     /// Joins a chat group for the specified user
     /// </summary>
-    public async Task JoinChatAsync(string userId, string chatId, CancellationToken cancellationToken = default)
+    public async Task JoinChatAsync(
+        string userId,
+        string chatId,
+        CancellationToken cancellationToken = default
+    )
     {
-        if (!_connections.TryGetValue(userId, out var connection) || !_users.TryGetValue(userId, out var user))
+        if (
+            !_connections.TryGetValue(userId, out var connection)
+            || !_users.TryGetValue(userId, out var user)
+        )
         {
             throw new InvalidOperationException($"User {userId} is not connected");
         }
@@ -182,7 +220,12 @@ public class SignalRConnectionManager : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to join chat {ChatId} for user {UserId}", chatId, userId);
+            _logger.LogWarning(
+                ex,
+                "Failed to join chat {ChatId} for user {UserId}",
+                chatId,
+                userId
+            );
             throw;
         }
     }
@@ -238,59 +281,76 @@ public class SignalRConnectionManager : IDisposable
         {
             TotalUsers = users.Count,
             ConnectedUsers = users.Count(u => u.IsConnected),
-            AverageConnectionTime = users.Count > 0 ? users.Average(u => u.Metrics.ConnectionTime.TotalMilliseconds) : 0,
-            ConnectionSuccessRate = users.Count > 0 ? users.Average(u => u.Metrics.ConnectionSuccessRate) : 0,
+            AverageConnectionTime =
+                users.Count > 0
+                    ? users.Average(u => u.Metrics.ConnectionTime.TotalMilliseconds)
+                    : 0,
+            ConnectionSuccessRate =
+                users.Count > 0 ? users.Average(u => u.Metrics.ConnectionSuccessRate) : 0,
             TotalMessagesSent = users.Sum(u => u.MessagesSent),
             TotalMessagesReceived = users.Sum(u => u.MessagesReceived),
             AverageLatency = CalculateAverageLatency(users),
-            ErrorCount = users.Sum(u => u.Metrics.ConnectionFailures + u.Metrics.MessageFailures)
+            ErrorCount = users.Sum(u => u.Metrics.ConnectionFailures + u.Metrics.MessageFailures),
         };
     }
 
     private void SetupMessageHandlers(HubConnection connection, TestUser user)
     {
         // Handle received messages
-        _ = connection.On<object>("ReceiveMessage", (messageData) =>
-        {
-            user.MessagesReceived++;
-            user.LastActivity = DateTime.UtcNow;
-
-            // Try to extract message ID for latency calculation
-            if (ExtractMessageId(messageData, out var messageId) &&
-                _pendingMessages.TryRemove(messageId, out var pendingMessage))
+        _ = connection.On<object>(
+            "ReceiveMessage",
+            (messageData) =>
             {
-                pendingMessage.ReceivedAt = DateTime.UtcNow;
-                pendingMessage.IsDelivered = true;
+                user.MessagesReceived++;
+                user.LastActivity = DateTime.UtcNow;
 
-                if (pendingMessage.Latency.HasValue)
+                // Try to extract message ID for latency calculation
+                if (
+                    ExtractMessageId(messageData, out var messageId)
+                    && _pendingMessages.TryRemove(messageId, out var pendingMessage)
+                )
                 {
-                    user.Metrics.MessageLatencies.Add(pendingMessage.Latency.Value.TotalMilliseconds);
-                }
-            }
+                    pendingMessage.ReceivedAt = DateTime.UtcNow;
+                    pendingMessage.IsDelivered = true;
 
-            _logger.LogTrace("User {UserId} received message", user.UserId);
-        });
+                    if (pendingMessage.Latency.HasValue)
+                    {
+                        user.Metrics.MessageLatencies.Add(
+                            pendingMessage.Latency.Value.TotalMilliseconds
+                        );
+                    }
+                }
+
+                _logger.LogTrace("User {UserId} received message", user.UserId);
+            }
+        );
 
         // Handle streaming chunks
-        _ = connection.On<object>("ReceiveStreamChunk", (chunkData) =>
-        {
-            user.LastActivity = DateTime.UtcNow;
-            _logger.LogTrace("User {UserId} received stream chunk", user.UserId);
-        });
+        _ = connection.On<object>(
+            "ReceiveStreamChunk",
+            (chunkData) =>
+            {
+                user.LastActivity = DateTime.UtcNow;
+                _logger.LogTrace("User {UserId} received stream chunk", user.UserId);
+            }
+        );
 
         // Handle errors
-        _ = connection.On<object>("ReceiveError", (errorData) =>
-        {
-            user.Metrics.MessageFailures++;
-            user.Metrics.LastError = DateTime.UtcNow;
-
-            if (errorData != null)
+        _ = connection.On<object>(
+            "ReceiveError",
+            (errorData) =>
             {
-                user.Metrics.LastErrorMessage = errorData.ToString() ?? "Unknown error";
-            }
+                user.Metrics.MessageFailures++;
+                user.Metrics.LastError = DateTime.UtcNow;
 
-            _logger.LogWarning("User {UserId} received error: {Error}", user.UserId, errorData);
-        });
+                if (errorData != null)
+                {
+                    user.Metrics.LastErrorMessage = errorData.ToString() ?? "Unknown error";
+                }
+
+                _logger.LogWarning("User {UserId} received error: {Error}", user.UserId, errorData);
+            }
+        );
 
         // Handle connection events
         connection.Closed += (error) =>
@@ -300,7 +360,11 @@ public class SignalRConnectionManager : IDisposable
             {
                 user.Metrics.LastError = DateTime.UtcNow;
                 user.Metrics.LastErrorMessage = error.Message;
-                _logger.LogWarning("Connection closed for user {UserId}: {Error}", user.UserId, error.Message);
+                _logger.LogWarning(
+                    "Connection closed for user {UserId}: {Error}",
+                    user.UserId,
+                    error.Message
+                );
             }
             else
             {
@@ -314,7 +378,11 @@ public class SignalRConnectionManager : IDisposable
             user.IsConnected = true;
             user.ConnectionId = connectionId ?? user.ConnectionId;
             user.LastActivity = DateTime.UtcNow;
-            _logger.LogInformation("User {UserId} reconnected with connection ID {ConnectionId}", user.UserId, connectionId);
+            _logger.LogInformation(
+                "User {UserId} reconnected with connection ID {ConnectionId}",
+                user.UserId,
+                connectionId
+            );
             return Task.CompletedTask;
         };
     }
@@ -358,16 +426,17 @@ public class SignalRConnectionManager : IDisposable
         }
 
         _ = Task.Run(async () =>
-        {
-            try
             {
-                await DisconnectAllAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error during disposal");
-            }
-        }).Wait(TimeSpan.FromSeconds(30));
+                try
+                {
+                    await DisconnectAllAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error during disposal");
+                }
+            })
+            .Wait(TimeSpan.FromSeconds(30));
 
         _connectionSemaphore?.Dispose();
         _disposed = true;

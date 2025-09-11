@@ -133,7 +133,8 @@ public sealed class ChatMessageBuffer
     /// Strategy for handling buffer overflow.
     /// </summary>
     [Id(9)]
-    public BufferOverflowStrategy OverflowStrategy { get; set; } = BufferOverflowStrategy.DropOldest;
+    public BufferOverflowStrategy OverflowStrategy { get; set; } =
+        BufferOverflowStrategy.DropOldest;
 
     /// <summary>
     /// Timestamp when this buffer was created.

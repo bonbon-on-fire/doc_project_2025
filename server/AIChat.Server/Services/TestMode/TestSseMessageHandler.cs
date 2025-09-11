@@ -27,12 +27,9 @@ public sealed class TestSseMessageHandler : HttpMessageHandler
     /// </summary>
     public TestSseMessageHandler()
         : this(
-            LoggerFactory
-                .Create(builder => builder.AddConsole())
-                .CreateLogger<TestSseMessageHandler>(),
+            LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<TestSseMessageHandler>(),
             null,
-            null
-        )
+            null)
     { }
 
     /// <summary>

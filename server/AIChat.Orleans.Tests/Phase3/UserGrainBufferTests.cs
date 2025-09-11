@@ -302,7 +302,8 @@ public class UserGrainBufferTests
 
         // Act & Assert
         _ = Assert.ThrowsAsync<ArgumentNullException>(
-            async () => await _grain.BufferMessageAsync(null!, BufferPriority.Normal));
+            async () => await _grain.BufferMessageAsync(null!, BufferPriority.Normal)
+        );
         return Task.CompletedTask;
     }
 
@@ -316,7 +317,8 @@ public class UserGrainBufferTests
 
         // Act & Assert
         _ = Assert.ThrowsAsync<ArgumentException>(
-            async () => await _grain.BufferMessageAsync(message, BufferPriority.Normal));
+            async () => await _grain.BufferMessageAsync(message, BufferPriority.Normal)
+        );
         return Task.CompletedTask;
     }
 
@@ -344,7 +346,7 @@ public class UserGrainBufferTests
             UserId = TestUserId,
             Content = content ?? "Test message content",
             Role = "user",
-            Timestamp = DateTime.UtcNow
+            Timestamp = DateTime.UtcNow,
         };
     }
 
@@ -358,7 +360,7 @@ public class UserGrainBufferTests
             ChunkIndex = 0,
             IsComplete = false,
             TotalChunks = 3,
-            MessageId = Guid.NewGuid().ToString()
+            MessageId = Guid.NewGuid().ToString(),
         };
     }
 }
@@ -374,7 +376,6 @@ public class TestSiloConfigurator : ISiloConfigurator
             .AddMemoryGrainStorageAsDefault()
             .AddMemoryGrainStorage("UserGrainStorage")
             .AddMemoryGrainStorage("PubSubStore")
-
             // Configure services required by grains
             .ConfigureServices(services =>
             {
@@ -391,7 +392,6 @@ public class TestSiloConfigurator : ISiloConfigurator
                     config.Persistence.ActivityPersistenceInterval = 5;
                 });
             })
-
             .ConfigureLogging(logging =>
             {
                 _ = logging.AddConsole();

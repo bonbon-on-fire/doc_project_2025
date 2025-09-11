@@ -25,13 +25,17 @@ public sealed class HealthCheckGrain : Grain, IHealthCheckGrain
     /// <inheritdoc />
     public async Task<HealthCheckResult> CheckHealthAsync()
     {
-        using var activity = OrleansActivitySource.StartGrainActivity("HealthCheckGrain", nameof(CheckHealthAsync), this.GetPrimaryKeyString());
+        using var activity = OrleansActivitySource.StartGrainActivity(
+            "HealthCheckGrain",
+            nameof(CheckHealthAsync),
+            this.GetPrimaryKeyString()
+        );
         try
         {
             var result = new HealthCheckResult
             {
                 GrainId = this.GetPrimaryKeyString(),
-                CheckedAt = DateTime.UtcNow
+                CheckedAt = DateTime.UtcNow,
             };
 
             try
@@ -66,22 +70,31 @@ public sealed class HealthCheckGrain : Grain, IHealthCheckGrain
                 }
                 else
                 {
-                    result.AdditionalInfo = $"Health check completed with {result.Warnings.Count} warnings";
-                    _logger.LogWarning("Orleans health check completed with warnings: {Warnings}", string.Join(", ", result.Warnings));
+                    result.AdditionalInfo =
+                        $"Health check completed with {result.Warnings.Count} warnings";
+                    _logger.LogWarning(
+                        "Orleans health check completed with warnings: {Warnings}",
+                        string.Join(", ", result.Warnings)
+                    );
                 }
 
                 // Mark activity as successful
-                OrleansActivitySource.SetSuccess(activity, new Dictionary<string, object>
-            {
-                {"health.status", result.IsHealthy},
-                {"warnings.count", result.Warnings.Count}
-            });
+                OrleansActivitySource.SetSuccess(
+                    activity,
+                    new Dictionary<string, object>
+                    {
+                        { "health.status", result.IsHealthy },
+                        { "warnings.count", result.Warnings.Count },
+                    }
+                );
             }
             catch (Exception ex)
             {
                 result.IsHealthy = false;
                 result.AdditionalInfo = $"Health check failed with exception: {ex.Message}";
-                result.Warnings.Add($"Unhandled exception during health check: {ex.GetType().Name}");
+                result.Warnings.Add(
+                    $"Unhandled exception during health check: {ex.GetType().Name}"
+                );
 
                 // Set activity error
                 OrleansActivitySource.SetError(activity, ex);
@@ -105,7 +118,8 @@ public sealed class HealthCheckGrain : Grain, IHealthCheckGrain
         try
         {
             // Get basic cluster information
-            var status = $"Orleans cluster operational at {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC";
+            var status =
+                $"Orleans cluster operational at {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC";
             _logger.LogDebug("Cluster status requested: {Status}", status);
             return Task.FromResult(status);
         }
@@ -141,7 +155,9 @@ public sealed class HealthCheckGrain : Grain, IHealthCheckGrain
 
             // Test basic state operations
             var timestamp = DateTime.UtcNow;
-            return Task.FromResult((true, $"Grain activation successful at {timestamp:HH:mm:ss.fff}"));
+            return Task.FromResult(
+                (true, $"Grain activation successful at {timestamp:HH:mm:ss.fff}")
+            );
         }
         catch (Exception ex)
         {
@@ -159,7 +175,9 @@ public sealed class HealthCheckGrain : Grain, IHealthCheckGrain
         {
             // Basic connectivity test - if we can execute this method, cluster is responsive
             // The fact that this grain method is executing means the cluster is operational
-            return Task.FromResult((true, "Cluster connectivity verified - grain method execution successful"));
+            return Task.FromResult(
+                (true, "Cluster connectivity verified - grain method execution successful")
+            );
         }
         catch (Exception ex)
         {

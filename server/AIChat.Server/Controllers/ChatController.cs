@@ -30,7 +30,7 @@ public class ChatController(
     IOperationTrackingService? operationTrackingService = null,
     IStreamingBridge? streamingBridge = null,
     IResilientStreamManager? resilientStreamManager = null
-    ) : ControllerBase
+) : ControllerBase
 {
     private readonly IChatService _chatService = chatService;
     private readonly ILogger<ChatController> _logger = logger;
@@ -42,7 +42,8 @@ public class ChatController(
     private readonly IHostEnvironment _environment = environment;
     private readonly IClusterClient? _clusterClient = clusterClient;
     private readonly IBackgroundChatService? _backgroundChatService = backgroundChatService;
-    private readonly IOperationTrackingService? _operationTrackingService = operationTrackingService;
+    private readonly IOperationTrackingService? _operationTrackingService =
+        operationTrackingService;
     private readonly IStreamingBridge? _streamingBridge = streamingBridge;
     private readonly IResilientStreamManager? _resilientStreamManager = resilientStreamManager;
 
@@ -52,7 +53,9 @@ public class ChatController(
     private async Task<bool> ShouldUseBackgroundProcessingAsync()
     {
         // Check if background processing feature is enabled
-        var backgroundProcessingEnabled = await _featureManager.IsEnabledAsync("BackgroundProcessing");
+        var backgroundProcessingEnabled = await _featureManager.IsEnabledAsync(
+            "BackgroundProcessing"
+        );
         if (!backgroundProcessingEnabled)
         {
             _logger.LogDebug("Background processing feature is disabled");
@@ -70,7 +73,9 @@ public class ChatController(
         // Check if required services are available
         if (_clusterClient == null)
         {
-            _logger.LogWarning("Background processing enabled but Orleans cluster client is not available");
+            _logger.LogWarning(
+                "Background processing enabled but Orleans cluster client is not available"
+            );
             return false;
         }
 
@@ -84,7 +89,10 @@ public class ChatController(
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Orleans cluster client health check failed, falling back to direct processing");
+            _logger.LogWarning(
+                ex,
+                "Orleans cluster client health check failed, falling back to direct processing"
+            );
             return false;
         }
 
@@ -98,29 +106,29 @@ public class ChatController(
     {
         // In Development/Test with co-hosting, check if streaming bridge is available
         var isCoHosted = _environment.IsDevelopment() || _environment.EnvironmentName == "Test";
-        
+
         // If streaming bridge is available and we're in a co-hosted environment, Orleans is ready
         if (isCoHosted && _streamingBridge != null)
         {
             _logger.LogDebug("Orleans streaming enabled via co-hosted configuration");
             return true;
         }
-        
+
         // Otherwise check feature flag for explicit control
         var orleansEnabled = await _featureManager.IsEnabledAsync("OrleansIntegration");
         if (!orleansEnabled)
         {
             _logger.LogDebug("Orleans integration feature is disabled for streaming");
             return false;
-}
-        
+        }
+
         // Check if required services are available
         if (_streamingBridge == null)
         {
             _logger.LogDebug("Orleans streaming bridge not available");
             return false;
         }
-        
+
         // In co-hosted mode, we don't have IClusterClient but we have IGrainFactory
         // The streaming bridge uses IOrleansIntegrationService which uses IGrainFactory
         if (!isCoHosted && _clusterClient == null)
@@ -143,7 +151,10 @@ public class ChatController(
             // Quick health check with timeout
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
             var healthTask = healthGrain.CheckHealth();
-            var completedTask = await Task.WhenAny(healthTask, Task.Delay(TimeSpan.FromSeconds(2), cts.Token));
+            var completedTask = await Task.WhenAny(
+                healthTask,
+                Task.Delay(TimeSpan.FromSeconds(2), cts.Token)
+            );
 
             if (completedTask != healthTask)
             {
@@ -156,7 +167,10 @@ public class ChatController(
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Orleans cluster health check failed for streaming, falling back to direct processing");
+            _logger.LogWarning(
+                ex,
+                "Orleans cluster health check failed for streaming, falling back to direct processing"
+            );
             return false;
         }
     }
@@ -164,9 +178,15 @@ public class ChatController(
     /// <summary>
     /// Routes a send message request through Orleans background processing or falls back to direct processing.
     /// </summary>
-    private async Task<(bool Success, string? Error, ChatDto? Chat, string? OperationId)> ProcessSendMessageAsync(
+    private async Task<(
+        bool Success,
+        string? Error,
+        ChatDto? Chat,
+        string? OperationId
+    )> ProcessSendMessageAsync(
         Services.SendMessageRequest request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var useBackground = await ShouldUseBackgroundProcessingAsync();
 
@@ -178,7 +198,10 @@ public class ChatController(
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Orleans background processing failed for send message, falling back to direct processing");
+                _logger.LogWarning(
+                    ex,
+                    "Orleans background processing failed for send message, falling back to direct processing"
+                );
 
                 // Fall back to direct processing
                 var fallbackResult = await _chatService.SendMessageAsync(request);
@@ -212,17 +235,24 @@ public class ChatController(
     /// <summary>
     /// Processes a send message request via Orleans UserGrain background processing.
     /// </summary>
-    private async Task<(bool Success, string? Error, ChatDto? Chat, string? OperationId)> ProcessSendMessageViaOrleansAsync(
+    private async Task<(
+        bool Success,
+        string? Error,
+        ChatDto? Chat,
+        string? OperationId
+    )> ProcessSendMessageViaOrleansAsync(
         Services.SendMessageRequest request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         // Get the user grain
         var userGrain = _clusterClient!.GetGrain<IUserGrain>(request.UserId);
 
         // Create metadata with mode information
-        var metadata = request.ModeId != null
-            ? System.Text.Json.JsonSerializer.Serialize(new { request.ModeId })
-            : null;
+        var metadata =
+            request.ModeId != null
+                ? System.Text.Json.JsonSerializer.Serialize(new { request.ModeId })
+                : null;
 
         // Create the chat message for background processing
         var chatMessage = new ChatMessage
@@ -233,7 +263,7 @@ public class ChatController(
             Content = request.Message,
             Timestamp = DateTime.UtcNow,
             Role = "user",
-            Metadata = metadata
+            Metadata = metadata,
         };
 
         // Process via Orleans background processing
@@ -246,7 +276,8 @@ public class ChatController(
                 operationId,
                 request.UserId,
                 request.ChatId,
-                "SendMessage");
+                "SendMessage"
+            );
         }
 
         // Get the updated chat (operation is async, so we return current state)
@@ -325,7 +356,9 @@ public class ChatController(
             };
 
             // Use dual-mode processing for sending message
-            var (success, error, chat, operationId) = await ProcessSendMessageAsync(sendMessageRequest);
+            var (success, error, chat, operationId) = await ProcessSendMessageAsync(
+                sendMessageRequest
+            );
 
             if (!success)
             {
@@ -334,20 +367,20 @@ public class ChatController(
                     request.ChatId,
                     error
                 );
-                return StatusCode(
-                    500,
-                    new { Error = error ?? "Failed to send message" }
-                );
+                return StatusCode(500, new { Error = error ?? "Failed to send message" });
             }
 
             // If Orleans background processing was used, include operation ID in response
             return !string.IsNullOrEmpty(operationId)
-                ? (ActionResult<ChatDto>)Ok(new
-                {
-                    Chat = chat,
-                    OperationId = operationId,
-                    ProcessingMode = "Background"
-                })
+                ? (ActionResult<ChatDto>)
+                    Ok(
+                        new
+                        {
+                            Chat = chat,
+                            OperationId = operationId,
+                            ProcessingMode = "Background",
+                        }
+                    )
                 : (ActionResult<ChatDto>)Ok(chat);
         }
 
@@ -448,7 +481,10 @@ public class ChatController(
         Response.Headers.Append("Connection", "keep-alive");
 
         // Add Orleans routing headers
-        Response.Headers.Append("X-Orleans-Routed", useOrleans.ToString().ToLower(System.Globalization.CultureInfo.CurrentCulture));
+        Response.Headers.Append(
+            "X-Orleans-Routed",
+            useOrleans.ToString().ToLower(System.Globalization.CultureInfo.CurrentCulture)
+        );
         Response.Headers.Append("X-Processing-Mode", useOrleans ? "orleans" : "direct");
 
         string? currentChatId = null;
@@ -491,13 +527,20 @@ public class ChatController(
             {
                 try
                 {
-                    _logger.LogInformation("Routing SSE stream through Orleans for chat {ChatId}", currentChatId);
+                    _logger.LogInformation(
+                        "Routing SSE stream through Orleans for chat {ChatId}",
+                        currentChatId
+                    );
                     await ProcessStreamViaOrleansAsync(request, initResult, cancellationToken);
                     return new EmptyResult();
                 }
                 catch (Exception orleansEx)
                 {
-                    _logger.LogWarning(orleansEx, "Orleans streaming failed for chat {ChatId}, falling back to direct processing", currentChatId);
+                    _logger.LogWarning(
+                        orleansEx,
+                        "Orleans streaming failed for chat {ChatId}, falling back to direct processing",
+                        currentChatId
+                    );
                     // Fall through to direct processing
                 }
             }
@@ -593,65 +636,74 @@ public class ChatController(
                 ChatId = chatId,
                 MessageId = initResult.UserMessageId,
                 Protocol = "SignalR",
-                Status = "Processing"
+                Status = "Processing",
             };
 
             // Process the assistant response asynchronously
             // Note: The ChatHub is already subscribed to ChatService events
             // and will broadcast messages to the SignalR group automatically
-            _ = Task.Run(async () =>
-            {
-                try
+            _ = Task.Run(
+                async () =>
                 {
-                    // Send init event via SignalR
-                    var initEnvelope = SSEEventExtensions.CreateInitEnvelope(
-                        initResult.ChatId,
-                        initResult.UserMessageId,
-                        initResult.UserTimestamp,
-                        initResult.UserSequenceNumber
-                    );
+                    try
+                    {
+                        // Send init event via SignalR
+                        var initEnvelope = SSEEventExtensions.CreateInitEnvelope(
+                            initResult.ChatId,
+                            initResult.UserMessageId,
+                            initResult.UserTimestamp,
+                            initResult.UserSequenceNumber
+                        );
 
-                    await _hubContext.Clients
-                        .Group($"chat_{chatId}")
-                        .SendAsync("ReceiveInit", new
-                        {
-                            OperationId = operationId,
-                            Envelope = initEnvelope
-                        });
+                        await _hubContext
+                            .Clients.Group($"chat_{chatId}")
+                            .SendAsync(
+                                "ReceiveInit",
+                                new { OperationId = operationId, Envelope = initEnvelope }
+                            );
 
-                    // Stream the assistant response
-                    await _chatService.StreamAssistantResponseAsync(initResult.ChatId, cancellationToken);
+                        // Stream the assistant response
+                        await _chatService.StreamAssistantResponseAsync(
+                            initResult.ChatId,
+                            cancellationToken
+                        );
 
-                    // Send completion event via SignalR
-                    var completeEnvelope = SSEEventExtensions.CreateStreamCompleteEnvelope(initResult.ChatId);
-                    await _hubContext.Clients
-                        .Group($"chat_{chatId}")
-                        .SendAsync("ReceiveComplete", new
-                        {
-                            OperationId = operationId,
-                            Envelope = completeEnvelope
-                        });
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(
-                        "Error processing SignalR stream for operation {OperationId}: {Error}",
-                        operationId,
-                        ex.Message
-                    );
+                        // Send completion event via SignalR
+                        var completeEnvelope = SSEEventExtensions.CreateStreamCompleteEnvelope(
+                            initResult.ChatId
+                        );
+                        await _hubContext
+                            .Clients.Group($"chat_{chatId}")
+                            .SendAsync(
+                                "ReceiveComplete",
+                                new { OperationId = operationId, Envelope = completeEnvelope }
+                            );
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(
+                            "Error processing SignalR stream for operation {OperationId}: {Error}",
+                            operationId,
+                            ex.Message
+                        );
 
-                    // Send error via SignalR
-                    await _hubContext.Clients
-                        .Group($"chat_{chatId}")
-                        .SendAsync("ReceiveError", new
-                        {
-                            OperationId = operationId,
-                            ChatId = chatId,
-                            Error = ex.Message,
-                            Timestamp = DateTime.UtcNow
-                        });
-                }
-            }, cancellationToken);
+                        // Send error via SignalR
+                        await _hubContext
+                            .Clients.Group($"chat_{chatId}")
+                            .SendAsync(
+                                "ReceiveError",
+                                new
+                                {
+                                    OperationId = operationId,
+                                    ChatId = chatId,
+                                    Error = ex.Message,
+                                    Timestamp = DateTime.UtcNow,
+                                }
+                            );
+                    }
+                },
+                cancellationToken
+            );
 
             // Return the operation ID response
             return Ok(responseData);
@@ -665,12 +717,15 @@ public class ChatController(
             );
 
             // Return error response
-            return StatusCode(500, new
-            {
-                OperationId = operationId,
-                Error = ex.Message,
-                Status = "Failed"
-            });
+            return StatusCode(
+                500,
+                new
+                {
+                    OperationId = operationId,
+                    Error = ex.Message,
+                    Status = "Failed",
+                }
+            );
         }
     }
 
@@ -680,28 +735,38 @@ public class ChatController(
     private async Task ProcessStreamViaOrleansAsync(
         CreateChatRequest request,
         StreamInitResult initResult,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         ArgumentNullException.ThrowIfNull(_clusterClient);
 
         // Check if we should use resilient streaming
-        var useResilientStreaming = _resilientStreamManager != null &&
-                                   await _featureManager.IsEnabledAsync("ResilientStreaming");
+        var useResilientStreaming =
+            _resilientStreamManager != null
+            && await _featureManager.IsEnabledAsync("ResilientStreaming");
 
         if (!useResilientStreaming && _streamingBridge == null)
         {
-            throw new InvalidOperationException("Neither ResilientStreamManager nor StreamingBridge is available");
+            throw new InvalidOperationException(
+                "Neither ResilientStreamManager nor StreamingBridge is available"
+            );
         }
 
         // Validate request for Orleans processing
         if (string.IsNullOrEmpty(request.UserId))
         {
-            throw new ArgumentException("UserId is required for Orleans streaming", nameof(request));
+            throw new ArgumentException(
+                "UserId is required for Orleans streaming",
+                nameof(request)
+            );
         }
 
         if (string.IsNullOrEmpty(initResult.ChatId))
         {
-            throw new ArgumentException("ChatId is required for Orleans streaming", nameof(initResult));
+            throw new ArgumentException(
+                "ChatId is required for Orleans streaming",
+                nameof(initResult)
+            );
         }
 
         try
@@ -718,7 +783,7 @@ public class ChatController(
                 ModeId = request.ModeId,
                 SystemPrompt = request.SystemPrompt,
                 Timestamp = DateTime.UtcNow,
-                RequestId = Guid.NewGuid().ToString()
+                RequestId = Guid.NewGuid().ToString(),
             };
 
             // Send INIT event before starting stream
@@ -752,16 +817,22 @@ public class ChatController(
                         chunkIndex = chunk.ChunkIndex,
                         totalChunks = chunk.TotalChunks,
                         operationId = chunk.OperationId,
-                        type = chunk.Type.ToString()
-                    }
+                        type = chunk.Type.ToString(),
+                    },
                 };
-                return System.Text.Json.JsonSerializer.Serialize(envelope, MessageSerializationOptions.Default);
+                return System.Text.Json.JsonSerializer.Serialize(
+                    envelope,
+                    MessageSerializationOptions.Default
+                );
             });
 
             // Use resilient streaming if available
             if (useResilientStreaming)
             {
-                _logger.LogInformation("Using ResilientStreamManager for stream {StreamId}", initResult.ChatId);
+                _logger.LogInformation(
+                    "Using ResilientStreamManager for stream {StreamId}",
+                    initResult.ChatId
+                );
 
                 // Generate a unique stream ID for this request
                 var streamId = $"{request.UserId}:{initResult.ChatId}:{orleansRequest.RequestId}";
@@ -771,22 +842,29 @@ public class ChatController(
                     grainStream,
                     Response,
                     formatter,
-                    cancellationToken);
+                    cancellationToken
+                );
             }
             else
             {
-                _logger.LogInformation("Using standard StreamingBridge for stream {StreamId}", initResult.ChatId);
+                _logger.LogInformation(
+                    "Using standard StreamingBridge for stream {StreamId}",
+                    initResult.ChatId
+                );
 
                 // Use standard StreamingBridge
                 await _streamingBridge!.ConvertGrainToHttpStreamAsync(
                     grainStream,
                     Response,
                     formatter,
-                    cancellationToken);
+                    cancellationToken
+                );
             }
 
             // Send completion event
-            var completeEnvelope = SSEEventExtensions.CreateStreamCompleteEnvelope(initResult.ChatId);
+            var completeEnvelope = SSEEventExtensions.CreateStreamCompleteEnvelope(
+                initResult.ChatId
+            );
             await SendSseEvent("complete", completeEnvelope, initId);
         }
         catch (OperationCanceledException)
@@ -802,7 +880,7 @@ public class ChatController(
             var errorEnvelope = SSEEventExtensions.CreateErrorEnvelope(
                 initResult.ChatId,
                 null, // Assistant message ID not available
-                0,    // Sequence number not available
+                0, // Sequence number not available
                 ex.Message
             );
             await SendSseEvent("message", errorEnvelope, $"{initResult.ChatId}<|>error");
@@ -831,11 +909,7 @@ public class ChatController(
         if (clientsList.Count > 0)
         {
             var client = clientsList.First();
-            var sse = new ServerSentEvent
-            {
-                Type = eventType,
-                Data = [json],
-            };
+            var sse = new ServerSentEvent { Type = eventType, Data = [json] };
             if (!string.IsNullOrEmpty(id))
             {
                 sse.Id = id;
@@ -864,14 +938,19 @@ public class ChatController(
 
                 if (cancelled)
                 {
-                    _logger.LogInformation("Successfully cancelled operation {OperationId} through background service", operationId);
-                    return Ok(new
-                    {
-                        Success = true,
-                        OperationId = operationId,
-                        Message = "Operation cancelled successfully",
-                        Method = "BackgroundService"
-                    });
+                    _logger.LogInformation(
+                        "Successfully cancelled operation {OperationId} through background service",
+                        operationId
+                    );
+                    return Ok(
+                        new
+                        {
+                            Success = true,
+                            OperationId = operationId,
+                            Message = "Operation cancelled successfully",
+                            Method = "BackgroundService",
+                        }
+                    );
                 }
             }
 
@@ -881,12 +960,15 @@ public class ChatController(
                 try
                 {
                     // Get operation context to find the associated user
-                    var operationContext = await _operationTrackingService.GetOperationUserContextAsync(operationId);
+                    var operationContext =
+                        await _operationTrackingService.GetOperationUserContextAsync(operationId);
 
                     if (operationContext != null)
                     {
                         // Get the user grain and attempt cancellation
-                        var userGrain = _clusterClient.GetGrain<IUserGrain>(operationContext.UserId);
+                        var userGrain = _clusterClient.GetGrain<IUserGrain>(
+                            operationContext.UserId
+                        );
                         var cancelled = await userGrain.CancelOperation(operationId);
 
                         if (cancelled)
@@ -896,70 +978,92 @@ public class ChatController(
 
                             _logger.LogInformation(
                                 "Successfully cancelled Orleans operation {OperationId} for user {UserId}",
-                                operationId, operationContext.UserId);
+                                operationId,
+                                operationContext.UserId
+                            );
 
-                            return Ok(new
-                            {
-                                Success = true,
-                                OperationId = operationId,
-                                Message = "Operation cancelled successfully via Orleans grain",
-                                Method = "OrleansGrain",
-                                operationContext.UserId,
-                                operationContext.ChatId
-                            });
+                            return Ok(
+                                new
+                                {
+                                    Success = true,
+                                    OperationId = operationId,
+                                    Message = "Operation cancelled successfully via Orleans grain",
+                                    Method = "OrleansGrain",
+                                    operationContext.UserId,
+                                    operationContext.ChatId,
+                                }
+                            );
                         }
                         else
                         {
                             _logger.LogWarning(
                                 "Orleans grain cancellation failed for operation {OperationId} (user {UserId})",
-                                operationId, operationContext.UserId);
-
-                            return BadRequest(new
-                            {
-                                Error = "Operation could not be cancelled (may already be completed or not cancellable)",
-                                OperationId = operationId,
+                                operationId,
                                 operationContext.UserId
-                            });
+                            );
+
+                            return BadRequest(
+                                new
+                                {
+                                    Error = "Operation could not be cancelled (may already be completed or not cancellable)",
+                                    OperationId = operationId,
+                                    operationContext.UserId,
+                                }
+                            );
                         }
                     }
                     else
                     {
-                        _logger.LogWarning("No operation context found for {OperationId}", operationId);
+                        _logger.LogWarning(
+                            "No operation context found for {OperationId}",
+                            operationId
+                        );
 
-                        return NotFound(new
-                        {
-                            Error = "Operation not found in tracking system",
-                            OperationId = operationId
-                        });
+                        return NotFound(
+                            new
+                            {
+                                Error = "Operation not found in tracking system",
+                                OperationId = operationId,
+                            }
+                        );
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error during Orleans grain cancellation for operation {OperationId}", operationId);
+                    _logger.LogError(
+                        ex,
+                        "Error during Orleans grain cancellation for operation {OperationId}",
+                        operationId
+                    );
 
-                    return StatusCode(500, new
-                    {
-                        Error = "Internal error during Orleans cancellation: " + ex.Message,
-                        OperationId = operationId
-                    });
+                    return StatusCode(
+                        500,
+                        new
+                        {
+                            Error = "Internal error during Orleans cancellation: " + ex.Message,
+                            OperationId = operationId,
+                        }
+                    );
                 }
             }
 
-            return NotFound(new
-            {
-                Error = "Operation not found or cannot be cancelled",
-                OperationId = operationId
-            });
+            return NotFound(
+                new
+                {
+                    Error = "Operation not found or cannot be cancelled",
+                    OperationId = operationId,
+                }
+            );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error cancelling operation {OperationId}: {Error}",
-                operationId, ex.Message);
-            return StatusCode(500, new
-            {
-                Error = ex.Message,
-                OperationId = operationId
-            });
+            _logger.LogError(
+                ex,
+                "Error cancelling operation {OperationId}: {Error}",
+                operationId,
+                ex.Message
+            );
+            return StatusCode(500, new { Error = ex.Message, OperationId = operationId });
         }
     }
 
@@ -982,36 +1086,34 @@ public class ChatController(
 
                 if (status != null)
                 {
-                    return Ok(new
-                    {
-                        OperationId = operationId,
-                        Status = status.Status.ToString(),
-                        status.QueuedAt,
-                        status.StartedAt,
-                        status.CompletedAt,
-                        status.Error,
-                        status.Progress,
-                        status.ProgressDescription,
-                        Method = "BackgroundService"
-                    });
+                    return Ok(
+                        new
+                        {
+                            OperationId = operationId,
+                            Status = status.Status.ToString(),
+                            status.QueuedAt,
+                            status.StartedAt,
+                            status.CompletedAt,
+                            status.Error,
+                            status.Progress,
+                            status.ProgressDescription,
+                            Method = "BackgroundService",
+                        }
+                    );
                 }
             }
 
-            return NotFound(new
-            {
-                Error = "Operation not found",
-                OperationId = operationId
-            });
+            return NotFound(new { Error = "Operation not found", OperationId = operationId });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting operation status {OperationId}: {Error}",
-                operationId, ex.Message);
-            return StatusCode(500, new
-            {
-                Error = ex.Message,
-                OperationId = operationId
-            });
+            _logger.LogError(
+                ex,
+                "Error getting operation status {OperationId}: {Error}",
+                operationId,
+                ex.Message
+            );
+            return StatusCode(500, new { Error = ex.Message, OperationId = operationId });
         }
     }
 }
@@ -1046,8 +1148,7 @@ public class ChatHistoryResponse
 public class GetTasksResponse
 {
     public required string ChatId { get; set; }
-    public required IList<TaskManager.TaskItem> Tasks { get; set; } =
-        [];
+    public required IList<TaskManager.TaskItem> Tasks { get; set; } = [];
     public required int Version { get; set; }
 }
 

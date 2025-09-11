@@ -116,11 +116,11 @@ public class RetryPolicySettings
     /// Empty list means all exceptions are retried.
     /// </summary>
     public List<string> RetryableExceptions { get; set; } =
-    [
-        "Orleans.Runtime.OrleansMessageRejectionException",
-        "System.TimeoutException",
-        "System.Net.Http.HttpRequestException"
-    ];
+        [
+            "Orleans.Runtime.OrleansMessageRejectionException",
+            "System.TimeoutException",
+            "System.Net.Http.HttpRequestException",
+        ];
 }
 
 /// <summary>

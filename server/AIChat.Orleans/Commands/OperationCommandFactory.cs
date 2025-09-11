@@ -18,7 +18,12 @@ public interface IOperationCommandFactory
     /// <param name="userId">The user ID</param>
     /// <param name="message">The message to process</param>
     /// <returns>Process message command</returns>
-    ProcessMessageCommand CreateProcessMessageCommand(string operationId, string chatId, string userId, ChatMessage message);
+    ProcessMessageCommand CreateProcessMessageCommand(
+        string operationId,
+        string chatId,
+        string userId,
+        ChatMessage message
+    );
 
     /// <summary>
     /// Creates a command for relaying a message to subscribed connections.
@@ -28,7 +33,12 @@ public interface IOperationCommandFactory
     /// <param name="userId">The user ID</param>
     /// <param name="message">The message to relay</param>
     /// <returns>Relay message command</returns>
-    RelayMessageCommand CreateRelayMessageCommand(string operationId, string chatId, string userId, ChatMessage message);
+    RelayMessageCommand CreateRelayMessageCommand(
+        string operationId,
+        string chatId,
+        string userId,
+        ChatMessage message
+    );
 
     /// <summary>
     /// Creates a command for processing and relaying a stream chunk.
@@ -38,7 +48,12 @@ public interface IOperationCommandFactory
     /// <param name="userId">The user ID</param>
     /// <param name="chunk">The stream chunk to process</param>
     /// <returns>Process stream chunk command</returns>
-    ProcessStreamChunkCommand CreateProcessStreamChunkCommand(string operationId, string chatId, string userId, StreamChunk chunk);
+    ProcessStreamChunkCommand CreateProcessStreamChunkCommand(
+        string operationId,
+        string chatId,
+        string userId,
+        StreamChunk chunk
+    );
 
     /// <summary>
     /// Creates a command for cancelling an active operation.
@@ -48,7 +63,12 @@ public interface IOperationCommandFactory
     /// <param name="userId">The user ID</param>
     /// <param name="targetOperationId">The operation ID to cancel</param>
     /// <returns>Cancel operation command</returns>
-    CancelOperationCommand CreateCancelOperationCommand(string operationId, string chatId, string userId, string targetOperationId);
+    CancelOperationCommand CreateCancelOperationCommand(
+        string operationId,
+        string chatId,
+        string userId,
+        string targetOperationId
+    );
 
     /// <summary>
     /// Creates a command based on operation type and parameters.
@@ -59,7 +79,13 @@ public interface IOperationCommandFactory
     /// <param name="userId">The user ID</param>
     /// <param name="parameters">Operation-specific parameters</param>
     /// <returns>Operation command or null if type is not supported</returns>
-    IOperationCommand? CreateCommand(OperationType operationType, string operationId, string chatId, string userId, object parameters);
+    IOperationCommand? CreateCommand(
+        OperationType operationType,
+        string operationId,
+        string chatId,
+        string userId,
+        object parameters
+    );
 
     /// <summary>
     /// Validates command creation parameters.
@@ -68,7 +94,11 @@ public interface IOperationCommandFactory
     /// <param name="chatId">The chat ID</param>
     /// <param name="userId">The user ID</param>
     /// <returns>Validation result</returns>
-    CommandValidationResult ValidateCreationParameters(string operationId, string chatId, string userId);
+    CommandValidationResult ValidateCreationParameters(
+        string operationId,
+        string chatId,
+        string userId
+    );
 }
 
 /// <summary>
@@ -88,7 +118,12 @@ public class OperationCommandFactory : IOperationCommandFactory
     }
 
     /// <inheritdoc />
-    public ProcessMessageCommand CreateProcessMessageCommand(string operationId, string chatId, string userId, ChatMessage message)
+    public ProcessMessageCommand CreateProcessMessageCommand(
+        string operationId,
+        string chatId,
+        string userId,
+        ChatMessage message
+    )
     {
         var validation = ValidateCreationParameters(operationId, chatId, userId);
         if (!validation.IsValid)
@@ -106,13 +141,21 @@ public class OperationCommandFactory : IOperationCommandFactory
 
         _logger.LogDebug(
             "Creating ProcessMessageCommand for operation {OperationId} in chat {ChatId} for user {UserId}",
-            operationId, chatId, userId);
+            operationId,
+            chatId,
+            userId
+        );
 
         return new ProcessMessageCommand(operationId, chatId, userId, message);
     }
 
     /// <inheritdoc />
-    public RelayMessageCommand CreateRelayMessageCommand(string operationId, string chatId, string userId, ChatMessage message)
+    public RelayMessageCommand CreateRelayMessageCommand(
+        string operationId,
+        string chatId,
+        string userId,
+        ChatMessage message
+    )
     {
         var validation = ValidateCreationParameters(operationId, chatId, userId);
         if (!validation.IsValid)
@@ -130,20 +173,30 @@ public class OperationCommandFactory : IOperationCommandFactory
 
         _logger.LogDebug(
             "Creating RelayMessageCommand for operation {OperationId} in chat {ChatId} for user {UserId}",
-            operationId, chatId, userId);
+            operationId,
+            chatId,
+            userId
+        );
 
         return new RelayMessageCommand(operationId, chatId, userId, message);
     }
 
     /// <inheritdoc />
-    public ProcessStreamChunkCommand CreateProcessStreamChunkCommand(string operationId, string chatId, string userId, StreamChunk chunk)
+    public ProcessStreamChunkCommand CreateProcessStreamChunkCommand(
+        string operationId,
+        string chatId,
+        string userId,
+        StreamChunk chunk
+    )
     {
         var validation = ValidateCreationParameters(operationId, chatId, userId);
         if (!validation.IsValid)
         {
             var errors = string.Join(", ", validation.Errors);
             _logger.LogError("Invalid parameters for ProcessStreamChunkCommand: {Errors}", errors);
-            throw new ArgumentException($"Invalid parameters for ProcessStreamChunkCommand: {errors}");
+            throw new ArgumentException(
+                $"Invalid parameters for ProcessStreamChunkCommand: {errors}"
+            );
         }
 
         if (chunk == null)
@@ -154,13 +207,22 @@ public class OperationCommandFactory : IOperationCommandFactory
 
         _logger.LogTrace(
             "Creating ProcessStreamChunkCommand for operation {OperationId} in chat {ChatId} for user {UserId}, chunk {ChunkIndex}",
-            operationId, chatId, userId, chunk.ChunkIndex);
+            operationId,
+            chatId,
+            userId,
+            chunk.ChunkIndex
+        );
 
         return new ProcessStreamChunkCommand(operationId, chatId, userId, chunk);
     }
 
     /// <inheritdoc />
-    public CancelOperationCommand CreateCancelOperationCommand(string operationId, string chatId, string userId, string targetOperationId)
+    public CancelOperationCommand CreateCancelOperationCommand(
+        string operationId,
+        string chatId,
+        string userId,
+        string targetOperationId
+    )
     {
         var validation = ValidateCreationParameters(operationId, chatId, userId);
         if (!validation.IsValid)
@@ -173,45 +235,87 @@ public class OperationCommandFactory : IOperationCommandFactory
         if (string.IsNullOrWhiteSpace(targetOperationId))
         {
             _logger.LogError("Target operation ID is required for CancelOperationCommand");
-            throw new ArgumentException("Target operation ID cannot be null or empty", nameof(targetOperationId));
+            throw new ArgumentException(
+                "Target operation ID cannot be null or empty",
+                nameof(targetOperationId)
+            );
         }
 
         _logger.LogDebug(
             "Creating CancelOperationCommand for operation {OperationId} to cancel {TargetOperationId} in chat {ChatId} for user {UserId}",
-            operationId, targetOperationId, chatId, userId);
+            operationId,
+            targetOperationId,
+            chatId,
+            userId
+        );
 
         return new CancelOperationCommand(operationId, chatId, userId, targetOperationId);
     }
 
     /// <inheritdoc />
-    public IOperationCommand? CreateCommand(OperationType operationType, string operationId, string chatId, string userId, object parameters)
+    public IOperationCommand? CreateCommand(
+        OperationType operationType,
+        string operationId,
+        string chatId,
+        string userId,
+        object parameters
+    )
     {
         try
         {
             _logger.LogDebug(
                 "Creating command for operation type {OperationType} with operation {OperationId}",
-                operationType, operationId);
+                operationType,
+                operationId
+            );
 
             return operationType switch
             {
-                OperationType.SendMessage => CreateProcessMessageCommandFromParameters(operationId, chatId, userId, parameters),
-                OperationType.RegenerateResponse => CreateProcessMessageCommandFromParameters(operationId, chatId, userId, parameters),
-                OperationType.EditMessage => CreateProcessMessageCommandFromParameters(operationId, chatId, userId, parameters),
-                OperationType.DeleteMessage => CreateProcessMessageCommandFromParameters(operationId, chatId, userId, parameters),
-                _ => null
+                OperationType.SendMessage => CreateProcessMessageCommandFromParameters(
+                    operationId,
+                    chatId,
+                    userId,
+                    parameters
+                ),
+                OperationType.RegenerateResponse => CreateProcessMessageCommandFromParameters(
+                    operationId,
+                    chatId,
+                    userId,
+                    parameters
+                ),
+                OperationType.EditMessage => CreateProcessMessageCommandFromParameters(
+                    operationId,
+                    chatId,
+                    userId,
+                    parameters
+                ),
+                OperationType.DeleteMessage => CreateProcessMessageCommandFromParameters(
+                    operationId,
+                    chatId,
+                    userId,
+                    parameters
+                ),
+                _ => null,
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Failed to create command for operation type {OperationType} with operation {OperationId}",
-                operationType, operationId);
+                operationType,
+                operationId
+            );
             return null;
         }
     }
 
     /// <inheritdoc />
-    public CommandValidationResult ValidateCreationParameters(string operationId, string chatId, string userId)
+    public CommandValidationResult ValidateCreationParameters(
+        string operationId,
+        string chatId,
+        string userId
+    )
     {
         var errors = new List<string>();
 
@@ -244,10 +348,18 @@ public class OperationCommandFactory : IOperationCommandFactory
     /// <summary>
     /// Creates a ProcessMessageCommand from generic parameters.
     /// </summary>
-    private ProcessMessageCommand CreateProcessMessageCommandFromParameters(string operationId, string chatId, string userId, object parameters)
+    private ProcessMessageCommand CreateProcessMessageCommandFromParameters(
+        string operationId,
+        string chatId,
+        string userId,
+        object parameters
+    )
     {
         return parameters is not ChatMessage message
-            ? throw new ArgumentException("Parameters must be a ChatMessage for message processing operations", nameof(parameters))
+            ? throw new ArgumentException(
+                "Parameters must be a ChatMessage for message processing operations",
+                nameof(parameters)
+            )
             : CreateProcessMessageCommand(operationId, chatId, userId, message);
     }
 

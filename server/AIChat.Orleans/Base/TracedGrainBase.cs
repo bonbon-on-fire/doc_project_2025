@@ -10,7 +10,8 @@ namespace AIChat.Orleans.Base;
 /// All grains should inherit from this class to get consistent tracing behavior.
 /// </summary>
 /// <typeparam name="TGrainState">The grain state type</typeparam>
-public abstract class TracedGrainBase<TGrainState> : Grain<TGrainState> where TGrainState : new()
+public abstract class TracedGrainBase<TGrainState> : Grain<TGrainState>
+    where TGrainState : new()
 {
     /// <summary>
     /// Logger instance for diagnostics and tracing information.
@@ -41,8 +42,13 @@ public abstract class TracedGrainBase<TGrainState> : Grain<TGrainState> where TG
 
         if (activity != null)
         {
-            Logger.LogDebug("Started tracing activity {ActivityId} for {GrainType}.{Method} (GrainId: {GrainId})",
-                activity.Id, grainType, methodName, grainId);
+            Logger.LogDebug(
+                "Started tracing activity {ActivityId} for {GrainType}.{Method} (GrainId: {GrainId})",
+                activity.Id,
+                grainType,
+                methodName,
+                grainId
+            );
         }
 
         return activity;
@@ -53,7 +59,10 @@ public abstract class TracedGrainBase<TGrainState> : Grain<TGrainState> where TG
     /// </summary>
     /// <param name="activity">The activity to complete</param>
     /// <param name="additionalTags">Optional additional tags to add</param>
-    protected void CompleteActivity(Activity? activity, Dictionary<string, object>? additionalTags = null)
+    protected void CompleteActivity(
+        Activity? activity,
+        Dictionary<string, object>? additionalTags = null
+    )
     {
         if (activity == null)
         {
@@ -81,7 +90,11 @@ public abstract class TracedGrainBase<TGrainState> : Grain<TGrainState> where TG
 
         OrleansActivitySource.SetError(activity, exception);
 
-        Logger.LogError(exception, "Completed tracing activity {ActivityId} with error", activity.Id);
+        Logger.LogError(
+            exception,
+            "Completed tracing activity {ActivityId} with error",
+            activity.Id
+        );
 
         activity.Dispose();
     }
@@ -94,7 +107,10 @@ public abstract class TracedGrainBase<TGrainState> : Grain<TGrainState> where TG
     /// <param name="methodName">The name of the method being executed</param>
     /// <param name="operation">The operation to execute</param>
     /// <returns>The result of the operation</returns>
-    protected async Task<TResult> ExecuteWithTracing<TResult>(string methodName, Func<Task<TResult>> operation)
+    protected async Task<TResult> ExecuteWithTracing<TResult>(
+        string methodName,
+        Func<Task<TResult>> operation
+    )
     {
         using var activity = StartActivity(methodName);
 

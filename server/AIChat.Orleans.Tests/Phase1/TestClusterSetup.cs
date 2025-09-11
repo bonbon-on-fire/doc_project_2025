@@ -20,7 +20,6 @@ public class Phase1TestSiloConfigurator : ISiloConfigurator
             .AddMemoryGrainStorageAsDefault()
             .AddMemoryGrainStorage("UserGrainStorage")
             .AddMemoryGrainStorage("PubSubStore")
-
             // Configure services required by grains
             .ConfigureServices(services =>
             {
@@ -37,7 +36,6 @@ public class Phase1TestSiloConfigurator : ISiloConfigurator
                     config.Persistence.ActivityPersistenceInterval = 5;
                 });
             })
-
             // Configure logging for tests (reduced noise)
             .ConfigureLogging(logging =>
             {
@@ -108,10 +106,13 @@ public abstract class Phase1IntegrationTestBase
     /// <typeparam name="TGrain">Type of grain interface</typeparam>
     /// <param name="grainId">Grain identifier</param>
     /// <returns>Grain proxy</returns>
-    protected TGrain GetGrain<TGrain>(string grainId) where TGrain : IGrainWithStringKey
+    protected TGrain GetGrain<TGrain>(string grainId)
+        where TGrain : IGrainWithStringKey
     {
         return TestCluster == null
-            ? throw new InvalidOperationException("TestCluster not initialized. Call SetupTestCluster() first.")
+            ? throw new InvalidOperationException(
+                "TestCluster not initialized. Call SetupTestCluster() first."
+            )
             : TestCluster.GrainFactory.GetGrain<TGrain>(grainId);
     }
 
@@ -128,8 +129,8 @@ public abstract class Phase1IntegrationTestBase
         using var cts = new CancellationTokenSource(timeout.Value);
 
         // Ping the grain to ensure activation
-        var pingMethod = grain.GetType().GetMethod("GetState") ??
-                        grain.GetType().GetMethod("CheckHealth");
+        var pingMethod =
+            grain.GetType().GetMethod("GetState") ?? grain.GetType().GetMethod("CheckHealth");
 
         if (pingMethod != null)
         {

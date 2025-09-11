@@ -12,8 +12,9 @@ public static class SseTestHelpers
 {
     private static readonly JsonSerializerOptions s_jsonOptions = new()
     {
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
     };
+
     /// <summary>
     /// Represents a parsed SSE event.
     /// </summary>
@@ -31,7 +32,8 @@ public static class SseTestHelpers
     /// </summary>
     public static async Task<List<SseEvent>> ParseSseStreamAsync(
         Stream stream,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var events = new List<SseEvent>();
         using var reader = new StreamReader(stream, Encoding.UTF8);
@@ -61,7 +63,8 @@ public static class SseTestHelpers
                         {
                             currentEvent.Envelope = JsonSerializer.Deserialize<SSEEnvelope>(
                                 currentEvent.Data,
-                                s_jsonOptions);
+                                s_jsonOptions
+                            );
                         }
                         catch
                         {
@@ -152,15 +155,17 @@ public static class SseTestHelpers
     /// </summary>
     public static void ValidateEventSequence(
         List<SseEvent> actualEvents,
-        params string[] expectedEventTypes)
+        params string[] expectedEventTypes
+    )
     {
         var actualTypes = actualEvents.Select(e => e.EventType).ToList();
 
         if (actualTypes.Count != expectedEventTypes.Length)
         {
             throw new AssertionException(
-                $"Expected {expectedEventTypes.Length} events but got {actualTypes.Count}. " +
-                $"Actual: [{string.Join(", ", actualTypes)}]");
+                $"Expected {expectedEventTypes.Length} events but got {actualTypes.Count}. "
+                    + $"Actual: [{string.Join(", ", actualTypes)}]"
+            );
         }
 
         for (var i = 0; i < expectedEventTypes.Length; i++)
@@ -168,7 +173,8 @@ public static class SseTestHelpers
             if (actualTypes[i] != expectedEventTypes[i])
             {
                 throw new AssertionException(
-                    $"Event {i}: Expected '{expectedEventTypes[i]}' but got '{actualTypes[i]}'");
+                    $"Event {i}: Expected '{expectedEventTypes[i]}' but got '{actualTypes[i]}'"
+                );
             }
         }
     }
@@ -179,7 +185,8 @@ public static class SseTestHelpers
     public static async Task<SseEvent?> WaitForEventAsync(
         Stream stream,
         string eventType,
-        TimeSpan timeout)
+        TimeSpan timeout
+    )
     {
         using var cts = new CancellationTokenSource(timeout);
         var events = await ParseSseStreamAsync(stream, cts.Token);
@@ -192,7 +199,8 @@ public static class SseTestHelpers
     public static SSEEnvelope CreateTestEnvelope(
         string chatId,
         string? messageId = null,
-        string? content = null)
+        string? content = null
+    )
     {
         return new SSEEnvelope
         {
@@ -200,7 +208,7 @@ public static class SseTestHelpers
             MessageId = messageId,
             Content = content,
             Timestamp = DateTime.UtcNow,
-            Metadata = []
+            Metadata = [],
         };
     }
 
@@ -209,6 +217,7 @@ public static class SseTestHelpers
     /// </summary>
     public class AssertionException : Exception
     {
-        public AssertionException(string message) : base(message) { }
+        public AssertionException(string message)
+            : base(message) { }
     }
 }

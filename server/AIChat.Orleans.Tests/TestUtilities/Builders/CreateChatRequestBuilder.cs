@@ -117,7 +117,7 @@ public class CreateChatRequestBuilder
             UserId = _userId,
             Message = _message,
             SystemPrompt = _systemPrompt,
-            ModeId = _modeId
+            ModeId = _modeId,
         };
     }
 
