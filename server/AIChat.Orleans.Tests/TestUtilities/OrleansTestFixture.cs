@@ -65,7 +65,7 @@ public class OrleansTestFixture : IAsyncLifetime, IDisposable
 
         // Initialize WebApplicationFactory with test configuration
         _webAppManager = new TestWebApplicationManager(_configuration);
-        _webAppManager.Initialize(_clusterManager?.Client);
+        _webAppManager.Initialize(_clusterManager?.Client, _clusterManager?.Cluster?.GrainFactory);
     }
 
     public async Task DisposeAsync()

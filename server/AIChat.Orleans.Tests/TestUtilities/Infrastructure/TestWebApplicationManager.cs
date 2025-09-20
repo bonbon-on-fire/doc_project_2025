@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
+using Orleans;
 
 namespace AIChat.Orleans.Tests.TestUtilities.Infrastructure;
 
@@ -32,13 +33,13 @@ public class TestWebApplicationManager : IDisposable
     /// <summary>
     /// Initializes the WebApplicationFactory with test services.
     /// </summary>
-    public void Initialize(IClusterClient? orleansClient = null)
+    public void Initialize(IClusterClient? orleansClient = null, IGrainFactory? grainFactory = null)
     {
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             _ = builder.ConfigureTestServices(services =>
             {
-                ConfigureOrleansServices(services, orleansClient);
+                ConfigureOrleansServices(services, orleansClient, grainFactory);
                 ConfigureStreamingServices(services);
                 ConfigureFeatureManagement(services);
             });
@@ -77,20 +78,37 @@ public class TestWebApplicationManager : IDisposable
 
     private void ConfigureOrleansServices(
         IServiceCollection services,
-        IClusterClient? orleansClient
+        IClusterClient? orleansClient,
+        IGrainFactory? grainFactory
     )
     {
-        // Remove existing Orleans client if any
+        // Remove existing Orleans services if any
         var existingClient = services.FirstOrDefault(d => d.ServiceType == typeof(IClusterClient));
         if (existingClient != null)
         {
             _ = services.Remove(existingClient);
         }
 
-        // Add test Orleans client if enabled
-        if (_configuration.OrleansEnabled && orleansClient != null)
+        var existingGrainFactory = services.FirstOrDefault(d => d.ServiceType == typeof(IGrainFactory));
+        if (existingGrainFactory != null)
         {
-            _ = services.AddSingleton(orleansClient);
+            _ = services.Remove(existingGrainFactory);
+        }
+
+        // Add test Orleans services if enabled
+        if (_configuration.OrleansEnabled)
+        {
+            // For co-hosting mode (Test environment), use IGrainFactory
+            if (grainFactory != null)
+            {
+                _ = services.AddSingleton(grainFactory);
+            }
+            // For client mode, use IClusterClient
+            else if (orleansClient != null)
+            {
+                _ = services.AddSingleton(orleansClient);
+            }
+
             _ = services.AddSingleton<IOrleansIntegrationService, OrleansIntegrationService>();
         }
     }
@@ -102,28 +120,29 @@ public class TestWebApplicationManager : IDisposable
         {
             options.BufferSize = _configuration.StreamingConfig.BufferSize;
             options.FlushIntervalMs = _configuration.StreamingConfig.FlushIntervalMs;
-            options.MaxConcurrentWrites = _configuration.StreamingConfig.MaxConcurrentWrites;
             options.BackpressureThreshold = _configuration.StreamingConfig.BackpressureThreshold;
-            options.Enabled = _configuration.StreamingConfig.Enabled;
+            // Note: StreamingConfiguration doesn't have MaxConcurrentWrites or Enabled properties
+            // Those are test-specific properties that don't map to the real configuration
         });
 
         // Configure resilient streaming
         _ = services.Configure<ResilientStreamingConfiguration>(options =>
         {
             options.Enabled = _configuration.ResilientStreamingEnabled;
-            options.MaxRetryAttempts = _configuration.ResilientConfig.MaxRetryAttempts;
-            options.RetryDelayMs = _configuration.ResilientConfig.RetryDelayMs;
-            options.CircuitBreakerThreshold = _configuration
-                .ResilientConfig
-                .CircuitBreakerThreshold;
-            options.CircuitBreakerResetTimeoutMs = _configuration
-                .ResilientConfig
-                .CircuitBreakerResetTimeoutMs;
-            options.PartialMessageBufferSize = _configuration
-                .ResilientConfig
-                .PartialMessageBufferSize;
-            options.MessageTimeoutMs = _configuration.ResilientConfig.MessageTimeoutMs;
-            options.HealthCheckIntervalMs = _configuration.ResilientConfig.HealthCheckIntervalMs;
+
+            // Configure nested objects to match the real ResilientStreamingConfiguration structure
+            options.Reconnection.MaxAttempts = _configuration.ResilientConfig.MaxRetryAttempts;
+            options.Reconnection.InitialDelayMs = _configuration.ResilientConfig.RetryDelayMs;
+
+            options.CircuitBreaker.FailureThreshold = _configuration.ResilientConfig.CircuitBreakerThreshold;
+            options.CircuitBreaker.RecoveryTimeoutSeconds = _configuration.ResilientConfig.CircuitBreakerResetTimeoutMs / 1000;
+
+            options.Buffer.Size = _configuration.ResilientConfig.PartialMessageBufferSize;
+            options.Buffer.HighPrioritySize = Math.Min(10, _configuration.ResilientConfig.PartialMessageBufferSize / 5); // Ensure HighPrioritySize < Size
+
+            options.PartialRecovery.ChunkTimeoutSeconds = _configuration.ResilientConfig.MessageTimeoutMs / 1000;
+
+            options.HealthCheck.CheckIntervalSeconds = _configuration.ResilientConfig.HealthCheckIntervalMs / 1000;
         });
 
         // Add streaming services
@@ -132,7 +151,7 @@ public class TestWebApplicationManager : IDisposable
 
         if (_configuration.ResilientStreamingEnabled)
         {
-            _ = services.AddScoped<IResilientStreamManager, ResilientStreamManager>();
+            _ = services.AddScoped<AIChat.Server.Services.Streaming.IResilientStreamManager, AIChat.Server.Services.Streaming.ResilientStreamManager>();
         }
     }
 

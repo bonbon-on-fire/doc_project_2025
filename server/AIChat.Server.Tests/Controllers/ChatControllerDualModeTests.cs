@@ -25,7 +25,6 @@ public class ChatControllerDualModeTests
     private readonly Mock<IHubContext<ChatHub>> _mockHubContext;
     private readonly Mock<IFeatureManager> _mockFeatureManager;
     private readonly Mock<IHostEnvironment> _mockHostEnvironment;
-    private readonly Mock<IClusterClient> _mockClusterClient;
     private readonly Mock<IBackgroundChatService> _mockBackgroundChatService;
     private readonly Mock<IClientProxy> _mockClientProxy;
     private readonly Mock<IHubClients> _mockHubClients;
@@ -43,7 +42,6 @@ public class ChatControllerDualModeTests
         _mockHubContext = new Mock<IHubContext<ChatHub>>();
         _mockFeatureManager = new Mock<IFeatureManager>();
         _mockHostEnvironment = new Mock<IHostEnvironment>();
-        _mockClusterClient = new Mock<IClusterClient>();
         _mockBackgroundChatService = new Mock<IBackgroundChatService>();
         _mockClientProxy = new Mock<IClientProxy>();
         _mockHubClients = new Mock<IHubClients>();
@@ -71,8 +69,11 @@ public class ChatControllerDualModeTests
             _mockHubContext.Object,
             _mockFeatureManager.Object,
             _mockHostEnvironment.Object,
-            _mockClusterClient.Object,
-            _mockBackgroundChatService.Object
+            null, // grainFactory
+            _mockBackgroundChatService.Object,
+            null, // operationTrackingService
+            null, // streamingBridge
+            null // resilientStreamManager
         );
 
         // Setup HTTP context

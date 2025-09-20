@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace AIChat.Server.Services.Streaming
+namespace AIChat.Orleans.Tests.TestUtilities.Mocks
 {
     // Minimal interfaces for testing - actual implementations are in server project
     public interface IStreamingBridge : IAsyncDisposable
@@ -65,9 +65,9 @@ namespace AIChat.Server.Services.Streaming
         public long TotalMessagesProcessed { get; init; }
         public TimeSpan Uptime { get; init; }
     }
-} // End namespace AIChat.Server.Services.Streaming
+} // End namespace AIChat.Orleans.Tests.TestUtilities.Mocks
 
-namespace AIChat.Server.Configuration
+namespace AIChat.Orleans.Tests.TestUtilities.Mocks
 {
     public class StreamingConfiguration
     {
@@ -95,9 +95,11 @@ namespace AIChat.Server.Configuration
         }
     }
 
+    // Test-simplified version of ResilientStreamingConfiguration for easier testing
+    // Real implementation in AIChat.Server.Configuration has nested objects
     public class ResilientStreamingConfiguration
     {
-        public bool Enabled { get; set; }
+        public bool Enabled { get; set; } = true;
         public int MaxRetryAttempts { get; set; } = 3;
         public int RetryDelayMs { get; set; } = 1000;
         public int CircuitBreakerThreshold { get; set; } = 5;
@@ -124,19 +126,9 @@ namespace AIChat.Server.Configuration
     }
 }
 
-namespace AIChat.Server.Models
-{
-    public class CreateChatRequest
-    {
-        public string? ChatId { get; set; }
-        public required string UserId { get; set; }
-        public required string Message { get; set; }
-        public string? SystemPrompt { get; set; }
-        public string? ModeId { get; set; }
-    }
-}
+// Removed CreateChatRequest mock - using actual implementation from AIChat.Server.Services
 
-namespace AIChat.Server.Models.SSE
+namespace AIChat.Orleans.Tests.TestUtilities.Mocks.SSE
 {
     public class SSEEnvelope
     {
@@ -203,11 +195,10 @@ namespace AIChat.Server.Models.SSE
     }
 }
 
-// Stub for Program class
-public partial class Program { }
+// Stub for Program class - removed to avoid conflicts with actual Program class
 
 // Minimal implementations for testing
-namespace AIChat.Server.Services.Streaming
+namespace AIChat.Orleans.Tests.TestUtilities.Mocks
 {
     public class StreamingBridge : IStreamingBridge
     {
@@ -218,7 +209,7 @@ namespace AIChat.Server.Services.Streaming
 
         public StreamingBridge(
             ILogger<StreamingBridge> logger,
-            IOptions<StreamingConfiguration> configuration
+            IOptions<Mocks.StreamingConfiguration> configuration
         )
         {
             _logger = logger;
@@ -276,7 +267,7 @@ namespace AIChat.Server.Services.Streaming
         public IStreamingBridge CreateBridge()
         {
             var logger = _serviceProvider.GetService<ILogger<StreamingBridge>>()!;
-            var config = _serviceProvider.GetService<IOptions<StreamingConfiguration>>()!;
+            var config = _serviceProvider.GetService<IOptions<Mocks.StreamingConfiguration>>()!;
             return new StreamingBridge(logger, config);
         }
     }
@@ -292,7 +283,7 @@ namespace AIChat.Server.Services.Streaming
         public ResilientStreamManager(
             ILogger<ResilientStreamManager> logger,
             IStreamingBridgeFactory bridgeFactory,
-            IOptions<ResilientStreamingConfiguration> configuration
+            IOptions<Mocks.ResilientStreamingConfiguration> configuration
         )
         {
             _logger = logger;

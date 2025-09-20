@@ -46,6 +46,9 @@ public interface IChatService
 // Request types
 public class CreateChatRequest
 {
+    [JsonPropertyName("chatId")]
+    public string? ChatId { get; set; }
+
     [JsonPropertyName("userId")]
     public required string UserId { get; set; }
 

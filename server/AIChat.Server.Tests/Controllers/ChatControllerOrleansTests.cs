@@ -44,7 +44,6 @@ public class ChatControllerOrleansTests
     private readonly Mock<IHubContext<ChatHub>> _mockHubContext;
     private readonly Mock<IFeatureManager> _mockFeatureManager;
     private readonly Mock<IHostEnvironment> _mockHostEnvironment;
-    private readonly Mock<IClusterClient> _mockClusterClient;
     private readonly Mock<IStreamingBridge> _mockStreamingBridge;
     private readonly ChatController _controller;
 
@@ -58,7 +57,6 @@ public class ChatControllerOrleansTests
         _mockHubContext = new Mock<IHubContext<ChatHub>>();
         _mockFeatureManager = new Mock<IFeatureManager>();
         _mockHostEnvironment = new Mock<IHostEnvironment>();
-        _mockClusterClient = new Mock<IClusterClient>();
         _mockStreamingBridge = new Mock<IStreamingBridge>();
 
         _controller = new ChatController(
@@ -70,7 +68,7 @@ public class ChatControllerOrleansTests
             _mockHubContext.Object,
             _mockFeatureManager.Object,
             _mockHostEnvironment.Object,
-            _mockClusterClient.Object,
+            null, // grainFactory
             null, // backgroundChatService
             null, // operationTrackingService
             _mockStreamingBridge.Object,
@@ -110,9 +108,7 @@ public class ChatControllerOrleansTests
 
         // Setup cluster client and streaming bridge as available
         var mockUserGrain = new Mock<IUserGrain>();
-        _ = _mockClusterClient
-            .Setup(c => c.GetGrain<IUserGrain>("health-check-user", null))
-            .Returns(mockUserGrain.Object);
+        // Note: Test no longer uses IClusterClient - controller simplified to IGrainFactory only
 
         _ = mockUserGrain
             .Setup(g => g.CheckHealth())
@@ -212,9 +208,7 @@ public class ChatControllerOrleansTests
             .ReturnsAsync(true);
 
         var mockUserGrain = new Mock<IUserGrain>();
-        _ = _mockClusterClient
-            .Setup(c => c.GetGrain<IUserGrain>("health-check-user", null))
-            .Returns(mockUserGrain.Object);
+        // Note: Test no longer uses IClusterClient - controller simplified to IGrainFactory only
 
         // Make health check fail
         _ = mockUserGrain
@@ -275,12 +269,8 @@ public class ChatControllerOrleansTests
             .ReturnsAsync(true);
 
         var mockUserGrain = new Mock<IUserGrain>();
-        _ = _mockClusterClient
-            .Setup(c => c.GetGrain<IUserGrain>("health-check-user", null))
-            .Returns(mockUserGrain.Object);
-        _ = _mockClusterClient
-            .Setup(c => c.GetGrain<IUserGrain>(request.UserId, null))
-            .Returns(mockUserGrain.Object);
+        // Note: Test no longer uses IClusterClient - controller simplified to IGrainFactory only
+        // Note: Test no longer uses IClusterClient - controller simplified to IGrainFactory only
 
         _ = mockUserGrain
             .Setup(g => g.CheckHealth())

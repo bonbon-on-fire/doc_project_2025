@@ -518,6 +518,17 @@ public sealed class ModeService : IModeService, IDisposable
                         "agents"
                     );
 
+                    // For tests, try to find agents directory relative to content root
+                    if (!Directory.Exists(agentsPath) && _hostEnvironment.IsEnvironment("Test"))
+                    {
+                        // Try content root directly (for test scenarios)
+                        var testAgentsPath = Path.Combine(_hostEnvironment.ContentRootPath, "agents");
+                        if (Directory.Exists(testAgentsPath))
+                        {
+                            agentsPath = testAgentsPath;
+                        }
+                    }
+
                     if (!Directory.Exists(agentsPath))
                     {
                         _logger.LogWarning(
@@ -599,7 +610,7 @@ public sealed class ModeService : IModeService, IDisposable
 
     public void Dispose()
     {
-        throw new NotImplementedException();
+        _loadSemaphore?.Dispose();
     }
 }
 

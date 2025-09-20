@@ -17,16 +17,12 @@ namespace AIChat.Server.Tests.Api;
 /// Tests end-to-end scenarios including mode selection, tool filtering, and error handling.
 /// </summary>
 [Collection("ModeTests")] // Prevent parallel execution with other mode tests
-public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
+public class ModeApiIntegrationTests : BaseApiTest
 {
-    private readonly WebApplicationFactory<Program> _factory;
     private readonly JsonSerializerOptions _jsonOptions;
 
-    public ModeApiIntegrationTests(WebApplicationFactory<Program> factory)
+    public ModeApiIntegrationTests(WebApplicationFactory<Program> factory) : base(factory)
     {
-        _factory = factory.WithWebHostBuilder(builder =>
-            _ = builder.UseSetting("ASPNETCORE_ENVIRONMENT", "Test")
-        );
 
         _jsonOptions = new JsonSerializerOptions
         {
@@ -41,7 +37,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     public async Task CreateChatWithModeFiltersToolsCorrectly()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         var userId = TestHelpers.GenerateUniqueUserId("chat-mode-filter");
 
         // First get available modes
@@ -85,7 +81,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     public async Task SwitchModeMidConversationUpdatesToolContext()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         var userId = TestHelpers.GenerateUniqueUserId("switch-mode");
 
         // Create initial chat with general mode
@@ -128,7 +124,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     public async Task CreateAndUseCustomModeFullFlow()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         // Use seeded demo user for mode tests to ensure user exists in database
         var userId = "user-123"; // TestHelpers.GenerateUniqueUserId("custom-mode-flow");
         ModeDto? createdMode = null;
@@ -232,7 +228,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     public async Task CreateChatWithInvalidModeFallsBackToGeneral()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         var userId = TestHelpers.GenerateUniqueUserId("invalid-mode-fallback");
 
         // Try to create chat with non-existent mode
@@ -257,7 +253,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     public async Task CreateModeWithInvalidDataReturnsBadRequest()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         var userId = TestHelpers.GenerateUniqueUserId("invalid-mode-data");
 
         // Create mode with invalid data (empty name)
@@ -285,7 +281,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     public async Task UpdateSystemModeReturnsForbidden()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         var userId = TestHelpers.GenerateUniqueUserId("update-system-mode");
 
         // Try to update a system mode
@@ -315,7 +311,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     public async Task DeleteSystemModeReturnsForbidden()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         var userId = TestHelpers.GenerateUniqueUserId("delete-system-mode");
 
         // Try to delete a system mode
@@ -335,7 +331,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     public async Task GetModesPerformanceCompletesWithinTimeLimit()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         var userId = TestHelpers.GenerateUniqueUserId("perf-get-modes");
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
@@ -354,7 +350,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     public async Task SwitchModePerformanceCompletesQuickly()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         var userId = TestHelpers.GenerateUniqueUserId("perf-switch-mode");
 
         // Create initial chat
@@ -397,7 +393,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     public async Task ConcurrentModeAccessHandlesMultipleUsers()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         var userIds = TestHelpers.GenerateUniqueUserIds(10, "concurrent-access").ToList();
 
         // Act - Concurrent mode requests
@@ -430,7 +426,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     public async Task StreamSSEWithModeIncludesModeInformation()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         var userId = TestHelpers.GenerateUniqueUserId("sse-mode-info");
 
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");
@@ -466,7 +462,7 @@ public class ModeApiIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     public async Task ModePersistenceAcrossMultipleChats()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         // Use seeded demo user for mode tests to ensure user exists in database
         var userId = "user-123"; // TestHelpers.GenerateUniqueUserId("mode-persistence");
 

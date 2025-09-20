@@ -50,10 +50,9 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.File(
         new CompactJsonFormatter(),
         logFileName,
-        shared: true,
+        restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Verbose,
         buffered: false,
-        restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Verbose
-    )
+        shared: true)
     .CreateLogger();
 
 builder.Host.UseSerilog();

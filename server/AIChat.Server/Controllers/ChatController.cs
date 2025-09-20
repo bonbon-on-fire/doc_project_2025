@@ -25,7 +25,7 @@ public class ChatController(
     IHubContext<ChatHub> hubContext,
     IFeatureManager featureManager,
     IHostEnvironment environment,
-    IClusterClient? clusterClient = null,
+    IGrainFactory? grainFactory = null,
     IBackgroundChatService? backgroundChatService = null,
     IOperationTrackingService? operationTrackingService = null,
     IStreamingBridge? streamingBridge = null,
@@ -40,12 +40,28 @@ public class ChatController(
     private readonly IHubContext<ChatHub> _hubContext = hubContext;
     private readonly IFeatureManager _featureManager = featureManager;
     private readonly IHostEnvironment _environment = environment;
-    private readonly IClusterClient? _clusterClient = clusterClient;
+    private readonly IGrainFactory? _grainFactory = grainFactory;
     private readonly IBackgroundChatService? _backgroundChatService = backgroundChatService;
     private readonly IOperationTrackingService? _operationTrackingService =
         operationTrackingService;
     private readonly IStreamingBridge? _streamingBridge = streamingBridge;
     private readonly IResilientStreamManager? _resilientStreamManager = resilientStreamManager;
+
+    /// <summary>
+    /// Gets a grain using the co-hosted IGrainFactory.
+    /// </summary>
+    /// <typeparam name="T">Grain interface type</typeparam>
+    /// <param name="primaryKey">Primary key for the grain</param>
+    /// <returns>Grain reference</returns>
+    private T GetGrain<T>(string primaryKey) where T : IGrainWithStringKey
+    {
+        if (_grainFactory != null)
+        {
+            return _grainFactory.GetGrain<T>(primaryKey);
+        }
+
+        throw new InvalidOperationException("Orleans IGrainFactory is not available - ensure Orleans co-hosting is enabled");
+    }
 
     /// <summary>
     /// Determines whether background processing via Orleans should be used.
@@ -70,20 +86,20 @@ public class ChatController(
             return false;
         }
 
-        // Check if required services are available
-        if (_clusterClient == null)
+        // Check if required services are available (co-hosted mode)
+        if (_grainFactory == null)
         {
             _logger.LogWarning(
-                "Background processing enabled but Orleans cluster client is not available"
+                "Background processing enabled but Orleans IGrainFactory is not available"
             );
             return false;
         }
 
-        // Check cluster health - Orleans IClusterClient doesn't have IsInitialized property
+        // Check cluster health - try to get a grain for health check
         try
         {
             // Try a simple grain call to check if Orleans is working
-            var healthGrain = _clusterClient.GetGrain<IUserGrain>("health-check-user");
+            var healthGrain = GetGrain<IUserGrain>("health-check-user");
             // This will throw if Orleans is not available
             _ = Task.Run(healthGrain.GetState, CancellationToken.None);
         }
@@ -129,50 +145,17 @@ public class ChatController(
             return false;
         }
 
-        // In co-hosted mode, we don't have IClusterClient but we have IGrainFactory
-        // The streaming bridge uses IOrleansIntegrationService which uses IGrainFactory
-        if (!isCoHosted && _clusterClient == null)
+        // Check Orleans availability (co-hosted mode only)
+        if (_grainFactory == null)
         {
-            _logger.LogDebug("Orleans client not available in non-co-hosted mode");
+            _logger.LogDebug("Orleans IGrainFactory not available in {Environment} environment",
+                _environment.EnvironmentName);
             return false;
         }
 
-        // In co-hosted mode, assume Orleans is ready if the services are injected
-        if (isCoHosted)
-        {
-            _logger.LogDebug("Orleans streaming enabled in co-hosted mode");
-            return true;
-        }
-
-        // For non-co-hosted mode, check cluster health
-        try
-        {
-            var healthGrain = _clusterClient!.GetGrain<IUserGrain>("health-check-user");
-            // Quick health check with timeout
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-            var healthTask = healthGrain.CheckHealth();
-            var completedTask = await Task.WhenAny(
-                healthTask,
-                Task.Delay(TimeSpan.FromSeconds(2), cts.Token)
-            );
-
-            if (completedTask != healthTask)
-            {
-                _logger.LogWarning("Orleans health check timed out");
-                return false;
-            }
-
-            _ = await healthTask; // Get result or rethrow exception
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(
-                ex,
-                "Orleans cluster health check failed for streaming, falling back to direct processing"
-            );
-            return false;
-        }
+        // Orleans is ready if the services are injected
+        _logger.LogDebug("Orleans streaming enabled in co-hosted mode");
+        return true;
     }
 
     /// <summary>
@@ -190,7 +173,7 @@ public class ChatController(
     {
         var useBackground = await ShouldUseBackgroundProcessingAsync();
 
-        if (useBackground && _clusterClient != null)
+        if (useBackground && _grainFactory != null)
         {
             try
             {
@@ -246,7 +229,7 @@ public class ChatController(
     )
     {
         // Get the user grain
-        var userGrain = _clusterClient!.GetGrain<IUserGrain>(request.UserId);
+        var userGrain = GetGrain<IUserGrain>(request.UserId);
 
         // Create metadata with mode information
         var metadata =
@@ -738,7 +721,10 @@ public class ChatController(
         CancellationToken cancellationToken = default
     )
     {
-        ArgumentNullException.ThrowIfNull(_clusterClient);
+        if (_grainFactory == null)
+        {
+            throw new InvalidOperationException("Orleans IGrainFactory is not available - ensure Orleans co-hosting is enabled");
+        }
 
         // Check if we should use resilient streaming
         var useResilientStreaming =
@@ -772,7 +758,7 @@ public class ChatController(
         try
         {
             // Get the user grain
-            var userGrain = _clusterClient.GetGrain<IUserGrain>(request.UserId);
+            var userGrain = GetGrain<IUserGrain>(request.UserId);
 
             // Create Orleans ChatRequest from server request
             var orleansRequest = new ChatRequest
@@ -955,7 +941,7 @@ public class ChatController(
             }
 
             // If background service didn't handle it, try Orleans grain cancellation
-            if (_clusterClient != null && _operationTrackingService != null)
+            if (_grainFactory != null && _operationTrackingService != null)
             {
                 try
                 {
@@ -966,7 +952,7 @@ public class ChatController(
                     if (operationContext != null)
                     {
                         // Get the user grain and attempt cancellation
-                        var userGrain = _clusterClient.GetGrain<IUserGrain>(
+                        var userGrain = GetGrain<IUserGrain>(
                             operationContext.UserId
                         );
                         var cancelled = await userGrain.CancelOperation(operationId);

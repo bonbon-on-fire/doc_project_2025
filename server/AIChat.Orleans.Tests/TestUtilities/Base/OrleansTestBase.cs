@@ -1,7 +1,8 @@
 using System.Globalization;
 using System.Net.Http.Json;
 using AIChat.Orleans.Tests.TestUtilities.Builders;
-using AIChat.Server.Models;
+using AIChat.Orleans.Tests.TestUtilities.Mocks;
+using AIChat.Server.Services;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 using Xunit.Abstractions;

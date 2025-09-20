@@ -5,18 +5,13 @@ using Xunit;
 
 namespace AIChat.Server.Tests.Api;
 
-public class ModeControllerSimpleTest(WebApplicationFactory<Program> factory)
-    : IClassFixture<WebApplicationFactory<Program>>
+public class ModeControllerSimpleTest(WebApplicationFactory<Program> factory) : BaseApiTest(factory)
 {
-    private readonly WebApplicationFactory<Program> _factory = factory.WithWebHostBuilder(builder =>
-        _ = builder.UseSetting("ASPNETCORE_ENVIRONMENT", "Test")
-    );
-
     [Fact]
     public async Task ModeControllerIsAccessible()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
 
         // Act
         var response = await client.GetAsync("/api/mode?userId=test123");

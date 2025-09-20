@@ -16,16 +16,12 @@ namespace AIChat.Server.Tests.Api;
 /// Tests mode information in SSE streams, tool filtering, and mode switching during streaming.
 /// </summary>
 [Collection("ModeTests")] // Prevent parallel execution with other mode tests
-public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
+public class ModeSseIntegrationTests : BaseApiTest
 {
-    private readonly WebApplicationFactory<Program> _factory;
     private readonly JsonSerializerOptions _jsonOptions;
 
-    public ModeSseIntegrationTests(WebApplicationFactory<Program> factory)
+    public ModeSseIntegrationTests(WebApplicationFactory<Program> factory) : base(factory)
     {
-        _factory = factory.WithWebHostBuilder(builder =>
-            _ = builder.UseSetting("ASPNETCORE_ENVIRONMENT", "Test")
-        );
 
         _jsonOptions = new JsonSerializerOptions
         {
@@ -38,7 +34,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     public async Task StreamSSEWithModeIncludesModeInInitEvent()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         var userId = TestHelpers.GenerateUniqueUserId();
 
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");
@@ -96,7 +92,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     public async Task StreamSSEWithCustomModeAppliesToolFiltering()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         // Use seeded demo user for mode tests to ensure user exists in database
         var userId = "user-123"; // TestHelpers.GenerateUniqueUserId("sse-custom-mode-filter");
         ModeDto? createdMode = null;
@@ -207,7 +203,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     public async Task StreamSSEModeSwitchingHandlesCorrectly()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         var userId = TestHelpers.GenerateUniqueUserId("sse-mode-switching");
 
         // Create initial chat with general mode
@@ -301,7 +297,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     public async Task StreamSSEWithInvalidModeFallsBackGracefully()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         var userId = TestHelpers.GenerateUniqueUserId();
 
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");
@@ -336,7 +332,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     public async Task StreamSSEPerformanceWithMode()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         var userId = TestHelpers.GenerateUniqueUserId();
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
@@ -384,7 +380,7 @@ public class ModeSseIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     public async Task StreamSSEConcurrentModeRequests()
     {
         // Arrange
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         var modes = new[] { "general", "coding", "writing" };
 
         // Create concurrent SSE requests with different modes

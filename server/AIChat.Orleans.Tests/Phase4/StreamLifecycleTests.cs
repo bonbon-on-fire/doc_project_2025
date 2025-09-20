@@ -3,6 +3,7 @@ using AIChat.Orleans.Contracts;
 using AIChat.Orleans.Tests.TestUtilities;
 using AIChat.Server.Configuration;
 using AIChat.Server.Models;
+using AIChat.Server.Services;
 using AIChat.Server.Services.Streaming;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -201,7 +202,7 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
         // Configure a short timeout for testing
         var services = _fixture.WebAppFactory.Services;
         var streamingConfig = services.GetRequiredService<IOptions<StreamingConfiguration>>();
-        streamingConfig.Value.TimeoutMs = 1000; // 1 second timeout
+        streamingConfig.Value.WriteTimeoutMs = 1000; // 1 second timeout
 
         using var client = _fixture.CreateSseClient();
         client.Timeout = TimeSpan.FromSeconds(5); // Client timeout longer than stream timeout
@@ -237,7 +238,7 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
         await _fixture.InitializeAsync();
 
         var loggerMock = new Mock<ILogger<StreamingBridge>>();
-        var config = new StreamingConfiguration
+        var config = new AIChat.Orleans.Tests.TestUtilities.Mocks.StreamingConfiguration
         {
             BufferSize = 5, // Small buffer for testing
             BackpressureThreshold = 80,

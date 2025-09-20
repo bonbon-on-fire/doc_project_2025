@@ -6,17 +6,12 @@ using Xunit;
 
 namespace AIChat.Server.Tests.Api;
 
-public class ChatApiTests(WebApplicationFactory<Program> factory)
-    : IClassFixture<WebApplicationFactory<Program>>
+public class ChatApiTests(WebApplicationFactory<Program> factory) : BaseApiTest(factory)
 {
-    private readonly WebApplicationFactory<Program> _factory = factory.WithWebHostBuilder(builder =>
-        _ = builder.UseSetting("ASPNETCORE_ENVIRONMENT", "Test")
-    );
-
     [Fact]
     public async Task CreateAndGetChatWorks()
     {
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         var userId = TestHelpers.GenerateUniqueUserId("create-chat-test");
         var create = new CreateChatRequest(null, userId, "hello world", null, null);
         var res = await client.PostAsJsonAsync("/api/chat", create);
@@ -35,7 +30,7 @@ public class ChatApiTests(WebApplicationFactory<Program> factory)
     [Fact]
     public async Task HistoryAndDeleteWorks()
     {
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         // Create one chat
         var userId = TestHelpers.GenerateUniqueUserId("chat-history-test");
         var create = new CreateChatRequest(null, userId, "hello again", null, null);
@@ -55,7 +50,7 @@ public class ChatApiTests(WebApplicationFactory<Program> factory)
     [Fact]
     public async Task StreamSSECompletesAndContainsDone()
     {
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
         var userId = TestHelpers.GenerateUniqueUserId("sse-stream-test");
         using var req = new HttpRequestMessage(HttpMethod.Post, "/api/chat/stream-sse");
         req.Content = JsonContent.Create(

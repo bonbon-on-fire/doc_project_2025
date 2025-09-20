@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
-using AIChat.Server.Models.SSE;
+using AIChat.Orleans.Tests.TestUtilities.Mocks.SSE;
 
 namespace AIChat.Orleans.Tests.TestUtilities;
 
