@@ -35,6 +35,10 @@ public class ScenariosConfiguration
     public BackgroundProcessingScenarioConfig BackgroundProcessing { get; set; } = new();
     public MixedWorkloadScenarioConfig MixedWorkload { get; set; } = new();
     public EnduranceTestScenarioConfig EnduranceTest { get; set; } = new();
+    public SseConnectionLoadScenarioConfig SseConnectionLoad { get; set; } = new();
+    public SseStreamingScenarioConfig SseStreaming { get; set; } = new();
+    public SseRecoveryScenarioConfig SseRecovery { get; set; } = new();
+    public SseMixedLoadScenarioConfig SseMixedLoad { get; set; } = new();
 }
 
 /// <summary>
@@ -143,4 +147,77 @@ public class OrleansConfiguration
     public string ClusterId { get; set; } = "dev";
     public string ServiceId { get; set; } = "AIChat.LoadTesting";
     public string[] Endpoints { get; set; } = ["localhost:11111"];
+}
+
+
+/// <summary>
+/// SSE connection load testing scenario configuration
+/// </summary>
+public class SseConnectionLoadScenarioConfig
+{
+    public bool Enabled { get; set; } = true;
+    public int MaxConnections { get; set; } = 1000;
+    public int RampUpSeconds { get; set; } = 60;
+    public int StableSeconds { get; set; } = 300;
+    public int ConnectionTimeoutMs { get; set; } = 5000;
+    public int ReconnectDelayMs { get; set; } = 1000;
+    public string SseEndpoint { get; set; } = "/api/sse/stream";
+}
+
+/// <summary>
+/// SSE streaming throughput testing scenario configuration
+/// </summary>
+public class SseStreamingScenarioConfig
+{
+    public bool Enabled { get; set; } = true;
+    public int ConnectionCount { get; set; } = 500;
+    public int TestDurationSeconds { get; set; } = 600;
+    public int ChunkSizeBytes { get; set; } = 1024;
+    public double ChunksPerSecond { get; set; } = 10.0;
+    public int BufferSizeKB { get; set; } = 64;
+}
+
+/// <summary>
+/// SSE recovery and resilience testing scenario configuration
+/// </summary>
+public class SseRecoveryScenarioConfig
+{
+    public bool Enabled { get; set; } = true;
+    public int ConnectionCount { get; set; } = 100;
+    public int DropConnectionEverySeconds { get; set; } = 30;
+    public int MaxReconnectAttempts { get; set; } = 5;
+    public int ReconnectBackoffMs { get; set; } = 1000;
+    public bool TestBufferOverflow { get; set; } = true;
+}
+
+/// <summary>
+/// SSE mixed load testing scenario configuration
+/// </summary>
+public class SseMixedLoadScenarioConfig
+{
+    public bool Enabled { get; set; } = true;
+    public int FastConsumers { get; set; } = 300;
+    public int NormalConsumers { get; set; } = 500;
+    public int SlowConsumers { get; set; } = 200;
+    public int TestDurationSeconds { get; set; } = 1200;
+    public double ConnectionChurnRate { get; set; } = 0.1;
+    public int MaxBufferedChunks { get; set; } = 100;
+}
+
+/// <summary>
+/// SSE-specific configuration
+/// </summary>
+public class SseConfiguration
+{
+    public const string SectionName = "Sse";
+
+    public string BaseEndpoint { get; set; } = "/api/sse";
+    public string StreamEndpoint { get; set; } = "/api/sse/stream";
+    public string MonitoringEndpoint { get; set; } = "/api/monitoring/sse";
+    public int DefaultTimeoutMs { get; set; } = 30000;
+    public int BufferSizeKB { get; set; } = 64;
+    public bool EnableCompression { get; set; } = true;
+    public bool EnableAutoReconnect { get; set; } = true;
+    public int MaxReconnectAttempts { get; set; } = 5;
+    public int ReconnectBackoffMs { get; set; } = 1000;
 }

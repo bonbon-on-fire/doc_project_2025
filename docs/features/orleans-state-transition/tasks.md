@@ -38,7 +38,7 @@ Tasks use the following ID format: `ORL-ST-P{Phase}-{Number}`
 - **Dependencies**: ORL-ST-P1-001
 - **Description**: Implement and execute load testing for Orleans SSE
 - **Acceptance Criteria**:
-  - [ ] Create load testing scenarios
+  - [x] Create load testing scenarios
   - [ ] Test with 1000+ concurrent SSE connections
   - [ ] Measure throughput and latency
   - [ ] Document performance baseline

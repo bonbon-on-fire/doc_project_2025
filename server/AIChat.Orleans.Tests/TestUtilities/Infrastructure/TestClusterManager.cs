@@ -92,6 +92,10 @@ public class TestClusterManager : IAsyncDisposable
         public void Configure(ISiloBuilder siloBuilder)
         {
             _ = siloBuilder
+                // Use memory storage for tests
+                .AddMemoryGrainStorageAsDefault()
+                .AddMemoryGrainStorage("UserGrainStorage")
+                .AddMemoryGrainStorage("PubSubStore")
                 // Let TestClusterBuilder handle the ClusterId to avoid conflicts
                 .Configure<EndpointOptions>(options =>
                     options.AdvertisedIPAddress = System.Net.IPAddress.Loopback

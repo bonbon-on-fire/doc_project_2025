@@ -5,6 +5,7 @@ using AIChat.LoadTesting.Configuration;
 using AIChat.LoadTesting.Models;
 using AIChat.LoadTesting.Scenarios;
 using AIChat.LoadTesting.Services;
+using AIChat.LoadTesting.Services.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -123,6 +124,9 @@ sealed class Program
         _ = services.Configure<OrleansConfiguration>(
             configuration.GetSection(OrleansConfiguration.SectionName)
         );
+        _ = services.Configure<SseConfiguration>(
+            configuration.GetSection(SseConfiguration.SectionName)
+        );
 
         // Logging
         _ = services.AddLogging(builder =>
@@ -141,16 +145,29 @@ sealed class Program
 
         // HTTP Client
         _ = services.AddHttpClient();
+        _ = services.AddHttpClient("SSE", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(300);
+        });
 
         // Core services
         _ = services.AddSingleton<SignalRConnectionManager>();
         _ = services.AddSingleton<SystemMetricsCollector>();
+
+        // SSE services
+        _ = services.AddSingleton<ISseConnectionFactory, SseConnectionFactory>();
+        _ = services.AddSingleton<ISseReconnectionStrategy, ExponentialBackoffReconnectionStrategy>();
+        _ = services.AddSingleton<ISseConnectionManager, SseConnectionManager>();
+        _ = services.AddSingleton<ISseLoadTestMetricsCollector, SseLoadTestMetricsCollector>();
         _ = services.AddSingleton<LoadTestRunner>();
 
         // Scenarios
         _ = services.AddScoped<ILoadTestScenario, ConnectionLoadScenario>();
         _ = services.AddScoped<ILoadTestScenario, MessageLatencyScenario>();
         _ = services.AddScoped<ILoadTestScenario, GrainScalingScenario>();
+        // SSE Scenarios
+        _ = services.AddScoped<ILoadTestScenario, SseConnectionLoadScenario>();
+        _ = services.AddScoped<ILoadTestScenario, SseStreamingScenario>();
 
         return services.BuildServiceProvider();
     }
