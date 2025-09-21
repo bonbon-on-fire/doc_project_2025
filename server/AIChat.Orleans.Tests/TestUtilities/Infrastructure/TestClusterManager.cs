@@ -1,4 +1,5 @@
 using AIChat.Orleans.Grains;
+using AIChat.Orleans.Metrics;
 using Microsoft.Extensions.DependencyInjection;
 using Orleans.Configuration;
 using Orleans.TestingHost;
@@ -96,9 +97,13 @@ public class TestClusterManager : IAsyncDisposable
                     options.AdvertisedIPAddress = System.Net.IPAddress.Loopback
                 )
                 .ConfigureServices(services =>
+                {
+                    // Register Orleans metrics collector (required by UserGrain)
+                    _ = services.AddSingleton<IOrleansMetricsCollector, OrleansMetricsCollector>();
+
                     // Register grain assemblies
-                    _ = services.AddSingleton(typeof(UserGrain).Assembly)
-                );
+                    _ = services.AddSingleton(typeof(UserGrain).Assembly);
+                });
         }
     }
 }
