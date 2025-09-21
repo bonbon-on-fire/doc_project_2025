@@ -24,9 +24,17 @@ This directory contains all code standards and principles for the project.
 - [development-workflow.md](development-workflow.md) - Development process
 - [debugging-guide.md](debugging-guide.md) - Debugging methodology
 
-## ⚠️ ALWAYS REQUIRED
-- **[dotnet-code-styles.md](dotnet-code-styles.md)** - NEVER commit without formatting
-- **[debugging-guide.md](debugging-guide.md)** - Systematic problem solving
+## ⚠️ ALWAYS REQUIRED (Run in this exact order)
+1. **[dotnet-code-styles.md](dotnet-code-styles.md)** - Code formatting with format-code.ps1
+2. **Build Quality Check** - ALWAYS run `pwsh scripts/build_and_group_errors_and_warnings.ps1` after formatting
+3. **[debugging-guide.md](debugging-guide.md)** - Systematic problem solving
+
+### 🚨 MANDATORY Code Quality Sequence
+```bash
+pwsh scripts/format-code.ps1                      # Fix formatting first
+pwsh scripts/build_and_group_errors_and_warnings.ps1  # Check ALL warnings after formatting
+```
+**NEVER commit without running both scripts in this order.**
 
 ## Quick Reference
 For specific task guidance, return to [00-start-here.md](../00-start-here.md)

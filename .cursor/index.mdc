@@ -41,7 +41,16 @@ Start with CLAUDE.md → .instructions/00-start-here.md for task-specific guidan
 
 ## Mandatory Practices
 1. Run validation scripts after changes
-2. Format code before commits
+2. ALWAYS run code quality sequence before commits (in this exact order):
+   - `pwsh scripts/format-code.ps1` (fixes formatting)
+   - `pwsh scripts/build_and_group_errors_and_warnings.ps1` (shows ALL warnings)
 3. Follow task-based instruction navigation
 4. Document complex work in scratchpad/
 5. Never bypass validation failures
+
+## Code Quality Sequence (CRITICAL)
+NEVER commit without running these commands in order:
+```bash
+pwsh scripts/format-code.ps1                      # Step 1: Auto-fix formatting
+pwsh scripts/build_and_group_errors_and_warnings.ps1  # Step 2: Review ALL warnings
+```

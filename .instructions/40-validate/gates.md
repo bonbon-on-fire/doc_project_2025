@@ -55,6 +55,8 @@ pwsh scripts/quality-check.ps1
 **Duration**: < 15 minutes
 **Checks**:
 - All tests pass (unit + integration)
+- Code formatting applied (format-code.ps1)
+- All warnings reviewed (build_and_group_errors_and_warnings.ps1)
 - Code quality metrics pass
 - Security checks pass
 - Performance benchmarks met
@@ -93,12 +95,21 @@ pwsh scripts/validate-file-change.ps1
 # After completing implementation work
 pwsh scripts/validate-implementation-step.ps1
 
-# Before marking task complete
-pwsh scripts/quality-check.ps1
+# Before marking task complete - MANDATORY CODE QUALITY SEQUENCE
+pwsh scripts/format-code.ps1                      # Step 1: Fix formatting
+pwsh scripts/build_and_group_errors_and_warnings.ps1  # Step 2: Review ALL warnings
+pwsh scripts/quality-check.ps1                    # Step 3: Run quality gates
 
 # Before committing
 pwsh scripts/validate-pre-commit.ps1
 ```
+
+### 🚨 CRITICAL: Code Quality Sequence (NEVER skip or reorder)
+1. **format-code.ps1** - Auto-fixes formatting issues
+2. **build_and_group_errors_and_warnings.ps1** - Shows ALL code style & build warnings grouped by type
+3. **quality-check.ps1** - Validates overall quality
+
+**WHY THIS ORDER MATTERS**: format-code.ps1 fixes issues that could hide warnings. The build script then captures ALL remaining warnings that need manual attention.
 
 ### Validation with Build Scripts
 Build scripts automatically run validation:

@@ -60,10 +60,13 @@ npm run test:e2e   # E2E tests (if applicable)
 pwsh scripts/quality-check.ps1  # Level 2 (< 15 min)
 ```
 
-#### Step 5: Code Formatting (REQUIRED)
+#### Step 5: Code Quality (REQUIRED - Must run in this exact order)
 ```bash
-pwsh scripts/format-code.ps1  # NEVER skip this
+pwsh scripts/format-code.ps1                      # NEVER skip this - fixes formatting
+pwsh scripts/build_and_group_errors_and_warnings.ps1  # Shows all warnings/errors grouped by type
 ```
+
+**CRITICAL**: Always run format-code.ps1 FIRST, then build_and_group_errors_and_warnings.ps1. The build script captures ALL code style warnings and build warnings that need to be addressed before committing.
 
 ### Phase 4: Final Validation
 

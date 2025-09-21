@@ -27,11 +27,14 @@ After ANY code change, run:
 pwsh scripts/validate-file-change.ps1  # Level 0 validation
 ```
 
-Before completing work:
+Before completing work - MANDATORY CODE QUALITY SEQUENCE (exact order):
 ```bash
-pwsh scripts/quality-check.ps1         # Level 2 validation
-pwsh scripts/format-code.ps1           # MANDATORY formatting
+pwsh scripts/format-code.ps1                      # Step 1: Fix formatting issues
+pwsh scripts/build_and_group_errors_and_warnings.ps1  # Step 2: Review ALL warnings/errors
+pwsh scripts/quality-check.ps1                    # Step 3: Run quality gates
 ```
+
+**CRITICAL**: NEVER commit without running format-code.ps1 THEN build_and_group_errors_and_warnings.ps1. The build script captures ALL code style warnings that need attention.
 
 ## Architecture Patterns
 - Messages flow through MessageRouter.svelte

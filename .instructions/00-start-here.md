@@ -45,9 +45,12 @@ pwsh build-and-start-client.ps1        # Client
 pwsh scripts/validate-file-change.ps1   # Level 0 (after save)
 pwsh scripts/quality-check.ps1          # Level 2 (before complete)
 
-# Format code (mandatory before commit)
-pwsh scripts/format-code.ps1
+# Code Quality Sequence (MANDATORY - exact order before commits)
+pwsh scripts/format-code.ps1                      # Step 1: Fix formatting
+pwsh scripts/build_and_group_errors_and_warnings.ps1  # Step 2: Check ALL warnings
 ```
+
+**🚨 CRITICAL**: NEVER commit without running format-code.ps1 THEN build_and_group_errors_and_warnings.ps1. The build script captures ALL code style warnings that must be addressed.
 
 ## 📋 Emergency Procedures
 

@@ -37,8 +37,9 @@ pwsh scripts/validate-implementation-step.ps1  # Level 1 (after work)
 pwsh scripts/quality-check.ps1          # Level 2 (before complete)
 pwsh scripts/validate-pre-commit.ps1    # Level 3 (before commit)
 
-# Code Formatting (REQUIRED)
-pwsh scripts/format-code.ps1            # NEVER commit without this
+# Code Quality (REQUIRED - Run in this order)
+pwsh scripts/format-code.ps1                      # NEVER commit without this
+pwsh scripts/build_and_group_errors_and_warnings.ps1  # Check all warnings/errors after formatting
 ```
 
 ## 🏗️ Project Overview
@@ -52,9 +53,10 @@ pwsh scripts/format-code.ps1            # NEVER commit without this
 
 1. **Use `.instructions/` for detailed guidance** - Don't read everything at once
 2. **Always run validation scripts** - Development progression is blocked by failures
-3. **Always format code** - Use `format-code.ps1` before commits
-4. **Use scratchpad** - Create session directories for complex work
-5. **Follow task-based navigation** - Start with the appropriate numbered directory
+3. **MANDATORY code quality sequence** - format-code.ps1 THEN build_and_group_errors_and_warnings.ps1
+4. **NEVER commit with warnings** - The build script shows ALL warnings that must be fixed
+5. **Use scratchpad** - Create session directories for complex work
+6. **Follow task-based navigation** - Start with the appropriate numbered directory
 
 ## 📍 File Organization
 
