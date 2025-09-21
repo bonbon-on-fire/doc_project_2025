@@ -82,6 +82,21 @@ public class StreamingConfiguration
     public int MaxRetryAttempts { get; set; } = 3;
 
     /// <summary>
+    /// Configuration for adaptive buffer sizing.
+    /// </summary>
+    public AdaptiveBufferingConfiguration AdaptiveBuffering { get; set; } = new();
+
+    /// <summary>
+    /// Configuration for buffer overflow handling strategies.
+    /// </summary>
+    public OverflowStrategyConfiguration OverflowStrategy { get; set; } = new();
+
+    /// <summary>
+    /// Configuration for stream recovery mechanisms.
+    /// </summary>
+    public RecoveryConfiguration Recovery { get; set; } = new();
+
+    /// <summary>
     /// Validates the configuration settings.
     /// </summary>
     /// <returns>True if configuration is valid, false otherwise.</returns>
@@ -108,6 +123,31 @@ public class StreamingConfiguration
         if (FlushIntervalMs >= WriteTimeoutMs)
         {
             errors.Add("FlushIntervalMs must be less than WriteTimeoutMs");
+        }
+
+        // Validate nested configurations
+        if (AdaptiveBuffering != null && !AdaptiveBuffering.Validate(out var adaptiveErrors))
+        {
+            errors.AddRange(adaptiveErrors.Select(e => $"AdaptiveBuffering: {e}"));
+        }
+
+        if (OverflowStrategy != null && !OverflowStrategy.Validate(out var overflowErrors))
+        {
+            errors.AddRange(overflowErrors.Select(e => $"OverflowStrategy: {e}"));
+        }
+
+        if (Recovery != null && !Recovery.Validate(out var recoveryErrors))
+        {
+            errors.AddRange(recoveryErrors.Select(e => $"Recovery: {e}"));
+        }
+
+        // Ensure buffer size is within adaptive bounds
+        if (AdaptiveBuffering?.Enabled == true)
+        {
+            if (BufferSize < AdaptiveBuffering.MinSize || BufferSize > AdaptiveBuffering.MaxSize)
+            {
+                errors.Add($"BufferSize ({BufferSize}) must be between AdaptiveBuffering.MinSize ({AdaptiveBuffering.MinSize}) and MaxSize ({AdaptiveBuffering.MaxSize})");
+            }
         }
 
         return errors.Count == 0;

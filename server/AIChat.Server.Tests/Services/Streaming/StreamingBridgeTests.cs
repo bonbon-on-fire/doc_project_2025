@@ -30,6 +30,7 @@ public class StreamingBridgeTests : IDisposable
             EnableTelemetry = true,
             MaxChunkSize = 1024,
             FlushIntervalMs = 100,
+            AdaptiveBuffering = new AdaptiveBufferingConfiguration { Enabled = false }
         };
         _configurationOptions = Options.Create(_configuration);
         _streamingBridge = new StreamingBridge(_loggerMock.Object, _configurationOptions);
