@@ -1,252 +1,78 @@
-# CLAUDE.md
+# CLAUDE.md - Claude Code Navigation
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides primary navigation for Claude Code when working with this repository.
 
-## 📚 Quick Reference Guide
+## 🚦 START HERE
 
-### Development Instructions
+**Primary Navigation**: [.instructions/00-start-here.md](.instructions/00-start-here.md)
 
-All detailed instructions are organized in `.repo-instructions/` directory:
+Choose your task type to get focused, contextual guidance:
 
-| Category | File | Description |
-|----------|------|-------------|
-| 🛠️ **Commands** | [development-commands.md](.repo-instructions/development-commands.md) | All CLI commands for client, server, and tools |
-| 🏗️ **Architecture** | [architecture-patterns.md](.repo-instructions/architecture-patterns.md) | System design, patterns, and tech stack |
-| 🐛 **Debugging** | [debugging-guide.md](.repo-instructions/debugging-guide.md) | Systematic debugging methodology and tools |
-| 🔄 **Workflow** | [development-workflow.md](.repo-instructions/development-workflow.md) | Development process and best practices |
-| 📦 **Build & Test** | [build-and-test.md](.repo-instructions/build-and-test.md) | Package publishing and testing procedures |
+### 🔍 **Investigate/Understand Code**
+→ [.instructions/10-investigate/start.md](.instructions/10-investigate/start.md)
 
-### Code Standards
+### 🛠️ **Implement Feature/Fix**
+→ [.instructions/20-implement/workflow.md](.instructions/20-implement/workflow.md)
 
-| Standard | File | Focus Area |
-|----------|------|------------|
-| 📝 **Naming** | [naming-types.md](.repo-instructions/naming-types.md) | Variable naming and type declarations |
-| ✨ **Quality** | [code-quality.md](.repo-instructions/code-quality.md) | Code style and quality guidelines |
-| 🎯 **Principles** | [core-software-principles.md](.repo-instructions/core-software-principles.md) | SOLID, DRY, KISS principles |
-| ⚡ **Async** | [async-programming.md](.repo-instructions/async-programming.md) | Async/await patterns |
-| 📊 **Data** | [data-handling.md](.repo-instructions/data-handling.md) | Data manipulation standards |
-| ⚠️ **Errors** | [exception-handling.md](.repo-instructions/exception-handling.md) | Error handling patterns |
-| 🔍 **LINQ** | [linq-collections.md](.repo-instructions/linq-collections.md) | LINQ and collection usage |
-| 📋 **Logging** | [logging.md](.repo-instructions/logging.md) | Logging standards and practices |
+### 🐛 **Debug Issues**
+→ [.instructions/30-debug/methodology.md](.instructions/30-debug/methodology.md)
 
-## 🚀 Quick Start
+### ✅ **Validate Changes**
+→ [.instructions/40-validate/gates.md](.instructions/40-validate/gates.md)
 
-### Essential Commands
+### 📚 **Code Standards**
+→ [.instructions/50-standards/index.md](.instructions/50-standards/index.md)
+
+## 🚀 Essential Commands
 
 ```bash
-# Frontend
-cd client && npm install && npm run dev
+# Quick Start
+pwsh build-and-start-server.ps1        # Start server (Test env)
+pwsh build-and-start-server.ps1 -UseOrleans  # Start with Orleans
+pwsh build-and-start-client.ps1        # Start client
 
-# Backend  
-cd server && dotnet restore && dotnet watch run
+# Validation (MANDATORY after changes)
+pwsh scripts/validate-file-change.ps1   # Level 0 (after save)
+pwsh scripts/validate-implementation-step.ps1  # Level 1 (after work)
+pwsh scripts/quality-check.ps1          # Level 2 (before complete)
+pwsh scripts/validate-pre-commit.ps1    # Level 3 (before commit)
 
-# Tests
-npm run test:e2e      # Client E2E tests
-dotnet test           # Server unit tests
+# Code Formatting (REQUIRED)
+pwsh scripts/format-code.ps1            # NEVER commit without this
 ```
 
-### Package Management (LmDotnetTools)
+## 🏗️ Project Overview
 
-```bash
-# Quick publish to local feed
-cd submodules/LmDotnetTools
-powershell -ExecutionPolicy Bypass -File publish-nuget-packages.ps1 -LocalOnly
-```
-See [build-and-test.md](.repo-instructions/build-and-test.md) for detailed instructions.
+- **Frontend**: SvelteKit 2.22, Svelte 5.0, TypeScript 5.0
+- **Backend**: ASP.NET 9.0, SignalR, Orleans grains
+- **Database**: SQLite + EF Core
+- **AI**: LmDotnetTools suite
 
-## 🏛️ Architecture Overview
+## 📋 Critical Rules
 
-### Tech Stack
+1. **Use `.instructions/` for detailed guidance** - Don't read everything at once
+2. **Always run validation scripts** - Development progression is blocked by failures
+3. **Always format code** - Use `format-code.ps1` before commits
+4. **Use scratchpad** - Create session directories for complex work
+5. **Follow task-based navigation** - Start with the appropriate numbered directory
 
-- **Frontend**: SvelteKit 2.22, Svelte 5.0, TypeScript 5.0, Tailwind CSS 4.0
-- **Backend**: ASP.NET 9.0, SignalR, Entity Framework Core
-- **Database**: SQLite with Drizzle ORM (client) + EF Core (server)
-- **AI**: LmDotnetTools suite - see `docs/LmDotNet-doc.md`
-
-### Project Structure
+## 📍 File Organization
 
 ```
-├── client/              # SvelteKit frontend
-├── server/              # ASP.NET backend
-├── server.Tests/        # Backend tests
-├── shared/              # Shared TypeScript types
-├── submodules/          # LmDotnetTools
-├── .repo-instructions/  # Development guides
-├── scratchpad/          # Work notes (MUST USE)
-└── docs/                # Documentation
+├── .instructions/     # Primary instruction hub (READ THESE)
+├── .claude/          # Claude-specific commands & context
+├── .cursor/          # Cursor rules
+├── scratchpad/       # Work notes (MANDATORY for complex tasks)
+├── scripts/          # Validation & build scripts
+└── docs/             # Architecture & documentation
 ```
 
-## 🧠 Critical Development Rules
+## 🆘 Emergency Access
 
-### MUST DO
+- **Build broken**: [.instructions/30-debug/build-failures.md](.instructions/30-debug/build-failures.md)
+- **Tests failing**: [.instructions/30-debug/test-failures.md](.instructions/30-debug/test-failures.md)
+- **Validation stuck**: [.instructions/40-validate/troubleshooting.md](.instructions/40-validate/troubleshooting.md)
 
-1. **Use Scratchpad**: Create session directories in `scratchpad/` for ALL work
-2. **Sequential Thinking**: Break complex problems into documented steps
-3. **Use Checklists**: Track progress systematically
-4. **EXECUTE VALIDATION SCRIPTS**: Run appropriate validation level after each change
-5. **Never Bypass Validation**: Fix failures immediately - progression is blocked otherwise
-6. **Follow Standards**: Reference instruction files for code standards
+---
 
-### Key Patterns
-
-- **Messages**: Flow through `MessageRouter.svelte` for rendering
-- **Real-time**: REST for persistence, SignalR/SSE for updates
-- **Types**: Use shared interfaces from `shared/types/`
-- **Debugging**: Use logs + DuckDB (see [debugging-guide.md](.repo-instructions/debugging-guide.md))
-
-## 🎭 Development Modes
-
-Use specialized modes in `.github/chatmodes/` for different tasks:
-
-1. **📝 Spec Writer** → Requirements gathering
-2. **🏗️ Spec to Tasks** → Design and planning  
-3. **👨‍💻 Senior Developer** → Implementation
-4. **🔄 Interactive Dev** → Research and experimentation
-
-See [development-workflow.md](.repo-instructions/development-workflow.md#development-modes) for details.
-
-## 🔧 Environment Configuration
-
-### Required Variables
-
-- `LLM_API_KEY` - LLM provider API key
-- `LLM_BASE_API_URL` - Provider base URL (optional)
-- `ASPNETCORE_ENVIRONMENT` - Set to "Test" for testing
-
-### Config Files
-
-- `client/.env.local` - Frontend environment
-- `server/appsettings.{Environment}.json` - Server settings
-
-## Start server and client
-
-**These scripts will stop any ongoing process, build and restart the server**
-The following scripts will redirect build logs to respective locations for checking offline
-Application logs are also redirected to respective locations to be queried later.
-
-### PowerShell:
-```powershell
-# Standard server start (Test environment, Orleans disabled)
-pwsh build-and-start-server.ps1
-
-# Start with Orleans enabled (auto-switches to Development)
-pwsh build-and-start-server.ps1 -UseOrleans
-
-# Custom port and environment
-pwsh build-and-start-server.ps1 -Port 5130 -Environment Production
-
-# Client start
-pwsh build-and-start-client.ps1
-```
-
-### Bash/Linux/Mac:
-```bash
-# Standard server start
-bash build-and-start-server.sh
-
-# Start with Orleans enabled (auto-switches to Development)
-bash build-and-start-server.sh --orleans
-
-# Custom configuration
-bash build-and-start-server.sh --port 5130 --environment Production
-
-# Client start
-bash build-and-start-client.sh
-```
-
-**Orleans Notes:**
-- `-UseOrleans` / `--orleans` flag enables full Orleans integration:
-  - Automatically builds and starts Orleans Host (silo) in background
-  - Switches from Test to Development environment
-  - Cleans up Orleans ports (30000, 11111, 8081) on startup
-  - Stops both Orleans Host and Server on Ctrl+C
-- Orleans dashboard available at http://localhost:8081 when enabled
-- Logs: `logs/server/orleans-output.log` and `orleans-error.log`
-
-## 🚨 Continuous Validation Commands
-
-### 4-Level Validation System (MANDATORY)
-
-**CRITICAL**: These scripts control development progression and are BLOCKING - exit codes determine whether work can continue.
-
-#### Level 0: After Every File Save (< 30 seconds)
-
-```powershell
-pwsh scripts/validate-file-change.ps1
-```
-- **Purpose**: Quick build check  
-- **When**: After any code file save
-- **Exit 0**: Continue | **Exit 1**: Fix compilation errors immediately
-
-#### Level 1: After Implementation Steps (< 5 minutes)  
-
-```powershell
-pwsh scripts/validate-implementation-step.ps1
-```
-- **Purpose**: Build + test validation
-- **When**: After completing any implementation work
-- **Exit 0**: Continue to next step | **Exit 1**: Fix build/test failures
-
-#### Level 2: Before Task Completion (< 15 minutes)
-
-```powershell
-pwsh scripts/quality-check.ps1
-```
-- **Purpose**: Comprehensive quality gates
-- **When**: Before marking any task complete
-- **Exit 0**: Task can be completed | **Exit 1**: Task BLOCKED until fixed
-
-#### Level 3: Before Git Commits (Full validation)
-
-```powershell
-pwsh scripts/validate-pre-commit.ps1
-```
-- **Purpose**: Complete system validation
-- **When**: Before any git commit  
-- **Exit 0**: Commit approved | **Exit 1**: Commit BLOCKED
-
-### Validation Enforcement Rules
-
-1. **Never bypass validation failures** - system integrity depends on adherence
-2. **Always fix issues immediately** - don't accumulate validation debt
-3. **Use rollback procedures** if validation cannot be fixed quickly:
-
-```powershell
-# Quick rollback options
-git stash push -m "WIP: validation failure"  # Save work
-git reset --hard HEAD                        # Nuclear option  
-git checkout -- <specific-files>             # Selective revert
-```
-
-### Enhanced Build Scripts
-
-**build-and-start-server.ps1** and **build-and-start-client.ps1** now include pre-flight validation:
-- Automatically run Level 1 validation before starting
-- Block startup if validation fails  
-- Seamless integration with existing workflow
-
-## 📊 Logging & Debugging
-
-### Log Locations
-
-- Server: `logs/server/app-{env}.jsonl`
-- Client: `logs/client/app.jsonl`
-
-### Query with DuckDB
-
-```sql
-SELECT * FROM read_json_auto('logs/server/app-test.jsonl')
-WHERE level = 'Error' ORDER BY timestamp DESC;
-```
-
-## 🎯 Important Notes
-
-**Remember**: 
-- ALWAYS use `scratchpad/` for notes and learning capture
-- Follow the debugging methodology in [debugging-guide.md](.repo-instructions/debugging-guide.md)
-- Reference instruction files for specific standards
-- Use sequential thinking for complex problems
-- Test thoroughly before committing changes
-
-For any specific topic, refer to the appropriate file in `.repo-instructions/` for detailed guidance.
-- Use `format-code.ps1` for making sure the code styles is good and fix any build errors post re-formatting. You MUST prefer `format-code.ps1` over `dotnet format`.
+💡 **Remember**: This is just navigation. For detailed instructions, always follow the `.instructions/` links above based on your current task.

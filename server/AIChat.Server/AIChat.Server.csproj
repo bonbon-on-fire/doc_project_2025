@@ -33,6 +33,7 @@
   <!-- Orleans client integration -->
   <ItemGroup>
     <ProjectReference Include="..\AIChat.Orleans.Client\AIChat.Orleans.Client.csproj" />
+    <ProjectReference Include="..\AIChat.Orleans.Host\AIChat.Orleans.Host.csproj" />
   </ItemGroup>
   <!-- Orleans server for co-hosting in Development/Test -->
   <ItemGroup>

@@ -1,7 +1,22 @@
 ---
-description: Instructions for how to observe file changes and build errors when apps are running with hot reload
+description: MOVED - Hot reload instructions have been reorganized
 applyTo: '**'
 ---
+
+# ⚠️ Instructions Moved
+
+This file has been reorganized for better AI tool compatibility.
+
+## 📍 New Location
+**[/.instructions/20-implement/build-process.md](../../.instructions/20-implement/build-process.md)**
+
+## Quick Access
+- **Start implementation**: [/.instructions/00-start-here.md](../../.instructions/00-start-here.md)
+- **Full implementation workflow**: [/.instructions/20-implement/workflow.md](../../.instructions/20-implement/workflow.md)
+- **Build troubleshooting**: [/.instructions/30-debug/build-failures.md](../../.instructions/30-debug/build-failures.md)
+
+## Why This Changed
+Hot reload guidance is now part of the implementation workflow for better context organization.
 
 # Watching for build errors
 

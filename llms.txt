@@ -1,0 +1,62 @@
+# DOC_Project_2025 - AI Context File
+
+## Project Overview
+Real-time chat application with Orleans grain architecture, SignalR communication, and AI integration using LmDotnetTools.
+
+## Technology Stack
+- **Frontend**: SvelteKit 2.22, Svelte 5.0, TypeScript 5.0, Tailwind CSS
+- **Backend**: ASP.NET 9.0, SignalR, Entity Framework Core, Orleans
+- **Database**: SQLite with EF Core (server) + Drizzle ORM (client)
+- **AI**: LmDotnetTools suite
+- **Architecture**: Dual mode - Orleans grains for scalability, direct mode for simplicity
+
+## Quick Start Commands
+```bash
+# Start development
+pwsh build-and-start-server.ps1          # Server (Test environment)
+pwsh build-and-start-server.ps1 -UseOrleans  # Server with Orleans
+pwsh build-and-start-client.ps1          # Client
+
+# Validation (MANDATORY)
+pwsh scripts/validate-file-change.ps1     # After file changes
+pwsh scripts/quality-check.ps1            # Before task completion
+pwsh scripts/format-code.ps1              # Before commits (REQUIRED)
+```
+
+## Architecture Patterns
+- **Messages**: Flow through MessageRouter.svelte for rendering
+- **Real-time**: REST for persistence, SignalR for live updates
+- **State**: Orleans grains manage chat state and AI interactions
+- **Types**: Shared interfaces in shared/types/
+- **Debugging**: Structured logging + DuckDB queries
+
+## Project Structure
+```
+├── client/               # SvelteKit frontend
+├── server/              # ASP.NET backend with Orleans
+├── shared/              # Shared TypeScript types
+├── submodules/LmDotnetTools/  # AI integration tools
+├── .instructions/       # Task-based guidance (PRIMARY)
+├── scripts/            # Validation and build automation
+├── scratchpad/         # Work notes and session tracking
+└── docs/               # Architecture documentation
+```
+
+## Key Development Rules
+1. **Use .instructions/ for guidance** - Task-based navigation
+2. **Always run validation scripts** - Required for progression
+3. **Always format code** - Use format-code.ps1 before commits
+4. **Use scratchpad** - Document complex work
+5. **Follow validation gates** - 4-level system (0-3)
+
+## Navigation
+For detailed instructions: **CLAUDE.md** → **.instructions/00-start-here.md**
+
+## Context Sources
+- Primary navigation: CLAUDE.md
+- Task workflows: .instructions/[10-50]-*/
+- Code standards: .instructions/50-standards/
+- Architecture: docs/
+- Previous work: scratchpad/
+
+This is a condensed overview. For detailed guidance, follow the navigation paths above based on your specific task.

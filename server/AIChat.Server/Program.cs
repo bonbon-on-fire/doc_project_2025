@@ -21,11 +21,13 @@ using Microsoft.Extensions.Options;
 using Microsoft.FeatureManagement;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using Orleans.Configuration;
 using Serilog;
 using Serilog.Formatting.Compact;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Orleans Host cancellation token for graceful shutdown
+CancellationTokenSource? orleansHostCts = null;
 
 // Configure Serilog for JSON file logging - ensure logs go to project root
 // When running from server/AIChat.Server, we need to go up two levels to reach project root
@@ -231,67 +233,50 @@ if (!orleansDisabled)
 {
     try
     {
-        // Co-host Orleans silo in Development/Test environments
+        // Start Orleans Host as separate process for Development/Test environments
         if (isDevelopmentEnvironment || isTestEnvironment)
         {
             Log.Information(
-                "Configuring Orleans co-hosting for {Environment} environment",
+                "Starting Orleans Host as separate process for {Environment} environment",
                 builder.Environment.EnvironmentName
             );
 
-            // Configure Orleans silo co-hosting
-            _ = builder.Host.UseOrleans(
-                (context, siloBuilder) =>
+            orleansHostCts = new CancellationTokenSource();
+
+            // Start Orleans Host in background task with separate DI container
+            _ = Task.Run(async () =>
+            {
+                try
                 {
-                    var configuration = context.Configuration;
-
-                    _ = siloBuilder
-                        .UseLocalhostClustering()
-                        .Configure<ClusterOptions>(options =>
-                        {
-                            options.ClusterId =
-                                configuration.GetValue<string>("Orleans:ClusterId")
-                                ?? "doc-chat-cluster";
-                            options.ServiceId =
-                                configuration.GetValue<string>("Orleans:ServiceId")
-                                ?? "doc-chat-service";
-                        })
-                        .ConfigureEndpoints(
-                            siloPort: configuration.GetValue("Orleans:SiloPort", 11111),
-                            gatewayPort: configuration.GetValue("Orleans:GatewayPort", 30000)
-                        )
-                        .AddMemoryGrainStorage("UserGrainStorage")
-                        .AddMemoryGrainStorage("PubSubStore")
-                        .ConfigureLogging(logging =>
-                        {
-                            _ = logging.SetMinimumLevel(LogLevel.Warning);
-                            _ = logging.AddFilter("Orleans", LogLevel.Warning);
-                            _ = logging.AddFilter("Orleans.Runtime", LogLevel.Warning);
-                            _ = logging.AddFilter("AIChat.Orleans", LogLevel.Debug);
-                        });
-
-                    // Add startup task for initialization
-                    _ = siloBuilder.AddStartupTask<AIChat.Server.OrleansCoHostStartupTask>();
-
-                    Log.Information("Orleans silo co-hosting configured successfully");
+                    Log.Information("Orleans Host starting in background...");
+                    // Pass empty args to Orleans Host to avoid URL conflicts
+                    await AIChat.Orleans.Host.Program.Main([]);
                 }
-            );
+                catch (OperationCanceledException)
+                {
+                    Log.Information("Orleans Host shutdown requested");
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Orleans Host failed unexpectedly");
+                }
+            }, orleansHostCts.Token);
 
-            // When co-hosting, Orleans registers IGrainFactory but not IClusterClient
-            // We don't need to register IClusterClient for co-hosting as IGrainFactory is sufficient
+            // Wait for Orleans to initialize before proceeding
+            Log.Information("Waiting for Orleans Host to initialize...");
+            Task.Delay(TimeSpan.FromSeconds(5)).Wait();
+            Log.Information("Orleans Host initialization delay completed");
+        }
 
-            // Register ChatServiceProxy for grains (required for co-hosting)
-            _ = builder.Services.AddSingleton<
-                AIChat.Orleans.Services.IChatServiceProxy,
-                AIChat.Orleans.Services.DefaultChatServiceProxy
-            >();
-        }
-        else
-        {
-            // Production: Use Orleans client only (connect to separate silo)
-            Log.Information("Configuring Orleans client for Production environment");
-            _ = builder.Services.AddOrleansClient(builder.Configuration, builder.Environment);
-        }
+        // Always use Orleans client for all environments (ensures clean separation)
+        Log.Information("Configuring Orleans client for {Environment} environment", builder.Environment.EnvironmentName);
+        _ = builder.Services.AddOrleansClient(builder.Configuration, builder.Environment);
+
+        // Register Orleans metrics collector (needed for client-side operations)
+        _ = builder.Services.AddSingleton<
+            AIChat.Orleans.Metrics.IOrleansMetricsCollector,
+            AIChat.Orleans.Metrics.OrleansMetricsCollector
+        >();
 
         Log.Information("Orleans configured successfully");
 
@@ -695,7 +680,21 @@ app.MapGet(
     }
 );
 
+// Setup graceful shutdown for Orleans Host
+Console.CancelKeyPress += (sender, e) =>
+{
+    if (orleansHostCts != null)
+    {
+        Log.Information("Shutting down Orleans Host...");
+        orleansHostCts.Cancel();
+    }
+};
+
 app.Run();
+
+// Cleanup Orleans Host on shutdown
+orleansHostCts?.Cancel();
+orleansHostCts?.Dispose();
 
 public partial class Program
 {
@@ -704,42 +703,4 @@ public partial class Program
 
 namespace AIChat.Server
 {
-    /// <summary>
-    /// Startup task for Orleans co-hosting initialization and validation.
-    /// </summary>
-    public class OrleansCoHostStartupTask : IStartupTask
-    {
-        private readonly ILogger<OrleansCoHostStartupTask> _logger;
-
-        /// <summary>
-        /// Initializes a new instance of the OrleansCoHostStartupTask.
-        /// </summary>
-        /// <param name="logger">Logger instance</param>
-        public OrleansCoHostStartupTask(ILogger<OrleansCoHostStartupTask> logger)
-        {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        }
-
-        /// <summary>
-        /// Executes startup validation and initialization for co-hosted Orleans silo.
-        /// </summary>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Task representing the startup operation</returns>
-        public Task Execute(CancellationToken cancellationToken)
-        {
-            try
-            {
-                _logger.LogInformation("Orleans co-hosting startup task beginning...");
-                _logger.LogInformation(
-                    "Orleans silo co-hosted successfully. Grains are ready to accept requests"
-                );
-                return Task.CompletedTask;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Orleans co-hosting startup task failed");
-                throw; // Re-throw to prevent silo startup
-            }
-        }
-    }
 }

@@ -3250,9 +3250,26 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
         }
     }
 
+    /// <summary>
+    /// Disposes the UserGrain and releases all managed resources.
+    /// This method ensures proper cleanup of timers and prevents memory leaks.
+    /// </summary>
     public void Dispose()
     {
-        throw new NotImplementedException();
+        if (!_disposed)
+        {
+            // Set disposal flag to prevent timer callbacks from executing
+            _disposed = true;
+
+            // Dispose timers to prevent memory leaks
+            _cleanupTimer?.Dispose();
+            _cleanupTimer = null;
+
+            _metricsTimer?.Dispose();
+            _metricsTimer = null;
+
+            _logger.LogDebug("UserGrain {UserId} disposed successfully", State.UserId);
+        }
     }
 
     #endregion

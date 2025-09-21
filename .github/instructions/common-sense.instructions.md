@@ -1,7 +1,26 @@
 ---
+description: MOVED - Common sense debugging instructions have been reorganized
 applyTo: '**'
 ---
 
+# ⚠️ Instructions Moved
+
+This file has been reorganized for better AI tool compatibility.
+
+## 📍 New Location
+**[/.instructions/30-debug/methodology.md](../../.instructions/30-debug/methodology.md)**
+
+## Quick Access
+- **Debug issues**: [/.instructions/30-debug/methodology.md](../../.instructions/30-debug/methodology.md)
+- **Compiler errors**: [/.instructions/30-debug/build-failures.md](../../.instructions/30-debug/build-failures.md)
+- **Test failures**: [/.instructions/30-debug/test-failures.md](../../.instructions/30-debug/test-failures.md)
+
+## Why This Changed
+Debugging guidance is now part of a comprehensive 6-step methodology for better problem-solving structure.
+
+---
+
+## Legacy Content (Deprecated)
 Whenever you encounter compiler errors in the code, search the web for solutions. Use the following steps:
 
 1. Identify the compiler/language version

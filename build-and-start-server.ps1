@@ -135,49 +135,13 @@ catch {
     return 1
 }
 
-# 3. If Orleans is enabled, handle based on environment
+# 3. Orleans Host is now started internally by AIChat.Server for all environments
 $orleansProcess = $null
 if ($UseOrleans) {
-    if ($Environment -eq "Development" -or $Environment -eq "Test") {
-        # In Development/Test, Orleans is co-hosted within the server process
-        Write-Host ""
-        Write-Host "Orleans will be co-hosted within the server process (single-process mode)" -ForegroundColor Cyan
-        Write-Host "No separate Orleans Host needed for $Environment environment" -ForegroundColor Green
-    }
-    else {
-        # In Production, start Orleans Host as separate process
-        Write-Host ""
-        Write-Host "Building Orleans Host for Production environment..." -ForegroundColor Yellow
-        try {
-            # Build Orleans Host project
-            dotnet build server/AIChat.Orleans.Host/AIChat.Orleans.Host.csproj --configuration Debug --verbosity minimal 2>&1 | Tee-Object -FilePath "$serverLogsDir/orleans-build.log"
-            if ($LASTEXITCODE -ne 0) {
-                throw "Orleans Host build failed with exit code $LASTEXITCODE"
-            }
-            Write-Host "Orleans Host build completed successfully" -ForegroundColor Green
-
-            # Start Orleans Host in background
-            Write-Host "Starting Orleans Host in background..." -ForegroundColor Yellow
-            $orleansProcess = Start-Process -FilePath "dotnet" -ArgumentList "run", "--project", "server/AIChat.Orleans.Host/AIChat.Orleans.Host.csproj", "--no-build" -WorkingDirectory (Get-Location) -PassThru -NoNewWindow -RedirectStandardOutput "$serverLogsDir/orleans-output.log" -RedirectStandardError "$serverLogsDir/orleans-error.log"
-
-            # Wait a moment for Orleans to start
-            Write-Host "Waiting for Orleans Silo to initialize..." -ForegroundColor Yellow
-            Start-Sleep -Seconds 5
-
-            # Check if Orleans Host is running
-            if ($orleansProcess.HasExited) {
-                Write-Error "Orleans Host failed to start. Check logs/server/orleans-error.log for details"
-                return 1
-            }
-
-            Write-Host "Orleans Host started successfully (PID: $($orleansProcess.Id))" -ForegroundColor Green
-            Write-Host "Orleans Dashboard: http://localhost:8081" -ForegroundColor Cyan
-        }
-        catch {
-            Write-Error "Failed to build/start Orleans Host: $($_.Exception.Message)"
-            return 1
-        }
-    }
+    Write-Host ""
+    Write-Host "Orleans will be started internally by AIChat.Server (new architecture)" -ForegroundColor Cyan
+    Write-Host "Orleans Host runs in separate task within the same process" -ForegroundColor Green
+    Write-Host "This provides true DI container isolation with localhost communication" -ForegroundColor Green
 }
 
 # 4. Start the server
@@ -188,15 +152,7 @@ $env:ASPNETCORE_ENVIRONMENT = $Environment
 $env:ASPNETCORE_URLS = "http://localhost:$Port"
 $env:LLM_API_KEY = "DUMMY"
 
-# Set up trap for Ctrl+C to ensure Orleans Host is stopped
-$script:orleansProcessGlobal = $orleansProcess
-trap {
-    if ($script:orleansProcessGlobal -and !$script:orleansProcessGlobal.HasExited) {
-        Write-Host "`nStopping Orleans Host..." -ForegroundColor Yellow
-        Stop-Process -Id $script:orleansProcessGlobal.Id -Force -ErrorAction SilentlyContinue
-    }
-    exit
-}
+# Orleans Host shutdown is now handled internally by AIChat.Server's Console.CancelKeyPress handler
 
 # Change to server directory and run the server with logging
 Set-Location server/AIChat.Server
@@ -207,14 +163,9 @@ try {
     Write-Host "  Environment: $Environment" -ForegroundColor Cyan
     Write-Host "  Server URL: http://localhost:$Port" -ForegroundColor Cyan
     if ($UseOrleans) {
-        if ($Environment -eq "Development" -or $Environment -eq "Test") {
-            Write-Host "  Orleans: ENABLED (Co-hosted mode)" -ForegroundColor Green
-            Write-Host "  Orleans Dashboard: Integrated with server" -ForegroundColor Green
-        }
-        else {
-            Write-Host "  Orleans: ENABLED (Separate process)" -ForegroundColor Green
-            Write-Host "  Orleans Dashboard: http://localhost:8081" -ForegroundColor Green
-        }
+        Write-Host "  Orleans: ENABLED (Internal Host with isolated DI)" -ForegroundColor Green
+        Write-Host "  Orleans Architecture: Separate task/DI, localhost communication" -ForegroundColor Green
+        Write-Host "  Orleans Dashboard: http://localhost:8081" -ForegroundColor Green
         Write-Host "  Orleans Gateway Port: 30000" -ForegroundColor Cyan
         Write-Host "  Orleans Silo Port: 11111" -ForegroundColor Cyan
     }
@@ -252,13 +203,8 @@ catch {
     return 1
 }
 finally {
-    # Cleanup: Stop Orleans Host if it was started
-    if ($orleansProcess -and !$orleansProcess.HasExited) {
-        Write-Host ""
-        Write-Host "Stopping Orleans Host (PID: $($orleansProcess.Id))..." -ForegroundColor Yellow
-        Stop-Process -Id $orleansProcess.Id -Force -ErrorAction SilentlyContinue
-        Write-Host "Orleans Host stopped" -ForegroundColor Green
-    }
+    # Orleans Host cleanup is now handled internally by AIChat.Server
+    # No external process management needed
 
     # Return to original directory (project root)
     Set-Location ../..
