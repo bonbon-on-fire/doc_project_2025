@@ -1,0 +1,702 @@
+# Orleans State Management Transition - Task List
+
+## Overview
+
+This document provides a comprehensive task breakdown for transitioning to Orleans-based state management. Tasks are organized by phase, with dependencies, priorities, and effort estimates.
+
+**Total Estimated Effort**: 10 weeks (2 developers)
+**Risk Level**: Medium-High
+**Business Priority**: Critical
+
+## Task Organization
+
+Tasks use the following ID format: `ORL-ST-P{Phase}-{Number}`
+- ORL: Orleans
+- ST: State Transition
+- P{Phase}: Phase number (1-5)
+- Number: Sequential task number
+
+## Phase 1: Foundation Enhancement (2 weeks)
+
+### 1.1 Complete Existing Orleans Integration
+
+#### ORL-ST-P1-001: Complete Stream-Specific Monitoring
+- **Priority**: High
+- **Effort**: 2 days
+- **Dependencies**: None
+- **Description**: Implement SSE-specific metrics for Orleans dashboard
+- **Acceptance Criteria**:
+  - [ ] Add streaming metrics to Orleans dashboard
+  - [ ] Implement stream health indicators
+  - [ ] Create alerting rules for stream failures
+  - [ ] Document monitoring endpoints
+
+#### ORL-ST-P1-002: Orleans SSE Load Testing
+- **Priority**: High
+- **Effort**: 2 days
+- **Dependencies**: ORL-ST-P1-001
+- **Description**: Implement and execute load testing for Orleans SSE
+- **Acceptance Criteria**:
+  - [ ] Create load testing scenarios
+  - [ ] Test with 1000+ concurrent SSE connections
+  - [ ] Measure throughput and latency
+  - [ ] Document performance baseline
+
+#### ORL-ST-P1-003: Optimize Stream Recovery
+- **Priority**: Medium
+- **Effort**: 1 day
+- **Dependencies**: ORL-ST-P1-002
+- **Description**: Fine-tune buffering and recovery parameters
+- **Acceptance Criteria**:
+  - [ ] Implement adaptive buffer sizing
+  - [ ] Add buffer overflow strategies
+  - [ ] Test recovery scenarios
+  - [ ] Update configuration documentation
+
+### 1.2 Implement Enhanced Grain Interfaces
+
+#### ORL-ST-P1-004: Create IChatGrain Interface
+- **Priority**: Critical
+- **Effort**: 2 days
+- **Dependencies**: None
+- **Description**: Design and implement ChatGrain interface
+- **Implementation**:
+```csharp
+// Location: server/AIChat.Orleans/Contracts/IChatGrain.cs
+public interface IChatGrain : IGrainWithStringKey
+{
+    Task<ChatState> InitializeAsync(ChatInitRequest request);
+    Task<MessageResult> ProcessMessageAsync(ChatMessage message);
+    Task<StreamHandle> ProcessStreamAsync(StreamMessage message);
+    // ... additional methods
+}
+```
+- **Acceptance Criteria**:
+  - [ ] Interface definition complete
+  - [ ] Unit tests for interface
+  - [ ] Documentation updated
+  - [ ] Code review approved
+
+#### ORL-ST-P1-005: Create IModeGrain Interface
+- **Priority**: High
+- **Effort**: 1 day
+- **Dependencies**: None
+- **Description**: Design and implement ModeGrain interface
+- **Acceptance Criteria**:
+  - [ ] Interface definition complete
+  - [ ] Mode configuration methods defined
+  - [ ] Integration points identified
+  - [ ] Tests written
+
+#### ORL-ST-P1-006: Create ISessionGrain Interface
+- **Priority**: High
+- **Effort**: 1 day
+- **Dependencies**: None
+- **Description**: Design and implement SessionGrain interface
+- **Acceptance Criteria**:
+  - [ ] Interface for connection management
+  - [ ] Protocol-specific state handling
+  - [ ] Reconnection logic defined
+  - [ ] Tests implemented
+
+### 1.3 Dual-Mode Routing Infrastructure
+
+#### ORL-ST-P1-007: Implement IDualModeRouter
+- **Priority**: Critical
+- **Effort**: 2 days
+- **Dependencies**: ORL-ST-P1-004
+- **Description**: Create routing abstraction for dual-mode operation
+- **Implementation Location**: `server/AIChat.Server/Services/Routing/DualModeRouter.cs`
+- **Acceptance Criteria**:
+  - [ ] Router interface implemented
+  - [ ] Fallback logic working
+  - [ ] Feature flag integration
+  - [ ] Comprehensive logging
+  - [ ] Performance metrics
+
+#### ORL-ST-P1-008: Update ChatController for Dual-Mode
+- **Priority**: Critical
+- **Effort**: 1 day
+- **Dependencies**: ORL-ST-P1-007
+- **Description**: Modify ChatController to use DualModeRouter
+- **Acceptance Criteria**:
+  - [ ] All endpoints use router
+  - [ ] Backward compatibility maintained
+  - [ ] Error handling improved
+  - [ ] Tests updated
+
+## Phase 2: State Unification (3 weeks)
+
+### 2.1 State Abstraction Layer
+
+#### ORL-ST-P2-001: Create IStateManager Interface
+- **Priority**: Critical
+- **Effort**: 2 days
+- **Dependencies**: ORL-ST-P1-007
+- **Description**: Implement state management abstraction
+- **Acceptance Criteria**:
+  - [ ] Interface definition complete
+  - [ ] Orleans implementation
+  - [ ] Direct DB implementation
+  - [ ] Caching layer
+  - [ ] Unit tests
+
+#### ORL-ST-P2-002: Implement State Validation
+- **Priority**: High
+- **Effort**: 1 day
+- **Dependencies**: ORL-ST-P2-001
+- **Description**: Add state validation and consistency checks
+- **Acceptance Criteria**:
+  - [ ] Validation rules defined
+  - [ ] Consistency checker implemented
+  - [ ] Error recovery logic
+  - [ ] Monitoring integration
+
+### 2.2 UserGrain State Migration
+
+#### ORL-ST-P2-003: Migrate Session Data
+- **Priority**: Critical
+- **Effort**: 2 days
+- **Dependencies**: ORL-ST-P2-001
+- **Description**: Move user session data to UserGrain
+- **Acceptance Criteria**:
+  - [ ] Session data model defined
+  - [ ] Migration logic implemented
+  - [ ] Backward compatibility
+  - [ ] Data integrity verified
+
+#### ORL-ST-P2-004: Migrate User Preferences
+- **Priority**: Medium
+- **Effort**: 1 day
+- **Dependencies**: ORL-ST-P2-003
+- **Description**: Move user preferences to grain state
+- **Acceptance Criteria**:
+  - [ ] Preferences migrated
+  - [ ] Cache invalidation working
+  - [ ] Tests passing
+  - [ ] Performance acceptable
+
+#### ORL-ST-P2-005: Implement Activity Tracking
+- **Priority**: Low
+- **Effort**: 1 day
+- **Dependencies**: ORL-ST-P2-003
+- **Description**: Track user activity in grain state
+- **Acceptance Criteria**:
+  - [ ] Activity events captured
+  - [ ] Analytics integration
+  - [ ] Privacy compliance
+  - [ ] Documentation updated
+
+### 2.3 ChatGrain Implementation
+
+#### ORL-ST-P2-006: Implement ChatGrain Core
+- **Priority**: Critical
+- **Effort**: 3 days
+- **Dependencies**: ORL-ST-P1-004
+- **Description**: Implement core ChatGrain functionality
+- **Implementation Tasks**:
+  - [ ] Grain activation/deactivation
+  - [ ] State management
+  - [ ] Message orchestration
+  - [ ] Error handling
+- **Acceptance Criteria**:
+  - [ ] All interface methods implemented
+  - [ ] State persistence working
+  - [ ] Integration tests passing
+  - [ ] Performance benchmarked
+
+#### ORL-ST-P2-007: Implement Message Sequencing
+- **Priority**: High
+- **Effort**: 2 days
+- **Dependencies**: ORL-ST-P2-006
+- **Description**: Add message sequencing and ordering logic
+- **Acceptance Criteria**:
+  - [ ] Sequence numbers assigned
+  - [ ] Order preservation verified
+  - [ ] Concurrent access handled
+  - [ ] Recovery logic tested
+
+#### ORL-ST-P2-008: Implement Participant Management
+- **Priority**: Medium
+- **Effort**: 1 day
+- **Dependencies**: ORL-ST-P2-006
+- **Description**: Manage chat participants via ChatGrain
+- **Acceptance Criteria**:
+  - [ ] Add/remove participants
+  - [ ] Role management
+  - [ ] Permission checks
+  - [ ] Notification system
+
+### 2.4 Event Sourcing Infrastructure
+
+#### ORL-ST-P2-009: Implement Event Store
+- **Priority**: High
+- **Effort**: 3 days
+- **Dependencies**: ORL-ST-P2-001
+- **Description**: Create event sourcing infrastructure
+- **Components**:
+  - [ ] Event store interface
+  - [ ] SQLite implementation
+  - [ ] Event serialization
+  - [ ] Query capabilities
+- **Acceptance Criteria**:
+  - [ ] Events persisted reliably
+  - [ ] Query performance acceptable
+  - [ ] Replay mechanism working
+  - [ ] Monitoring integrated
+
+#### ORL-ST-P2-010: Implement Snapshot Management
+- **Priority**: Medium
+- **Effort**: 2 days
+- **Dependencies**: ORL-ST-P2-009
+- **Description**: Add state snapshot capabilities
+- **Acceptance Criteria**:
+  - [ ] Snapshot creation automated
+  - [ ] Snapshot restoration tested
+  - [ ] Storage optimization
+  - [ ] Cleanup policies defined
+
+## Phase 3: Protocol Unification (2 weeks)
+
+### 3.1 SignalR Integration
+
+#### ORL-ST-P3-001: Modify ChatHub for Orleans
+- **Priority**: Critical
+- **Effort**: 2 days
+- **Dependencies**: ORL-ST-P2-006
+- **Description**: Update SignalR hub to use Orleans grains
+- **Changes Required**:
+  - [ ] Hub methods route to grains
+  - [ ] Connection tracking via grains
+  - [ ] State synchronization
+  - [ ] Error handling
+- **Acceptance Criteria**:
+  - [ ] All hub methods updated
+  - [ ] Backward compatibility
+  - [ ] Tests passing
+  - [ ] Performance verified
+
+#### ORL-ST-P3-002: Implement SignalR Buffering
+- **Priority**: High
+- **Effort**: 1 day
+- **Dependencies**: ORL-ST-P3-001
+- **Description**: Add SignalR-specific message buffering
+- **Acceptance Criteria**:
+  - [ ] Buffer implementation
+  - [ ] Overflow handling
+  - [ ] Delivery confirmation
+  - [ ] Metrics tracking
+
+### 3.2 REST Endpoint Migration
+
+#### ORL-ST-P3-003: Update All Controllers
+- **Priority**: High
+- **Effort**: 3 days
+- **Dependencies**: ORL-ST-P2-006
+- **Description**: Migrate all REST controllers to use Orleans
+- **Controllers to Update**:
+  - [ ] ChatController (remaining methods)
+  - [ ] ModeController
+  - [ ] MonitoringController
+  - [ ] LogsController
+- **Acceptance Criteria**:
+  - [ ] All endpoints migrated
+  - [ ] API contracts unchanged
+  - [ ] Error handling consistent
+  - [ ] Documentation updated
+
+#### ORL-ST-P3-004: Implement Response Caching
+- **Priority**: Medium
+- **Effort**: 1 day
+- **Dependencies**: ORL-ST-P3-003
+- **Description**: Add intelligent response caching
+- **Acceptance Criteria**:
+  - [ ] Cache strategy defined
+  - [ ] Cache invalidation working
+  - [ ] Performance improved
+  - [ ] Monitoring added
+
+### 3.3 WebSocket Support
+
+#### ORL-ST-P3-005: Create WebSocket Handler
+- **Priority**: Low
+- **Effort**: 2 days
+- **Dependencies**: ORL-ST-P1-006
+- **Description**: Implement WebSocket protocol handler
+- **Acceptance Criteria**:
+  - [ ] Handler implemented
+  - [ ] Protocol negotiation
+  - [ ] Message routing
+  - [ ] Connection management
+
+#### ORL-ST-P3-006: Protocol Translation Layer
+- **Priority**: Low
+- **Effort**: 1 day
+- **Dependencies**: ORL-ST-P3-005
+- **Description**: Implement protocol translation service
+- **Acceptance Criteria**:
+  - [ ] Translation logic implemented
+  - [ ] Format conversions working
+  - [ ] Performance acceptable
+  - [ ] Tests comprehensive
+
+## Phase 4: Advanced Features (2 weeks)
+
+### 4.1 ModeGrain Implementation
+
+#### ORL-ST-P4-001: Implement ModeGrain Core
+- **Priority**: Medium
+- **Effort**: 2 days
+- **Dependencies**: ORL-ST-P1-005
+- **Description**: Implement ModeGrain functionality
+- **Acceptance Criteria**:
+  - [ ] Mode configuration management
+  - [ ] Dynamic prompt generation
+  - [ ] Caching implemented
+  - [ ] Tests complete
+
+#### ORL-ST-P4-002: Mode Transition Handling
+- **Priority**: Medium
+- **Effort**: 1 day
+- **Dependencies**: ORL-ST-P4-001
+- **Description**: Implement mode switching logic
+- **Acceptance Criteria**:
+  - [ ] Smooth transitions
+  - [ ] State preservation
+  - [ ] Validation logic
+  - [ ] Error recovery
+
+### 4.2 Enhanced Monitoring
+
+#### ORL-ST-P4-003: Grain-Specific Metrics
+- **Priority**: High
+- **Effort**: 2 days
+- **Dependencies**: All grain implementations
+- **Description**: Add comprehensive grain metrics
+- **Metrics to Implement**:
+  - [ ] Activation/deactivation rates
+  - [ ] Message processing times
+  - [ ] State size tracking
+  - [ ] Error rates
+- **Acceptance Criteria**:
+  - [ ] Metrics collected
+  - [ ] Prometheus integration
+  - [ ] Dashboards created
+  - [ ] Alerts configured
+
+#### ORL-ST-P4-004: Performance Dashboards
+- **Priority**: Medium
+- **Effort**: 1 day
+- **Dependencies**: ORL-ST-P4-003
+- **Description**: Create Grafana dashboards
+- **Acceptance Criteria**:
+  - [ ] Dashboard templates
+  - [ ] Real-time updates
+  - [ ] Historical analysis
+  - [ ] Export capabilities
+
+### 4.3 Recovery Mechanisms
+
+#### ORL-ST-P4-005: Automatic State Reconstruction
+- **Priority**: High
+- **Effort**: 2 days
+- **Dependencies**: ORL-ST-P2-009
+- **Description**: Implement automatic state recovery
+- **Acceptance Criteria**:
+  - [ ] Recovery logic implemented
+  - [ ] Event replay working
+  - [ ] Consistency verified
+  - [ ] Performance acceptable
+
+#### ORL-ST-P4-006: Point-in-Time Recovery
+- **Priority**: Medium
+- **Effort**: 2 days
+- **Dependencies**: ORL-ST-P4-005
+- **Description**: Enable time-travel debugging
+- **Acceptance Criteria**:
+  - [ ] Time-based recovery
+  - [ ] State validation
+  - [ ] UI for recovery
+  - [ ] Audit trail
+
+## Phase 5: Optimization & Cleanup (1 week)
+
+### 5.1 Performance Optimization
+
+#### ORL-ST-P5-001: Grain Placement Optimization
+- **Priority**: High
+- **Effort**: 1 day
+- **Dependencies**: All phases complete
+- **Description**: Optimize grain distribution
+- **Acceptance Criteria**:
+  - [ ] Placement strategy defined
+  - [ ] Load balancing improved
+  - [ ] Affinity rules applied
+  - [ ] Metrics show improvement
+
+#### ORL-ST-P5-002: Cache Optimization
+- **Priority**: Medium
+- **Effort**: 1 day
+- **Dependencies**: ORL-ST-P5-001
+- **Description**: Optimize caching layers
+- **Acceptance Criteria**:
+  - [ ] Cache hit rates improved
+  - [ ] Memory usage reduced
+  - [ ] Invalidation optimized
+  - [ ] Performance gains measured
+
+### 5.2 Legacy Code Removal
+
+#### ORL-ST-P5-003: Remove Direct Service Paths
+- **Priority**: High
+- **Effort**: 2 days
+- **Dependencies**: All phases complete
+- **Description**: Remove legacy code paths
+- **Code to Remove**:
+  - [ ] Direct ChatService calls
+  - [ ] Old state management
+  - [ ] Deprecated endpoints
+  - [ ] Unused dependencies
+- **Acceptance Criteria**:
+  - [ ] Code removed safely
+  - [ ] Tests updated
+  - [ ] Documentation updated
+  - [ ] No regressions
+
+#### ORL-ST-P5-004: Archive Deprecated Components
+- **Priority**: Low
+- **Effort**: 0.5 days
+- **Dependencies**: ORL-ST-P5-003
+- **Description**: Archive old code for reference
+- **Acceptance Criteria**:
+  - [ ] Code archived
+  - [ ] Documentation preserved
+  - [ ] Migration notes complete
+  - [ ] Team informed
+
+### 5.3 Documentation
+
+#### ORL-ST-P5-005: Update Architecture Documentation
+- **Priority**: Critical
+- **Effort**: 1 day
+- **Dependencies**: All implementation complete
+- **Description**: Update all architecture docs
+- **Documents to Update**:
+  - [ ] Architecture overview
+  - [ ] API documentation
+  - [ ] Deployment guides
+  - [ ] Configuration reference
+- **Acceptance Criteria**:
+  - [ ] Docs current
+  - [ ] Diagrams updated
+  - [ ] Examples provided
+  - [ ] Review complete
+
+#### ORL-ST-P5-006: Create Operation Guides
+- **Priority**: High
+- **Effort**: 1 day
+- **Dependencies**: ORL-ST-P5-005
+- **Description**: Create operational runbooks
+- **Guides to Create**:
+  - [ ] Deployment procedures
+  - [ ] Monitoring setup
+  - [ ] Troubleshooting guide
+  - [ ] Recovery procedures
+- **Acceptance Criteria**:
+  - [ ] Guides complete
+  - [ ] Team trained
+  - [ ] Feedback incorporated
+  - [ ] Published to wiki
+
+## Testing Tasks (Continuous)
+
+### Test Development
+
+#### ORL-ST-TEST-001: Unit Test Suite
+- **Effort**: Continuous (1 day per phase)
+- **Description**: Maintain comprehensive unit tests
+- **Coverage Target**: >80%
+
+#### ORL-ST-TEST-002: Integration Test Suite
+- **Effort**: Continuous (2 days per phase)
+- **Description**: End-to-end integration tests
+- **Scenarios**: Multi-protocol, state consistency, recovery
+
+#### ORL-ST-TEST-003: Performance Test Suite
+- **Effort**: 3 days total
+- **Description**: Load and performance testing
+- **Targets**: 10,000 concurrent users, <100ms p99 latency
+
+#### ORL-ST-TEST-004: Chaos Engineering
+- **Effort**: 2 days
+- **Description**: Resilience testing
+- **Scenarios**: Network partitions, grain failures, memory pressure
+
+## Rollback Tasks (Contingency)
+
+### Emergency Procedures
+
+#### ORL-ST-ROLL-001: Feature Flag Rollback
+- **Effort**: 15 minutes
+- **Description**: Disable Orleans via feature flags
+- **Procedure**: Update configuration, restart services
+
+#### ORL-ST-ROLL-002: Code Rollback
+- **Effort**: 1 hour
+- **Description**: Revert to previous version
+- **Procedure**: Git revert, deploy, verify
+
+#### ORL-ST-ROLL-003: Data Recovery
+- **Effort**: 2-4 hours
+- **Description**: Restore from backup
+- **Procedure**: Stop services, restore data, validate, restart
+
+## Task Dependencies Visualization
+
+```mermaid
+graph TD
+    subgraph "Phase 1"
+        P1_001[Stream Monitoring]
+        P1_002[Load Testing]
+        P1_003[Recovery Optimization]
+        P1_004[IChatGrain]
+        P1_005[IModeGrain]
+        P1_006[ISessionGrain]
+        P1_007[DualModeRouter]
+        P1_008[Update Controllers]
+
+        P1_001 --> P1_002
+        P1_002 --> P1_003
+        P1_004 --> P1_007
+        P1_007 --> P1_008
+    end
+
+    subgraph "Phase 2"
+        P2_001[IStateManager]
+        P2_003[Session Migration]
+        P2_006[ChatGrain Core]
+        P2_009[Event Store]
+
+        P1_007 --> P2_001
+        P2_001 --> P2_003
+        P1_004 --> P2_006
+        P2_001 --> P2_009
+    end
+
+    subgraph "Phase 3"
+        P3_001[SignalR Integration]
+        P3_003[REST Migration]
+
+        P2_006 --> P3_001
+        P2_006 --> P3_003
+    end
+
+    subgraph "Phase 4"
+        P4_001[ModeGrain]
+        P4_003[Metrics]
+        P4_005[Recovery]
+
+        P1_005 --> P4_001
+        P2_009 --> P4_005
+    end
+
+    subgraph "Phase 5"
+        P5_003[Remove Legacy]
+        P5_005[Documentation]
+
+        P3_001 --> P5_003
+        P3_003 --> P5_003
+        P5_003 --> P5_005
+    end
+```
+
+## Resource Allocation
+
+### Team Structure
+
+1. **Lead Developer**
+   - Architecture decisions
+   - Code reviews
+   - Critical implementations
+
+2. **Senior Developer**
+   - Grain implementations
+   - Testing strategy
+   - Performance optimization
+
+3. **DevOps Engineer** (Part-time)
+   - Deployment automation
+   - Monitoring setup
+   - Infrastructure support
+
+### External Dependencies
+
+- **Orleans Expert** (Consultant, 1 week)
+- **Performance Testing Team** (2 days)
+- **Security Review** (1 day)
+
+## Risk Mitigation Tasks
+
+### Continuous Risk Management
+
+#### ORL-ST-RISK-001: Weekly Risk Review
+- **Frequency**: Weekly
+- **Duration**: 1 hour
+- **Participants**: Tech lead, PM, Architect
+
+#### ORL-ST-RISK-002: Performance Baseline
+- **Frequency**: Before each phase
+- **Description**: Capture performance metrics
+
+#### ORL-ST-RISK-003: Rollback Drills
+- **Frequency**: After each phase
+- **Description**: Practice emergency procedures
+
+## Success Validation
+
+### Phase Completion Criteria
+
+Each phase must meet these criteria before proceeding:
+
+1. **Functional Completeness**
+   - [ ] All planned features implemented
+   - [ ] No critical bugs
+   - [ ] Feature flags working
+
+2. **Performance Targets**
+   - [ ] Latency within targets
+   - [ ] Resource usage acceptable
+   - [ ] Scalability verified
+
+3. **Quality Gates**
+   - [ ] Code coverage >80%
+   - [ ] Documentation complete
+   - [ ] Security review passed
+
+4. **Operational Readiness**
+   - [ ] Monitoring in place
+   - [ ] Runbooks created
+   - [ ] Team trained
+
+## Conclusion
+
+This task list provides a comprehensive roadmap for the Orleans state management transition. The phased approach with clear dependencies and success criteria ensures systematic progress while maintaining system stability.
+
+**Key Success Factors**:
+1. Incremental delivery with validation
+2. Comprehensive testing at each phase
+3. Clear rollback procedures
+4. Continuous monitoring and adjustment
+
+**Next Steps**:
+1. Review and approve task list
+2. Assign resources
+3. Set up tracking system
+4. Begin Phase 1 implementation
+
+---
+
+**Document Version**: 1.0
+**Last Updated**: January 2025
+**Owner**: Architecture Team
+**Review Schedule**: Weekly during implementation
