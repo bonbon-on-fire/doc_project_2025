@@ -467,3 +467,22 @@ dotnet_style_namespace_match_folder = false
 
 # IDE0130: Namespace does not match folder structure
 dotnet_diagnostic.IDE0130.severity = none
+
+# ============================================================================
+# TEST-SPECIFIC RULES
+# ============================================================================
+
+# Test files - allow underscores in method names for better readability
+[**/*Tests.cs]
+# CA1707: Remove underscores from member names (allow for test methods)
+dotnet_diagnostic.CA1707.severity = none
+
+# ============================================================================
+# STATIC FACTORY METHODS ON GENERIC TYPES
+# ============================================================================
+
+# Allow static factory methods on generic types (StateResult<T>.Success, StateOperation<T>.Create, etc.)
+# These are legitimate API design patterns that improve usability
+[**/StateManagement/**.cs]
+# CA1000: Do not declare static members on generic types (allow for factory methods)
+dotnet_diagnostic.CA1000.severity = none
