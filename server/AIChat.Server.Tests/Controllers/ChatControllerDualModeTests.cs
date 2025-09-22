@@ -7,9 +7,7 @@ using Lib.AspNetCore.ServerSentEvents;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.FeatureManagement;
 using Moq;
 using Xunit;
 
@@ -23,8 +21,7 @@ public class ChatControllerDualModeTests
     private readonly Mock<ITaskStorage> _mockTaskStorage;
     private readonly Mock<IChatStorage> _mockChatStorage;
     private readonly Mock<IHubContext<ChatHub>> _mockHubContext;
-    private readonly Mock<IFeatureManager> _mockFeatureManager;
-    private readonly Mock<IHostEnvironment> _mockHostEnvironment;
+    private readonly Mock<AIChat.Server.Services.Routing.IDualModeRouter> _mockRouter;
     private readonly Mock<IBackgroundChatService> _mockBackgroundChatService;
     private readonly Mock<IClientProxy> _mockClientProxy;
     private readonly Mock<IHubClients> _mockHubClients;
@@ -40,19 +37,12 @@ public class ChatControllerDualModeTests
         _mockTaskStorage = new Mock<ITaskStorage>();
         _mockChatStorage = new Mock<IChatStorage>();
         _mockHubContext = new Mock<IHubContext<ChatHub>>();
-        _mockFeatureManager = new Mock<IFeatureManager>();
-        _mockHostEnvironment = new Mock<IHostEnvironment>();
+        _mockRouter = new Mock<AIChat.Server.Services.Routing.IDualModeRouter>();
         _mockBackgroundChatService = new Mock<IBackgroundChatService>();
         _mockClientProxy = new Mock<IClientProxy>();
         _mockHubClients = new Mock<IHubClients>();
 
-        // Setup feature manager - default to disabled for most tests
-        _ = _mockFeatureManager
-            .Setup(x => x.IsEnabledAsync("BackgroundProcessing"))
-            .ReturnsAsync(false);
-        _ = _mockFeatureManager
-            .Setup(x => x.IsEnabledAsync("OrleansIntegration"))
-            .ReturnsAsync(false);
+        // Feature management is now handled by the router
 
         // Setup hub context
         _ = _mockHubContext.Setup(x => x.Clients).Returns(_mockHubClients.Object);
@@ -63,13 +53,12 @@ public class ChatControllerDualModeTests
         _controller = new ChatController(
             _mockChatService.Object,
             _mockLogger.Object,
-            _mockServerSentEventsService.Object,
+            _mockRouter.Object,
             _mockTaskStorage.Object,
             _mockChatStorage.Object,
+            // Optional services
+            _mockServerSentEventsService.Object,
             _mockHubContext.Object,
-            _mockFeatureManager.Object,
-            _mockHostEnvironment.Object,
-            null, // grainFactory
             _mockBackgroundChatService.Object,
             null, // operationTrackingService
             null, // streamingBridge
@@ -292,10 +281,25 @@ public class ChatControllerDualModeTests
             .Setup(x => x.CreateChatAsync(It.IsAny<AIChat.Server.Services.CreateChatRequest>()))
             .ReturnsAsync(chatResult);
 
+        // Setup the router to execute the direct service operation
+        _ = _mockRouter
+            .Setup(x => x.ExecuteAsync<ActionResult<ChatDto>>(
+                It.IsAny<Func<AIChat.Orleans.Contracts.IChatGrain, Task<ActionResult<ChatDto>>>>(),
+                It.IsAny<Func<IChatService, Task<ActionResult<ChatDto>>>>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(async (
+                Func<AIChat.Orleans.Contracts.IChatGrain, Task<ActionResult<ChatDto>>> orleansOp,
+                Func<IChatService, Task<ActionResult<ChatDto>>> directOp,
+                string operationName,
+                CancellationToken ct) =>
+                    await directOp(_mockChatService.Object));
+
         // Act & Assert - should not throw
         var result = await _controller.CreateChat(request);
 
         // The dual-mode controller properly routes through dependency injection
+        Assert.NotNull(result);
         _ = Assert.IsType<CreatedAtActionResult>(result.Result);
     }
 }

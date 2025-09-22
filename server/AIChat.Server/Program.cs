@@ -572,6 +572,15 @@ builder.Services.AddHostedService(provider =>
     provider.GetRequiredService<ProductionMonitoringService>()
 );
 
+// Configure DualModeRouter for Orleans/Direct service routing (Phase 1 - ORL-ST-P1-008)
+builder.Services.Configure<AIChat.Server.Services.Routing.DualModeRouterOptions>(
+    builder.Configuration.GetSection(AIChat.Server.Services.Routing.DualModeRouterOptions.SectionName)
+);
+builder.Services.AddSingleton<
+    AIChat.Server.Services.Routing.IDualModeRouter,
+    AIChat.Server.Services.Routing.DualModeRouter
+>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline

@@ -14,7 +14,7 @@ public class DualModeRouter : IDualModeRouter, IDisposable
 {
     private readonly IFeatureManager _featureManager;
     private readonly ILogger<DualModeRouter> _logger;
-    private readonly IGrainFactory _grainFactory;
+    private readonly IGrainFactory? _grainFactory;
     private readonly IChatService _chatService;
     private readonly RouterMetricsCollector _metricsCollector;
     private readonly SemaphoreSlim _healthCheckSemaphore;
@@ -39,19 +39,20 @@ public class DualModeRouter : IDualModeRouter, IDisposable
     public DualModeRouter(
         IFeatureManager featureManager,
         ILogger<DualModeRouter> logger,
-        IGrainFactory grainFactory,
         IChatService chatService,
-        IOptions<DualModeRouterOptions> options)
+        IOptions<DualModeRouterOptions> options,
+        IGrainFactory? grainFactory = null)
     {
         _featureManager = featureManager ?? throw new ArgumentNullException(nameof(featureManager));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _grainFactory = grainFactory ?? throw new ArgumentNullException(nameof(grainFactory));
+        _grainFactory = grainFactory; // Allow null for environments without Orleans
         _chatService = chatService ?? throw new ArgumentNullException(nameof(chatService));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _metricsCollector = new RouterMetricsCollector(_options.MetricsWindowSize);
         _healthCheckSemaphore = new SemaphoreSlim(1, 1);
 
-        _logger.LogInformation("DualModeRouter initialized with Orleans and direct service support");
+        var orleansStatus = _grainFactory != null ? "with Orleans support" : "direct service only (no Orleans)";
+        _logger.LogInformation("DualModeRouter initialized {OrleansStatus}", orleansStatus);
     }
 
     /// <inheritdoc/>
@@ -151,6 +152,12 @@ public class DualModeRouter : IDualModeRouter, IDisposable
     {
         try
         {
+            // Orleans is only available if grain factory is configured
+            if (_grainFactory == null)
+            {
+                return false;
+            }
+
             return await _featureManager.IsEnabledAsync(OrleansFeatureFlag) && !IsCircuitBreakerOpen();
         }
         catch (Exception ex)
@@ -212,6 +219,12 @@ public class DualModeRouter : IDualModeRouter, IDisposable
     {
         try
         {
+            // Defensive check - this should never happen if ShouldUseOrleansAsync is working correctly
+            if (_grainFactory == null)
+            {
+                throw new InvalidOperationException("Orleans operation attempted but grain factory is null");
+            }
+
             // Use a single well-known grain key for all chat operations
             // This ensures proper Orleans grain usage while maintaining backward compatibility
             // Future enhancement: Use actual chat session IDs when full Orleans integration is implemented
@@ -261,6 +274,12 @@ public class DualModeRouter : IDualModeRouter, IDisposable
     {
         try
         {
+            // Check if grain factory is available
+            if (_grainFactory == null)
+            {
+                return false;
+            }
+
             // Use dedicated health check grain following established patterns
             var healthGrain = _grainFactory.GetGrain<IHealthCheckGrain>("orleans-health-check");
 

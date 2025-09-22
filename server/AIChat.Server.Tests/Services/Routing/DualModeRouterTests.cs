@@ -38,9 +38,9 @@ public class DualModeRouterTests : IDisposable
         _router = new DualModeRouter(
             _featureManagerMock.Object,
             _loggerMock.Object,
-            _grainFactoryMock.Object,
             _chatServiceMock.Object,
-            _optionsMock.Object
+            _optionsMock.Object,
+            _grainFactoryMock.Object
         );
 
         // Default setup for common mocks
@@ -79,9 +79,9 @@ public class DualModeRouterTests : IDisposable
         var act = () => new DualModeRouter(
             null!,
             _loggerMock.Object,
-            _grainFactoryMock.Object,
             _chatServiceMock.Object,
-            _optionsMock.Object
+            _optionsMock.Object,
+            _grainFactoryMock.Object
         );
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("featureManager");
@@ -94,27 +94,27 @@ public class DualModeRouterTests : IDisposable
         var act = () => new DualModeRouter(
             _featureManagerMock.Object,
             null!,
-            _grainFactoryMock.Object,
             _chatServiceMock.Object,
-            _optionsMock.Object
+            _optionsMock.Object,
+            _grainFactoryMock.Object
         );
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("logger");
     }
 
     [Fact]
-    public void ConstructorWithNullGrainFactoryThrowsArgumentNullException()
+    public void ConstructorWithNullGrainFactoryDoesNotThrowException()
     {
-        // Act & Assert
+        // Act & Assert - grainFactory is optional and null is allowed for environments without Orleans
         var act = () => new DualModeRouter(
             _featureManagerMock.Object,
             _loggerMock.Object,
-            null!,
             _chatServiceMock.Object,
-            _optionsMock.Object
+            _optionsMock.Object,
+            null!
         );
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("grainFactory");
+        act.Should().NotThrow();
     }
 
     [Fact]
@@ -124,9 +124,9 @@ public class DualModeRouterTests : IDisposable
         var act = () => new DualModeRouter(
             _featureManagerMock.Object,
             _loggerMock.Object,
-            _grainFactoryMock.Object,
             null!,
-            _optionsMock.Object
+            _optionsMock.Object,
+            _grainFactoryMock.Object
         );
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("chatService");
@@ -139,9 +139,9 @@ public class DualModeRouterTests : IDisposable
         var act = () => new DualModeRouter(
             _featureManagerMock.Object,
             _loggerMock.Object,
-            _grainFactoryMock.Object,
             _chatServiceMock.Object,
-            null!
+            null!,
+            _grainFactoryMock.Object
         );
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("options");
@@ -159,9 +159,9 @@ public class DualModeRouterTests : IDisposable
         var router = new DualModeRouter(
             _featureManagerMock.Object,
             separateLoggerMock.Object,
-            _grainFactoryMock.Object,
             _chatServiceMock.Object,
-            separateOptionsMock.Object
+            separateOptionsMock.Object,
+            _grainFactoryMock.Object
         );
 
         // Assert
@@ -625,9 +625,9 @@ public class DualModeRouterTests : IDisposable
         var act = () => new DualModeRouter(
             _featureManagerMock.Object,
             _loggerMock.Object,
-            _grainFactoryMock.Object,
             null!,
-            _optionsMock.Object
+            _optionsMock.Object,
+            _grainFactoryMock.Object
         );
 
         act.Should().Throw<ArgumentNullException>();
@@ -742,9 +742,9 @@ public class DualModeRouterTests : IDisposable
         var freshRouter = new DualModeRouter(
             _featureManagerMock.Object,
             _loggerMock.Object,
-            _grainFactoryMock.Object,
             _chatServiceMock.Object,
-            _optionsMock.Object
+            _optionsMock.Object,
+            _grainFactoryMock.Object
         );
 
         _featureManagerMock
