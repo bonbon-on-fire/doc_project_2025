@@ -121,9 +121,11 @@ public class ChatControllerOrleansTests
 
         // Setup Orleans as enabled
         SetupOrleansCoHostingEnvironment();
-        _ = _mockRouter
+
+        // Setup all possible variations of IsOrleansEnabledAsync to return true
+        _mockRouter
             .Setup(r => r.IsOrleansEnabledAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+            .Returns(Task.FromResult(true));
 
         // Setup cluster client and streaming bridge as available
         // Note: Test no longer uses IClusterClient - controller simplified to IGrainFactory only
@@ -139,6 +141,10 @@ public class ChatControllerOrleansTests
 
         // Assert
         var response = _controller.Response;
+
+        // Verify that the router method was called
+        _mockRouter.Verify(r => r.IsOrleansEnabledAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+
         Assert.True(response.Headers.ContainsKey("X-Orleans-Routed"));
         Assert.Equal("true", response.Headers["X-Orleans-Routed"]);
         Assert.True(response.Headers.ContainsKey("X-Processing-Mode"));
@@ -278,9 +284,11 @@ public class ChatControllerOrleansTests
 
         // Setup Orleans as enabled
         SetupOrleansCoHostingEnvironment();
-        _ = _mockRouter
+
+        // Setup all possible variations of IsOrleansEnabledAsync to return true
+        _mockRouter
             .Setup(r => r.IsOrleansEnabledAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+            .Returns(Task.FromResult(true));
 
         // Disable ResilientStreaming to use standard StreamingBridge
         // ResilientStreaming logic now handled by router

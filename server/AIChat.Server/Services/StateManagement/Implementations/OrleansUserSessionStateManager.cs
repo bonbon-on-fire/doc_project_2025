@@ -780,7 +780,7 @@ public class OrleansUserSessionStateManager : OrleansStateManagerBase<UserSessio
 
         if (!userSessions.Success)
         {
-            return StateResult<PagedResult<UserSessionState>>.FromError(userSessions.Error);
+            return StateResult<PagedResult<UserSessionState>>.FromError(userSessions.Error ?? "Failed to retrieve user sessions");
         }
 
         var sessions = userSessions.Data ?? [];
@@ -827,7 +827,7 @@ public class OrleansUserSessionStateManager : OrleansStateManagerBase<UserSessio
 
         if (!userSessions.Success)
         {
-            return StateResult<long>.FromError(userSessions.Error);
+            return StateResult<long>.FromError(userSessions.Error ?? "Failed to retrieve user sessions for count");
         }
 
         return StateResult<long>.FromSuccess(userSessions.Data?.Count ?? 0);
@@ -871,7 +871,7 @@ public class OrleansUserSessionStateManager : OrleansStateManagerBase<UserSessio
             return StateResult<UserSessionState>.FromSuccess(entity);
         }
 
-        return StateResult<UserSessionState>.FromError(updateResult.Error);
+        return StateResult<UserSessionState>.FromError(updateResult.Error ?? "Failed to update user session");
     }
 
     /// <inheritdoc />

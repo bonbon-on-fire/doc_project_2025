@@ -13,6 +13,7 @@ namespace AIChat.Orleans.Contracts;
 /// - IUserOperationGrain for background operations and message routing
 /// - IUserMessageBufferGrain for message buffering functionality
 /// - IUserSessionGrain for session state management and migration (Phase 2)
+/// - IUserPreferencesGrain for user preferences storage and management (Phase 2)
 /// </summary>
 [Alias("AIChat.Orleans.Contracts.IUserGrain")]
 public interface IUserGrain
@@ -20,9 +21,10 @@ public interface IUserGrain
         IUserConnectionGrain,
         IUserOperationGrain,
         IUserMessageBufferGrain,
-        IUserSessionGrain
+        IUserSessionGrain,
+        IUserPreferencesGrain
 {
-    // This interface now inherits all methods from the five segregated interfaces.
+    // This interface now inherits all methods from the six segregated interfaces.
     // No additional methods are defined here to maintain clean separation of concerns.
     //
     // Inherited from IUserActivityGrain:
@@ -69,4 +71,21 @@ public interface IUserGrain
     // - GetSessionMetricsAsync(string sessionId, CancellationToken)
     // - UpdateSessionMetricsAsync(string sessionId, UserSessionMetrics metrics, CancellationToken)
     // - BulkImportSessionsAsync(IList<UserSessionState> sessions, CancellationToken)
+    //
+    // Inherited from IUserPreferencesGrain:
+    // - GetPreferencesAsync(CancellationToken)
+    // - UpdatePreferencesAsync(UserPreferencesState preferences, CancellationToken)
+    // - UpdateMessagePreferenceAsync(string messageId, bool isExpanded, string renderPhase, CancellationToken)
+    // - GetMessagePreferenceAsync(string messageId, CancellationToken)
+    // - BulkUpdateMessagePreferencesAsync(Dictionary<string, MessagePreference> preferences, CancellationToken)
+    // - ArchiveOldMessagePreferencesAsync(DateTime olderThan, CancellationToken)
+    // - UpdateSelectedModeAsync(string? modeId, CancellationToken)
+    // - GetSelectedModeAsync(CancellationToken)
+    // - UpdateUIPreferenceAsync(string key, object value, CancellationToken)
+    // - GetUIPreferenceAsync<T>(string key, CancellationToken)
+    // - RemoveUIPreferenceAsync(string key, CancellationToken)
+    // - ImportClientPreferencesAsync(ClientPreferencesImport import, CancellationToken)
+    // - ExportPreferencesAsync(CancellationToken)
+    // - ResetPreferencesAsync(CancellationToken)
+    // - InvalidatePreferencesCacheAsync(CancellationToken)
 }

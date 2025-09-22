@@ -3688,6 +3688,680 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
 
     #endregion
 
+    #region IUserPreferencesGrain Implementation
+
+    /// <inheritdoc />
+    public async Task<StateResult<UserPreferencesState>> GetPreferencesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "GetPreferences", State.UserId);
+
+        try
+        {
+            _logger.LogDebug("Getting preferences for user {UserId}", State.UserId);
+
+            await ReadStateAsync();
+
+            // Ensure preferences are initialized
+            State.Preferences ??= new UserPreferencesState();
+            State.PreferencesMetadata ??= new UserPreferencesMetadata();
+
+            return StateResult<UserPreferencesState>.FromSuccess(State.Preferences);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get preferences for user {UserId}", State.UserId);
+            return StateResult<UserPreferencesState>.FromError($"Failed to get preferences: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<StateResult> UpdatePreferencesAsync(
+        UserPreferencesState preferences,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(preferences);
+
+        using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "UpdatePreferences", State.UserId);
+        activity?.SetTag("preferences.version", preferences.Version);
+
+        try
+        {
+            _logger.LogDebug("Updating preferences for user {UserId}, version {Version}",
+                State.UserId, preferences.Version);
+
+            await ReadStateAsync();
+
+            // Optimistic concurrency control
+            if (State.Preferences?.Version is not null and not 0 && preferences.Version <= State.Preferences.Version)
+            {
+                var error = $"Version conflict: provided version {preferences.Version} <= current version {State.Preferences.Version}";
+                _logger.LogWarning("{Error} for user {UserId}", error, State.UserId);
+                return StateResult.FromError(error);
+            }
+
+            // Update preferences and metadata
+            preferences.Version++;
+            preferences.LastUpdated = DateTime.UtcNow;
+
+            State.Preferences = preferences;
+            State.PreferencesMetadata.TotalPreferenceUpdates++;
+            State.PreferencesMetadata.LastSyncedAt = DateTime.UtcNow;
+            State.PreferencesMetadata.LastSyncSource = "api";
+
+            await WriteStateAsync();
+
+            _logger.LogDebug("Successfully updated preferences for user {UserId}, new version {Version}",
+                State.UserId, preferences.Version);
+
+            return StateResult.FromSuccess();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update preferences for user {UserId}", State.UserId);
+            return StateResult.FromError($"Failed to update preferences: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<StateResult> UpdateMessagePreferenceAsync(
+        string messageId,
+        bool isExpanded,
+        string renderPhase = "initial",
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(messageId))
+        {
+            throw new ArgumentException("Message ID cannot be null or empty", nameof(messageId));
+        }
+
+        using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "UpdateMessagePreference", State.UserId);
+        activity?.SetTag("message.id", messageId);
+        activity?.SetTag("message.expanded", isExpanded);
+
+        try
+        {
+            _logger.LogDebug("Updating message preference for user {UserId}, message {MessageId}, expanded {IsExpanded}",
+                State.UserId, messageId, isExpanded);
+
+            await ReadStateAsync();
+
+            // Ensure preferences are initialized
+            State.Preferences ??= new UserPreferencesState();
+            State.PreferencesMetadata ??= new UserPreferencesMetadata();
+
+            // Update or create message preference
+            var messagePreference = new MessagePreference
+            {
+                MessageId = messageId,
+                IsExpanded = isExpanded,
+                RenderPhase = renderPhase,
+                LastModified = DateTime.UtcNow
+            };
+
+            State.Preferences.MessagePreferences[messageId] = messagePreference;
+            State.Preferences.Version++;
+            State.Preferences.LastUpdated = DateTime.UtcNow;
+
+            State.PreferencesMetadata.TotalPreferenceUpdates++;
+            State.PreferencesMetadata.LastSyncedAt = DateTime.UtcNow;
+            State.PreferencesMetadata.LastSyncSource = "api";
+
+            await WriteStateAsync();
+
+            _logger.LogDebug("Successfully updated message preference for user {UserId}, message {MessageId}",
+                State.UserId, messageId);
+
+            return StateResult.FromSuccess();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update message preference for user {UserId}, message {MessageId}: {Error}",
+                State.UserId, messageId, ex.Message);
+            return StateResult.FromError($"Failed to update message preference: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<StateResult<MessagePreference?>> GetMessagePreferenceAsync(
+        string messageId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(messageId))
+        {
+            throw new ArgumentException("Message ID cannot be null or empty", nameof(messageId));
+        }
+
+        using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "GetMessagePreference", State.UserId);
+        activity?.SetTag("message.id", messageId);
+
+        try
+        {
+            _logger.LogDebug("Getting message preference for user {UserId}, message {MessageId}",
+                State.UserId, messageId);
+
+            await ReadStateAsync();
+
+            State.Preferences ??= new UserPreferencesState();
+
+            var preference = State.Preferences.MessagePreferences.TryGetValue(messageId, out var value)
+                ? value
+                : null;
+
+            return StateResult<MessagePreference?>.FromSuccess(preference);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get message preference for user {UserId}, message {MessageId}",
+                State.UserId, messageId);
+            return StateResult<MessagePreference?>.FromError($"Failed to get message preference: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<StateResult> BulkUpdateMessagePreferencesAsync(
+        Dictionary<string, MessagePreference> preferences,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(preferences);
+
+        using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "BulkUpdateMessagePreferences", State.UserId);
+        activity?.SetTag("preferences.count", preferences.Count);
+
+        try
+        {
+            _logger.LogDebug("Bulk updating {Count} message preferences for user {UserId}",
+                preferences.Count, State.UserId);
+
+            await ReadStateAsync();
+
+            // Ensure preferences are initialized
+            State.Preferences ??= new UserPreferencesState();
+            State.PreferencesMetadata ??= new UserPreferencesMetadata();
+
+            // Update all message preferences
+            foreach (var kvp in preferences)
+            {
+                if (string.IsNullOrWhiteSpace(kvp.Key))
+                {
+                    continue;
+                }
+
+                kvp.Value.MessageId = kvp.Key;
+                kvp.Value.LastModified = DateTime.UtcNow;
+                State.Preferences.MessagePreferences[kvp.Key] = kvp.Value;
+            }
+
+            State.Preferences.Version++;
+            State.Preferences.LastUpdated = DateTime.UtcNow;
+
+            State.PreferencesMetadata.TotalPreferenceUpdates++;
+            State.PreferencesMetadata.LastSyncedAt = DateTime.UtcNow;
+            State.PreferencesMetadata.LastSyncSource = "bulk_api";
+
+            await WriteStateAsync();
+
+            _logger.LogDebug("Successfully bulk updated {Count} message preferences for user {UserId}",
+                preferences.Count, State.UserId);
+
+            return StateResult.FromSuccess();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to bulk update message preferences for user {UserId}: {Error}",
+                State.UserId, ex.Message);
+            return StateResult.FromError($"Failed to bulk update message preferences: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<StateResult<int>> ArchiveOldMessagePreferencesAsync(
+        DateTime olderThan,
+        CancellationToken cancellationToken = default)
+    {
+        using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "ArchiveOldMessagePreferences", State.UserId);
+        activity?.SetTag("archive.older_than", olderThan.ToString("O"));
+
+        try
+        {
+            _logger.LogDebug("Archiving message preferences older than {OlderThan} for user {UserId}",
+                olderThan, State.UserId);
+
+            await ReadStateAsync();
+
+            State.Preferences ??= new UserPreferencesState();
+
+            var toRemove = State.Preferences.MessagePreferences
+                .Where(kvp => kvp.Value.LastModified < olderThan)
+                .Select(kvp => kvp.Key)
+                .ToList();
+
+            foreach (var messageId in toRemove)
+            {
+                State.Preferences.MessagePreferences.Remove(messageId);
+            }
+
+            if (toRemove.Count > 0)
+            {
+                State.Preferences.Version++;
+                State.Preferences.LastUpdated = DateTime.UtcNow;
+
+                State.PreferencesMetadata.TotalPreferenceUpdates++;
+                State.PreferencesMetadata.LastSyncedAt = DateTime.UtcNow;
+                State.PreferencesMetadata.LastSyncSource = "archive";
+
+                await WriteStateAsync();
+            }
+
+            _logger.LogDebug("Archived {Count} old message preferences for user {UserId}",
+                toRemove.Count, State.UserId);
+
+            return StateResult<int>.FromSuccess(toRemove.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to archive old message preferences for user {UserId}: {Error}",
+                State.UserId, ex.Message);
+            return StateResult<int>.FromError($"Failed to archive old message preferences: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<StateResult> UpdateSelectedModeAsync(
+        string? modeId,
+        CancellationToken cancellationToken = default)
+    {
+        using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "UpdateSelectedMode", State.UserId);
+        activity?.SetTag("mode.id", modeId ?? "null");
+
+        try
+        {
+            _logger.LogDebug("Updating selected mode for user {UserId} to {ModeId}",
+                State.UserId, modeId ?? "null");
+
+            await ReadStateAsync();
+
+            // Ensure preferences are initialized
+            State.Preferences ??= new UserPreferencesState();
+            State.PreferencesMetadata ??= new UserPreferencesMetadata();
+
+            State.Preferences.SelectedModeId = modeId;
+            State.Preferences.Version++;
+            State.Preferences.LastUpdated = DateTime.UtcNow;
+
+            State.PreferencesMetadata.TotalPreferenceUpdates++;
+            State.PreferencesMetadata.LastSyncedAt = DateTime.UtcNow;
+            State.PreferencesMetadata.LastSyncSource = "api";
+
+            await WriteStateAsync();
+
+            _logger.LogDebug("Successfully updated selected mode for user {UserId}", State.UserId);
+
+            return StateResult.FromSuccess();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update selected mode for user {UserId}: {Error}",
+                State.UserId, ex.Message);
+            return StateResult.FromError($"Failed to update selected mode: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<StateResult<string?>> GetSelectedModeAsync(
+        CancellationToken cancellationToken = default)
+    {
+        using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "GetSelectedMode", State.UserId);
+
+        try
+        {
+            _logger.LogDebug("Getting selected mode for user {UserId}", State.UserId);
+
+            await ReadStateAsync();
+
+            State.Preferences ??= new UserPreferencesState();
+
+            return StateResult<string?>.FromSuccess(State.Preferences.SelectedModeId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get selected mode for user {UserId}: {Error}",
+                State.UserId, ex.Message);
+            return StateResult<string?>.FromError($"Failed to get selected mode: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<StateResult> UpdateUIPreferenceAsync(
+        string key,
+        object value,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            throw new ArgumentException("Preference key cannot be null or empty", nameof(key));
+        }
+
+        ArgumentNullException.ThrowIfNull(value);
+
+        using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "UpdateUIPreference", State.UserId);
+        activity?.SetTag("preference.key", key);
+
+        try
+        {
+            _logger.LogDebug("Updating UI preference {Key} for user {UserId}", key, State.UserId);
+
+            await ReadStateAsync();
+
+            // Ensure preferences are initialized
+            State.Preferences ??= new UserPreferencesState();
+            State.PreferencesMetadata ??= new UserPreferencesMetadata();
+
+            State.Preferences.UIPreferences[key] = value;
+            State.Preferences.Version++;
+            State.Preferences.LastUpdated = DateTime.UtcNow;
+
+            State.PreferencesMetadata.TotalPreferenceUpdates++;
+            State.PreferencesMetadata.LastSyncedAt = DateTime.UtcNow;
+            State.PreferencesMetadata.LastSyncSource = "api";
+
+            await WriteStateAsync();
+
+            _logger.LogDebug("Successfully updated UI preference {Key} for user {UserId}", key, State.UserId);
+
+            return StateResult.FromSuccess();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update UI preference {Key} for user {UserId}: {Error}",
+                key, State.UserId, ex.Message);
+            return StateResult.FromError($"Failed to update UI preference: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<StateResult<T?>> GetUIPreferenceAsync<T>(
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            throw new ArgumentException("Preference key cannot be null or empty", nameof(key));
+        }
+
+        using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "GetUIPreference", State.UserId);
+        activity?.SetTag("preference.key", key);
+
+        try
+        {
+            _logger.LogDebug("Getting UI preference {Key} for user {UserId}", key, State.UserId);
+
+            await ReadStateAsync();
+
+            State.Preferences ??= new UserPreferencesState();
+
+            if (!State.Preferences.UIPreferences.TryGetValue(key, out var value))
+            {
+                return StateResult<T?>.FromSuccess(default);
+            }
+
+            // Attempt to cast to requested type
+            if (value is T typedValue)
+            {
+                return StateResult<T?>.FromSuccess(typedValue);
+            }
+
+            // Attempt JSON deserialization for complex types
+            if (value is string stringValue && typeof(T) != typeof(string))
+            {
+                try
+                {
+                    var deserializedValue = System.Text.Json.JsonSerializer.Deserialize<T>(stringValue);
+                    return StateResult<T?>.FromSuccess(deserializedValue);
+                }
+                catch (System.Text.Json.JsonException)
+                {
+                    // Fall through to type conversion error
+                }
+            }
+
+            var error = $"Cannot convert preference value of type {value.GetType().Name} to {typeof(T).Name}";
+            _logger.LogWarning("{Error} for key {Key}, user {UserId}", error, key, State.UserId);
+            return StateResult<T?>.FromError(error);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get UI preference {Key} for user {UserId}: {Error}",
+                key, State.UserId, ex.Message);
+            return StateResult<T?>.FromError($"Failed to get UI preference: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<StateResult> RemoveUIPreferenceAsync(
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            throw new ArgumentException("Preference key cannot be null or empty", nameof(key));
+        }
+
+        using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "RemoveUIPreference", State.UserId);
+        activity?.SetTag("preference.key", key);
+
+        try
+        {
+            _logger.LogDebug("Removing UI preference {Key} for user {UserId}", key, State.UserId);
+
+            await ReadStateAsync();
+
+            State.Preferences ??= new UserPreferencesState();
+
+            var removed = State.Preferences.UIPreferences.Remove(key);
+
+            if (removed)
+            {
+                State.Preferences.Version++;
+                State.Preferences.LastUpdated = DateTime.UtcNow;
+
+                State.PreferencesMetadata ??= new UserPreferencesMetadata();
+                State.PreferencesMetadata.TotalPreferenceUpdates++;
+                State.PreferencesMetadata.LastSyncedAt = DateTime.UtcNow;
+                State.PreferencesMetadata.LastSyncSource = "api";
+
+                await WriteStateAsync();
+            }
+
+            _logger.LogDebug("UI preference {Key} removal result for user {UserId}: {Removed}",
+                key, State.UserId, removed);
+
+            return StateResult.FromSuccess();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to remove UI preference {Key} for user {UserId}: {Error}",
+                key, State.UserId, ex.Message);
+            return StateResult.FromError($"Failed to remove UI preference: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<StateResult> ImportClientPreferencesAsync(
+        ClientPreferencesImport import,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(import);
+
+        using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "ImportClientPreferences", State.UserId);
+        activity?.SetTag("import.source", import.ImportSource);
+        activity?.SetTag("import.message_count", import.MessagePreferences.Count);
+
+        try
+        {
+            _logger.LogDebug("Importing client preferences for user {UserId} from {Source}",
+                State.UserId, import.ImportSource);
+
+            await ReadStateAsync();
+
+            // Ensure preferences are initialized
+            State.Preferences ??= new UserPreferencesState();
+            State.PreferencesMetadata ??= new UserPreferencesMetadata();
+
+            // Import message preferences (merge with existing)
+            foreach (var kvp in import.MessagePreferences)
+            {
+                if (string.IsNullOrWhiteSpace(kvp.Key))
+                {
+                    continue;
+                }
+
+                kvp.Value.MessageId = kvp.Key;
+                kvp.Value.LastModified = import.ImportTimestamp;
+
+                // Only import if we don't have a newer preference
+                if (!State.Preferences.MessagePreferences.TryGetValue(kvp.Key, out var existing) ||
+                    existing.LastModified <= kvp.Value.LastModified)
+                {
+                    State.Preferences.MessagePreferences[kvp.Key] = kvp.Value;
+                }
+            }
+
+            // Import mode selection (only if we don't have one or import is newer)
+            if (!string.IsNullOrWhiteSpace(import.SelectedModeId) &&
+                (string.IsNullOrWhiteSpace(State.Preferences.SelectedModeId) ||
+                 State.Preferences.LastUpdated <= import.ImportTimestamp))
+            {
+                State.Preferences.SelectedModeId = import.SelectedModeId;
+            }
+
+            // Import UI preferences (merge with existing)
+            foreach (var kvp in import.UIPreferences)
+            {
+                if (string.IsNullOrWhiteSpace(kvp.Key))
+                {
+                    continue;
+                }
+                State.Preferences.UIPreferences[kvp.Key] = kvp.Value;
+            }
+
+            State.Preferences.Version++;
+            State.Preferences.LastUpdated = DateTime.UtcNow;
+
+            State.PreferencesMetadata.TotalPreferenceUpdates++;
+            State.PreferencesMetadata.LastSyncedAt = DateTime.UtcNow;
+            State.PreferencesMetadata.LastSyncSource = import.ImportSource;
+
+            await WriteStateAsync();
+
+            _logger.LogDebug("Successfully imported client preferences for user {UserId} from {Source}",
+                State.UserId, import.ImportSource);
+
+            return StateResult.FromSuccess();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to import client preferences for user {UserId}: {Error}",
+                State.UserId, ex.Message);
+            return StateResult.FromError($"Failed to import client preferences: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<StateResult<UserPreferencesState>> ExportPreferencesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "ExportPreferences", State.UserId);
+
+        try
+        {
+            _logger.LogDebug("Exporting preferences for user {UserId}", State.UserId);
+
+            await ReadStateAsync();
+
+            State.Preferences ??= new UserPreferencesState();
+
+            // Create a deep copy for export to prevent external modification
+            var export = new UserPreferencesState
+            {
+                MessagePreferences = new Dictionary<string, MessagePreference>(State.Preferences.MessagePreferences),
+                SelectedModeId = State.Preferences.SelectedModeId,
+                UIPreferences = new Dictionary<string, object>(State.Preferences.UIPreferences),
+                LastUpdated = State.Preferences.LastUpdated,
+                Version = State.Preferences.Version
+            };
+
+            return StateResult<UserPreferencesState>.FromSuccess(export);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to export preferences for user {UserId}: {Error}",
+                State.UserId, ex.Message);
+            return StateResult<UserPreferencesState>.FromError($"Failed to export preferences: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<StateResult> ResetPreferencesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "ResetPreferences", State.UserId);
+
+        try
+        {
+            _logger.LogWarning("Resetting all preferences for user {UserId}", State.UserId);
+
+            await ReadStateAsync();
+
+            // Reset to default state
+            State.Preferences = new UserPreferencesState();
+            State.PreferencesMetadata = new UserPreferencesMetadata
+            {
+                TotalPreferenceUpdates = 1,
+                LastSyncSource = "reset"
+            };
+
+            await WriteStateAsync();
+
+            _logger.LogWarning("Successfully reset all preferences for user {UserId}", State.UserId);
+
+            return StateResult.FromSuccess();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to reset preferences for user {UserId}: {Error}",
+                State.UserId, ex.Message);
+            return StateResult.FromError($"Failed to reset preferences: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<StateResult> InvalidatePreferencesCacheAsync(
+        CancellationToken cancellationToken = default)
+    {
+        using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "InvalidatePreferencesCache", State.UserId);
+
+        try
+        {
+            _logger.LogDebug("Invalidating preferences cache for user {UserId}", State.UserId);
+
+            // Force read from persistent storage on next access
+            await ClearStateAsync();
+
+            _logger.LogDebug("Successfully invalidated preferences cache for user {UserId}", State.UserId);
+
+            return StateResult.FromSuccess();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to invalidate preferences cache for user {UserId}: {Error}",
+                State.UserId, ex.Message);
+            return StateResult.FromError($"Failed to invalidate preferences cache: {ex.Message}");
+        }
+    }
+
+    #endregion
+
     /// <summary>
     /// Disposes the UserGrain and releases all managed resources.
     /// This method ensures proper cleanup of timers and prevents memory leaks.

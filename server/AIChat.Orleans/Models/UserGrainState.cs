@@ -98,6 +98,22 @@ public sealed class UserGrainState
     /// </summary>
     [Id(12)]
     public Dictionary<string, UserSessionMetrics> SessionMetrics { get; set; } = [];
+
+    /// <summary>
+    /// User preferences stored in Orleans persistent state (Phase 2 - ORL-ST-P2-004).
+    /// Migrated from client-side storage to provide cross-session persistence.
+    /// Includes message expansion preferences, mode selection, and UI settings.
+    /// </summary>
+    [Id(13)]
+    public UserPreferencesState Preferences { get; set; } = new();
+
+    /// <summary>
+    /// User preferences metadata and audit information (Phase 2 - ORL-ST-P2-004).
+    /// Tracks preference changes, synchronization status, and version control.
+    /// Used for cache invalidation and conflict resolution.
+    /// </summary>
+    [Id(14)]
+    public UserPreferencesMetadata PreferencesMetadata { get; set; } = new();
 }
 
 /// <summary>
@@ -365,4 +381,129 @@ public sealed class OperationContext
     /// </summary>
     [Id(6)]
     public string? Error { get; set; }
+}
+
+/// <summary>
+/// User preferences state for persistent storage in Orleans grains (Phase 2 - ORL-ST-P2-004).
+/// Contains all user-specific preferences migrated from client-side storage.
+/// </summary>
+[Serializable]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.UserPreferencesState")]
+public sealed class UserPreferencesState
+{
+    /// <summary>
+    /// Message expansion preferences by message ID.
+    /// Preserves user's expand/collapse choices across sessions.
+    /// </summary>
+    [Id(0)]
+    public Dictionary<string, MessagePreference> MessagePreferences { get; set; } = [];
+
+    /// <summary>
+    /// Currently selected mode ID for this user.
+    /// Maintains mode selection across browser sessions.
+    /// </summary>
+    [Id(1)]
+    public string? SelectedModeId { get; set; }
+
+    /// <summary>
+    /// UI-level preferences (theme, layout, etc.).
+    /// Extensible dictionary for future UI preferences without schema changes.
+    /// </summary>
+    [Id(2)]
+    public Dictionary<string, object> UIPreferences { get; set; } = [];
+
+    /// <summary>
+    /// Timestamp of last preferences update.
+    /// Used for cache invalidation and conflict resolution.
+    /// </summary>
+    [Id(3)]
+    public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// Version number for optimistic concurrency control.
+    /// Incremented on each update to detect conflicts.
+    /// </summary>
+    [Id(4)]
+    public long Version { get; set; } = 1;
+}
+
+/// <summary>
+/// Individual message expansion preference data.
+/// Stores user's expand/collapse choice for specific messages.
+/// </summary>
+[Serializable]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.MessagePreference")]
+public sealed class MessagePreference
+{
+    /// <summary>
+    /// Message identifier this preference applies to.
+    /// </summary>
+    [Id(0)]
+    public string MessageId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Whether user prefers this message to be expanded.
+    /// </summary>
+    [Id(1)]
+    public bool IsExpanded { get; set; }
+
+    /// <summary>
+    /// When this preference was last modified.
+    /// Used for cleanup of old preferences.
+    /// </summary>
+    [Id(2)]
+    public DateTime LastModified { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// Current render phase of the message.
+    /// Maps to client-side MessageState.renderPhase values.
+    /// </summary>
+    [Id(3)]
+    public string RenderPhase { get; set; } = "initial";
+}
+
+/// <summary>
+/// Metadata and audit information for user preferences (Phase 2 - ORL-ST-P2-004).
+/// Tracks preference changes, synchronization status, and version control.
+/// </summary>
+[Serializable]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.UserPreferencesMetadata")]
+public sealed class UserPreferencesMetadata
+{
+    /// <summary>
+    /// When preferences were first created for this user.
+    /// </summary>
+    [Id(0)]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// Last successful synchronization with client.
+    /// Used to detect stale client data.
+    /// </summary>
+    [Id(1)]
+    public DateTime LastSyncedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// Total number of preference updates made.
+    /// Used for auditing and analytics.
+    /// </summary>
+    [Id(2)]
+    public int TotalPreferenceUpdates { get; set; } = 0;
+
+    /// <summary>
+    /// Source of the last synchronization (client, api, migration, etc.).
+    /// Helps track where preference changes originate.
+    /// </summary>
+    [Id(3)]
+    public string LastSyncSource { get; set; } = "system";
+
+    /// <summary>
+    /// Additional metadata for extensibility.
+    /// Allows storing custom metadata without schema changes.
+    /// </summary>
+    [Id(4)]
+    public Dictionary<string, object> Metadata { get; set; } = [];
 }
