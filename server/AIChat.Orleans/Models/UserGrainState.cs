@@ -82,6 +82,22 @@ public sealed class UserGrainState
     /// </summary>
     [Id(10)]
     public long TotalStreamsProcessed { get; set; } = 0;
+
+    /// <summary>
+    /// User session states managed by this grain (Phase 2 - ORL-ST-P2-003).
+    /// Key: SessionId, Value: Session state data.
+    /// Migrated from ConnectionStateTracker to Orleans persistent state.
+    /// </summary>
+    [Id(11)]
+    public Dictionary<string, UserSessionState> Sessions { get; set; } = [];
+
+    /// <summary>
+    /// Session metrics data for monitoring and analytics (Phase 2 - ORL-ST-P2-003).
+    /// Key: SessionId, Value: Session metrics data.
+    /// Complements session state with detailed performance tracking.
+    /// </summary>
+    [Id(12)]
+    public Dictionary<string, UserSessionMetrics> SessionMetrics { get; set; } = [];
 }
 
 /// <summary>

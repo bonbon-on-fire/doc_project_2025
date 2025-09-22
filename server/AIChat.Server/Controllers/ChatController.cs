@@ -604,7 +604,7 @@ public class ChatController(
                         );
 
                         await _hubContext
-                            .Clients.Group($"chat_{chatId}")
+                            .Clients.Group($"chat_{initResult.ChatId}")
                             .SendAsync(
                                 "ReceiveInit",
                                 new { OperationId = operationId, Envelope = initEnvelope }
@@ -621,7 +621,7 @@ public class ChatController(
                             initResult.ChatId
                         );
                         await _hubContext
-                            .Clients.Group($"chat_{chatId}")
+                            .Clients.Group($"chat_{initResult.ChatId}")
                             .SendAsync(
                                 "ReceiveComplete",
                                 new { OperationId = operationId, Envelope = completeEnvelope }
@@ -637,13 +637,13 @@ public class ChatController(
 
                         // Send error via SignalR
                         await _hubContext
-                            .Clients.Group($"chat_{chatId}")
+                            .Clients.Group($"chat_{initResult.ChatId}")
                             .SendAsync(
                                 "ReceiveError",
                                 new
                                 {
                                     OperationId = operationId,
-                                    ChatId = chatId,
+                                    ChatId = initResult.ChatId,
                                     Error = ex.Message,
                                     Timestamp = DateTime.UtcNow,
                                 }

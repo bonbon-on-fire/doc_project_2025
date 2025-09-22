@@ -12,15 +12,17 @@ namespace AIChat.Orleans.Contracts;
 /// - IUserConnectionGrain for connection and subscription management
 /// - IUserOperationGrain for background operations and message routing
 /// - IUserMessageBufferGrain for message buffering functionality
+/// - IUserSessionGrain for session state management and migration (Phase 2)
 /// </summary>
 [Alias("AIChat.Orleans.Contracts.IUserGrain")]
 public interface IUserGrain
     : IUserActivityGrain,
         IUserConnectionGrain,
         IUserOperationGrain,
-        IUserMessageBufferGrain
+        IUserMessageBufferGrain,
+        IUserSessionGrain
 {
-    // This interface now inherits all methods from the four segregated interfaces.
+    // This interface now inherits all methods from the five segregated interfaces.
     // No additional methods are defined here to maintain clean separation of concerns.
     //
     // Inherited from IUserActivityGrain:
@@ -54,4 +56,17 @@ public interface IUserGrain
     // - MarkMessageDeliveredAsync(string messageId)
     // - RecordDeliveryAttemptAsync(string messageId, string error)
     // - ProcessBufferedMessagesAsync(string connectionId, string? chatId, int maxMessages)
+    //
+    // Inherited from IUserSessionGrain:
+    // - CreateSessionAsync(UserSessionState session, CancellationToken)
+    // - UpdateSessionAsync(string sessionId, UserSessionState session, CancellationToken)
+    // - UpdateSessionStateAsync(string sessionId, SessionLifecycleState newState, CancellationToken)
+    // - UpdateSessionActivityAsync(string sessionId, DateTime? activityTime, CancellationToken)
+    // - RecordSessionConnectionAsync(string sessionId, CancellationToken)
+    // - RecordSessionDisconnectionAsync(string sessionId, string? reason, CancellationToken)
+    // - RecordSessionReconnectionAttemptAsync(string sessionId, bool success, CancellationToken)
+    // - ArchiveSessionAsync(string sessionId, string? reason, CancellationToken)
+    // - GetSessionMetricsAsync(string sessionId, CancellationToken)
+    // - UpdateSessionMetricsAsync(string sessionId, UserSessionMetrics metrics, CancellationToken)
+    // - BulkImportSessionsAsync(IList<UserSessionState> sessions, CancellationToken)
 }

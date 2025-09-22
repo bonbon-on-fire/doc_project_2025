@@ -10,12 +10,15 @@ namespace AIChat.Orleans.Contracts;
 /// <summary>
 /// Represents the complete state of a mode in the system.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.ModeState")]
 public sealed class ModeState
 {
     /// <summary>
     /// Unique identifier for the mode.
     /// </summary>
     [Required]
+    [Id(0)]
     public required string ModeId { get; init; }
 
     /// <summary>
@@ -23,6 +26,7 @@ public sealed class ModeState
     /// </summary>
     [Required]
     [StringLength(100, MinimumLength = 1)]
+    [Id(1)]
     public required string Name { get; init; }
 
     /// <summary>
@@ -30,53 +34,63 @@ public sealed class ModeState
     /// </summary>
     [Required]
     [StringLength(500, MinimumLength = 1)]
+    [Id(2)]
     public required string Description { get; init; }
 
     /// <summary>
     /// Current configuration of the mode.
     /// </summary>
     [Required]
+    [Id(3)]
     public required ModeConfiguration Configuration { get; init; }
 
     /// <summary>
     /// Current status of the mode.
     /// </summary>
+    [Id(4)]
     public ModeStatus Status { get; init; } = ModeStatus.Active;
 
     /// <summary>
     /// Whether this is a system-provided mode.
     /// </summary>
+    [Id(5)]
     public bool IsSystem { get; init; }
 
     /// <summary>
     /// User ID of the mode owner (null for system modes).
     /// </summary>
+    [Id(6)]
     public string? UserId { get; init; }
 
     /// <summary>
     /// Category for organizing modes.
     /// </summary>
     [StringLength(50)]
+    [Id(7)]
     public string? Category { get; init; }
 
     /// <summary>
     /// Custom metadata associated with the mode.
     /// </summary>
+    [Id(8)]
     public Dictionary<string, object> Metadata { get; init; } = [];
 
     /// <summary>
     /// Timestamp when the mode was created.
     /// </summary>
+    [Id(9)]
     public DateTime CreatedAtUtc { get; init; }
 
     /// <summary>
     /// Timestamp when the mode was last modified.
     /// </summary>
+    [Id(10)]
     public DateTime LastModifiedUtc { get; init; }
 
     /// <summary>
     /// Version number for optimistic concurrency control.
     /// </summary>
+    [Id(11)]
     public int Version { get; init; }
 }
 
@@ -135,46 +149,56 @@ public sealed class ModeInitRequest
 /// <summary>
 /// Represents a change event in mode history.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.ModeChangeEvent")]
 public sealed class ModeChangeEvent
 {
     /// <summary>
     /// Unique identifier for the event.
     /// </summary>
+    [Id(0)]
     public required string EventId { get; init; }
 
     /// <summary>
     /// Type of change that occurred.
     /// </summary>
+    [Id(1)]
     public required ModeChangeType ChangeType { get; init; }
 
     /// <summary>
     /// Timestamp when the change occurred.
     /// </summary>
+    [Id(2)]
     public required DateTime TimestampUtc { get; init; }
 
     /// <summary>
     /// User who made the change.
     /// </summary>
+    [Id(3)]
     public string? UserId { get; init; }
 
     /// <summary>
     /// Description of the change.
     /// </summary>
+    [Id(4)]
     public required string Description { get; init; }
 
     /// <summary>
     /// Previous value before the change (serialized).
     /// </summary>
+    [Id(5)]
     public string? PreviousValue { get; init; }
 
     /// <summary>
     /// New value after the change (serialized).
     /// </summary>
+    [Id(6)]
     public string? NewValue { get; init; }
 
     /// <summary>
     /// Additional change metadata.
     /// </summary>
+    [Id(7)]
     public Dictionary<string, object>? Metadata { get; init; }
 }
 
@@ -185,6 +209,8 @@ public sealed class ModeChangeEvent
 /// <summary>
 /// Represents the configuration of a mode.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.ModeConfiguration")]
 public sealed class ModeConfiguration
 {
     /// <summary>
@@ -192,11 +218,13 @@ public sealed class ModeConfiguration
     /// </summary>
     [Required]
     [StringLength(2000, MinimumLength = 1)]
+    [Id(0)]
     public required string SystemPrompt { get; init; }
 
     /// <summary>
     /// Configuration parameters for the mode.
     /// </summary>
+    [Id(1)]
     public Dictionary<string, string> Parameters { get; init; } = [];
 
     /// <summary>
@@ -204,88 +232,105 @@ public sealed class ModeConfiguration
     /// </summary>
     [Required]
     [MinLength(1)]
+    [Id(2)]
     public required List<string> Tools { get; init; }
 
     /// <summary>
     /// Features explicitly enabled for this mode.
     /// </summary>
+    [Id(3)]
     public List<string> EnabledFeatures { get; init; } = [];
 
     /// <summary>
     /// Features explicitly disabled for this mode.
     /// </summary>
+    [Id(4)]
     public List<string> DisabledFeatures { get; init; } = [];
 
     /// <summary>
     /// Preferred AI model for this mode.
     /// </summary>
     [StringLength(100)]
+    [Id(5)]
     public string? DefaultModel { get; init; }
 
     /// <summary>
     /// Constraints applied to this mode.
     /// </summary>
+    [Id(6)]
     public ModeConstraints? Constraints { get; init; }
 
     /// <summary>
     /// Temperature setting for AI responses.
     /// </summary>
     [Range(0.0, 2.0)]
+    [Id(7)]
     public double? Temperature { get; init; }
 
     /// <summary>
     /// Maximum tokens for responses.
     /// </summary>
     [Range(1, 100000)]
+    [Id(8)]
     public int? MaxTokens { get; init; }
 
     /// <summary>
     /// Response format preference.
     /// </summary>
+    [Id(9)]
     public ResponseFormat? ResponseFormat { get; init; }
 }
 
 /// <summary>
 /// Represents constraints for a mode.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.ModeConstraints")]
 public sealed class ModeConstraints
 {
     /// <summary>
     /// Maximum message length allowed.
     /// </summary>
     [Range(1, 100000)]
+    [Id(0)]
     public int? MaxMessageLength { get; init; }
 
     /// <summary>
     /// Maximum messages per minute rate limit.
     /// </summary>
     [Range(1, 1000)]
+    [Id(1)]
     public int? MaxMessagesPerMinute { get; init; }
 
     /// <summary>
     /// Allowed file types for uploads.
     /// </summary>
+    [Id(2)]
     public List<string>? AllowedFileTypes { get; init; }
 
     /// <summary>
     /// Maximum file size in bytes.
     /// </summary>
     [Range(1, long.MaxValue)]
+    [Id(3)]
     public long? MaxFileSize { get; init; }
 
     /// <summary>
     /// Required user roles to use this mode.
     /// </summary>
+    [Id(4)]
     public List<string>? RequiredRoles { get; init; }
 
     /// <summary>
     /// Time-based access restrictions.
     /// </summary>
+    [Id(5)]
     public TimeRestrictions? TimeRestrictions { get; init; }
 
     /// <summary>
     /// Content filtering level.
     /// </summary>
+    [Id(6)]
     public ContentFilterLevel? ContentFilter { get; init; }
 }
 
@@ -1263,26 +1308,32 @@ public sealed class TransitionImpact
 /// <summary>
 /// Time-based access restrictions.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.TimeRestrictions")]
 public sealed class TimeRestrictions
 {
     /// <summary>
     /// Days of week when mode is available.
     /// </summary>
+    [Id(0)]
     public List<DayOfWeek>? AllowedDays { get; init; }
 
     /// <summary>
     /// Start time of availability window (UTC).
     /// </summary>
+    [Id(1)]
     public TimeOnly? StartTime { get; init; }
 
     /// <summary>
     /// End time of availability window (UTC).
     /// </summary>
+    [Id(2)]
     public TimeOnly? EndTime { get; init; }
 
     /// <summary>
     /// Timezone for time restrictions.
     /// </summary>
+    [Id(3)]
     public string? TimeZone { get; init; }
 }
 

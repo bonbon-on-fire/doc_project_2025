@@ -3,6 +3,7 @@ using System.Text.Json;
 using AIChat.Orleans.Configuration;
 using AIChat.Orleans.Contracts;
 using AIChat.Orleans.Metrics;
+using AIChat.Orleans.Models;
 using AIChat.Orleans.Services;
 using AIChat.Orleans.Tracing;
 using Microsoft.Extensions.Logging;
@@ -3250,6 +3251,443 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
         }
     }
 
+    #endregion
+
+    #region IUserSessionGrain Implementation
+
+    /// <inheritdoc />
+    public async Task<StateResult<UserSessionState>> CreateSessionAsync(
+        UserSessionState session,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+
+        try
+        {
+            using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "CreateSession");
+            _ = (activity?.SetTag("session.id", session.SessionId));
+            _ = (activity?.SetTag("session.streamId", session.StreamId));
+
+            _logger.LogDebug("Creating session {SessionId} for user {UserId}", session.SessionId, State.UserId);
+
+            // Check if session already exists
+            if (State.Sessions.ContainsKey(session.SessionId))
+            {
+                return StateResult<UserSessionState>.FromError($"Session {session.SessionId} already exists");
+            }
+
+            // Add session to state
+            State.Sessions[session.SessionId] = session;
+            await WriteStateAsync();
+
+            _logger.LogInformation("Created session {SessionId} for user {UserId}", session.SessionId, State.UserId);
+            return StateResult<UserSessionState>.FromSuccess(session);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create session {SessionId} for user {UserId}", session.SessionId, State.UserId);
+            return StateResult<UserSessionState>.FromError($"Failed to create session: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<StateResult<UserSessionState>> UpdateSessionAsync(
+        string sessionId,
+        UserSessionState session,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(sessionId))
+        {
+            throw new ArgumentNullException(nameof(sessionId));
+        }
+
+        ArgumentNullException.ThrowIfNull(session);
+
+        try
+        {
+            using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "UpdateSession");
+            _ = (activity?.SetTag("session.id", sessionId));
+
+            _logger.LogDebug("Updating session {SessionId} for user {UserId}", sessionId, State.UserId);
+
+            if (!State.Sessions.ContainsKey(sessionId))
+            {
+                return StateResult<UserSessionState>.FromError($"Session {sessionId} not found");
+            }
+
+            State.Sessions[sessionId] = session;
+            await WriteStateAsync();
+
+            _logger.LogDebug("Updated session {SessionId} for user {UserId}", sessionId, State.UserId);
+            return StateResult<UserSessionState>.FromSuccess(session);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update session {SessionId} for user {UserId}", sessionId, State.UserId);
+            return StateResult<UserSessionState>.FromError($"Failed to update session: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<StateResult> UpdateSessionStateAsync(
+        string sessionId,
+        SessionLifecycleState newState,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(sessionId))
+        {
+            throw new ArgumentNullException(nameof(sessionId));
+        }
+
+        try
+        {
+            using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "UpdateSessionState");
+            _ = (activity?.SetTag("session.id", sessionId));
+            _ = (activity?.SetTag("session.newState", newState.ToString()));
+
+            _logger.LogDebug("Updating session state for {SessionId} to {NewState}", sessionId, newState);
+
+            if (!State.Sessions.TryGetValue(sessionId, out var session))
+            {
+                return StateResult.FromError($"Session {sessionId} not found");
+            }
+
+            session.CurrentState = newState;
+            session.LastActivityAt = DateTime.UtcNow;
+            await WriteStateAsync();
+
+            _logger.LogDebug("Updated session {SessionId} state to {NewState}", sessionId, newState);
+            return StateResult.FromSuccess();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update session state for {SessionId}", sessionId);
+            return StateResult.FromError($"Failed to update session state: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<StateResult> UpdateSessionActivityAsync(
+        string sessionId,
+        DateTime? activityTime = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(sessionId))
+        {
+            throw new ArgumentNullException(nameof(sessionId));
+        }
+
+        try
+        {
+            using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "UpdateSessionActivity");
+            _ = (activity?.SetTag("session.id", sessionId));
+
+            if (!State.Sessions.TryGetValue(sessionId, out var session))
+            {
+                return StateResult.FromError($"Session {sessionId} not found");
+            }
+
+            session.LastActivityAt = activityTime ?? DateTime.UtcNow;
+            await WriteStateAsync();
+
+            _logger.LogDebug("Updated session activity for {SessionId}", sessionId);
+            return StateResult.FromSuccess();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update session activity for {SessionId}", sessionId);
+            return StateResult.FromError($"Failed to update session activity: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<StateResult> RecordSessionConnectionAsync(
+        string sessionId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(sessionId))
+        {
+            throw new ArgumentNullException(nameof(sessionId));
+        }
+
+        try
+        {
+            using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "RecordSessionConnection");
+            _ = (activity?.SetTag("session.id", sessionId));
+
+            if (!State.Sessions.TryGetValue(sessionId, out var session))
+            {
+                return StateResult.FromError($"Session {sessionId} not found");
+            }
+
+            var now = DateTime.UtcNow;
+            session.CurrentState = SessionLifecycleState.Connected;
+            session.ConnectedAt = now;
+            session.LastActivityAt = now;
+
+            await WriteStateAsync();
+
+            _logger.LogDebug("Recorded connection for session {SessionId}", sessionId);
+            return StateResult.FromSuccess();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to record connection for session {SessionId}", sessionId);
+            return StateResult.FromError($"Failed to record session connection: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<StateResult> RecordSessionDisconnectionAsync(
+        string sessionId,
+        string? reason = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(sessionId))
+        {
+            throw new ArgumentNullException(nameof(sessionId));
+        }
+
+        try
+        {
+            using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "RecordSessionDisconnection");
+            _ = (activity?.SetTag("session.id", sessionId));
+            _ = (activity?.SetTag("disconnection.reason", reason ?? "Unknown"));
+
+            if (!State.Sessions.TryGetValue(sessionId, out var session))
+            {
+                return StateResult.FromError($"Session {sessionId} not found");
+            }
+
+            var now = DateTime.UtcNow;
+            session.CurrentState = SessionLifecycleState.Disconnected;
+            session.DisconnectedAt = now;
+            session.LastActivityAt = now;
+            session.DisconnectionCount++;
+            session.LastDisconnectionReason = reason;
+
+            // Calculate connection duration if we have a connection start time
+            if (session.ConnectedAt.HasValue)
+            {
+                var connectionDuration = now - session.ConnectedAt.Value;
+                session.TotalConnectionTime += connectionDuration;
+
+                if (connectionDuration > session.LongestConnectionDuration)
+                {
+                    session.LongestConnectionDuration = connectionDuration;
+                }
+            }
+
+            await WriteStateAsync();
+
+            _logger.LogDebug("Recorded disconnection for session {SessionId} with reason: {Reason}", sessionId, reason);
+            return StateResult.FromSuccess();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to record disconnection for session {SessionId}", sessionId);
+            return StateResult.FromError($"Failed to record session disconnection: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<StateResult> RecordSessionReconnectionAttemptAsync(
+        string sessionId,
+        bool success,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(sessionId))
+        {
+            throw new ArgumentNullException(nameof(sessionId));
+        }
+
+        try
+        {
+            using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "RecordSessionReconnectionAttempt");
+            _ = (activity?.SetTag("session.id", sessionId));
+            _ = (activity?.SetTag("reconnection.success", success));
+
+            if (!State.Sessions.TryGetValue(sessionId, out var session))
+            {
+                return StateResult.FromError($"Session {sessionId} not found");
+            }
+
+            session.ReconnectionAttempts++;
+            session.LastActivityAt = DateTime.UtcNow;
+
+            if (success)
+            {
+                session.SuccessfulReconnections++;
+                session.CurrentState = SessionLifecycleState.Connected;
+                session.ConnectedAt = DateTime.UtcNow;
+            }
+            else
+            {
+                session.CurrentState = SessionLifecycleState.Reconnecting;
+            }
+
+            await WriteStateAsync();
+
+            _logger.LogDebug("Recorded reconnection attempt for session {SessionId}, success: {Success}", sessionId, success);
+            return StateResult.FromSuccess();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to record reconnection attempt for session {SessionId}", sessionId);
+            return StateResult.FromError($"Failed to record session reconnection attempt: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<StateResult> ArchiveSessionAsync(
+        string sessionId,
+        string? reason = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(sessionId))
+        {
+            throw new ArgumentNullException(nameof(sessionId));
+        }
+
+        try
+        {
+            using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "ArchiveSession");
+            _ = (activity?.SetTag("session.id", sessionId));
+            _ = (activity?.SetTag("archive.reason", reason ?? "Unknown"));
+
+            if (!State.Sessions.TryGetValue(sessionId, out var session))
+            {
+                return StateResult.FromError($"Session {sessionId} not found");
+            }
+
+            var now = DateTime.UtcNow;
+            session.CurrentState = SessionLifecycleState.Archived;
+            session.IsArchived = true;
+            session.ArchivedAt = now;
+            session.ArchiveReason = reason;
+            session.LastActivityAt = now;
+
+            await WriteStateAsync();
+
+            _logger.LogInformation("Archived session {SessionId} with reason: {Reason}", sessionId, reason);
+            return StateResult.FromSuccess();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to archive session {SessionId}", sessionId);
+            return StateResult.FromError($"Failed to archive session: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<StateResult<UserSessionMetrics?>> GetSessionMetricsAsync(
+        string sessionId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(sessionId))
+        {
+            throw new ArgumentNullException(nameof(sessionId));
+        }
+
+        try
+        {
+            using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "GetSessionMetrics");
+            _ = (activity?.SetTag("session.id", sessionId));
+
+            _ = State.SessionMetrics.TryGetValue(sessionId, out var metrics);
+
+            _logger.LogDebug("Retrieved session metrics for {SessionId}, found: {Found}", sessionId, metrics != null);
+            await Task.CompletedTask; // Satisfy async requirement
+            return StateResult<UserSessionMetrics?>.FromSuccess(metrics);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get session metrics for {SessionId}", sessionId);
+            return StateResult<UserSessionMetrics?>.FromError($"Failed to get session metrics: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<StateResult> UpdateSessionMetricsAsync(
+        string sessionId,
+        UserSessionMetrics metrics,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(sessionId))
+        {
+            throw new ArgumentNullException(nameof(sessionId));
+        }
+
+        ArgumentNullException.ThrowIfNull(metrics);
+
+        try
+        {
+            using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "UpdateSessionMetrics");
+            _ = (activity?.SetTag("session.id", sessionId));
+
+            // Ensure the session exists
+            if (!State.Sessions.ContainsKey(sessionId))
+            {
+                return StateResult.FromError($"Session {sessionId} not found");
+            }
+
+            State.SessionMetrics[sessionId] = metrics;
+            await WriteStateAsync();
+
+            _logger.LogDebug("Updated session metrics for {SessionId}", sessionId);
+            return StateResult.FromSuccess();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update session metrics for {SessionId}", sessionId);
+            return StateResult.FromError($"Failed to update session metrics: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<StateResult<IReadOnlyList<UserSessionState>>> BulkImportSessionsAsync(
+        IList<UserSessionState> sessions,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(sessions);
+
+        try
+        {
+            using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "BulkImportSessions");
+            _ = (activity?.SetTag("sessions.count", sessions.Count));
+
+            _logger.LogDebug("Bulk importing {Count} sessions for user {UserId}", sessions.Count, State.UserId);
+
+            var importedSessions = new List<UserSessionState>();
+
+            foreach (var session in sessions)
+            {
+                if (State.Sessions.ContainsKey(session.SessionId))
+                {
+                    _logger.LogWarning("Session {SessionId} already exists, skipping", session.SessionId);
+                    continue;
+                }
+
+                State.Sessions[session.SessionId] = session;
+                importedSessions.Add(session);
+            }
+
+            await WriteStateAsync();
+
+            _logger.LogInformation("Bulk imported {ImportedCount} of {TotalCount} sessions for user {UserId}",
+                importedSessions.Count, sessions.Count, State.UserId);
+
+            return StateResult<IReadOnlyList<UserSessionState>>.FromSuccess(importedSessions);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to bulk import sessions for user {UserId}", State.UserId);
+            return StateResult<IReadOnlyList<UserSessionState>>.FromError($"Failed to bulk import sessions: {ex.Message}");
+        }
+    }
+
+    #endregion
+
     /// <summary>
     /// Disposes the UserGrain and releases all managed resources.
     /// This method ensures proper cleanup of timers and prevents memory leaks.
@@ -3271,6 +3709,4 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             _logger.LogDebug("UserGrain {UserId} disposed successfully", State.UserId);
         }
     }
-
-    #endregion
 }
