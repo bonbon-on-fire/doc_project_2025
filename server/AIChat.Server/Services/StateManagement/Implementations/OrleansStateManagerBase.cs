@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using AIChat.Server.Services.StateManagement.Validation;
 
 namespace AIChat.Server.Services.StateManagement.Implementations;
 
@@ -539,6 +540,119 @@ public abstract class OrleansStateManagerBase<T> : IStateManager<T> where T : cl
     {
         // Base implementation does nothing
         return Task.CompletedTask;
+    }
+
+    #endregion
+
+    #region Validation Implementation
+
+    /// <inheritdoc />
+    public virtual IStateValidator<T> Validator => GetValidator();
+
+    /// <inheritdoc />
+    public virtual IStateConsistencyChecker<T> ConsistencyChecker => GetConsistencyChecker();
+
+    /// <inheritdoc />
+    public virtual IStateErrorRecovery<T> ErrorRecovery => GetErrorRecovery();
+
+    /// <inheritdoc />
+    public virtual async Task<StateValidationResult> ValidateAsync(StateOperation<T> operation, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+
+        try
+        {
+            Logger.LogDebug("Validating operation {OperationType} for entity type {EntityType}",
+                operation.Type, typeof(T).Name);
+
+            return operation.Type switch
+            {
+                StateOperationType.Create => operation.Entity != null
+                    ? await Validator.ValidateCreateAsync(operation.Entity, cancellationToken)
+                    : StateValidationResult.Failed("Entity", "Entity is required for create operation", ValidationErrorCode.Required),
+
+                StateOperationType.Update => operation.EntityId != null && operation.Entity != null
+                    ? await Validator.ValidateUpdateAsync(operation.EntityId, operation.Entity, cancellationToken: cancellationToken)
+                    : StateValidationResult.Failed("Entity", "EntityId and Entity are required for update operation", ValidationErrorCode.Required),
+
+                StateOperationType.Delete => operation.EntityId != null
+                    ? await Validator.ValidateDeleteAsync(operation.EntityId, cancellationToken: cancellationToken)
+                    : StateValidationResult.Failed("EntityId", "EntityId is required for delete operation", ValidationErrorCode.Required),
+
+                StateOperationType.Patch => operation.EntityId != null && operation.Updates != null
+                    ? await Validator.ValidatePatchAsync(operation.EntityId, operation.Updates, cancellationToken: cancellationToken)
+                    : StateValidationResult.Failed("EntityId", "EntityId and Updates are required for patch operation", ValidationErrorCode.Required),
+
+                _ => StateValidationResult.Failed("OperationType", $"Unknown operation type: {operation.Type}", ValidationErrorCode.Custom)
+            };
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error during validation for {EntityType} operation {OperationType}",
+                typeof(T).Name, operation.Type);
+            return StateValidationResult.Failed("Entity", "Internal validation error", ValidationErrorCode.Custom);
+        }
+    }
+
+    /// <inheritdoc />
+    public virtual async Task<ConsistencyCheckResult> CheckConsistencyAsync(string entityId, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(entityId);
+
+        try
+        {
+            Logger.LogDebug("Checking consistency for entity {EntityId} of type {EntityType}",
+                entityId, typeof(T).Name);
+
+            return await ConsistencyChecker.CheckConsistencyAsync(entityId, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error during consistency check for {EntityType} entity {EntityId}",
+                typeof(T).Name, entityId);
+
+            var issues = new[]
+            {
+                ConsistencyIssue.Create(entityId, "ConsistencyCheck", ConsistencyIssueType.StructuralMismatch,
+                    description: $"Consistency check failed: {ex.Message}",
+                    severity: ConsistencyIssueSeverity.Error)
+            };
+
+            return ConsistencyCheckResult.Inconsistent(issues, 1, TimeSpan.Zero);
+        }
+    }
+
+    /// <summary>
+    /// Gets the validator instance for this state manager.
+    /// Override this method to provide a custom validator.
+    /// </summary>
+    /// <returns>The validator instance</returns>
+    protected virtual IStateValidator<T> GetValidator()
+    {
+        // Return a default no-op validator
+        return new NullStateValidator<T>();
+    }
+
+    /// <summary>
+    /// Gets the consistency checker instance for this state manager.
+    /// Override this method to provide a custom consistency checker.
+    /// </summary>
+    /// <returns>The consistency checker instance</returns>
+    protected virtual IStateConsistencyChecker<T> GetConsistencyChecker()
+    {
+        // Return a default no-op consistency checker
+        return new NullStateConsistencyChecker<T>();
+    }
+
+    /// <summary>
+    /// Gets the error recovery handler instance for this state manager.
+    /// Override this method to provide a custom error recovery handler.
+    /// </summary>
+    /// <returns>The error recovery handler instance</returns>
+    protected virtual IStateErrorRecovery<T> GetErrorRecovery()
+    {
+        // Return a default no-op error recovery handler
+        return new NullStateErrorRecovery<T>();
     }
 
     #endregion

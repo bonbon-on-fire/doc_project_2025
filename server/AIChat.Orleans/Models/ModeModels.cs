@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Orleans;
 
 namespace AIChat.Orleans.Contracts;
 
@@ -291,50 +292,60 @@ public sealed class ModeConstraints
 /// <summary>
 /// Represents a mode template that can be instantiated.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.ModeTemplate")]
 public sealed class ModeTemplate
 {
     /// <summary>
     /// Unique identifier for the template.
     /// </summary>
     [Required]
+    [Id(0)]
     public required string TemplateId { get; init; }
 
     /// <summary>
     /// Display name of the template.
     /// </summary>
     [Required]
+    [Id(1)]
     public required string Name { get; init; }
 
     /// <summary>
     /// Description of the template.
     /// </summary>
     [Required]
+    [Id(2)]
     public required string Description { get; init; }
 
     /// <summary>
     /// Category this template belongs to.
     /// </summary>
+    [Id(3)]
     public string? Category { get; init; }
 
     /// <summary>
     /// Default configuration for modes created from this template.
     /// </summary>
     [Required]
+    [Id(4)]
     public required ModeConfiguration DefaultConfiguration { get; init; }
 
     /// <summary>
     /// Whether this template is available for use.
     /// </summary>
+    [Id(5)]
     public bool IsAvailable { get; init; } = true;
 
     /// <summary>
     /// Icon or image URL for the template.
     /// </summary>
+    [Id(6)]
     public string? IconUrl { get; init; }
 
     /// <summary>
     /// Tags for searching and filtering.
     /// </summary>
+    [Id(7)]
     public List<string> Tags { get; init; } = [];
 }
 

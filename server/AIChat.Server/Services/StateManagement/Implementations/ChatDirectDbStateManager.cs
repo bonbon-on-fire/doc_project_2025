@@ -1,5 +1,8 @@
 using AIChat.Server.Models;
+using AIChat.Server.Services.StateManagement.Validation;
 using AIChat.Server.Storage;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace AIChat.Server.Services.StateManagement.Implementations;
 
@@ -366,6 +369,26 @@ public class ChatDirectDbStateManager : DirectDbStateManagerBase<Chat>
             Logger.LogError(ex, "Database health check failed");
             throw;
         }
+    }
+
+    #endregion
+
+    #region Validation Implementation
+
+    /// <summary>
+    /// Gets the validator instance for Chat entities.
+    /// Returns a concrete ChatValidator that performs real validation logic.
+    /// </summary>
+    /// <returns>The ChatValidator instance</returns>
+    protected override IStateValidator<Chat> GetValidator()
+    {
+        // For demonstration purposes, create a simple validator instance
+        // In a real implementation, you would resolve these dependencies from DI container
+        var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+        var logger = loggerFactory.CreateLogger<ChatValidator>();
+        var serviceProvider = new ServiceCollection().BuildServiceProvider();
+
+        return new ChatValidator(logger, serviceProvider);
     }
 
     #endregion

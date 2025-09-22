@@ -1,3 +1,5 @@
+using AIChat.Server.Services.StateManagement.Validation;
+
 namespace AIChat.Server.Services.StateManagement;
 
 /// <summary>
@@ -52,6 +54,43 @@ public interface IStateManager<T> : IStateReader<T>, IStateWriter<T>, IStateCach
     /// <returns>A task representing the optimization operation</returns>
     /// <exception cref="OperationCanceledException">Thrown when the operation is cancelled</exception>
     Task OptimizeAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the validator used by this state manager for entity validation.
+    /// </summary>
+    IStateValidator<T> Validator { get; }
+
+    /// <summary>
+    /// Gets the consistency checker used by this state manager for cross-backend validation.
+    /// </summary>
+    IStateConsistencyChecker<T> ConsistencyChecker { get; }
+
+    /// <summary>
+    /// Gets the error recovery handler used by this state manager for validation failures.
+    /// </summary>
+    IStateErrorRecovery<T> ErrorRecovery { get; }
+
+    /// <summary>
+    /// Validates an operation without executing it.
+    /// Useful for pre-validation scenarios and testing validation rules.
+    /// </summary>
+    /// <param name="operation">The state operation to validate</param>
+    /// <param name="cancellationToken">Token to cancel the validation operation</param>
+    /// <returns>Validation result indicating success or failure with detailed error information</returns>
+    /// <exception cref="ArgumentNullException">Thrown when operation is null</exception>
+    /// <exception cref="OperationCanceledException">Thrown when the operation is cancelled</exception>
+    Task<StateValidationResult> ValidateAsync(StateOperation<T> operation, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Performs a consistency check for the specified entity.
+    /// Compares entity state across different storage backends to ensure data integrity.
+    /// </summary>
+    /// <param name="entityId">The ID of the entity to check for consistency</param>
+    /// <param name="cancellationToken">Token to cancel the consistency check operation</param>
+    /// <returns>Consistency check result with detailed issue information</returns>
+    /// <exception cref="ArgumentNullException">Thrown when entityId is null</exception>
+    /// <exception cref="OperationCanceledException">Thrown when the operation is cancelled</exception>
+    Task<ConsistencyCheckResult> CheckConsistencyAsync(string entityId, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -189,6 +228,21 @@ public record StateManagerMetrics
     /// Gets additional provider-specific metrics.
     /// </summary>
     public Dictionary<string, object>? AdditionalMetrics { get; init; }
+
+    /// <summary>
+    /// Gets validation-specific metrics.
+    /// </summary>
+    public StateValidationMetrics? ValidationMetrics { get; init; }
+
+    /// <summary>
+    /// Gets consistency checking metrics.
+    /// </summary>
+    public ConsistencyCheckMetrics? ConsistencyMetrics { get; init; }
+
+    /// <summary>
+    /// Gets error recovery metrics.
+    /// </summary>
+    public ErrorRecoveryMetrics? RecoveryMetrics { get; init; }
 
     /// <summary>
     /// Gets the total number of operations.

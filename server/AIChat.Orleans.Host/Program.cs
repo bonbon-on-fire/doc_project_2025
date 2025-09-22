@@ -230,7 +230,8 @@ public class Program
             ConfigureProductionOrleans(siloBuilder, configuration);
         }
 
-        // Grain assemblies are auto-discovered in Orleans 9.x
+        // Note: Orleans 9.x auto-discovers grain assemblies and may discover unwanted types
+        // For now, we'll rely on the fact that only types marked with [GenerateSerializer] should be serialized
 
         // Phase 1: Custom Orleans monitoring dashboard (Orleans 9.x compatible)
         var dashboardPort = configuration.GetValue("Orleans:DashboardPort", 8080);
