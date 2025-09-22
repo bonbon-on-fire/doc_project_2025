@@ -45,6 +45,7 @@ public class ChatControllerOrleansTests
     private readonly Mock<IFeatureManager> _mockFeatureManager;
     private readonly Mock<IHostEnvironment> _mockHostEnvironment;
     private readonly Mock<IStreamingBridge> _mockStreamingBridge;
+    private readonly Mock<IGrainFactory> _mockGrainFactory;
     private readonly ChatController _controller;
 
     public ChatControllerOrleansTests()
@@ -58,6 +59,7 @@ public class ChatControllerOrleansTests
         _mockFeatureManager = new Mock<IFeatureManager>();
         _mockHostEnvironment = new Mock<IHostEnvironment>();
         _mockStreamingBridge = new Mock<IStreamingBridge>();
+        _mockGrainFactory = new Mock<IGrainFactory>();
 
         _controller = new ChatController(
             _mockChatService.Object,
@@ -68,7 +70,7 @@ public class ChatControllerOrleansTests
             _mockHubContext.Object,
             _mockFeatureManager.Object,
             _mockHostEnvironment.Object,
-            null, // grainFactory
+            _mockGrainFactory.Object,
             null, // backgroundChatService
             null, // operationTrackingService
             _mockStreamingBridge.Object,
@@ -79,6 +81,26 @@ public class ChatControllerOrleansTests
         var httpContext = new DefaultHttpContext();
         httpContext.Response.Body = new MemoryStream();
         _controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+    }
+
+    /// <summary>
+    /// Configures the environment for Orleans co-hosting (Test environment).
+    /// </summary>
+    private void SetupOrleansCoHostingEnvironment()
+    {
+        _ = _mockHostEnvironment
+            .Setup(env => env.EnvironmentName)
+            .Returns("Test");
+    }
+
+    /// <summary>
+    /// Configures the environment for production (non-co-hosted).
+    /// </summary>
+    private void SetupProductionEnvironment()
+    {
+        _ = _mockHostEnvironment
+            .Setup(env => env.EnvironmentName)
+            .Returns("Production");
     }
 
     [Fact]
@@ -102,6 +124,7 @@ public class ChatControllerOrleansTests
         };
 
         // Setup Orleans as enabled
+        SetupOrleansCoHostingEnvironment();
         _ = _mockFeatureManager
             .Setup(fm => fm.IsEnabledAsync("OrleansIntegration"))
             .ReturnsAsync(true);
@@ -157,6 +180,7 @@ public class ChatControllerOrleansTests
         };
 
         // Setup Orleans as disabled
+        SetupProductionEnvironment();
         _ = _mockFeatureManager
             .Setup(fm => fm.IsEnabledAsync("OrleansIntegration"))
             .ReturnsAsync(false);
@@ -203,17 +227,27 @@ public class ChatControllerOrleansTests
         };
 
         // Setup Orleans as enabled but failing
+        SetupProductionEnvironment();
         _ = _mockFeatureManager
             .Setup(fm => fm.IsEnabledAsync("OrleansIntegration"))
             .ReturnsAsync(true);
 
         var mockUserGrain = new Mock<IUserGrain>();
-        // Note: Test no longer uses IClusterClient - controller simplified to IGrainFactory only
+
+        // Setup grain factory to return the mock user grain
+        _ = _mockGrainFactory
+            .Setup(gf => gf.GetGrain<IUserGrain>("test-user", null))
+            .Returns(mockUserGrain.Object);
 
         // Make health check fail
         _ = mockUserGrain
             .Setup(g => g.CheckHealth())
             .ThrowsAsync(new InvalidOperationException("Orleans not available"));
+
+        // Make Orleans streaming fail to test fallback
+        _ = mockUserGrain
+            .Setup(g => g.ProcessChatStreamAsync(It.IsAny<ChatRequest>(), It.IsAny<CancellationToken>()))
+            .Throws(new InvalidOperationException("Orleans streaming failed"));
 
         _ = _mockChatService
             .Setup(cs => cs.PrepareUnifiedStreamChatAsync(It.IsAny<StreamChatRequest>()))
@@ -264,13 +298,22 @@ public class ChatControllerOrleansTests
         };
 
         // Setup Orleans as enabled
+        SetupOrleansCoHostingEnvironment();
         _ = _mockFeatureManager
             .Setup(fm => fm.IsEnabledAsync("OrleansIntegration"))
             .ReturnsAsync(true);
 
+        // Disable ResilientStreaming to use standard StreamingBridge
+        _ = _mockFeatureManager
+            .Setup(fm => fm.IsEnabledAsync("ResilientStreaming"))
+            .ReturnsAsync(false);
+
         var mockUserGrain = new Mock<IUserGrain>();
-        // Note: Test no longer uses IClusterClient - controller simplified to IGrainFactory only
-        // Note: Test no longer uses IClusterClient - controller simplified to IGrainFactory only
+
+        // Setup grain factory to return the mock user grain
+        _ = _mockGrainFactory
+            .Setup(gf => gf.GetGrain<IUserGrain>("test-user", null))
+            .Returns(mockUserGrain.Object);
 
         _ = mockUserGrain
             .Setup(g => g.CheckHealth())
