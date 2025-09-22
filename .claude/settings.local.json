@@ -88,6 +88,7 @@
       "WebSearch",
       "mcp__azure-devops-mcp__listPullRequests",
       "mcp__hitl-mcp-server__ask_human",
+      "mcp__clarify-doubt__ask_human",
       "mcp__memroy_db__list_tables",
       "mcp__memroy_db__read_query",
       "mcp__playwright__playwright_navigate",
@@ -140,6 +141,6 @@
     "sequential-thinking-tools",
     "playwright",
     "azure-devops-mcp",
-    "mcp-ask-human"
+    "clarify-doubt"
   ]
 }

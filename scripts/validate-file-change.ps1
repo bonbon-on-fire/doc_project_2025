@@ -53,7 +53,7 @@ catch {
     Write-Host "" -ForegroundColor Red
     Write-Host "🔧 REQUIRED ACTION:" -ForegroundColor Yellow
     Write-Host "   Check that dotnet is installed and accessible" -ForegroundColor Yellow
-    Write-Host "   Verify you're in the correct directory" -ForegroundColor Yellow
+    Write-Host "   Verify you are in the correct directory" -ForegroundColor Yellow
     
     # Error exit
     exit 1
