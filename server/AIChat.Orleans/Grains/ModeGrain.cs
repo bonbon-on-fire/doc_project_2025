@@ -1555,9 +1555,20 @@ public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDi
         ArgumentNullException.ThrowIfNull(targetModeId);
         await EnsureModeExistsAsync().ConfigureAwait(false);
 
-        // TODO: Implement transition validation
-        await Task.CompletedTask;
-        return (true, null);
+        // Create a transition request for validation
+        var transitionRequest = new ModeTransitionRequest
+        {
+            TargetModeId = targetModeId,
+            Reason = "Transition feasibility check",
+            PreserveContext = true, // Default to preserving context for validation
+            UserId = null, // No specific user for feasibility check
+            TransitionData = []
+        };
+
+        // Use existing comprehensive validation logic
+        var validationResult = await ValidateTransitionInternalAsync(transitionRequest, cancellationToken).ConfigureAwait(false);
+
+        return (validationResult.IsAllowed, validationResult.DisallowedReason);
     }
 
     /// <summary>
@@ -1569,9 +1580,16 @@ public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDi
         {
             await EnsureModeExistsAndNotArchivedAsync().ConfigureAwait(false);
 
-            // TODO: Implement rollback functionality
-            // For now, return current state until implementation is complete
-            return State.CurrentState!;
+            // Find and validate rollback target
+            var rollbackTarget = FindRollbackTarget() ??
+                throw new NoTransitionToRollbackException(
+                    $"No valid transition found to rollback for mode {this.GetPrimaryKeyString()}");
+
+            await ValidateRollbackPossibleAsync(rollbackTarget, cancellationToken).ConfigureAwait(false);
+
+            // Execute rollback operation
+            var rollbackId = Guid.NewGuid().ToString();
+            return await ExecuteRollbackOperation(rollbackTarget, rollbackId, reason, cancellationToken).ConfigureAwait(false);
         });
     }
 
@@ -1584,9 +1602,16 @@ public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDi
         {
             await EnsureModeExistsAsync().ConfigureAwait(false);
 
-            // TODO: Implement available transitions lookup
-            await Task.CompletedTask;
-            return new List<ModeTransitionOption>();
+            // Get all potentially available modes
+            var potentialModes = await GetPotentialTargetModesAsync(cancellationToken).ConfigureAwait(false);
+
+            // Evaluate each potential mode for transition availability
+            var availableTransitions = await EvaluatePotentialTransitions(potentialModes, cancellationToken).ConfigureAwait(false);
+
+            _logger.LogInformation("Found {Count} available transitions for mode {ModeId}",
+                availableTransitions.Count, this.GetPrimaryKeyString());
+
+            return availableTransitions;
         });
     }
 
@@ -3380,6 +3405,334 @@ public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDi
         // For now, assume all users have basic permissions
         await Task.CompletedTask;
         return true; // Simplified - would implement actual permission checking
+    }
+
+    /// <summary>
+    /// Gets potential target modes for transition.
+    /// This is a placeholder implementation until mode template repository is available.
+    /// </summary>
+    private async Task<List<PotentialModeInfo>> GetPotentialTargetModesAsync(CancellationToken cancellationToken = default)
+    {
+        await Task.CompletedTask;
+
+        // Common mode types that would typically be available in a chat system
+        List<PotentialModeInfo> potentialModes =
+        [
+            new()
+            {
+                ModeId = "chat-assistant",
+                Name = "Chat Assistant",
+                Description = "General purpose conversational assistant",
+                Category = "General",
+                Features = ["conversation", "general-knowledge", "problem-solving"],
+                RequiredPermissions = [],
+                EstimatedTransitionTimeMs = 500
+            },
+            new()
+            {
+                ModeId = "code-assistant",
+                Name = "Code Assistant",
+                Description = "Programming and development focused assistant",
+                Category = "Development",
+                Features = ["code-generation", "debugging", "code-review", "documentation"],
+                RequiredPermissions = ["code"],
+                EstimatedTransitionTimeMs = 750
+            },
+            new()
+            {
+                ModeId = "creative-writer",
+                Name = "Creative Writer",
+                Description = "Creative writing and content generation",
+                Category = "Creative",
+                Features = ["creative-writing", "storytelling", "content-creation"],
+                RequiredPermissions = [],
+                EstimatedTransitionTimeMs = 600
+            },
+            new()
+            {
+                ModeId = "data-analyst",
+                Name = "Data Analyst",
+                Description = "Data analysis and visualization assistant",
+                Category = "Analytics",
+                Features = ["data-analysis", "visualization", "statistics"],
+                RequiredPermissions = ["data"],
+                EstimatedTransitionTimeMs = 800
+            },
+            new()
+            {
+                ModeId = "research-assistant",
+                Name = "Research Assistant",
+                Description = "Research and information gathering assistant",
+                Category = "Research",
+                Features = ["research", "fact-checking", "citations", "summarization"],
+                RequiredPermissions = [],
+                EstimatedTransitionTimeMs = 650
+            }
+        ];
+
+        // Filter out current mode to avoid self-transition suggestions
+        var currentModeId = this.GetPrimaryKeyString();
+        return [.. potentialModes.Where(m => m.ModeId != currentModeId)];
+    }
+
+    /// <summary>
+    /// Finds the most recent successful transition that can be rolled back to.
+    /// </summary>
+    private ModeTransition? FindRollbackTarget()
+    {
+        // Look for the most recent successful transition (excluding rollbacks)
+        var validTransitions = State.TransitionHistory
+            .Where(t => t.Success &&
+                       !(t.Reason?.StartsWith("Rollback:", StringComparison.OrdinalIgnoreCase) ?? false)) // Exclude rollback operations
+            .OrderByDescending(t => t.TimestampUtc)
+            .ToList();
+
+        return validTransitions.FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Validates that a rollback operation is possible.
+    /// </summary>
+    private async Task ValidateRollbackPossibleAsync(ModeTransition rollbackTarget, CancellationToken cancellationToken = default)
+    {
+        await Task.CompletedTask;
+
+        // Check if we're not in an archived state
+        if (State.CurrentState?.Status == ModeStatus.Archived)
+        {
+            throw new ModeArchivedException($"Cannot rollback an archived mode {this.GetPrimaryKeyString()}");
+        }
+
+        // Check if the rollback target has a valid source mode to rollback to
+        if (string.IsNullOrEmpty(rollbackTarget.SourceModeId))
+        {
+            throw new InvalidOperationException("Rollback target does not have a valid source mode");
+        }
+
+        // Check if rollback target is too old (optional safety check)
+        var maxRollbackAge = TimeSpan.FromDays(30); // Configurable limit
+        if (rollbackTarget.TimestampUtc < DateTime.UtcNow - maxRollbackAge)
+        {
+            throw new InvalidOperationException($"Cannot rollback to transition older than {maxRollbackAge.TotalDays} days");
+        }
+
+        // Ensure we're not trying to rollback to ourselves
+        if (rollbackTarget.SourceModeId == this.GetPrimaryKeyString())
+        {
+            throw new InvalidOperationException("Cannot rollback to the same mode");
+        }
+
+        _logger.LogDebug("Rollback validation passed for transition {TransitionId}", rollbackTarget.TransitionId);
+    }
+
+    /// <summary>
+    /// Restores the previous mode state by performing a transition to the source mode.
+    /// </summary>
+    private async Task<ModeState> RestorePreviousStateAsync(ModeTransition rollbackTarget, CancellationToken cancellationToken = default)
+    {
+        // Since we don't have the exact previous state stored, we'll perform a new transition
+        // back to the source mode of the last transition. This achieves the rollback effect.
+        var rollbackRequest = new ModeTransitionRequest
+        {
+            TargetModeId = rollbackTarget.SourceModeId,
+            Reason = $"Rollback transition to {rollbackTarget.SourceModeId}",
+            PreserveContext = true,
+            PreserveHistory = true,
+            UserId = "system",
+            TransitionData = new Dictionary<string, string>
+            {
+                ["RollbackOperation"] = "true",
+                ["OriginalTransitionId"] = rollbackTarget.TransitionId,
+                ["RollbackTimestamp"] = DateTime.UtcNow.ToString("O")
+            }
+        };
+
+        // Perform the reverse transition using existing infrastructure
+        // Note: This will call TransitionToModeAsync, which will validate and execute the transition
+        var transitionResult = await TransitionToModeAsync(rollbackRequest, cancellationToken).ConfigureAwait(false);
+
+        if (!transitionResult.Success)
+        {
+            throw new InvalidOperationException($"Failed to execute rollback transition: {transitionResult.Error}");
+        }
+
+        // Add rollback metadata to the current state
+        if (State.CurrentState != null)
+        {
+            State.CurrentState.Metadata["LastRollbackFromTransition"] = rollbackTarget.TransitionId;
+            State.CurrentState.Metadata["RollbackTimestamp"] = DateTime.UtcNow.ToString("O");
+            State.CurrentState.Metadata["RollbackReason"] = "Rollback operation completed";
+        }
+
+        _logger.LogDebug("Successfully performed rollback transition from {TransitionId} for mode {ModeId}",
+            rollbackTarget.TransitionId, this.GetPrimaryKeyString());
+
+        return State.CurrentState!;
+    }
+
+    /// <summary>
+    /// Executes the rollback operation with proper error handling and state management.
+    /// </summary>
+    private async Task<ModeState> ExecuteRollbackOperation(ModeTransition rollbackTarget, string rollbackId, string? reason, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Restore the previous mode state
+            var restoredState = await RestorePreviousStateAsync(rollbackTarget, cancellationToken).ConfigureAwait(false);
+
+            // Record successful rollback
+            await RecordRollbackResult(rollbackTarget, rollbackId, reason, true, restoredState, null).ConfigureAwait(false);
+
+            _logger.LogInformation("Successfully rolled back mode {ModeId} to previous state from transition {TransitionId}",
+                this.GetPrimaryKeyString(), rollbackTarget.TransitionId);
+
+            return restoredState;
+        }
+        catch (Exception ex)
+        {
+            // Record failed rollback
+            await RecordRollbackResult(rollbackTarget, rollbackId, reason, false, null, ex).ConfigureAwait(false);
+
+            _logger.LogError(ex, "Failed to rollback mode {ModeId} to transition {TransitionId}",
+                this.GetPrimaryKeyString(), rollbackTarget.TransitionId);
+
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Records the result of a rollback operation (success or failure).
+    /// </summary>
+    private async Task RecordRollbackResult(ModeTransition rollbackTarget, string rollbackId, string? reason, bool success, ModeState? restoredState, Exception? error)
+    {
+        // Create and record transition
+        var rollbackTransition = CreateRollbackTransition(rollbackTarget, rollbackId, reason, success, error);
+        State.TransitionHistory.Add(rollbackTransition);
+
+        // Create and record change event (only for successful rollbacks)
+        if (success && restoredState != null)
+        {
+            var rollbackEvent = CreateRollbackChangeEvent(rollbackTarget, rollbackId, reason, restoredState);
+            State.ChangeHistory.Add(rollbackEvent);
+        }
+
+        // Update performance metrics
+        if (success)
+        {
+            State.Performance.SuccessfulOperations++;
+        }
+        else
+        {
+            State.Performance.FailedOperations++;
+        }
+
+        // Persist the state
+        await WriteStateAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Creates a ModeTransition record for rollback operations.
+    /// </summary>
+    private ModeTransition CreateRollbackTransition(ModeTransition rollbackTarget, string rollbackId, string? reason, bool success, Exception? error)
+    {
+        return new ModeTransition
+        {
+            TransitionId = rollbackId,
+            SourceModeId = this.GetPrimaryKeyString(),
+            TargetModeId = rollbackTarget.SourceModeId,
+            TimestampUtc = DateTime.UtcNow,
+            Success = success,
+            Reason = success
+                ? $"Rollback: {reason ?? "Manual rollback"} (from transition {rollbackTarget.TransitionId})"
+                : $"Failed rollback: {reason ?? "Manual rollback"} (from transition {rollbackTarget.TransitionId})",
+            Error = error?.Message,
+            Duration = TimeSpan.Zero, // Rollback is typically fast
+            UserId = "system" // Rollback is typically a system operation
+        };
+    }
+
+    /// <summary>
+    /// Creates a ModeChangeEvent record for successful rollback operations.
+    /// </summary>
+    private ModeChangeEvent CreateRollbackChangeEvent(ModeTransition rollbackTarget, string rollbackId, string? reason, ModeState restoredState)
+    {
+        return new ModeChangeEvent
+        {
+            EventId = Guid.NewGuid().ToString(),
+            ChangeType = ModeChangeType.RolledBack,
+            TimestampUtc = DateTime.UtcNow,
+            UserId = "system", // Rollback is typically a system operation
+            Description = $"Rolled back to previous state from transition {rollbackTarget.TransitionId}",
+            PreviousValue = State.CurrentState?.Name ?? "Unknown",
+            NewValue = restoredState.Name,
+            Metadata = new Dictionary<string, string>
+            {
+                ["RollbackTransitionId"] = rollbackId,
+                ["OriginalTransitionId"] = rollbackTarget.TransitionId,
+                ["RollbackReason"] = reason ?? "Manual rollback"
+            }
+        };
+    }
+
+    /// <summary>
+    /// Evaluates potential modes for transition availability and creates transition options.
+    /// </summary>
+    private async Task<List<ModeTransitionOption>> EvaluatePotentialTransitions(List<PotentialModeInfo> potentialModes, CancellationToken cancellationToken)
+    {
+        var availableTransitions = new List<ModeTransitionOption>();
+
+        foreach (var mode in potentialModes)
+        {
+            var transitionOption = await EvaluateTransitionForMode(mode, cancellationToken).ConfigureAwait(false);
+            if (transitionOption != null)
+            {
+                availableTransitions.Add(transitionOption);
+            }
+        }
+
+        return availableTransitions;
+    }
+
+    /// <summary>
+    /// Evaluates a single mode for transition availability.
+    /// </summary>
+    private async Task<ModeTransitionOption?> EvaluateTransitionForMode(PotentialModeInfo mode, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var (canTransition, reason) = await CanTransitionAsync(mode.ModeId, cancellationToken).ConfigureAwait(false);
+
+            if (canTransition)
+            {
+                return CreateModeTransitionOption(mode);
+            }
+
+            // Optionally, we could also return disallowed transitions with reasons
+            // This would be useful for UI to show why certain transitions are not available
+            return null;
+        }
+        catch (Exception ex)
+        {
+            // Log but don't fail the entire operation for one mode
+            _logger.LogWarning(ex, "Failed to evaluate transition to mode {ModeId}. Mode will be excluded from available transitions.", mode.ModeId);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Creates a ModeTransitionOption from a PotentialModeInfo.
+    /// </summary>
+    private static ModeTransitionOption CreateModeTransitionOption(PotentialModeInfo mode)
+    {
+        return new ModeTransitionOption
+        {
+            TargetModeId = mode.ModeId,
+            TargetModeName = mode.Name,
+            Description = mode.Description,
+            IsAllowed = true, // We already filtered for allowed transitions
+            DisallowedReason = null,
+            RequiredConditions = mode.RequiredPermissions // Map required permissions to required conditions
+        };
     }
 
     #endregion

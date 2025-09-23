@@ -97,6 +97,8 @@ public sealed record ModeState
 /// <summary>
 /// Request to initialize a new mode.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.ModeInitRequest")]
 public sealed class ModeInitRequest
 {
     /// <summary>
@@ -104,6 +106,7 @@ public sealed class ModeInitRequest
     /// </summary>
     [Required]
     [StringLength(100, MinimumLength = 1)]
+    [Id(0)]
     public required string Name { get; init; }
 
     /// <summary>
@@ -111,38 +114,45 @@ public sealed class ModeInitRequest
     /// </summary>
     [Required]
     [StringLength(500, MinimumLength = 1)]
+    [Id(1)]
     public required string Description { get; init; }
 
     /// <summary>
     /// Initial configuration for the mode.
     /// </summary>
     [Required]
+    [Id(2)]
     public required ModeConfiguration Configuration { get; init; }
 
     /// <summary>
     /// Whether this is a system mode.
     /// </summary>
+    [Id(3)]
     public bool IsSystem { get; init; }
 
     /// <summary>
     /// User ID creating the mode (required for custom modes).
     /// </summary>
+    [Id(4)]
     public string? UserId { get; init; }
 
     /// <summary>
     /// Category for organizing modes.
     /// </summary>
     [StringLength(50)]
+    [Id(5)]
     public string? Category { get; init; }
 
     /// <summary>
     /// Initial metadata to attach.
     /// </summary>
+    [Id(6)]
     public Dictionary<string, string>? Metadata { get; init; }
 
     /// <summary>
     /// Template ID to base this mode on.
     /// </summary>
+    [Id(7)]
     public string? TemplateId { get; init; }
 }
 
@@ -648,31 +658,38 @@ public sealed class ScheduledTransitionRequest
 /// <summary>
 /// Result of applying a mode preset.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.ModePresetResult")]
 public sealed class ModePresetResult
 {
     /// <summary>
     /// Whether the preset was applied successfully.
     /// </summary>
+    [Id(0)]
     public required bool Success { get; init; }
 
     /// <summary>
     /// New mode state after applying preset.
     /// </summary>
+    [Id(1)]
     public ModeState? NewState { get; init; }
 
     /// <summary>
     /// Changes made by the preset.
     /// </summary>
+    [Id(2)]
     public List<string> AppliedChanges { get; init; } = [];
 
     /// <summary>
     /// Error if preset application failed.
     /// </summary>
+    [Id(3)]
     public string? Error { get; init; }
 
     /// <summary>
     /// Warnings generated during preset application.
     /// </summary>
+    [Id(4)]
     public List<string> Warnings { get; init; } = [];
 }
 
@@ -683,67 +700,82 @@ public sealed class ModePresetResult
 /// <summary>
 /// Result of mode validation.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.ModeValidationResult")]
 public sealed class ModeValidationResult
 {
     /// <summary>
     /// Whether the mode is valid.
     /// </summary>
+    [Id(0)]
     public required bool IsValid { get; init; }
 
     /// <summary>
     /// Mode details if valid.
     /// </summary>
+    [Id(1)]
     public ModeState? Mode { get; init; }
 
     /// <summary>
     /// Validation errors found.
     /// </summary>
+    [Id(2)]
     public List<ValidationError> Errors { get; init; } = [];
 
     /// <summary>
     /// Validation warnings.
     /// </summary>
+    [Id(3)]
     public List<ValidationWarning> Warnings { get; init; } = [];
 
     /// <summary>
     /// Suggested fixes for validation issues.
     /// </summary>
+    [Id(4)]
     public List<string> SuggestedFixes { get; init; } = [];
 }
 
 /// <summary>
 /// Result of transition validation.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.TransitionValidationResult")]
 public sealed class TransitionValidationResult
 {
     /// <summary>
     /// Whether the transition is valid.
     /// </summary>
+    [Id(0)]
     public required bool IsValid { get; init; }
 
     /// <summary>
     /// Whether the transition is allowed.
     /// </summary>
+    [Id(1)]
     public required bool IsAllowed { get; init; }
 
     /// <summary>
     /// Reason if not allowed.
     /// </summary>
+    [Id(2)]
     public string? DisallowedReason { get; init; }
 
     /// <summary>
     /// Validation errors.
     /// </summary>
+    [Id(3)]
     public List<ValidationError> Errors { get; init; } = [];
 
     /// <summary>
     /// Required conditions not met.
     /// </summary>
+    [Id(4)]
     public List<string> UnmetConditions { get; init; } = [];
 
     /// <summary>
     /// Estimated impact of the transition.
     /// </summary>
+    [Id(5)]
     public TransitionImpact? Impact { get; init; }
 }
 
@@ -800,57 +832,70 @@ public sealed class ModeValidationRule
 /// <summary>
 /// Result of constraint checking.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.ConstraintCheckResult")]
 public sealed class ConstraintCheckResult
 {
     /// <summary>
     /// Whether all constraints are satisfied.
     /// </summary>
+    [Id(0)]
     public required bool AllConstraintsSatisfied { get; init; }
 
     /// <summary>
     /// List of constraint violations.
     /// </summary>
+    [Id(1)]
     public List<ConstraintViolation> Violations { get; init; } = [];
 
     /// <summary>
     /// Constraints that were checked.
     /// </summary>
+    [Id(2)]
     public List<string> CheckedConstraints { get; init; } = [];
 
     /// <summary>
     /// Suggested resolutions for violations.
     /// </summary>
+    [Id(3)]
     public List<string> SuggestedResolutions { get; init; } = [];
 }
 
 /// <summary>
 /// Result of tool validation.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.ToolValidationResult")]
 public sealed class ToolValidationResult
 {
     /// <summary>
     /// Whether all tools are valid.
     /// </summary>
+    [Id(0)]
     public required bool AllToolsValid { get; init; }
 
     /// <summary>
     /// Tools that are valid and available.
     /// </summary>
+    [Id(1)]
     public List<string> ValidTools { get; init; } = [];
 
     /// <summary>
     /// Tools that are invalid or unavailable.
     /// </summary>
+    [Id(2)]
     public List<string> InvalidTools { get; init; } = [];
 
     /// <summary>
     /// Tools that require additional permissions.
     /// </summary>
+    [Id(3)]
     public List<string> RequiresPermission { get; init; } = [];
 
     /// <summary>
     /// Detailed validation messages.
     /// </summary>
+    [Id(4)]
     public Dictionary<string, string> ValidationMessages { get; init; } = [];
 }
 
@@ -1042,6 +1087,8 @@ public enum ModeChangeType
     Reset,
     /// <summary>Transition occurred</summary>
     Transitioned,
+    /// <summary>Mode was rolled back</summary>
+    RolledBack,
     /// <summary>Tools were updated</summary>
     ToolsUpdated,
     /// <summary>Prompt was updated</summary>
@@ -1163,73 +1210,90 @@ public enum ContentFilterLevel
 /// <summary>
 /// Represents a validation error.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.ValidationError")]
 public sealed class ValidationError
 {
     /// <summary>
     /// Error code.
     /// </summary>
+    [Id(0)]
     public required string Code { get; init; }
 
     /// <summary>
     /// Error message.
     /// </summary>
+    [Id(1)]
     public required string Message { get; init; }
 
     /// <summary>
     /// Field or property that caused the error.
     /// </summary>
+    [Id(2)]
     public string? Field { get; init; }
 
     /// <summary>
     /// Severity of the error.
     /// </summary>
+    [Id(3)]
     public ValidationSeverity Severity { get; init; } = ValidationSeverity.Error;
 }
 
 /// <summary>
 /// Represents a validation warning.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.ValidationWarning")]
 public sealed class ValidationWarning
 {
     /// <summary>
     /// Warning code.
     /// </summary>
+    [Id(0)]
     public required string Code { get; init; }
 
     /// <summary>
     /// Warning message.
     /// </summary>
+    [Id(1)]
     public required string Message { get; init; }
 
     /// <summary>
     /// Suggested action to address the warning.
     /// </summary>
+    [Id(2)]
     public string? SuggestedAction { get; init; }
 }
 
 /// <summary>
 /// Represents a constraint violation.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.ConstraintViolation")]
 public sealed class ConstraintViolation
 {
     /// <summary>
     /// Constraint that was violated.
     /// </summary>
+    [Id(0)]
     public required string Constraint { get; init; }
 
     /// <summary>
     /// Actual value that violated the constraint.
     /// </summary>
+    [Id(1)]
     public object? ActualValue { get; init; }
 
     /// <summary>
     /// Expected value or range.
     /// </summary>
+    [Id(2)]
     public object? ExpectedValue { get; init; }
 
     /// <summary>
     /// Violation message.
     /// </summary>
+    [Id(3)]
     public required string Message { get; init; }
 }
 
@@ -1341,26 +1405,32 @@ public sealed class TransitionCost
 /// <summary>
 /// Represents the impact of a transition.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.TransitionImpact")]
 public sealed class TransitionImpact
 {
     /// <summary>
     /// Features that will be added.
     /// </summary>
+    [Id(0)]
     public List<string> AddedFeatures { get; init; } = [];
 
     /// <summary>
     /// Features that will be removed.
     /// </summary>
+    [Id(1)]
     public List<string> RemovedFeatures { get; init; } = [];
 
     /// <summary>
     /// Configuration changes.
     /// </summary>
+    [Id(2)]
     public List<string> ConfigurationChanges { get; init; } = [];
 
     /// <summary>
     /// User experience impact.
     /// </summary>
+    [Id(3)]
     public string? UserExperienceImpact { get; init; }
 }
 
@@ -1453,4 +1523,46 @@ public enum RecurrenceType
     Monthly,
     /// <summary>Custom recurrence pattern</summary>
     Custom
+}
+
+/// <summary>
+/// Information about a potential mode for transition evaluation.
+/// Used internally for determining available transitions.
+/// </summary>
+public sealed class PotentialModeInfo
+{
+    /// <summary>
+    /// Mode identifier.
+    /// </summary>
+    public required string ModeId { get; init; }
+
+    /// <summary>
+    /// Display name of the mode.
+    /// </summary>
+    public required string Name { get; init; }
+
+    /// <summary>
+    /// Description of the mode.
+    /// </summary>
+    public required string Description { get; init; }
+
+    /// <summary>
+    /// Category of the mode.
+    /// </summary>
+    public required string Category { get; init; }
+
+    /// <summary>
+    /// Features provided by this mode.
+    /// </summary>
+    public required List<string> Features { get; init; }
+
+    /// <summary>
+    /// Required permissions to use this mode.
+    /// </summary>
+    public required List<string> RequiredPermissions { get; init; }
+
+    /// <summary>
+    /// Estimated time in milliseconds for transition to this mode.
+    /// </summary>
+    public required int EstimatedTransitionTimeMs { get; init; }
 }
