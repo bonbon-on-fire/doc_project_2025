@@ -1,6 +1,6 @@
+using System.Diagnostics;
 using AIChat.Orleans.Client.Services;
 using AIChat.Server.Services.Routing;
-using System.Diagnostics;
 
 namespace AIChat.Server.Services;
 
