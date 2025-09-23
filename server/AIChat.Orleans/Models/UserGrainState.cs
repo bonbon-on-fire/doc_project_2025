@@ -348,6 +348,12 @@ public sealed class GrainMetrics
     /// </summary>
     [Id(16)]
     public long TotalBufferedMessagesDelivered { get; set; } = 0;
+
+    /// <summary>
+    /// Total number of streams processed.
+    /// </summary>
+    [Id(17)]
+    public long TotalStreamsProcessed { get; set; } = 0;
 }
 
 /// <summary>

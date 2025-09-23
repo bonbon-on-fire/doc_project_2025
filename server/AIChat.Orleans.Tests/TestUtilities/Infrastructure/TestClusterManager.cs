@@ -95,6 +95,7 @@ public class TestClusterManager : IAsyncDisposable
                 // Use memory storage for tests
                 .AddMemoryGrainStorageAsDefault()
                 .AddMemoryGrainStorage("UserGrainStorage")
+                .AddMemoryGrainStorage("ChatGrainStorage")
                 .AddMemoryGrainStorage("PubSubStore")
                 // Let TestClusterBuilder handle the ClusterId to avoid conflicts
                 .Configure<EndpointOptions>(options =>
