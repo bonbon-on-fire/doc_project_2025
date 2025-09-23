@@ -114,6 +114,24 @@ public sealed class UserGrainState
     /// </summary>
     [Id(14)]
     public UserPreferencesMetadata PreferencesMetadata { get; set; } = new();
+
+    /// <summary>
+    /// Enhanced activity tracking state with analytics integration and privacy compliance (Phase 2 - ORL-ST-P2-005).
+    /// Extends existing activity tracking with production-ready features including PII detection,
+    /// anonymization, data retention policies, and seamless integration with telemetry systems.
+    /// Maintains backward compatibility while adding comprehensive privacy and analytics capabilities.
+    /// </summary>
+    [Id(15)]
+    public ActivityTrackingState ActivityTracking { get; set; } = new();
+
+    /// <summary>
+    /// Privacy and compliance metadata for activity tracking (Phase 2 - ORL-ST-P2-005).
+    /// Tracks user consent, retention policies, privacy audit information, and GDPR compliance.
+    /// Provides comprehensive privacy protection and regulatory compliance for activity data.
+    /// Supports data export, deletion, and consent management for user privacy rights.
+    /// </summary>
+    [Id(16)]
+    public ActivityPrivacyMetadata ActivityPrivacy { get; set; } = new();
 }
 
 /// <summary>

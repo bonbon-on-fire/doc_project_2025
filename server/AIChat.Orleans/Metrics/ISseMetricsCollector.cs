@@ -1,3 +1,5 @@
+using Orleans;
+
 namespace AIChat.Orleans.Metrics;
 
 /// <summary>
@@ -259,26 +261,33 @@ public class HealthIndicator
 /// <summary>
 /// Health status enumeration.
 /// </summary>
+[Serializable]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Metrics.HealthStatus")]
 public enum HealthStatus
 {
     /// <summary>
     /// System is healthy.
     /// </summary>
+    [Id(0)]
     Healthy,
 
     /// <summary>
     /// System is degraded but functional.
     /// </summary>
+    [Id(1)]
     Degraded,
 
     /// <summary>
     /// System has critical issues.
     /// </summary>
+    [Id(2)]
     Critical,
 
     /// <summary>
     /// Health status unknown.
     /// </summary>
+    [Id(3)]
     Unknown
 }
 
@@ -331,21 +340,27 @@ public class SseAlert
 /// <summary>
 /// Alert severity levels.
 /// </summary>
+[Serializable]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Metrics.AlertSeverity")]
 public enum AlertSeverity
 {
     /// <summary>
     /// Informational alert.
     /// </summary>
+    [Id(0)]
     Info,
 
     /// <summary>
     /// Warning level alert.
     /// </summary>
+    [Id(1)]
     Warning,
 
     /// <summary>
     /// Critical alert requiring immediate attention.
     /// </summary>
+    [Id(2)]
     Critical
 }
 
@@ -414,45 +429,56 @@ public class SseMetricDataPoint
 /// <summary>
 /// Types of SSE metrics available for historical queries.
 /// </summary>
+[Serializable]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Metrics.SseMetricType")]
 public enum SseMetricType
 {
     /// <summary>
     /// Number of active connections.
     /// </summary>
+    [Id(0)]
     ActiveConnections,
 
     /// <summary>
     /// Chunks processed per minute.
     /// </summary>
+    [Id(1)]
     ChunkThroughput,
 
     /// <summary>
     /// Average chunk processing latency.
     /// </summary>
+    [Id(2)]
     ChunkLatency,
 
     /// <summary>
     /// Buffer utilization percentage.
     /// </summary>
+    [Id(3)]
     BufferUtilization,
 
     /// <summary>
     /// Stream failure rate.
     /// </summary>
+    [Id(4)]
     FailureRate,
 
     /// <summary>
     /// Bytes transmitted per minute.
     /// </summary>
+    [Id(5)]
     ByteThroughput,
 
     /// <summary>
     /// Connection drop rate.
     /// </summary>
+    [Id(6)]
     ConnectionDropRate,
 
     /// <summary>
     /// Stream recovery time.
     /// </summary>
+    [Id(7)]
     RecoveryTime
 }

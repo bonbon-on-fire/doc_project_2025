@@ -1,3 +1,5 @@
+using Orleans;
+
 namespace AIChat.Orleans.Contracts.Attributes;
 
 /// <summary>
@@ -76,26 +78,33 @@ public sealed class TelemetryAttribute : Attribute
 /// <summary>
 /// Telemetry levels for grain operations.
 /// </summary>
+[Serializable]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.TelemetryLevel")]
 public enum TelemetryLevel
 {
     /// <summary>
     /// Minimal telemetry - only errors.
     /// </summary>
+    [Id(0)]
     Minimal = 0,
 
     /// <summary>
     /// Normal telemetry - errors and key operations.
     /// </summary>
+    [Id(1)]
     Normal = 1,
 
     /// <summary>
     /// Detailed telemetry - all operations.
     /// </summary>
+    [Id(2)]
     Detailed = 2,
 
     /// <summary>
     /// Verbose telemetry - includes debug information.
     /// </summary>
+    [Id(3)]
     Verbose = 3
 }
 
@@ -183,25 +192,32 @@ public sealed class SecurityAttribute : Attribute
 /// <summary>
 /// Data classification levels for security.
 /// </summary>
+[Serializable]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.DataClassification")]
 public enum DataClassification
 {
     /// <summary>
     /// Public data.
     /// </summary>
+    [Id(0)]
     Public = 0,
 
     /// <summary>
     /// Internal use only.
     /// </summary>
+    [Id(1)]
     Internal = 1,
 
     /// <summary>
     /// Confidential data.
     /// </summary>
+    [Id(2)]
     Confidential = 2,
 
     /// <summary>
     /// Restricted access data.
     /// </summary>
+    [Id(3)]
     Restricted = 3
 }

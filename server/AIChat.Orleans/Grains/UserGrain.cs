@@ -1,4 +1,7 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using AIChat.Orleans.Configuration;
 using AIChat.Orleans.Contracts;
@@ -24,6 +27,8 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
     private readonly IOrleansMetricsCollector _metricsCollector;
     private readonly ISignalRBroadcastService _signalRBroadcast;
     private readonly IChatServiceProxy _chatServiceProxy;
+    private readonly IActivityAnalyticsService _activityAnalytics;
+    private readonly IActivityPrivacyService _activityPrivacy;
     private IGrainTimer? _cleanupTimer;
     private IGrainTimer? _metricsTimer;
     private bool _disposed;
@@ -36,12 +41,16 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
     /// <param name="metricsCollector">Metrics collector for performance tracking</param>
     /// <param name="signalRBroadcast">SignalR broadcast service for real-time messaging (optional)</param>
     /// <param name="chatServiceProxy">Chat service proxy for LLM processing (optional)</param>
+    /// <param name="activityAnalytics">Activity analytics service for telemetry integration (optional)</param>
+    /// <param name="activityPrivacy">Activity privacy service for PII protection (optional)</param>
     public UserGrain(
         ILogger<UserGrain> logger,
         IOptionsSnapshot<OrleansGrainConfiguration> configuration,
         IOrleansMetricsCollector metricsCollector,
         ISignalRBroadcastService? signalRBroadcast = null,
-        IChatServiceProxy? chatServiceProxy = null
+        IChatServiceProxy? chatServiceProxy = null,
+        IActivityAnalyticsService? activityAnalytics = null,
+        IActivityPrivacyService? activityPrivacy = null
     )
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -60,6 +69,29 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
         else
         {
             _chatServiceProxy = chatServiceProxy;
+        }
+
+        // Initialize enhanced activity tracking services (ORL-ST-P2-005)
+        if (activityAnalytics == null)
+        {
+            var analyticsLogger =
+                new Microsoft.Extensions.Logging.Abstractions.NullLogger<ActivityAnalyticsService>();
+            _activityAnalytics = new ActivityAnalyticsService(analyticsLogger, NoOpChatTelemetry.Instance, metricsCollector);
+        }
+        else
+        {
+            _activityAnalytics = activityAnalytics;
+        }
+
+        if (activityPrivacy == null)
+        {
+            var privacyLogger =
+                new Microsoft.Extensions.Logging.Abstractions.NullLogger<ActivityPrivacyService>();
+            _activityPrivacy = new ActivityPrivacyService(privacyLogger);
+        }
+        else
+        {
+            _activityPrivacy = activityPrivacy;
         }
     }
 
@@ -236,54 +268,91 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
     /// <inheritdoc />
     public async Task RecordActivity(ActivityType type, string metadata)
     {
+        await RecordActivityAsync(type, metadata, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Enhanced activity recording with privacy compliance and analytics integration.
+    /// Implements comprehensive activity tracking with PII protection and telemetry export.
+    /// </summary>
+    public async Task<StateResult> RecordActivityAsync(
+        ActivityType type,
+        string metadata,
+        CancellationToken cancellationToken = default)
+    {
+        using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "RecordActivity", this.GetPrimaryKeyString());
+
         try
         {
-            var activity = new ActivityRecord
+            // 1. Privacy compliance check
+            var consentResult = await _activityPrivacy.ValidateUserConsentAsync(State.UserId, type, cancellationToken);
+            if (!consentResult.ConsentGranted)
+            {
+                activity?.SetTag("consent.granted", false);
+                return StateResult.FromSuccess(); // Respect user privacy preference
+            }
+
+            // 2. Sanitize metadata for PII
+            var sanitizationResult = await _activityPrivacy.SanitizeActivityMetadataAsync(metadata, cancellationToken);
+            if (!sanitizationResult.IsValid)
+            {
+                activity?.SetTag("sanitization.failed", true);
+                return StateResult.FromError("Activity metadata contains PII that cannot be sanitized");
+            }
+
+            // 3. Create privacy-aware activity record
+            var privacyAwareRecord = new PrivacyAwareActivityRecord
             {
                 Type = type,
-                Metadata = metadata,
+                SanitizedMetadata = sanitizationResult.SanitizedMetadata,
                 Timestamp = DateTime.UtcNow,
-                CorrelationId = Guid.NewGuid().ToString(),
+                CorrelationId = Activity.Current?.Id ?? Guid.NewGuid().ToString(),
+                AnonymizedUserId = HashUserId(State.UserId),
+                RetentionExpiresAt = CalculateRetentionExpiry(type)
             };
 
-            State.RecentActivity.Enqueue(activity);
+            // 4. Record in enhanced activity state
+            State.ActivityTracking.PrivacyCompliantActivities.Enqueue(privacyAwareRecord);
 
-            // Maintain circular buffer with configurable size
-            while (State.RecentActivity.Count > _configuration.UserGrain.MaxActivityBufferSize)
-            {
-                _ = State.RecentActivity.Dequeue();
-            }
+            // 5. Maintain circular buffer with configurable size
+            await MaintainActivityBufferAsync();
 
-            State.LastActivity = DateTime.UtcNow;
-            State.Metrics.TotalActivities++;
+            // 6. Export to analytics (async, non-blocking)
+            _ = Task.Run(async () => await _activityAnalytics.ExportActivityToTelemetryAsync(
+                State.UserId,
+                ConvertToActivityRecord(privacyAwareRecord),
+                cancellationToken));
 
-            // Save state periodically based on configuration
-            if (
-                State.Metrics.TotalActivities
-                    % _configuration.Persistence.ActivityPersistenceInterval
-                == 0
-            )
-            {
-                await WriteStateAsync();
-            }
+            // 7. Update metrics
+            State.ActivityTracking.Metrics.TotalActivitiesRecorded++;
+            State.ActivityTracking.Metrics.LastRecordedAt = DateTime.UtcNow;
+
+            // 8. Persist state
+            await WriteStateAsync();
+
+            activity?.SetTag("activity.recorded", true);
+            OrleansActivitySource.SetSuccess(activity);
 
             _logger.LogDebug(
-                "Activity recorded for {UserId}: {ActivityType} - {Metadata}",
+                "Enhanced activity recorded for {UserId}: {ActivityType} - Sanitized metadata length: {MetadataLength}",
                 State.UserId,
                 type,
-                metadata
+                sanitizationResult.SanitizedMetadata?.Length ?? 0
             );
+
+            return StateResult.FromSuccess();
         }
         catch (Exception ex)
         {
+            OrleansActivitySource.SetError(activity, ex);
             _logger.LogError(
                 ex,
-                "Failed to record activity for {UserId}. Type: {ActivityType}",
+                "Failed to record enhanced activity for {UserId}. Type: {ActivityType}",
                 State.UserId,
                 type
             );
 
-            // Don't throw in shadow mode
+            return StateResult.FromError($"Failed to record activity: {ex.Message}");
         }
     }
 
@@ -1882,6 +1951,115 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                 State.UserId
             );
         }
+    }
+
+    /// <summary>
+    /// Creates a hash of the user ID for anonymized tracking.
+    /// Implements privacy-preserving user identification for analytics.
+    /// </summary>
+    /// <param name="userId">The user ID to hash</param>
+    /// <returns>SHA256 hash of the user ID</returns>
+    private static string HashUserId(string userId)
+    {
+        if (string.IsNullOrEmpty(userId))
+        {
+            return string.Empty;
+        }
+
+        var bytes = Encoding.UTF8.GetBytes(userId);
+        var hash = SHA256.HashData(bytes);
+        return Convert.ToHexString(hash);
+    }
+
+    /// <summary>
+    /// Calculates data retention expiry date based on activity type.
+    /// Implements configurable retention policies for different activity types.
+    /// </summary>
+    /// <param name="activityType">The type of activity</param>
+    /// <returns>Expiration date for the activity data</returns>
+    private DateTime CalculateRetentionExpiry(ActivityType activityType)
+    {
+        // Default retention periods by activity type
+        var retentionDays = activityType switch
+        {
+            ActivityType.MessageSent => 365,           // 1 year for messages
+            ActivityType.MessageCompleted => 365,      // 1 year for message completion
+            ActivityType.Connected => 730,             // 2 years for connection events
+            ActivityType.Disconnected => 730,          // 2 years for disconnection events
+            ActivityType.ChatSubscribed => 365,        // 1 year for chat subscription events
+            ActivityType.ChatUnsubscribed => 365,      // 1 year for chat unsubscription events
+            ActivityType.OperationCancelled => 180,    // 6 months for operation events
+            ActivityType.ErrorOccurred => 90,          // 3 months for error events
+            _ => 365                                    // Default 1 year
+        };
+
+        return DateTime.UtcNow.AddDays(retentionDays);
+    }
+
+    /// <summary>
+    /// Maintains the circular buffer for privacy-compliant activities.
+    /// Ensures buffer size limits while preserving data retention policies.
+    /// </summary>
+    private async Task MaintainActivityBufferAsync()
+    {
+        // Maintain circular buffer with configurable size
+        var maxBufferSize = _configuration.UserGrain.MaxActivityBufferSize;
+        while (State.ActivityTracking.PrivacyCompliantActivities.Count > maxBufferSize)
+        {
+            var removedActivity = State.ActivityTracking.PrivacyCompliantActivities.Dequeue();
+
+            // Log removal for audit purposes
+            _logger.LogTrace(
+                "Removed activity from buffer due to size limit: {ActivityType} for {UserId}",
+                removedActivity?.Type,
+                State.UserId
+            );
+        }
+
+        // Clean up expired activities based on retention policy
+        var currentTime = DateTime.UtcNow;
+        var tempQueue = new Queue<PrivacyAwareActivityRecord>();
+
+        while (State.ActivityTracking.PrivacyCompliantActivities.Count > 0)
+        {
+            var activity = State.ActivityTracking.PrivacyCompliantActivities.Dequeue();
+
+            if (activity.RetentionExpiresAt > currentTime)
+            {
+                tempQueue.Enqueue(activity);
+            }
+            else
+            {
+                // Log retention-based removal for audit
+                _logger.LogTrace(
+                    "Removed expired activity: {ActivityType} for {UserId}",
+                    activity.Type,
+                    State.UserId
+                );
+            }
+        }
+
+        // Restore non-expired activities
+        State.ActivityTracking.PrivacyCompliantActivities = tempQueue;
+
+        await Task.CompletedTask; // For async compliance
+    }
+
+    /// <summary>
+    /// Converts a PrivacyAwareActivityRecord to an ActivityRecord for analytics export.
+    /// Maintains backward compatibility with existing analytics systems.
+    /// </summary>
+    /// <param name="privacyRecord">The privacy-aware activity record</param>
+    /// <returns>Standard ActivityRecord for analytics export</returns>
+    private static ActivityRecord ConvertToActivityRecord(PrivacyAwareActivityRecord privacyRecord)
+    {
+        return new ActivityRecord
+        {
+            Type = privacyRecord.Type,
+            Metadata = privacyRecord.SanitizedMetadata ?? string.Empty,
+            Timestamp = privacyRecord.Timestamp,
+            CorrelationId = privacyRecord.CorrelationId
+        };
     }
 
     #endregion

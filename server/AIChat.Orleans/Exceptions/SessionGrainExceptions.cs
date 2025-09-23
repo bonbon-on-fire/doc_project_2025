@@ -1,28 +1,37 @@
+using Orleans;
+
 namespace AIChat.Orleans.Contracts;
 
 /// <summary>
 /// Severity level for session exceptions.
 /// </summary>
+[Serializable]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.ExceptionSeverity")]
 public enum ExceptionSeverity
 {
     /// <summary>
     /// Low severity - informational, can be ignored.
     /// </summary>
+    [Id(0)]
     Low,
 
     /// <summary>
     /// Medium severity - should be logged, may require action.
     /// </summary>
+    [Id(1)]
     Medium,
 
     /// <summary>
     /// High severity - requires immediate attention.
     /// </summary>
+    [Id(2)]
     High,
 
     /// <summary>
     /// Critical severity - system failure, requires immediate intervention.
     /// </summary>
+    [Id(3)]
     Critical
 }
 
