@@ -3824,7 +3824,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
 
     /// <inheritdoc />
     public async Task<StateResult<IReadOnlyList<UserSessionState>>> BulkImportSessionsAsync(
-        IList<UserSessionState> sessions,
+        List<UserSessionState> sessions,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(sessions);

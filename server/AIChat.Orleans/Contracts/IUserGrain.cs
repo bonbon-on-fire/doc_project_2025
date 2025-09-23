@@ -70,7 +70,7 @@ public interface IUserGrain
     // - ArchiveSessionAsync(string sessionId, string? reason, CancellationToken)
     // - GetSessionMetricsAsync(string sessionId, CancellationToken)
     // - UpdateSessionMetricsAsync(string sessionId, UserSessionMetrics metrics, CancellationToken)
-    // - BulkImportSessionsAsync(IList<UserSessionState> sessions, CancellationToken)
+    // - BulkImportSessionsAsync(List<UserSessionState> sessions, CancellationToken)
     //
     // Inherited from IUserPreferencesGrain:
     // - GetPreferencesAsync(CancellationToken)

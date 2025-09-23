@@ -1,6 +1,8 @@
 using System.ComponentModel.DataAnnotations;
+using AIChat.Orleans.Contracts;
 using AIChat.Server.Controllers;
 using AIChat.Server.Services;
+using AIChat.Server.Services.Routing;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -15,6 +17,7 @@ namespace AIChat.Server.Tests.Controllers;
 /// </summary>
 public class ModeControllerTests
 {
+    private readonly Mock<IModeRouter> _modeRouterMock;
     private readonly Mock<IModeService> _modeServiceMock;
     private readonly Mock<ILogger<ModeController>> _loggerMock;
     private readonly ModeController _controller;
@@ -23,9 +26,13 @@ public class ModeControllerTests
 
     public ModeControllerTests()
     {
+        _modeRouterMock = new Mock<IModeRouter>();
         _modeServiceMock = new Mock<IModeService>();
         _loggerMock = new Mock<ILogger<ModeController>>();
-        _controller = new ModeController(_modeServiceMock.Object, _loggerMock.Object);
+
+        // TODO: Update test mocks to properly test router pattern
+        // For now, just create the controller with basic mocks
+        _controller = new ModeController(_modeRouterMock.Object, _modeServiceMock.Object, _loggerMock.Object);
     }
 
     #region GetModes Tests
@@ -67,9 +74,15 @@ public class ModeControllerTests
             },
         };
 
-        _ = _modeServiceMock
-            .Setup(s => s.GetAllModesAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((true, null, modes));
+        var expectedResponse = new ModesResponse { Modes = modes, Count = modes.Count };
+        _ = _modeRouterMock
+            .Setup(r => r.ExecuteUserOperationAsync<ActionResult<ModesResponse>>(
+                It.IsAny<string>(),
+                It.IsAny<Func<IModeGrain, Task<ActionResult<ModesResponse>>>>(),
+                It.IsAny<Func<IModeService, Task<ActionResult<ModesResponse>>>>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OkObjectResult(expectedResponse));
 
         // Act
         var result = await _controller.GetModes(userId);

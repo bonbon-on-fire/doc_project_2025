@@ -1,4 +1,5 @@
 using AIChat.Server.Services;
+using AIChat.Server.Services.Routing;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AIChat.Server.Controllers;
@@ -6,35 +7,70 @@ namespace AIChat.Server.Controllers;
 /// <summary>
 /// Controller for production monitoring dashboard and API endpoints.
 /// Provides comprehensive metrics, alerts, and capacity planning data.
+/// Supports dual-mode routing between Orleans grains and direct services.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class MonitoringController : ControllerBase
 {
-    private readonly ILogger<MonitoringController> _logger;
+    private readonly IMonitoringRouter _router;
     private readonly ProductionMonitoringService _monitoringService;
+    private readonly ILogger<MonitoringController> _logger;
 
+    /// <summary>
+    /// Initializes a new instance of the MonitoringController.
+    /// </summary>
+    /// <param name="router">Monitoring router for Orleans/Direct service operations</param>
+    /// <param name="monitoringService">Direct monitoring service for fallback operations</param>
+    /// <param name="logger">Logger for structured logging</param>
     public MonitoringController(
-        ILogger<MonitoringController> logger,
-        ProductionMonitoringService monitoringService
+        IMonitoringRouter router,
+        ProductionMonitoringService monitoringService,
+        ILogger<MonitoringController> logger
     )
     {
+        _router = router ?? throw new ArgumentNullException(nameof(router));
+        _monitoringService = monitoringService ?? throw new ArgumentNullException(nameof(monitoringService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _monitoringService =
-            monitoringService ?? throw new ArgumentNullException(nameof(monitoringService));
     }
 
     /// <summary>
     /// Get current system metrics snapshot
     /// </summary>
     [HttpGet("metrics")]
-    public ActionResult<Dictionary<string, object>> GetMetrics()
+    public async Task<ActionResult<Dictionary<string, object>>> GetMetrics(CancellationToken cancellationToken = default)
+    {
+        return await _router.ExecuteSystemOperationAsync<ActionResult<Dictionary<string, object>>>(
+            // Orleans operation - TODO: Map to appropriate grain method
+            async healthGrain =>
+            {
+                // For now, use pass-through to direct service
+                // Future enhancement: Use grain.GetSystemMetricsAsync() when implemented
+                var metrics = _monitoringService.GetCurrentMetrics();
+                var alertStates = _monitoringService.GetAlertStates();
+                return CreateMetricsResponse(metrics, alertStates);
+            },
+            // Direct service operation
+            async service =>
+            {
+                var metrics = service.GetCurrentMetrics();
+                var alertStates = service.GetAlertStates();
+                return CreateMetricsResponse(metrics, alertStates);
+            },
+            "GetMetrics",
+            cancellationToken
+        );
+    }
+
+    /// <summary>
+    /// Creates a standardized metrics response from service result.
+    /// </summary>
+    private ActionResult<Dictionary<string, object>> CreateMetricsResponse(
+        Dictionary<string, MetricValue> metrics,
+        Dictionary<string, AlertState> alertStates)
     {
         try
         {
-            var metrics = _monitoringService.GetCurrentMetrics();
-            var alertStates = _monitoringService.GetAlertStates();
-
             var response = new Dictionary<string, object>
             {
                 ["timestamp"] = DateTime.UtcNow,
@@ -82,13 +118,40 @@ public class MonitoringController : ControllerBase
     /// Get historical data for a specific metric
     /// </summary>
     [HttpGet("metrics/{metricName}/history")]
-    public ActionResult<object> GetMetricHistory(string metricName, [FromQuery] int hours = 1)
+    public async Task<ActionResult<object>> GetMetricHistory(string metricName, [FromQuery] int hours = 1, CancellationToken cancellationToken = default)
+    {
+        return await _router.ExecuteSystemOperationAsync<ActionResult<object>>(
+            // Orleans operation - TODO: Map to appropriate grain method
+            async healthGrain =>
+            {
+                // For now, use pass-through to direct service
+                // Future enhancement: Use grain.GetHistoricalMetricsAsync(metricName, timeRange) when implemented
+                var timeRange = TimeSpan.FromHours(Math.Min(hours, 24)); // Limit to 24 hours
+                var historicalData = _monitoringService.GetHistoricalMetrics(metricName, timeRange);
+                return CreateMetricHistoryResponse(metricName, timeRange, historicalData);
+            },
+            // Direct service operation
+            async service =>
+            {
+                var timeRange = TimeSpan.FromHours(Math.Min(hours, 24)); // Limit to 24 hours
+                var historicalData = service.GetHistoricalMetrics(metricName, timeRange);
+                return CreateMetricHistoryResponse(metricName, timeRange, historicalData);
+            },
+            "GetMetricHistory",
+            cancellationToken
+        );
+    }
+
+    /// <summary>
+    /// Creates a standardized metric history response from service result.
+    /// </summary>
+    private ActionResult<object> CreateMetricHistoryResponse(
+        string metricName,
+        TimeSpan timeRange,
+        List<HistoricalMetric> historicalData)
     {
         try
         {
-            var timeRange = TimeSpan.FromHours(Math.Min(hours, 24)); // Limit to 24 hours
-            var historicalData = _monitoringService.GetHistoricalMetrics(metricName, timeRange);
-
             var response = new
             {
                 metricName,
@@ -122,13 +185,39 @@ public class MonitoringController : ControllerBase
     /// Get system health status
     /// </summary>
     [HttpGet("health")]
-    public ActionResult<object> GetSystemHealth()
+    public async Task<ActionResult<object>> GetSystemHealth(CancellationToken cancellationToken = default)
+    {
+        return await _router.ExecuteSystemOperationAsync<ActionResult<object>>(
+            // Orleans operation - TODO: Map to appropriate grain method
+            async healthGrain =>
+            {
+                // For now, use pass-through to direct service
+                // Future enhancement: Use grain.GetSystemHealthAsync() when implemented
+                var metrics = _monitoringService.GetCurrentMetrics();
+                var alertStates = _monitoringService.GetAlertStates();
+                return CreateSystemHealthResponse(metrics, alertStates);
+            },
+            // Direct service operation
+            async service =>
+            {
+                var metrics = service.GetCurrentMetrics();
+                var alertStates = service.GetAlertStates();
+                return CreateSystemHealthResponse(metrics, alertStates);
+            },
+            "GetSystemHealth",
+            cancellationToken
+        );
+    }
+
+    /// <summary>
+    /// Creates a standardized system health response from service result.
+    /// </summary>
+    private ActionResult<object> CreateSystemHealthResponse(
+        Dictionary<string, MetricValue> metrics,
+        Dictionary<string, AlertState> alertStates)
     {
         try
         {
-            var metrics = _monitoringService.GetCurrentMetrics();
-            var alertStates = _monitoringService.GetAlertStates();
-
             // Determine overall system health
             var criticalAlerts = alertStates
                 .Where(a =>
@@ -188,7 +277,30 @@ public class MonitoringController : ControllerBase
     /// Get capacity planning metrics and recommendations
     /// </summary>
     [HttpGet("capacity")]
-    public ActionResult<object> GetCapacityMetrics()
+    public async Task<ActionResult<object>> GetCapacityMetrics(CancellationToken cancellationToken = default)
+    {
+        return await _router.ExecuteSystemOperationAsync<ActionResult<object>>(
+            // Orleans operation - TODO: Map to appropriate grain method
+            async healthGrain =>
+            {
+                // For now, use pass-through to direct service
+                // Future enhancement: Use grain.GetCapacityMetricsAsync() when implemented
+                return CreateCapacityMetricsResponse();
+            },
+            // Direct service operation
+            async service =>
+            {
+                return CreateCapacityMetricsResponse();
+            },
+            "GetCapacityMetrics",
+            cancellationToken
+        );
+    }
+
+    /// <summary>
+    /// Creates a standardized capacity metrics response from service result.
+    /// </summary>
+    private ActionResult<object> CreateCapacityMetricsResponse()
     {
         try
         {
@@ -266,7 +378,30 @@ public class MonitoringController : ControllerBase
     /// Get dashboard configuration and metadata
     /// </summary>
     [HttpGet("dashboard/config")]
-    public ActionResult<object> GetDashboardConfig()
+    public async Task<ActionResult<object>> GetDashboardConfig(CancellationToken cancellationToken = default)
+    {
+        return await _router.ExecuteSystemOperationAsync<ActionResult<object>>(
+            // Orleans operation - TODO: Map to appropriate grain method
+            async healthGrain =>
+            {
+                // For now, use pass-through to direct service
+                // Future enhancement: Use grain.GetDashboardConfigAsync() when implemented
+                return CreateDashboardConfigResponse();
+            },
+            // Direct service operation
+            async service =>
+            {
+                return CreateDashboardConfigResponse();
+            },
+            "GetDashboardConfig",
+            cancellationToken
+        );
+    }
+
+    /// <summary>
+    /// Creates a standardized dashboard config response.
+    /// </summary>
+    private ActionResult<object> CreateDashboardConfigResponse()
     {
         try
         {
@@ -370,7 +505,30 @@ public class MonitoringController : ControllerBase
     /// Export metrics in Prometheus format
     /// </summary>
     [HttpGet("export/prometheus")]
-    public ActionResult<string> ExportPrometheus()
+    public async Task<ActionResult<string>> ExportPrometheus(CancellationToken cancellationToken = default)
+    {
+        return await _router.ExecuteSystemOperationAsync<ActionResult<string>>(
+            // Orleans operation - TODO: Map to appropriate grain method
+            async healthGrain =>
+            {
+                // For now, use pass-through to direct service
+                // Future enhancement: Use grain.ExportPrometheusMetricsAsync() when implemented
+                return CreatePrometheusExportResponse();
+            },
+            // Direct service operation
+            async service =>
+            {
+                return CreatePrometheusExportResponse();
+            },
+            "ExportPrometheus",
+            cancellationToken
+        );
+    }
+
+    /// <summary>
+    /// Creates a standardized Prometheus export response.
+    /// </summary>
+    private ActionResult<string> CreatePrometheusExportResponse()
     {
         try
         {

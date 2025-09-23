@@ -164,6 +164,6 @@ public interface IUserSessionGrain : IGrainWithStringKey
     /// <exception cref="ArgumentNullException">Thrown when sessions is null</exception>
     [Alias("BulkImportSessions")]
     Task<StateResult<IReadOnlyList<UserSessionState>>> BulkImportSessionsAsync(
-        IList<UserSessionState> sessions,
+        List<UserSessionState> sessions,
         CancellationToken cancellationToken = default);
 }

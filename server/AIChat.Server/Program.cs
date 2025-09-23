@@ -484,6 +484,11 @@ builder.Services.AddScoped<IChatServiceStreaming>(provider =>
 // Add mode service
 builder.Services.AddScoped<IModeService, ModeService>();
 
+// Add router services for Orleans integration (Phase 3 - ORL-ST-P3-003)
+builder.Services.AddScoped<AIChat.Server.Services.Routing.IModeRouter, AIChat.Server.Services.Routing.ModeRouter>();
+builder.Services.AddScoped<AIChat.Server.Services.Routing.IMonitoringRouter, AIChat.Server.Services.Routing.MonitoringRouter>();
+builder.Services.AddScoped<AIChat.Server.Services.Routing.ILogsRouter, AIChat.Server.Services.Routing.LogsRouter>();
+
 // Add SignalR broadcasting service for Orleans integration (Phase 2/3)
 builder.Services.AddScoped<
     AIChat.Orleans.Services.ISignalRBroadcastService,
@@ -604,6 +609,20 @@ builder.Services.Configure<AIChat.Server.Services.Routing.DualModeRouterOptions>
 builder.Services.AddSingleton<
     AIChat.Server.Services.Routing.IDualModeRouter,
     AIChat.Server.Services.Routing.DualModeRouter
+>();
+
+// Configure specialized routers for Orleans/Direct controller routing (Phase 3 - ORL-ST-P3-003)
+builder.Services.AddSingleton<
+    AIChat.Server.Services.Routing.IModeRouter,
+    AIChat.Server.Services.Routing.ModeRouter
+>();
+builder.Services.AddSingleton<
+    AIChat.Server.Services.Routing.IMonitoringRouter,
+    AIChat.Server.Services.Routing.MonitoringRouter
+>();
+builder.Services.AddSingleton<
+    AIChat.Server.Services.Routing.ILogsRouter,
+    AIChat.Server.Services.Routing.LogsRouter
 >();
 
 var app = builder.Build();

@@ -1,18 +1,37 @@
 using System.Text.Json;
+using AIChat.Server.Services.Routing;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AIChat.Server.Controllers;
 
+/// <summary>
+/// Controller for handling client-side logging operations.
+/// Supports dual-mode routing between Orleans grains and direct file operations.
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
-public class LogsController(ILogger<LogsController> logger) : ControllerBase
+public class LogsController : ControllerBase
 {
     private static readonly JsonSerializerOptions S_JsonSerializerOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
-    private readonly ILogger<LogsController> _logger = logger;
+    private readonly ILogsRouter _router;
+    private readonly ILogger<LogsController> _logger;
+
+    /// <summary>
+    /// Initializes a new instance of the LogsController.
+    /// </summary>
+    /// <param name="router">Logs router for Orleans/Direct service operations</param>
+    /// <param name="logger">Logger for structured logging</param>
+    public LogsController(
+        ILogsRouter router,
+        ILogger<LogsController> logger)
+    {
+        _router = router ?? throw new ArgumentNullException(nameof(router));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
 
     // Determine the log file path based on the current working directory
     // When running from the server directory (dotnet run), parent is project root
@@ -52,9 +71,30 @@ public class LogsController(ILogger<LogsController> logger) : ControllerBase
         return Path.Combine(currentDir, "logs", "client", "app.jsonl");
     }
 
-    // Accept POST /api/logs
+    /// <summary>
+    /// Accept client log entries via POST /api/logs
+    /// </summary>
     [HttpPost]
-    public async Task<IActionResult> LogClientEntry([FromBody] JsonElement logEntry)
+    public async Task<IActionResult> LogClientEntry([FromBody] JsonElement logEntry, CancellationToken cancellationToken = default)
+    {
+        return await _router.ExecuteLogEntryAsync(
+            logEntry,
+            // Orleans operation - TODO: Map to appropriate grain method for distributed logging coordination
+            null, // For now, no Orleans operation (direct file logging is more efficient for simple logging)
+            // Direct operation
+            async entry =>
+            {
+                return await CreateLogEntryResponse(entry);
+            },
+            "LogClientEntry",
+            cancellationToken
+        );
+    }
+
+    /// <summary>
+    /// Creates a standardized log entry response from the direct operation.
+    /// </summary>
+    private async Task<IActionResult> CreateLogEntryResponse(JsonElement logEntry)
     {
         try
         {
