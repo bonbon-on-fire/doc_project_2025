@@ -1,6 +1,7 @@
 using System.Text.Json;
 using AIChat.Orleans.Configuration;
 using AIChat.Orleans.Contracts;
+using AIChat.Orleans.Models;
 using AIChat.Orleans.Metrics;
 using AIChat.Orleans.Services;
 using AIChat.Orleans.Tracing;
@@ -25,6 +26,7 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
 
     private IGrainTimer? _cleanupTimer;
     private IGrainTimer? _metricsTimer;
+    private IGrainTimer? _sequenceGapTimer;
     private bool _disposed;
     private readonly object _stateLock = new();
 
@@ -125,6 +127,7 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
             // Dispose timers
             _cleanupTimer?.Dispose();
             _metricsTimer?.Dispose();
+            _sequenceGapTimer?.Dispose();
 
             // Final state persistence
             await WriteStateAsync();
@@ -541,19 +544,52 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
             // Pipeline step 2: Prepare message outside of lock
             var preparedMessage = await PrepareMessageForStateAsync(message);
 
-            // Pipeline step 3: Apply state updates with minimal lock time
-            await UpdateChatStateWithMessageAsync(preparedMessage);
+            // Pipeline step 3: Enhanced sequence-aware message processing
+            var processedImmediately = await ProcessSequencedMessageAsync(preparedMessage);
 
-            // Pipeline step 4: Persist state changes
+            // Pipeline step 4: Process any queued messages that are now available
+            var queuedProcessedCount = await ProcessQueuedMessagesAsync();
+
+            // Pipeline step 5: Handle sequence gap timeouts (periodic recovery)
+            await HandleSequenceGapTimeoutsAsync();
+
+            // Pipeline step 6: Persist state changes
             await WriteStateAsync();
 
-            // Pipeline step 5: Record metrics and broadcast
+            // Pipeline step 7: Record metrics
             await RecordMessageMetricsAsync();
-            await BroadcastMessageAsync(preparedMessage);
 
-            LogMessageProcessed(preparedMessage);
+            // Pipeline step 8: Broadcast messages
+            if (processedImmediately)
+            {
+                // Broadcast the primary message if it was processed immediately
+                await BroadcastMessageAsync(preparedMessage);
+                LogMessageProcessed(preparedMessage);
+            }
+            else
+            {
+                // Message was queued - log for monitoring
+                _logger.LogInformation(
+                    "Message {MessageId} queued for sequence processing in chat {ChatId}",
+                    preparedMessage.Id, State.ChatMetadata.ChatId);
+            }
 
-            OrleansActivitySource.SetSuccess(activity);
+            // Log queue processing if any messages were processed
+            if (queuedProcessedCount > 0)
+            {
+                _logger.LogInformation(
+                    "Processed {QueuedCount} queued messages after receiving message {MessageId} in chat {ChatId}",
+                    queuedProcessedCount, preparedMessage.Id, State.ChatMetadata.ChatId);
+            }
+
+            OrleansActivitySource.SetSuccess(activity, new Dictionary<string, object>
+            {
+                ["ProcessedImmediately"] = processedImmediately,
+                ["QueuedProcessedCount"] = queuedProcessedCount,
+                ["MessageId"] = preparedMessage.Id,
+                ["SequenceNumber"] = GetSequenceNumberFromMessage(preparedMessage)
+            });
+
             return MessageResult.CreateSuccess(preparedMessage);
         }
         catch (Exception ex)
@@ -1674,51 +1710,12 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
             }
         }
 
-        // Note: SequenceNumber will be added in UpdateChatStateWithMessageAsync
+        // Note: SequenceNumber will be added in ProcessSequencedMessageAsync
         preparedMessage.Metadata = JsonSerializer.Serialize(metadata);
 
         return preparedMessage;
     }
 
-    /// <summary>
-    /// Updates chat state with the prepared message using optimized locking.
-    /// </summary>
-    /// <param name="message">The prepared message to add to state</param>
-    private async Task UpdateChatStateWithMessageAsync(ChatMessage message)
-    {
-        await Task.CompletedTask; // For async consistency
-
-        lock (_stateLock)
-        {
-            // Assign sequence number inside lock
-            var sequenceNumber = State.GetNextSequenceNumber();
-            var metadata = string.IsNullOrEmpty(message.Metadata) ?
-                [] :
-                JsonSerializer.Deserialize<Dictionary<string, object>>(message.Metadata) ?? [];
-            metadata["SequenceNumber"] = sequenceNumber;
-            message.Metadata = JsonSerializer.Serialize(metadata);
-
-            // Update state with minimal time in lock
-            State.AddRecentMessage(message);
-            State.ChatMetadata.MessageCount++;
-            State.ChatMetadata.LastActivityAt = DateTime.UtcNow;
-            State.ChatMetadata.Version++;
-
-            // Initialize delivery status if tracking is enabled
-            if (State.Configuration.EnableDeliveryTracking)
-            {
-                State.MessageDeliveryStatus[message.Id] = new MessageStatus
-                {
-                    MessageId = message.Id,
-                    Status = DeliveryStatus.Sent,
-                    PendingDelivery = [.. State.Participants.Keys],
-                    SentAt = message.Timestamp
-                };
-            }
-
-            State.IncrementVersion();
-        }
-    }
 
     /// <summary>
     /// Records message processing metrics.
@@ -1752,6 +1749,426 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
         _logger.LogInformation(
             "Processed message {MessageId} from {UserId} in chat {ChatId} (Sequence: {SequenceNumber})",
             message.Id, message.UserId, State.ChatMetadata.ChatId, State.MessageSequenceNumber);
+    }
+
+    /// <summary>
+    /// Enhanced message processing with sequence verification and out-of-order handling.
+    /// Optimized to minimize lock contention by preparing data outside the lock.
+    /// </summary>
+    /// <param name="message">The prepared message to process</param>
+    /// <returns>True if message was processed immediately, false if queued</returns>
+    private async Task<bool> ProcessSequencedMessageAsync(ChatMessage message)
+    {
+        await Task.CompletedTask; // For async consistency
+
+        // Prepare sequence processing info outside the lock for better performance
+        var sequenceInfo = PrepareSequenceProcessingInfo(message);
+
+        // Critical section: minimal lock scope for state updates only
+        SequenceProcessingResult result;
+        lock (_stateLock)
+        {
+            result = ProcessSequenceWithinLock(sequenceInfo);
+        }
+
+        // Handle logging and other operations outside the lock
+        await HandleSequenceProcessingResult(result, sequenceInfo);
+
+        return result.ProcessedImmediately;
+    }
+
+    /// <summary>
+    /// Prepares sequence processing information outside of the lock for optimal performance.
+    /// Includes enhanced error handling and metadata recovery.
+    /// </summary>
+    /// <param name="message">The message to prepare for sequence processing</param>
+    /// <returns>Sequence processing information</returns>
+    private SequenceProcessingInfo PrepareSequenceProcessingInfo(ChatMessage message)
+    {
+        Dictionary<string, object> metadata;
+
+        try
+        {
+            // Parse existing metadata outside the lock to reduce lock duration
+            metadata = ParseMessageMetadata(message.Metadata);
+        }
+        catch (Exception ex)
+        {
+            // Attempt to recover from corrupted metadata
+            var recoveredMetadata = RecoverFromCorruptedMetadata(message, ex);
+            metadata = recoveredMetadata ?? [];
+        }
+
+        // Perform validation of sequence state periodically
+        if (State.MessageSequenceNumber % 100 == 0) // Every 100 messages
+        {
+            ValidateAndRecoverSequenceState();
+        }
+
+        return new SequenceProcessingInfo
+        {
+            Message = message,
+            ParsedMetadata = metadata,
+            ChatId = State.ChatMetadata.ChatId,
+            IsStrictOrderingEnabled = State.SequenceConfig.EnableStrictOrdering,
+            ShouldLogGaps = State.SequenceConfig.LogSequenceGaps
+        };
+    }
+
+    /// <summary>
+    /// Handles the core sequence processing logic within the lock with minimal duration.
+    /// Includes enhanced gap recovery and error handling.
+    /// </summary>
+    /// <param name="info">Pre-prepared sequence processing information</param>
+    /// <returns>The result of sequence processing</returns>
+    private SequenceProcessingResult ProcessSequenceWithinLock(SequenceProcessingInfo info)
+    {
+        // Assign sequence number and update metadata
+        var sequenceNumber = State.GetNextSequenceNumber();
+        info.ParsedMetadata["SequenceNumber"] = sequenceNumber;
+        info.Message.Metadata = JsonSerializer.Serialize(info.ParsedMetadata);
+
+        // Check if message can be processed immediately (in sequence)
+        if (info.IsStrictOrderingEnabled && !State.CanProcessMessageImmediately(sequenceNumber))
+        {
+            var expectedSequence = State.LastProcessedSequenceNumber + 1;
+
+            // Use enhanced gap recovery logic
+            var recoveryAction = HandleSequenceGapWithRecovery(sequenceNumber, expectedSequence);
+
+            if (recoveryAction == SequenceGapRecoveryAction.SkippedToSequence)
+            {
+                // Message can now be processed immediately after skip
+                ProcessMessageInSequence(info.Message, sequenceNumber);
+
+                return new SequenceProcessingResult
+                {
+                    ProcessedImmediately = true,
+                    SequenceNumber = sequenceNumber,
+                    ExpectedSequence = expectedSequence,
+                    ShouldLogGap = info.ShouldLogGaps,
+                    RecoveryAction = recoveryAction
+                };
+            }
+
+            // Queue out-of-order message for later processing
+            State.QueueOutOfOrderMessage(info.Message, sequenceNumber);
+            State.IncrementVersion();
+
+            return new SequenceProcessingResult
+            {
+                ProcessedImmediately = false,
+                SequenceNumber = sequenceNumber,
+                ExpectedSequence = expectedSequence,
+                ShouldLogGap = info.ShouldLogGaps,
+                RecoveryAction = recoveryAction
+            };
+        }
+
+        // Process message immediately (in sequence or strict ordering disabled)
+        ProcessMessageInSequence(info.Message, sequenceNumber);
+
+        return new SequenceProcessingResult
+        {
+            ProcessedImmediately = true,
+            SequenceNumber = sequenceNumber,
+            RecoveryAction = SequenceGapRecoveryAction.None
+        };
+    }
+
+    /// <summary>
+    /// Handles post-processing operations outside the lock, such as logging.
+    /// </summary>
+    /// <param name="result">The result of sequence processing</param>
+    /// <param name="info">The original sequence processing information</param>
+    private async Task HandleSequenceProcessingResult(SequenceProcessingResult result, SequenceProcessingInfo info)
+    {
+        await Task.CompletedTask; // For async consistency
+
+        // Log sequence gap warning outside the lock for better performance
+        if (!result.ProcessedImmediately && result.ShouldLogGap)
+        {
+            _logger.LogWarning(
+                "Message {MessageId} with sequence {SequenceNumber} queued (expected {ExpectedSequence}) in chat {ChatId}",
+                info.Message.Id, result.SequenceNumber, result.ExpectedSequence, info.ChatId);
+        }
+    }
+
+    /// <summary>
+    /// Efficiently parses message metadata with error handling.
+    /// </summary>
+    /// <param name="metadata">The JSON metadata string</param>
+    /// <returns>Parsed metadata dictionary</returns>
+    private Dictionary<string, object> ParseMessageMetadata(string? metadata)
+    {
+        if (string.IsNullOrEmpty(metadata))
+        {
+            return [];
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<Dictionary<string, object>>(metadata) ?? [];
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Failed to parse message metadata, using empty metadata");
+            return [];
+        }
+    }
+
+    /// <summary>
+    /// Processes a message that is in the correct sequence order.
+    /// Updates state and tracks the processed sequence number.
+    /// </summary>
+    /// <param name="message">The message to process</param>
+    /// <param name="sequenceNumber">The sequence number of the message</param>
+    private void ProcessMessageInSequence(ChatMessage message, long sequenceNumber)
+    {
+        // Add to recent messages buffer
+        State.AddRecentMessage(message);
+        State.ChatMetadata.MessageCount++;
+        State.ChatMetadata.LastActivityAt = DateTime.UtcNow;
+        State.ChatMetadata.Version++;
+
+        // Update last processed sequence number
+        State.LastProcessedSequenceNumber = sequenceNumber;
+
+        // Initialize delivery status if tracking is enabled
+        if (State.Configuration.EnableDeliveryTracking)
+        {
+            State.MessageDeliveryStatus[message.Id] = new MessageStatus
+            {
+                MessageId = message.Id,
+                Status = DeliveryStatus.Sent,
+                PendingDelivery = [.. State.Participants.Keys],
+                SentAt = message.Timestamp
+            };
+        }
+
+        State.IncrementVersion();
+    }
+
+    /// <summary>
+    /// Processes any queued out-of-order messages that can now be handled in sequence.
+    /// Should be called after processing any message to check for newly available messages.
+    /// </summary>
+    /// <returns>Number of queued messages that were processed</returns>
+    private async Task<int> ProcessQueuedMessagesAsync()
+    {
+        await Task.CompletedTask; // For async consistency
+
+        List<ChatMessage> processableMessages;
+
+        lock (_stateLock)
+        {
+            // Get messages that can now be processed
+            processableMessages = State.ProcessQueuedMessages();
+        }
+
+        if (processableMessages.Count > 0)
+        {
+            foreach (var queuedMessage in processableMessages)
+            {
+                // Get sequence number from metadata
+                var sequenceNumber = GetSequenceNumberFromMessage(queuedMessage);
+
+                lock (_stateLock)
+                {
+                    // Process queued message (already has sequence number assigned)
+                    ProcessMessageInSequence(queuedMessage, sequenceNumber);
+                }
+
+                // Broadcast queued message (outside of lock for performance)
+                await BroadcastMessageAsync(queuedMessage);
+
+                _logger.LogInformation(
+                    "Processed queued message {MessageId} with sequence {SequenceNumber} in chat {ChatId}",
+                    queuedMessage.Id, sequenceNumber, State.ChatMetadata.ChatId);
+            }
+
+            // Record metrics for queued message processing
+            await RecordQueuedMessageMetricsAsync(processableMessages.Count);
+        }
+
+        return processableMessages.Count;
+    }
+
+    /// <summary>
+    /// Handles sequence gap timeouts and recovery logic.
+    /// Identifies missing messages that have timed out and skips them to maintain message flow.
+    /// </summary>
+    /// <returns>Number of sequence gaps that were resolved by timeout</returns>
+    private async Task<int> HandleSequenceGapTimeoutsAsync()
+    {
+        await Task.CompletedTask; // For async consistency
+
+        List<long> timedOutSequences;
+
+        lock (_stateLock)
+        {
+            timedOutSequences = State.GetTimedOutSequences();
+        }
+
+        if (timedOutSequences.Count > 0)
+        {
+            lock (_stateLock)
+            {
+                foreach (var timedOutSequence in timedOutSequences)
+                {
+                    // Skip to the timed-out sequence
+                    State.SkipToSequence(timedOutSequence);
+
+                    if (State.SequenceConfig.LogSequenceGaps)
+                    {
+                        _logger.LogWarning(
+                            "Sequence gap timeout: skipped to sequence {SkippedSequence} in chat {ChatId}",
+                            timedOutSequence, State.ChatMetadata.ChatId);
+                    }
+                }
+
+                State.IncrementVersion();
+            }
+
+            // After skipping sequences, try to process newly available queued messages
+            await ProcessQueuedMessagesAsync();
+
+            // Record recovery metrics
+            await RecordSequenceRecoveryMetricsAsync(timedOutSequences.Count);
+        }
+
+        return timedOutSequences.Count;
+    }
+
+    /// <summary>
+    /// Extracts the sequence number from a message's metadata with optimized parsing.
+    /// Uses caching and efficient extraction to minimize JSON overhead.
+    /// </summary>
+    /// <param name="message">The message to extract sequence number from</param>
+    /// <returns>The sequence number, or 0 if not found</returns>
+    private long GetSequenceNumberFromMessage(ChatMessage message)
+    {
+        if (string.IsNullOrEmpty(message.Metadata))
+        {
+            return 0;
+        }
+
+        // Try fast path: look for sequence number in a simple JSON pattern
+        var fastSequence = TryExtractSequenceNumberFast(message.Metadata);
+        if (fastSequence > 0)
+        {
+            return fastSequence;
+        }
+
+        // Fallback to full JSON parsing
+        return ExtractSequenceNumberFromMetadata(message.Metadata, message.Id);
+    }
+
+    /// <summary>
+    /// Attempts to extract sequence number using fast string parsing without full JSON deserialization.
+    /// This optimization handles the common case where metadata follows a predictable pattern.
+    /// </summary>
+    /// <param name="metadata">The JSON metadata string</param>
+    /// <returns>The sequence number if found via fast path, 0 otherwise</returns>
+    private long TryExtractSequenceNumberFast(string metadata)
+    {
+        // Look for the pattern: "SequenceNumber":number (with various whitespace possibilities)
+        const string sequenceKey = "\"SequenceNumber\"";
+        var keyIndex = metadata.IndexOf(sequenceKey, StringComparison.Ordinal);
+        if (keyIndex == -1)
+        {
+            return 0;
+        }
+
+        // Find the colon after the key
+        var colonIndex = metadata.IndexOf(':', keyIndex + sequenceKey.Length);
+        if (colonIndex == -1)
+        {
+            return 0;
+        }
+
+        // Find the start of the number (skip whitespace)
+        var startIndex = colonIndex + 1;
+        while (startIndex < metadata.Length && char.IsWhiteSpace(metadata[startIndex]))
+        {
+            startIndex++;
+        }
+
+        if (startIndex >= metadata.Length)
+        {
+            return 0;
+        }
+
+        // Find the end of the number
+        var endIndex = startIndex;
+        while (endIndex < metadata.Length && char.IsDigit(metadata[endIndex]))
+        {
+            endIndex++;
+        }
+
+        if (endIndex == startIndex)
+        {
+            return 0; // No digits found
+        }
+
+        // Try to parse the number
+        var numberSpan = metadata.AsSpan(startIndex, endIndex - startIndex);
+        if (long.TryParse(numberSpan, out var sequence))
+        {
+            return sequence;
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Extracts sequence number using full JSON parsing as a fallback.
+    /// </summary>
+    /// <param name="metadata">The JSON metadata string</param>
+    /// <param name="messageId">The message ID for logging purposes</param>
+    /// <returns>The sequence number, or 0 if not found</returns>
+    private long ExtractSequenceNumberFromMetadata(string metadata, string messageId)
+    {
+        try
+        {
+            var parsedMetadata = JsonSerializer.Deserialize<Dictionary<string, object>>(metadata) ?? [];
+            if (parsedMetadata.TryGetValue("SequenceNumber", out var sequenceNumberObj))
+            {
+                return Convert.ToInt64(sequenceNumberObj, System.Globalization.CultureInfo.InvariantCulture);
+            }
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Failed to parse sequence number from message {MessageId} metadata", messageId);
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Records metrics for queued message processing.
+    /// </summary>
+    private async Task RecordQueuedMessageMetricsAsync(int processedCount)
+    {
+        await _metricsCollector.RecordGrainOperationAsync(
+            "ChatGrain",
+            "ProcessQueuedMessages",
+            processedCount,
+            true
+        );
+    }
+
+    /// <summary>
+    /// Records metrics for sequence recovery operations.
+    /// </summary>
+    private async Task RecordSequenceRecoveryMetricsAsync(int recoveredCount)
+    {
+        await _metricsCollector.RecordGrainOperationAsync(
+            "ChatGrain",
+            "SequenceRecovery",
+            recoveredCount,
+            true
+        );
     }
 
     /// <summary>
@@ -1947,6 +2364,18 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
                 Interleave = true,
             }
         );
+
+        // Setup sequence gap processing timer
+        _sequenceGapTimer = this.RegisterGrainTimer(
+            async _ => await HandleSequenceGapTimeoutsAsync(),
+            new GrainTimerCreationOptions
+            {
+                DueTime = State.SequenceConfig.GapProcessingInterval,
+                Period = State.SequenceConfig.GapProcessingInterval,
+                Interleave = true,
+            }
+        );
+
         return Task.CompletedTask;
     }
 
@@ -2210,8 +2639,181 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
 
         _cleanupTimer?.Dispose();
         _metricsTimer?.Dispose();
+        _sequenceGapTimer?.Dispose();
 
         _disposed = true;
+    }
+
+    #endregion
+
+    #region Enhanced Error Handling for Sequence Processing
+
+    /// <summary>
+    /// Handles sequence gap recovery with enhanced error handling and diagnostics.
+    /// </summary>
+    /// <param name="sequenceNumber">The sequence number that caused the gap</param>
+    /// <param name="expectedSequence">The expected next sequence number</param>
+    /// <returns>Recovery action taken</returns>
+    private SequenceGapRecoveryAction HandleSequenceGapWithRecovery(long sequenceNumber, long expectedSequence)
+    {
+        var gapSize = sequenceNumber - expectedSequence;
+
+        // Check for extreme sequence gaps that might indicate system issues
+        if (gapSize > State.SequenceConfig.MaxSequenceGap)
+        {
+            _logger.LogError(
+                "Extreme sequence gap detected in chat {ChatId}: received {SequenceNumber}, expected {ExpectedSequence} (gap: {GapSize})",
+                State.ChatMetadata.ChatId, sequenceNumber, expectedSequence, gapSize);
+
+            // For extreme gaps, consider immediate recovery
+            if (State.SequenceConfig.EnableStrictOrdering)
+            {
+                // Skip forward to the received message to prevent indefinite blocking
+                State.SkipToSequence(sequenceNumber - 1);
+
+                return SequenceGapRecoveryAction.SkippedToSequence;
+            }
+        }
+
+        // Normal gap handling - queue and wait for timeout
+        return SequenceGapRecoveryAction.QueuedForTimeout;
+    }
+
+    /// <summary>
+    /// Validates and recovers from corrupted message metadata.
+    /// </summary>
+    /// <param name="message">The message with potentially corrupted metadata</param>
+    /// <param name="exception">The exception that occurred during parsing</param>
+    /// <returns>Recovered metadata or null if unrecoverable</returns>
+    private Dictionary<string, object>? RecoverFromCorruptedMetadata(ChatMessage message, Exception exception)
+    {
+        _logger.LogWarning(exception,
+            "Corrupted metadata detected for message {MessageId} in chat {ChatId}, attempting recovery",
+            message.Id, State.ChatMetadata.ChatId);
+
+        try
+        {
+            // Attempt to create minimal metadata for the message
+            var recoveredMetadata = new Dictionary<string, object>
+            {
+                ["MessageId"] = message.Id,
+                ["RecoveredFromCorruption"] = true,
+                ["OriginalCorruptedMetadata"] = message.Metadata ?? string.Empty,
+                ["RecoveryTimestamp"] = DateTime.UtcNow
+            };
+
+            _logger.LogInformation(
+                "Successfully recovered metadata for message {MessageId} in chat {ChatId}",
+                message.Id, State.ChatMetadata.ChatId);
+
+            return recoveredMetadata;
+        }
+        catch (Exception recoveryException)
+        {
+            _logger.LogError(recoveryException,
+                "Failed to recover corrupted metadata for message {MessageId} in chat {ChatId}",
+                message.Id, State.ChatMetadata.ChatId);
+
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Enhanced validation of sequence processing state with recovery capabilities.
+    /// </summary>
+    /// <returns>True if state is valid or was successfully recovered</returns>
+    private bool ValidateAndRecoverSequenceState()
+    {
+        var issues = new List<string>();
+
+        // Check for sequence number inconsistencies
+        if (State.LastProcessedSequenceNumber > State.MessageSequenceNumber)
+        {
+            issues.Add($"LastProcessed ({State.LastProcessedSequenceNumber}) > MessageSequence ({State.MessageSequenceNumber})");
+
+            // Recovery: reset last processed to the current sequence number
+            State.LastProcessedSequenceNumber = State.MessageSequenceNumber;
+        }
+
+        // Check for excessive out-of-order queue size
+        if (State.OutOfOrderMessageQueue.Count > State.SequenceConfig.MaxOutOfOrderQueueSize * 0.9)
+        {
+            issues.Add($"OutOfOrder queue near capacity: {State.OutOfOrderMessageQueue.Count}/{State.SequenceConfig.MaxOutOfOrderQueueSize}");
+        }
+
+        // Check for stale gap timeouts
+        var staleTimeouts = State.SequenceGapTimeouts.Count(kvp =>
+            DateTime.UtcNow - kvp.Value > State.SequenceConfig.SequenceGapTimeout.Add(TimeSpan.FromMinutes(5)));
+
+        if (staleTimeouts > 0)
+        {
+            issues.Add($"Found {staleTimeouts} stale gap timeouts");
+
+            // Recovery: clean up stale timeouts
+            var staleKeys = State.SequenceGapTimeouts
+                .Where(kvp => DateTime.UtcNow - kvp.Value > State.SequenceConfig.SequenceGapTimeout.Add(TimeSpan.FromMinutes(5)))
+                .Select(kvp => kvp.Key)
+                .ToList();
+
+            foreach (var key in staleKeys)
+            {
+                State.SequenceGapTimeouts.Remove(key);
+            }
+        }
+
+        if (issues.Count > 0)
+        {
+            _logger.LogWarning(
+                "Sequence state issues detected and recovered in chat {ChatId}: {Issues}",
+                State.ChatMetadata.ChatId, string.Join(", ", issues));
+
+            State.IncrementVersion();
+        }
+
+        return true; // Always return true since we perform recovery
+    }
+
+    #endregion
+
+    #region Helper Classes for Sequence Processing Optimization
+
+    /// <summary>
+    /// Information prepared for sequence processing outside of the lock.
+    /// </summary>
+    private sealed class SequenceProcessingInfo
+    {
+        public ChatMessage Message { get; init; } = null!;
+        public Dictionary<string, object> ParsedMetadata { get; init; } = [];
+        public string ChatId { get; init; } = string.Empty;
+        public bool IsStrictOrderingEnabled { get; init; }
+        public bool ShouldLogGaps { get; init; }
+    }
+
+    /// <summary>
+    /// Result of sequence processing operations.
+    /// </summary>
+    private sealed class SequenceProcessingResult
+    {
+        public bool ProcessedImmediately { get; init; }
+        public long SequenceNumber { get; init; }
+        public long ExpectedSequence { get; init; }
+        public bool ShouldLogGap { get; init; }
+        public SequenceGapRecoveryAction RecoveryAction { get; init; }
+    }
+
+    /// <summary>
+    /// Indicates the type of recovery action taken for sequence gaps.
+    /// </summary>
+    private enum SequenceGapRecoveryAction
+    {
+        /// <summary>No recovery action needed.</summary>
+        None,
+        /// <summary>Message was queued to wait for timeout recovery.</summary>
+        QueuedForTimeout,
+        /// <summary>Sequence was skipped forward to resume processing.</summary>
+        SkippedToSequence,
+        /// <summary>Metadata was recovered from corruption.</summary>
+        MetadataRecovered
     }
 
     #endregion

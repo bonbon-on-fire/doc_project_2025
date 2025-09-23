@@ -1,6 +1,7 @@
 using Orleans;
+using AIChat.Orleans.Contracts;
 
-namespace AIChat.Orleans.Contracts;
+namespace AIChat.Orleans.Models;
 
 /// <summary>
 /// Persistent state for the ChatGrain.
@@ -9,7 +10,7 @@ namespace AIChat.Orleans.Contracts;
 /// </summary>
 [Serializable]
 [GenerateSerializer]
-[Alias("AIChat.Orleans.Contracts.ChatGrainState")]
+[Alias("AIChat.Orleans.Models.ChatGrainState")]
 public sealed class ChatGrainState
 {
     /// <summary>
@@ -110,6 +111,37 @@ public sealed class ChatGrainState
     public Dictionary<string, PendingOperation> PendingOperations { get; set; } = [];
 
     /// <summary>
+    /// Last sequence number that was successfully processed in order.
+    /// Used to detect sequence gaps and maintain message ordering integrity.
+    /// Messages with sequence numbers higher than this may be queued if lower numbers are missing.
+    /// </summary>
+    [Id(12)]
+    public long LastProcessedSequenceNumber { get; set; } = 0;
+
+    /// <summary>
+    /// Queue for messages that arrive out of sequence order.
+    /// Messages are held here until the missing sequence numbers are received or timeout.
+    /// Ordered by sequence number to enable efficient processing when gaps are filled.
+    /// </summary>
+    [Id(13)]
+    public SortedDictionary<long, ChatMessage> OutOfOrderMessageQueue { get; set; } = [];
+
+    /// <summary>
+    /// Tracks sequence numbers that are missing and when they should timeout.
+    /// Key: Missing sequence number, Value: Timeout timestamp for recovery.
+    /// Used to detect permanently missing messages and skip forward in sequence.
+    /// </summary>
+    [Id(14)]
+    public Dictionary<long, DateTime> SequenceGapTimeouts { get; set; } = [];
+
+    /// <summary>
+    /// Configuration settings for message sequencing behavior.
+    /// Controls timeouts, queue sizes, and recovery policies for sequence management.
+    /// </summary>
+    [Id(15)]
+    public SequenceProcessingConfiguration SequenceConfig { get; set; } = new();
+
+    /// <summary>
     /// Increments the state version for optimistic concurrency control.
     /// Should be called whenever the state is modified.
     /// </summary>
@@ -153,6 +185,123 @@ public sealed class ChatGrainState
     {
         return ChatMetadata.Status is ChatStatus.Active or ChatStatus.Initializing;
     }
+
+    /// <summary>
+    /// Determines if a message with the given sequence number can be processed immediately.
+    /// Messages can be processed if they are the next expected sequence number.
+    /// </summary>
+    /// <param name="sequenceNumber">The sequence number to check</param>
+    /// <returns>True if the message can be processed immediately</returns>
+    public bool CanProcessMessageImmediately(long sequenceNumber)
+    {
+        return sequenceNumber == LastProcessedSequenceNumber + 1;
+    }
+
+    /// <summary>
+    /// Attempts to process any queued out-of-order messages that can now be processed.
+    /// Returns a list of messages that were successfully dequeued and can be processed.
+    /// </summary>
+    /// <returns>List of messages ready for processing in sequence order</returns>
+    public List<ChatMessage> ProcessQueuedMessages()
+    {
+        var processedMessages = new List<ChatMessage>();
+
+        while (OutOfOrderMessageQueue.Count > 0)
+        {
+            var nextExpectedSequence = LastProcessedSequenceNumber + 1;
+
+            // Check if the next expected message is in the queue
+            if (OutOfOrderMessageQueue.TryGetValue(nextExpectedSequence, out var message))
+            {
+                OutOfOrderMessageQueue.Remove(nextExpectedSequence);
+                processedMessages.Add(message);
+                LastProcessedSequenceNumber = nextExpectedSequence;
+
+                // Remove any corresponding gap timeout
+                SequenceGapTimeouts.Remove(nextExpectedSequence);
+            }
+            else
+            {
+                // No consecutive message found, stop processing
+                break;
+            }
+        }
+
+        return processedMessages;
+    }
+
+    /// <summary>
+    /// Adds a message to the out-of-order queue and tracks any sequence gaps.
+    /// </summary>
+    /// <param name="message">The message to queue</param>
+    /// <param name="sequenceNumber">The sequence number of the message</param>
+    public void QueueOutOfOrderMessage(ChatMessage message, long sequenceNumber)
+    {
+        // Add message to the ordered queue
+        OutOfOrderMessageQueue[sequenceNumber] = message;
+
+        // Identify and track sequence gaps
+        var expectedNext = LastProcessedSequenceNumber + 1;
+        if (sequenceNumber > expectedNext)
+        {
+            // Track all missing sequence numbers as gaps
+            for (long missing = expectedNext; missing < sequenceNumber; missing++)
+            {
+                if (!SequenceGapTimeouts.ContainsKey(missing))
+                {
+                    SequenceGapTimeouts[missing] = DateTime.UtcNow.Add(SequenceConfig.SequenceGapTimeout);
+                }
+            }
+        }
+
+        // Maintain queue size limits
+        while (OutOfOrderMessageQueue.Count > SequenceConfig.MaxOutOfOrderQueueSize)
+        {
+            // Remove oldest queued message (lowest sequence number)
+            var oldestKey = OutOfOrderMessageQueue.Keys.First();
+            OutOfOrderMessageQueue.Remove(oldestKey);
+        }
+    }
+
+    /// <summary>
+    /// Gets a list of sequence numbers that have timed out and should be skipped.
+    /// </summary>
+    /// <returns>List of sequence numbers to skip due to timeout</returns>
+    public List<long> GetTimedOutSequences()
+    {
+        var timedOut = new List<long>();
+        var now = DateTime.UtcNow;
+
+        foreach (var gap in SequenceGapTimeouts.ToList())
+        {
+            if (now > gap.Value)
+            {
+                timedOut.Add(gap.Key);
+                SequenceGapTimeouts.Remove(gap.Key);
+            }
+        }
+
+        return [.. timedOut.OrderBy(x => x)];
+    }
+
+    /// <summary>
+    /// Advances the last processed sequence number to skip missing messages that have timed out.
+    /// </summary>
+    /// <param name="skipToSequence">The sequence number to advance to</param>
+    public void SkipToSequence(long skipToSequence)
+    {
+        if (skipToSequence > LastProcessedSequenceNumber)
+        {
+            LastProcessedSequenceNumber = skipToSequence;
+
+            // Remove any gap timeouts for sequences we're skipping
+            var keysToRemove = SequenceGapTimeouts.Keys.Where(k => k <= skipToSequence).ToList();
+            foreach (var key in keysToRemove)
+            {
+                SequenceGapTimeouts.Remove(key);
+            }
+        }
+    }
 }
 
 /// <summary>
@@ -161,7 +310,7 @@ public sealed class ChatGrainState
 /// </summary>
 [Serializable]
 [GenerateSerializer]
-[Alias("AIChat.Orleans.Contracts.ChatConfiguration")]
+[Alias("AIChat.Orleans.Models.ChatConfiguration")]
 public sealed class ChatConfiguration
 {
     /// <summary>
@@ -227,7 +376,7 @@ public sealed class ChatConfiguration
 /// </summary>
 [Serializable]
 [GenerateSerializer]
-[Alias("AIChat.Orleans.Contracts.PendingOperation")]
+[Alias("AIChat.Orleans.Models.PendingOperation")]
 public sealed class PendingOperation
 {
     /// <summary>
@@ -276,4 +425,56 @@ public sealed class PendingOperation
     /// </summary>
     [Id(6)]
     public string? LastError { get; set; }
+}
+
+/// <summary>
+/// Configuration settings for message sequencing and ordering behavior.
+/// Controls how out-of-order messages are handled, timeouts, and recovery policies.
+/// </summary>
+[Serializable]
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Models.SequenceProcessingConfiguration")]
+public sealed class SequenceProcessingConfiguration
+{
+    /// <summary>
+    /// Maximum number of out-of-order messages to queue before dropping oldest.
+    /// Prevents memory exhaustion from too many queued messages.
+    /// </summary>
+    [Id(0)]
+    public int MaxOutOfOrderQueueSize { get; set; } = 50;
+
+    /// <summary>
+    /// How long to wait for missing messages before considering them lost.
+    /// Messages missing longer than this timeout are skipped to maintain flow.
+    /// </summary>
+    [Id(1)]
+    public TimeSpan SequenceGapTimeout { get; set; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// Whether to enable strict sequence ordering enforcement.
+    /// When false, messages may be processed out of order for better performance.
+    /// </summary>
+    [Id(2)]
+    public bool EnableStrictOrdering { get; set; } = true;
+
+    /// <summary>
+    /// Maximum sequence gap to tolerate before triggering recovery.
+    /// Large gaps may indicate systematic issues requiring special handling.
+    /// </summary>
+    [Id(3)]
+    public long MaxSequenceGap { get; set; } = 100;
+
+    /// <summary>
+    /// Whether to log sequence gap events for monitoring and debugging.
+    /// Useful for detecting network issues or client problems.
+    /// </summary>
+    [Id(4)]
+    public bool LogSequenceGaps { get; set; } = true;
+
+    /// <summary>
+    /// Interval for checking and processing sequence gap timeouts.
+    /// More frequent checks provide better responsiveness but use more resources.
+    /// </summary>
+    [Id(5)]
+    public TimeSpan GapProcessingInterval { get; set; } = TimeSpan.FromSeconds(5);
 }

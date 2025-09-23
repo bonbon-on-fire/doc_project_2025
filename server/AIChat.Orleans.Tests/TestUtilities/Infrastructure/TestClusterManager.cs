@@ -1,6 +1,9 @@
+using AIChat.Orleans.Configuration;
 using AIChat.Orleans.Grains;
 using AIChat.Orleans.Metrics;
+using AIChat.Orleans.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Orleans.Configuration;
 using Orleans.TestingHost;
 
@@ -103,11 +106,37 @@ public class TestClusterManager : IAsyncDisposable
                 )
                 .ConfigureServices(services =>
                 {
-                    // Register Orleans metrics collector (required by UserGrain)
+                    // Register Orleans metrics collector (required by grains)
                     _ = services.AddSingleton<IOrleansMetricsCollector, OrleansMetricsCollector>();
+
+                    // Register SignalR broadcast service (required by ChatGrain)
+                    _ = services.AddSingleton<ISignalRBroadcastService, NullSignalRBroadcastService>();
+
+                    // Add Orleans grain configuration with test-friendly settings
+                    _ = services.Configure<OrleansGrainConfiguration>(config =>
+                    {
+                        config.UserGrain.MaxActivityBufferSize = 50; // Smaller buffer for tests
+                        config.UserGrain.CleanupIntervalMinutes = 1; // Faster cleanup for tests
+                        config.UserGrain.EnablePeriodicTimers = false; // Disable timers for tests
+                        config.Connections.MaxConnectionsPerUser = 5;
+                        config.Persistence.ActivityPersistenceInterval = 5;
+                    });
 
                     // Register grain assemblies
                     _ = services.AddSingleton(typeof(UserGrain).Assembly);
+                    _ = services.AddSingleton(typeof(ChatGrain).Assembly);
+                })
+                // Configure logging for tests (reduced noise)
+                .ConfigureLogging(logging =>
+                {
+                    _ = logging.ClearProviders();
+                    _ = logging.AddConsole();
+                    _ = logging.SetMinimumLevel(LogLevel.Warning);
+                    // Only show errors for Orleans runtime during tests
+                    _ = logging.AddFilter("Orleans", LogLevel.Error);
+                    _ = logging.AddFilter("Microsoft", LogLevel.Error);
+                    // But allow our Orleans components to log at Debug level
+                    _ = logging.AddFilter("AIChat.Orleans", LogLevel.Debug);
                 });
         }
     }
