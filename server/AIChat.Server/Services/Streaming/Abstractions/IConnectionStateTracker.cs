@@ -98,6 +98,7 @@ public interface IConnectionStateTracker
 /// Represents the state of a connection.
 /// </summary>
 [GenerateSerializer]
+[Alias("AIChat.Server.Services.Streaming.Abstractions.ConnectionState")]
 public record ConnectionState
 {
     /// <summary>
@@ -209,6 +210,7 @@ public enum ConnectionStatus
 /// Metrics for a connection.
 /// </summary>
 [GenerateSerializer]
+[Alias("AIChat.Server.Services.Streaming.Abstractions.ConnectionMetrics")]
 public record ConnectionMetrics
 {
     /// <summary>
@@ -276,6 +278,7 @@ public record ConnectionMetrics
 /// Health report for all tracked connections.
 /// </summary>
 [GenerateSerializer]
+[Alias("AIChat.Server.Services.Streaming.Abstractions.ConnectionHealthReport")]
 public record ConnectionHealthReport
 {
     /// <summary>

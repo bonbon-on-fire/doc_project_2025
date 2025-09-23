@@ -17,6 +17,7 @@ using AIChat.Server.Services.EventStore;
 using AIChat.Server.Services.ResponseCaching;
 using AIChat.Server.Services.ResponseCaching.Decorators;
 using AIChat.Server.Services.TestMode;
+using AIChat.Server.Services.WebSocket;
 using AIChat.Server.Storage;
 using AIChat.Server.Storage.Sqlite;
 using Lib.AspNetCore.ServerSentEvents;
@@ -518,6 +519,9 @@ builder.Services.AddScoped<AIChat.Server.Services.Routing.ILogsRouter>(servicePr
         serviceProvider.GetRequiredService<ILogger<CachedLogsRouter>>()
     ));
 
+// Add WebSocket services for Orleans integration (Phase 3 - ORL-ST-P3-005)
+builder.Services.AddWebSocketServices();
+
 // Add SignalR broadcasting service for Orleans integration (Phase 2/3)
 builder.Services.AddScoped<
     AIChat.Orleans.Services.ISignalRBroadcastService,
@@ -635,10 +639,27 @@ builder.Services.AddHostedService(provider =>
 builder.Services.Configure<AIChat.Server.Services.Routing.DualModeRouterOptions>(
     builder.Configuration.GetSection(AIChat.Server.Services.Routing.DualModeRouterOptions.SectionName)
 );
-builder.Services.AddSingleton<
-    AIChat.Server.Services.Routing.IDualModeRouter,
-    AIChat.Server.Services.Routing.DualModeRouter
->();
+
+// Configure Circuit Breaker options for Orleans resilience (Phase 3 - ORL-ST-P3-005)
+builder.Services.Configure<AIChat.Server.Services.Routing.CircuitBreakerOptions>(options =>
+{
+    options.FailureThreshold = builder.Configuration.GetValue<int>("CircuitBreaker:FailureThreshold", 5);
+    options.BreakDuration = TimeSpan.FromSeconds(
+        builder.Configuration.GetValue<int>("CircuitBreaker:BreakDurationSeconds", 30));
+    options.Enabled = builder.Configuration.GetValue<bool>("CircuitBreaker:Enabled", true);
+});
+
+// Register DualModeRouter with Circuit Breaker decorator
+builder.Services.AddSingleton<AIChat.Server.Services.Routing.DualModeRouter>();
+builder.Services.AddSingleton<AIChat.Server.Services.Routing.IDualModeRouter>(provider =>
+{
+    var innerRouter = provider.GetRequiredService<AIChat.Server.Services.Routing.DualModeRouter>();
+    var logger = provider.GetRequiredService<ILogger<AIChat.Server.Services.Routing.CircuitBreakerDualModeRouter>>();
+    var options = provider.GetService<IOptions<AIChat.Server.Services.Routing.CircuitBreakerOptions>>();
+
+    // Wrap with circuit breaker for resilience
+    return new AIChat.Server.Services.Routing.CircuitBreakerDualModeRouter(innerRouter, logger, options);
+});
 
 // Note: Cached router decorators are already registered above as scoped services
 // Removed duplicate router registrations - using cached decorators from lines above
@@ -709,6 +730,9 @@ app.UseCors("AllowSvelteApp");
 
 // Add Protocol Negotiation Middleware for SignalR/SSE selection
 app.UseProtocolNegotiation();
+
+// Add WebSocket handler middleware (Phase 3 - ORL-ST-P3-005)
+app.UseWebSocketHandler("/api/ws");
 
 // Skip HTTPS redirection in Test (HTTP-only)
 if (!app.Environment.IsEnvironment("Test"))

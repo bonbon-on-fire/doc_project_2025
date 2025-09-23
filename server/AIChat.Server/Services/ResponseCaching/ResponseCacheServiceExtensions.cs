@@ -12,6 +12,7 @@ namespace AIChat.Server.Services.ResponseCaching;
 /// </summary>
 public static class ResponseCacheServiceExtensions
 {
+    private static readonly string[] tags = new[] { "cache", "performance" };
     /// <summary>
     /// Adds intelligent response caching services to the service collection with default configuration.
     /// This is the recommended way to add response caching for most applications.
@@ -59,7 +60,7 @@ public static class ResponseCacheServiceExtensions
 
         // Register health checks
         services.AddHealthChecks()
-            .AddCheck<ResponseCacheHealthCheck>("response_cache", HealthStatus.Degraded, new[] { "cache", "performance" });
+            .AddCheck<ResponseCacheHealthCheck>("response_cache", HealthStatus.Degraded, tags);
 
         return services;
     }
@@ -108,11 +109,13 @@ public static class ResponseCacheServiceExtensions
 
         // Register health checks
         services.AddHealthChecks()
-            .AddCheck<ResponseCacheHealthCheck>("response_cache", HealthStatus.Degraded, new[] { "cache", "performance" })
-            .AddCheck<DistributedCacheHealthCheck>("distributed_cache", HealthStatus.Degraded, new[] { "cache", "redis" });
+            .AddCheck<ResponseCacheHealthCheck>("response_cache", HealthStatus.Degraded, tags)
+            .AddCheck<DistributedCacheHealthCheck>("distributed_cache", HealthStatus.Degraded, tagsArray);
 
         return services;
     }
+
+    private static readonly string[] tagsArray = new[] { "cache", "redis" };
 
     /// <summary>
     /// Adds response caching with custom state cache manager implementation.
@@ -151,7 +154,7 @@ public static class ResponseCacheServiceExtensions
 
         // Register health checks
         services.AddHealthChecks()
-            .AddCheck<ResponseCacheHealthCheck>("response_cache", HealthStatus.Degraded, new[] { "cache", "performance" });
+            .AddCheck<ResponseCacheHealthCheck>("response_cache", HealthStatus.Degraded, tags);
 
         return services;
     }
