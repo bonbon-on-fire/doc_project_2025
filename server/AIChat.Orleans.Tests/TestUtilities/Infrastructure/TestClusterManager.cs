@@ -2,9 +2,12 @@ using AIChat.Orleans.Configuration;
 using AIChat.Orleans.Grains;
 using AIChat.Orleans.Metrics;
 using AIChat.Orleans.Services;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Orleans;
 using Orleans.Configuration;
+using Orleans.Hosting;
 using Orleans.TestingHost;
 
 namespace AIChat.Orleans.Tests.TestUtilities.Infrastructure;
@@ -46,6 +49,7 @@ public class TestClusterManager : IAsyncDisposable
 
         var builder = new TestClusterBuilder();
         _ = builder.AddSiloBuilderConfigurator<TestSiloConfigurator>();
+        _ = builder.AddClientBuilderConfigurator<TestClientConfigurator>();
 
         _cluster = builder.Build();
         await _cluster.DeployAsync();
@@ -104,6 +108,7 @@ public class TestClusterManager : IAsyncDisposable
                 .Configure<EndpointOptions>(options =>
                     options.AdvertisedIPAddress = System.Net.IPAddress.Loopback
                 )
+                // Orleans 9.x auto-discovers grain assemblies - no explicit registration needed
                 .ConfigureServices(services =>
                 {
                     // Register Orleans metrics collector (required by grains)
@@ -121,10 +126,6 @@ public class TestClusterManager : IAsyncDisposable
                         config.Connections.MaxConnectionsPerUser = 5;
                         config.Persistence.ActivityPersistenceInterval = 5;
                     });
-
-                    // Register grain assemblies
-                    _ = services.AddSingleton(typeof(UserGrain).Assembly);
-                    _ = services.AddSingleton(typeof(ChatGrain).Assembly);
                 })
                 // Configure logging for tests (reduced noise)
                 .ConfigureLogging(logging =>
@@ -138,6 +139,17 @@ public class TestClusterManager : IAsyncDisposable
                     // But allow our Orleans components to log at Debug level
                     _ = logging.AddFilter("AIChat.Orleans", LogLevel.Debug);
                 });
+        }
+    }
+
+    /// <summary>
+    /// Test client configurator for Orleans.
+    /// </summary>
+    private sealed class TestClientConfigurator : IClientBuilderConfigurator
+    {
+        public void Configure(IConfiguration configuration, IClientBuilder clientBuilder)
+        {
+            // Orleans 9.x auto-discovers grain assemblies - no explicit client configuration needed
         }
     }
 }

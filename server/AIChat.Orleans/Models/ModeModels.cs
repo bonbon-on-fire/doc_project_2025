@@ -401,171 +401,208 @@ public sealed class ModeTemplate
 /// <summary>
 /// Request to transition between modes.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.ModeTransitionRequest")]
 public sealed class ModeTransitionRequest
 {
     /// <summary>
     /// Target mode ID to transition to.
     /// </summary>
     [Required]
+    [Id(0)]
     public required string TargetModeId { get; init; }
 
     /// <summary>
     /// Reason for the transition.
     /// </summary>
     [StringLength(500)]
+    [Id(1)]
     public string? Reason { get; init; }
 
     /// <summary>
     /// Whether to preserve the current context.
     /// </summary>
+    [Id(2)]
     public bool PreserveContext { get; init; } = true;
 
     /// <summary>
     /// Whether to preserve conversation history.
     /// </summary>
+    [Id(3)]
     public bool PreserveHistory { get; init; } = true;
 
     /// <summary>
     /// Additional data for the transition.
     /// </summary>
+    [Id(4)]
     public Dictionary<string, object>? TransitionData { get; init; }
 
     /// <summary>
     /// User initiating the transition.
     /// </summary>
+    [Id(5)]
     public string? UserId { get; init; }
 }
 
 /// <summary>
 /// Result of a mode transition.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.ModeTransitionResult")]
 public sealed class ModeTransitionResult
 {
     /// <summary>
     /// Whether the transition succeeded.
     /// </summary>
+    [Id(0)]
     public required bool Success { get; init; }
 
     /// <summary>
     /// New mode state after transition.
     /// </summary>
+    [Id(1)]
     public ModeState? NewState { get; init; }
 
     /// <summary>
     /// Previous mode state before transition.
     /// </summary>
+    [Id(2)]
     public ModeState? PreviousState { get; init; }
 
     /// <summary>
     /// Transition ID for tracking.
     /// </summary>
+    [Id(3)]
     public required string TransitionId { get; init; }
 
     /// <summary>
     /// Error message if transition failed.
     /// </summary>
+    [Id(4)]
     public string? Error { get; init; }
 
     /// <summary>
     /// Warnings generated during transition.
     /// </summary>
+    [Id(5)]
     public List<string> Warnings { get; init; } = [];
 
     /// <summary>
     /// Time taken for the transition.
     /// </summary>
+    [Id(6)]
     public TimeSpan Duration { get; init; }
 }
 
 /// <summary>
 /// Represents a mode transition in history.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.ModeTransition")]
 public sealed class ModeTransition
 {
     /// <summary>
     /// Unique identifier for the transition.
     /// </summary>
+    [Id(0)]
     public required string TransitionId { get; init; }
 
     /// <summary>
     /// Source mode ID.
     /// </summary>
+    [Id(1)]
     public required string SourceModeId { get; init; }
 
     /// <summary>
     /// Target mode ID.
     /// </summary>
+    [Id(2)]
     public required string TargetModeId { get; init; }
 
     /// <summary>
     /// When the transition occurred.
     /// </summary>
+    [Id(3)]
     public required DateTime TimestampUtc { get; init; }
 
     /// <summary>
     /// User who initiated the transition.
     /// </summary>
+    [Id(4)]
     public string? UserId { get; init; }
 
     /// <summary>
     /// Reason for the transition.
     /// </summary>
+    [Id(5)]
     public string? Reason { get; init; }
 
     /// <summary>
     /// Whether the transition succeeded.
     /// </summary>
+    [Id(6)]
     public required bool Success { get; init; }
 
     /// <summary>
     /// Error if the transition failed.
     /// </summary>
+    [Id(7)]
     public string? Error { get; init; }
 
     /// <summary>
     /// Duration of the transition.
     /// </summary>
+    [Id(8)]
     public TimeSpan Duration { get; init; }
 }
 
 /// <summary>
 /// Represents an available transition option.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.ModeTransitionOption")]
 public sealed class ModeTransitionOption
 {
     /// <summary>
     /// Target mode ID.
     /// </summary>
+    [Id(0)]
     public required string TargetModeId { get; init; }
 
     /// <summary>
     /// Display name of the target mode.
     /// </summary>
+    [Id(1)]
     public required string TargetModeName { get; init; }
 
     /// <summary>
     /// Description of the target mode.
     /// </summary>
+    [Id(2)]
     public string? Description { get; init; }
 
     /// <summary>
     /// Whether this transition is currently allowed.
     /// </summary>
+    [Id(3)]
     public required bool IsAllowed { get; init; }
 
     /// <summary>
     /// Reason if transition is not allowed.
     /// </summary>
+    [Id(4)]
     public string? DisallowedReason { get; init; }
 
     /// <summary>
     /// Estimated cost of the transition.
     /// </summary>
+    [Id(5)]
     public TransitionCost? Cost { get; init; }
 
     /// <summary>
     /// Required conditions for this transition.
     /// </summary>
+    [Id(6)]
     public List<string> RequiredConditions { get; init; } = [];
 }
 
@@ -706,41 +743,50 @@ public sealed class TransitionValidationResult
 /// <summary>
 /// Represents a mode validation rule.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.ModeValidationRule")]
 public sealed class ModeValidationRule
 {
     /// <summary>
     /// Rule identifier.
     /// </summary>
+    [Id(0)]
     public required string RuleId { get; init; }
 
     /// <summary>
     /// Rule name.
     /// </summary>
+    [Id(1)]
     public required string Name { get; init; }
 
     /// <summary>
     /// Rule description.
     /// </summary>
+    [Id(2)]
     public string? Description { get; init; }
 
     /// <summary>
     /// Rule category.
     /// </summary>
+    [Id(3)]
     public required ValidationRuleCategory Category { get; init; }
 
     /// <summary>
     /// Severity if rule is violated.
     /// </summary>
+    [Id(4)]
     public required ValidationSeverity Severity { get; init; }
 
     /// <summary>
     /// Whether this rule is enforced.
     /// </summary>
+    [Id(5)]
     public bool IsEnforced { get; init; } = true;
 
     /// <summary>
     /// Expression or logic for the rule.
     /// </summary>
+    [Id(6)]
     public string? Expression { get; init; }
 }
 
@@ -1256,26 +1302,32 @@ public sealed class Incompatibility
 /// <summary>
 /// Represents the cost of a transition.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.TransitionCost")]
 public sealed class TransitionCost
 {
     /// <summary>
     /// Estimated time for transition.
     /// </summary>
+    [Id(0)]
     public TimeSpan? EstimatedTime { get; init; }
 
     /// <summary>
     /// Data that might be lost.
     /// </summary>
+    [Id(1)]
     public List<string> DataLoss { get; init; } = [];
 
     /// <summary>
     /// Features that will be unavailable.
     /// </summary>
+    [Id(2)]
     public List<string> UnavailableFeatures { get; init; } = [];
 
     /// <summary>
     /// Performance impact description.
     /// </summary>
+    [Id(3)]
     public string? PerformanceImpact { get; init; }
 }
 

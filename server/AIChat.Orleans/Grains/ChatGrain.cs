@@ -1,8 +1,8 @@
 using System.Text.Json;
 using AIChat.Orleans.Configuration;
 using AIChat.Orleans.Contracts;
-using AIChat.Orleans.Models;
 using AIChat.Orleans.Metrics;
+using AIChat.Orleans.Models;
 using AIChat.Orleans.Services;
 using AIChat.Orleans.Tracing;
 using Microsoft.Extensions.Logging;
@@ -29,6 +29,13 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
     private IGrainTimer? _sequenceGapTimer;
     private bool _disposed;
     private readonly object _stateLock = new();
+
+    // Cached JSON serializer options for notifications
+    private static readonly JsonSerializerOptions NotificationJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = false
+    };
 
     /// <summary>
     /// Initializes a new instance of the ChatGrain.
@@ -1292,59 +1299,52 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
             await ValidateInitialized();
             await ValidateCanModify();
 
-            // Check if participant already exists
-            lock (_stateLock)
-            {
-                if (State.Participants.ContainsKey(participant.ParticipantId))
-                {
-                    throw new InvalidChatStateException(State.ChatMetadata.ChatId,
-                        $"Participant '{participant.ParticipantId}' already exists in the chat");
-                }
+            // Comprehensive validation
+            ValidateParticipantData(participant);
+            ValidateChatStateConsistency("add participant");
 
-                // Check participant limits
-                if (State.Configuration.MaxParticipants.HasValue &&
-                    State.Participants.Count >= State.Configuration.MaxParticipants.Value)
-                {
-                    throw new InvalidChatStateException(State.ChatMetadata.ChatId,
-                        $"Maximum participants limit ({State.Configuration.MaxParticipants.Value}) reached");
-                }
+            // Check if participant already exists (Orleans grain single-threaded, no lock needed)
+            if (State.Participants.ContainsKey(participant.ParticipantId))
+            {
+                throw new InvalidChatStateException(State.ChatMetadata.ChatId,
+                    $"Participant '{participant.ParticipantId}' already exists in the chat");
             }
 
-            // Validate participant data
-            if (string.IsNullOrWhiteSpace(participant.ParticipantId))
+            // Check participant limits
+            if (State.Configuration.MaxParticipants.HasValue &&
+                State.Participants.Count >= State.Configuration.MaxParticipants.Value)
             {
-                throw new ArgumentException("Participant ID cannot be null or empty", nameof(participant));
+                throw new InvalidChatStateException(State.ChatMetadata.ChatId,
+                    $"Maximum participants limit ({State.Configuration.MaxParticipants.Value}) reached");
             }
 
-            if (string.IsNullOrWhiteSpace(participant.DisplayName))
-            {
-                throw new ArgumentException("Display name cannot be null or empty", nameof(participant));
-            }
-
-            lock (_stateLock)
-            {
-                // Add participant
-                State.Participants[participant.ParticipantId] = participant;
-                State.ChatMetadata.ParticipantCount = State.Participants.Count;
-                State.ChatMetadata.LastActivityAt = DateTime.UtcNow;
-                State.ChatMetadata.Version++;
-                State.IncrementVersion();
-            }
+            // Add participant (Orleans grain single-threaded, no lock needed)
+            State.Participants[participant.ParticipantId] = participant;
+            State.ChatMetadata.ParticipantCount = State.Participants.Count;
+            State.ChatMetadata.LastActivityAt = DateTime.UtcNow;
+            State.ChatMetadata.Version++;
+            State.IncrementVersion();
 
             await WriteStateAsync();
 
             // Notify other participants
             await NotifyParticipantsAsync("ParticipantJoined", participant, cancellationToken);
 
-            _logger.LogInformation("Added participant {ParticipantId} ({DisplayName}) to chat {ChatId}",
-                participant.ParticipantId, participant.DisplayName, State.ChatMetadata.ChatId);
+            _logger.LogInformation("Added participant {ParticipantId} ({DisplayName}, role: {Role}) to chat {ChatId}. Total participants: {ParticipantCount}",
+                participant.ParticipantId, participant.DisplayName, participant.Role, State.ChatMetadata.ChatId, State.Participants.Count);
 
-            OrleansActivitySource.SetSuccess(activity);
+            OrleansActivitySource.SetSuccess(activity, new Dictionary<string, object>
+            {
+                ["ParticipantId"] = participant.ParticipantId,
+                ["DisplayName"] = participant.DisplayName,
+                ["Role"] = participant.Role.ToString(),
+                ["TotalParticipants"] = State.Participants.Count
+            });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to add participant {ParticipantId} to chat {ChatId}",
-                participant?.ParticipantId, State.ChatMetadata.ChatId);
+            _logger.LogError(ex, "Failed to add participant {ParticipantId} to chat {ChatId}. Error: {ErrorType}",
+                participant?.ParticipantId, State.ChatMetadata.ChatId, ex.GetType().Name);
             OrleansActivitySource.SetError(activity, ex);
             throw;
         }
@@ -1361,18 +1361,17 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
             await ValidateInitialized();
             await ValidateCanModify();
 
-            ChatParticipant? removedParticipant = null;
+            // Validate chat state and operation
+            ValidateChatStateConsistency("remove participant");
 
-            lock (_stateLock)
+            // Remove participant (Orleans grain single-threaded, no lock needed)
+            if (State.Participants.TryGetValue(participantId, out var removedParticipant))
             {
-                if (State.Participants.TryGetValue(participantId, out removedParticipant))
-                {
-                    State.Participants.Remove(participantId);
-                    State.ChatMetadata.ParticipantCount = State.Participants.Count;
-                    State.ChatMetadata.LastActivityAt = DateTime.UtcNow;
-                    State.ChatMetadata.Version++;
-                    State.IncrementVersion();
-                }
+                State.Participants.Remove(participantId);
+                State.ChatMetadata.ParticipantCount = State.Participants.Count;
+                State.ChatMetadata.LastActivityAt = DateTime.UtcNow;
+                State.ChatMetadata.Version++;
+                State.IncrementVersion();
             }
 
             if (removedParticipant == null)
@@ -1394,16 +1393,22 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
                 LeftAt = DateTime.UtcNow
             }, cancellationToken);
 
-            _logger.LogInformation("Removed participant {ParticipantId} ({DisplayName}) from chat {ChatId}",
-                participantId, removedParticipant.DisplayName, State.ChatMetadata.ChatId);
+            _logger.LogInformation("Removed participant {ParticipantId} ({DisplayName}, role: {Role}) from chat {ChatId}. Remaining participants: {ParticipantCount}",
+                participantId, removedParticipant.DisplayName, removedParticipant.Role, State.ChatMetadata.ChatId, State.Participants.Count);
 
-            OrleansActivitySource.SetSuccess(activity);
+            OrleansActivitySource.SetSuccess(activity, new Dictionary<string, object>
+            {
+                ["ParticipantId"] = participantId,
+                ["DisplayName"] = removedParticipant.DisplayName,
+                ["Role"] = removedParticipant.Role.ToString(),
+                ["RemainingParticipants"] = State.Participants.Count
+            });
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to remove participant {ParticipantId} from chat {ChatId}",
-                participantId, State.ChatMetadata.ChatId);
+            _logger.LogError(ex, "Failed to remove participant {ParticipantId} from chat {ChatId}. Error: {ErrorType}",
+                participantId, State.ChatMetadata.ChatId, ex.GetType().Name);
             OrleansActivitySource.SetError(activity, ex);
             throw;
         }
@@ -1420,37 +1425,59 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
             await ValidateInitialized();
             await ValidateCanModify();
 
-            ChatParticipant? participant = null;
+            // Update participant (Orleans grain single-threaded, no lock needed)
+            ValidateChatStateConsistency("update participant");
 
-            lock (_stateLock)
+            if (!State.Participants.TryGetValue(update.ParticipantId, out var participant))
             {
-                if (!State.Participants.TryGetValue(update.ParticipantId, out participant))
-                {
-                    throw new ParticipantNotFoundException(State.ChatMetadata.ChatId, update.ParticipantId);
-                }
-
-                // Update participant properties
-                if (!string.IsNullOrEmpty(update.DisplayName))
-                {
-                    participant.DisplayName = update.DisplayName;
-                }
-
-                if (update.Role.HasValue)
-                {
-                    participant.Role = update.Role.Value;
-                }
-
-                if (!string.IsNullOrEmpty(update.Metadata))
-                {
-                    participant.Metadata = update.Metadata;
-                }
-
-                participant.LastActivityAt = DateTime.UtcNow;
-
-                State.ChatMetadata.LastActivityAt = DateTime.UtcNow;
-                State.ChatMetadata.Version++;
-                State.IncrementVersion();
+                throw new ParticipantNotFoundException(State.ChatMetadata.ChatId, update.ParticipantId);
             }
+
+            // Validate update data before applying changes
+            if (!string.IsNullOrEmpty(update.DisplayName))
+            {
+                if (update.DisplayName.Length > 100)
+                {
+                    throw new ArgumentException("Display name cannot exceed 100 characters");
+                }
+                if (update.DisplayName.Contains('<') || update.DisplayName.Contains('>') ||
+                    update.DisplayName.Contains("script", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new ArgumentException("Display name contains invalid characters");
+                }
+            }
+
+            if (update.Role.HasValue && !Enum.IsDefined(update.Role.Value))
+            {
+                throw new ArgumentException($"Invalid participant role: {update.Role.Value}");
+            }
+
+            if (!string.IsNullOrEmpty(update.Metadata) && update.Metadata.Length > 1000)
+            {
+                throw new ArgumentException("Participant metadata cannot exceed 1000 characters");
+            }
+
+            // Update participant properties
+            if (!string.IsNullOrEmpty(update.DisplayName))
+            {
+                participant.DisplayName = update.DisplayName;
+            }
+
+            if (update.Role.HasValue)
+            {
+                participant.Role = update.Role.Value;
+            }
+
+            if (!string.IsNullOrEmpty(update.Metadata))
+            {
+                participant.Metadata = update.Metadata;
+            }
+
+            participant.LastActivityAt = DateTime.UtcNow;
+
+            State.ChatMetadata.LastActivityAt = DateTime.UtcNow;
+            State.ChatMetadata.Version++;
+            State.IncrementVersion();
 
             await WriteStateAsync();
 
@@ -1462,16 +1489,26 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
                 UpdatedAt = DateTime.UtcNow
             }, cancellationToken);
 
-            _logger.LogInformation("Updated participant {ParticipantId} in chat {ChatId}",
-                update.ParticipantId, State.ChatMetadata.ChatId);
+            _logger.LogInformation("Updated participant {ParticipantId} in chat {ChatId}. Changes: DisplayName={DisplayNameChanged}, Role={RoleChanged}, Metadata={MetadataChanged}",
+                update.ParticipantId, State.ChatMetadata.ChatId,
+                !string.IsNullOrEmpty(update.DisplayName),
+                update.Role.HasValue,
+                !string.IsNullOrEmpty(update.Metadata));
 
-            OrleansActivitySource.SetSuccess(activity);
+            OrleansActivitySource.SetSuccess(activity, new Dictionary<string, object>
+            {
+                ["ParticipantId"] = update.ParticipantId,
+                ["UpdatedDisplayName"] = !string.IsNullOrEmpty(update.DisplayName),
+                ["UpdatedRole"] = update.Role.HasValue,
+                ["UpdatedMetadata"] = !string.IsNullOrEmpty(update.Metadata),
+                ["CurrentRole"] = participant.Role.ToString()
+            });
             return participant; // Orleans manages immutability
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to update participant {ParticipantId} in chat {ChatId}",
-                update?.ParticipantId, State.ChatMetadata.ChatId);
+            _logger.LogError(ex, "Failed to update participant {ParticipantId} in chat {ChatId}. Error: {ErrorType}",
+                update?.ParticipantId, State.ChatMetadata.ChatId, ex.GetType().Name);
             OrleansActivitySource.SetError(activity, ex);
             throw;
         }
@@ -1487,13 +1524,11 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
             ArgumentException.ThrowIfNullOrWhiteSpace(participantId);
             await ValidateInitialized();
 
-            lock (_stateLock)
+            // Get participant (Orleans grain single-threaded, no lock needed)
+            if (State.Participants.TryGetValue(participantId, out var participant))
             {
-                if (State.Participants.TryGetValue(participantId, out var participant))
-                {
-                    OrleansActivitySource.SetSuccess(activity);
-                    return participant; // Orleans manages immutability
-                }
+                OrleansActivitySource.SetSuccess(activity);
+                return participant; // Orleans manages immutability
             }
 
             OrleansActivitySource.SetSuccess(activity);
@@ -1517,15 +1552,13 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
         {
             await ValidateInitialized();
 
-            lock (_stateLock)
-            {
-                var participants = State.Participants.Values
-                    .Select(p => p) // Orleans manages immutability
-                    .ToList();
+            // Get participants (Orleans grain single-threaded, no lock needed)
+            var participants = State.Participants.Values
+                .Select(p => p) // Orleans manages immutability
+                .ToList();
 
-                OrleansActivitySource.SetSuccess(activity);
-                return participants;
-            }
+            OrleansActivitySource.SetSuccess(activity);
+            return participants;
         }
         catch (Exception ex)
         {
@@ -1545,21 +1578,19 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
             ArgumentException.ThrowIfNullOrWhiteSpace(participantId);
             await ValidateInitialized();
 
-            lock (_stateLock)
+            // Update presence (Orleans grain single-threaded, no lock needed)
+            if (!State.Participants.TryGetValue(participantId, out var participant))
             {
-                if (!State.Participants.TryGetValue(participantId, out var participant))
-                {
-                    throw new ParticipantNotFoundException(State.ChatMetadata.ChatId, participantId);
-                }
+                throw new ParticipantNotFoundException(State.ChatMetadata.ChatId, participantId);
+            }
 
-                if (participant.Status != status)
-                {
-                    participant.Status = status;
-                    participant.LastActivityAt = DateTime.UtcNow;
+            if (participant.Status != status)
+            {
+                participant.Status = status;
+                participant.LastActivityAt = DateTime.UtcNow;
 
-                    State.ChatMetadata.LastActivityAt = DateTime.UtcNow;
-                    State.IncrementVersion();
-                }
+                State.ChatMetadata.LastActivityAt = DateTime.UtcNow;
+                State.IncrementVersion();
             }
 
             await WriteStateAsync();
@@ -1606,8 +1637,21 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
                 return; // No participants to notify
             }
 
-            // Broadcast via SignalR
-            await _signalRBroadcast.BroadcastToGroupAsync($"chat_{State.ChatMetadata.ChatId}", eventType, eventData);
+            // Serialize event data for consistent notification format
+            string serializedEventData;
+            try
+            {
+                serializedEventData = JsonSerializer.Serialize(eventData, NotificationJsonOptions);
+            }
+            catch (Exception serializationEx)
+            {
+                _logger.LogError(serializationEx, "Failed to serialize event data for notification in chat {ChatId}, eventType: {EventType}",
+                    State.ChatMetadata.ChatId, eventType);
+                throw new InvalidOperationException($"Failed to serialize notification data for event '{eventType}'", serializationEx);
+            }
+
+            // Broadcast via SignalR with serialized data
+            await _signalRBroadcast.BroadcastToGroupAsync($"chat_{State.ChatMetadata.ChatId}", eventType, serializedEventData);
 
             _logger.LogDebug("Notified {ParticipantCount} participants in chat {ChatId} about {EventType}",
                 participantIds.Count, State.ChatMetadata.ChatId, eventType);
@@ -1633,19 +1677,20 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
             ArgumentException.ThrowIfNullOrWhiteSpace(participantId);
             await ValidateInitialized();
 
-            lock (_stateLock)
+            // Check permissions (Orleans grain single-threaded, no lock needed)
+            if (!State.Participants.TryGetValue(participantId, out var participant))
             {
-                if (!State.Participants.TryGetValue(participantId, out var participant))
-                {
-                    throw new ParticipantNotFoundException(State.ChatMetadata.ChatId, participantId);
-                }
-
-                // Check permissions based on participant role and action
-                var hasPermission = HasPermission(participant.Role, action);
-
-                OrleansActivitySource.SetSuccess(activity);
-                return hasPermission;
+                throw new ParticipantNotFoundException(State.ChatMetadata.ChatId, participantId);
             }
+
+            // Check permissions based on participant role and action
+            var hasPermission = HasPermission(participant.Role, action);
+
+            _logger.LogDebug("Permission check for participant {ParticipantId} in chat {ChatId}: action {Action}, role {Role}, granted: {HasPermission}",
+                participantId, State.ChatMetadata.ChatId, action, participant.Role, hasPermission);
+
+            OrleansActivitySource.SetSuccess(activity);
+            return hasPermission;
         }
         catch (Exception ex)
         {
@@ -2257,6 +2302,95 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
         if (stateChanged)
         {
             await WriteStateAsync();
+        }
+    }
+
+    /// <summary>
+    /// Validates participant data for consistency and business rules.
+    /// </summary>
+    /// <param name="participant">The participant to validate</param>
+    /// <exception cref="ArgumentException">When participant data is invalid</exception>
+    /// <exception cref="InvalidChatStateException">When participant violates chat state rules</exception>
+    private void ValidateParticipantData(ChatParticipant participant)
+    {
+        // Basic null/empty validation
+        if (string.IsNullOrWhiteSpace(participant.ParticipantId))
+        {
+            throw new ArgumentException("Participant ID cannot be null or empty", nameof(participant));
+        }
+
+        if (string.IsNullOrWhiteSpace(participant.DisplayName))
+        {
+            throw new ArgumentException("Display name cannot be null or empty", nameof(participant));
+        }
+
+        // Enhanced validation for participant ID format (basic GUID or alphanumeric validation)
+        if (participant.ParticipantId.Length is < 3 or > 50)
+        {
+            throw new ArgumentException("Participant ID must be between 3 and 50 characters", nameof(participant));
+        }
+
+        // Validate display name format and length
+        if (participant.DisplayName.Length > 100)
+        {
+            throw new ArgumentException("Display name cannot exceed 100 characters", nameof(participant));
+        }
+
+        // Check for potentially harmful content in display name (basic XSS protection)
+        if (participant.DisplayName.Contains('<') || participant.DisplayName.Contains('>') ||
+            participant.DisplayName.Contains("script", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("Display name contains invalid characters", nameof(participant));
+        }
+
+        // Validate role is within acceptable range
+        if (!Enum.IsDefined(participant.Role))
+        {
+            throw new ArgumentException($"Invalid participant role: {participant.Role}", nameof(participant));
+        }
+
+        // Validate status is within acceptable range
+        if (!Enum.IsDefined(participant.Status))
+        {
+            throw new ArgumentException($"Invalid presence status: {participant.Status}", nameof(participant));
+        }
+
+        // Validate metadata if present
+        if (!string.IsNullOrEmpty(participant.Metadata) && participant.Metadata.Length > 1000)
+        {
+            throw new ArgumentException("Participant metadata cannot exceed 1000 characters", nameof(participant));
+        }
+    }
+
+    /// <summary>
+    /// Validates chat state consistency for participant operations.
+    /// </summary>
+    /// <param name="operation">The operation being performed</param>
+    /// <exception cref="InvalidChatStateException">When chat state is inconsistent</exception>
+    private void ValidateChatStateConsistency(string operation)
+    {
+        // Ensure participant count matches dictionary count
+        if (State.ChatMetadata.ParticipantCount != State.Participants.Count)
+        {
+            _logger.LogWarning("Participant count mismatch in chat {ChatId}: metadata={MetadataCount}, actual={ActualCount}",
+                State.ChatMetadata.ChatId, State.ChatMetadata.ParticipantCount, State.Participants.Count);
+
+            // Fix the inconsistency
+            State.ChatMetadata.ParticipantCount = State.Participants.Count;
+            State.IncrementVersion();
+        }
+
+        // Validate chat is in a valid state for participant operations
+        if (State.ChatMetadata.Status == ChatStatus.Archived)
+        {
+            throw new InvalidChatStateException(State.ChatMetadata.ChatId,
+                $"Cannot perform {operation} on archived chat");
+        }
+
+        if (State.ChatMetadata.Status == ChatStatus.Deleted)
+        {
+            throw new InvalidChatStateException(State.ChatMetadata.ChatId,
+                $"Cannot perform {operation} on deleted chat");
         }
     }
 
