@@ -107,7 +107,7 @@ public sealed class UserSessionState
     /// Session metadata for extensibility.
     /// </summary>
     [Id(15)]
-    public Dictionary<string, object> Metadata { get; set; } = [];
+    public Dictionary<string, string> Metadata { get; set; } = [];
 
     /// <summary>
     /// Whether the session is archived.

@@ -31,7 +31,7 @@ public interface ISessionMonitoringGrain : IGrainWithStringKey
     /// <returns>Task representing the async operation</returns>
     /// <exception cref="SessionNotFoundException">Thrown when the session does not exist</exception>
     [Alias("RecordMetricAsync")]
-    Task RecordMetricAsync(string metricName, double value, Dictionary<string, object>? metadata = null, CancellationToken cancellationToken = default);
+    Task RecordMetricAsync(string metricName, double value, Dictionary<string, string>? metadata = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets session performance statistics over a time period.

@@ -435,7 +435,7 @@ public sealed class UserPreferencesState
     /// Extensible dictionary for future UI preferences without schema changes.
     /// </summary>
     [Id(2)]
-    public Dictionary<string, object> UIPreferences { get; set; } = [];
+    public Dictionary<string, string> UIPreferences { get; set; } = [];
 
     /// <summary>
     /// Timestamp of last preferences update.
@@ -529,5 +529,5 @@ public sealed class UserPreferencesMetadata
     /// Allows storing custom metadata without schema changes.
     /// </summary>
     [Id(4)]
-    public Dictionary<string, object> Metadata { get; set; } = [];
+    public Dictionary<string, string> Metadata { get; set; } = [];
 }

@@ -170,7 +170,7 @@ public sealed class SessionInitRequest
     /// Initial metadata for the session.
     /// </summary>
     [Id(7)]
-    public Dictionary<string, object> Metadata { get; set; } = [];
+    public Dictionary<string, string> Metadata { get; set; } = [];
 
     /// <summary>
     /// Session timeout in seconds (0 for no timeout).
@@ -252,7 +252,7 @@ public sealed class SessionState
     /// Session metadata.
     /// </summary>
     [Id(9)]
-    public Dictionary<string, object> Metadata { get; set; } = [];
+    public Dictionary<string, string> Metadata { get; set; } = [];
 
     /// <summary>
     /// Indicates if the session is archived.
@@ -321,7 +321,7 @@ public sealed class SessionEvent
     /// Event details or payload.
     /// </summary>
     [Id(4)]
-    public Dictionary<string, object> Details { get; set; } = [];
+    public Dictionary<string, string> Details { get; set; } = [];
 
     /// <summary>
     /// Optional error message if event represents an error.
@@ -361,7 +361,7 @@ public sealed class ConnectionRequest
     /// Protocol-specific options.
     /// </summary>
     [Id(2)]
-    public Dictionary<string, object> ProtocolOptions { get; set; } = [];
+    public Dictionary<string, string> ProtocolOptions { get; set; } = [];
 
     /// <summary>
     /// Requested keep-alive interval in seconds.
@@ -813,7 +813,7 @@ public sealed class ProtocolConfiguration
     /// Protocol-specific settings.
     /// </summary>
     [Id(2)]
-    public Dictionary<string, object> Settings { get; set; } = [];
+    public Dictionary<string, string> Settings { get; set; } = [];
 
     /// <summary>
     /// Supported features for this protocol.
@@ -949,7 +949,7 @@ public sealed class ProtocolState
     /// State data.
     /// </summary>
     [Id(1)]
-    public Dictionary<string, object> StateData { get; set; } = [];
+    public Dictionary<string, string> StateData { get; set; } = [];
 
     /// <summary>
     /// Last state change time.
@@ -991,7 +991,7 @@ public sealed class ProtocolSwitchRequest
     /// Protocol-specific options.
     /// </summary>
     [Id(2)]
-    public Dictionary<string, object> Options { get; set; } = [];
+    public Dictionary<string, string> Options { get; set; } = [];
 
     /// <summary>
     /// Whether to maintain state during switch.
@@ -1447,13 +1447,13 @@ public sealed class DiagnosticReport
     /// Configuration snapshot.
     /// </summary>
     [Id(8)]
-    public Dictionary<string, object> Configuration { get; set; } = [];
+    public Dictionary<string, string> Configuration { get; set; } = [];
 
     /// <summary>
     /// Additional diagnostic data.
     /// </summary>
     [Id(9)]
-    public Dictionary<string, object> AdditionalData { get; set; } = [];
+    public Dictionary<string, string> AdditionalData { get; set; } = [];
 }
 
 /// <summary>
@@ -1541,7 +1541,7 @@ public sealed class AlertConfiguration
     /// Alert metadata.
     /// </summary>
     [Id(6)]
-    public Dictionary<string, object> Metadata { get; set; } = [];
+    public Dictionary<string, string> Metadata { get; set; } = [];
 }
 
 /// <summary>
@@ -1637,7 +1637,7 @@ public sealed class SessionAlert
     /// Alert details.
     /// </summary>
     [Id(8)]
-    public Dictionary<string, object> Details { get; set; } = [];
+    public Dictionary<string, string> Details { get; set; } = [];
 }
 
 /// <summary>
@@ -1688,7 +1688,7 @@ public sealed class TraceData
     /// Trace metadata.
     /// </summary>
     [Id(6)]
-    public Dictionary<string, object> Metadata { get; set; } = [];
+    public Dictionary<string, string> Metadata { get; set; } = [];
 }
 
 /// <summary>
@@ -1721,7 +1721,7 @@ public sealed class TraceSpan
     /// Span attributes.
     /// </summary>
     [Id(3)]
-    public Dictionary<string, object> Attributes { get; set; } = [];
+    public Dictionary<string, string> Attributes { get; set; } = [];
 }
 
 /// <summary>
@@ -1828,7 +1828,7 @@ public sealed class SessionOperationResult<T>
     /// Additional context or metadata about the operation.
     /// </summary>
     [Id(7)]
-    public Dictionary<string, object> Context { get; set; } = [];
+    public Dictionary<string, string> Context { get; set; } = [];
 }
 
 /// <summary>
@@ -1857,7 +1857,7 @@ public sealed class SessionStateTransitionRequest
     /// Optional metadata for the transition.
     /// </summary>
     [Id(2)]
-    public Dictionary<string, object> Metadata { get; set; } = [];
+    public Dictionary<string, string> Metadata { get; set; } = [];
 
     /// <summary>
     /// Timestamp of the request.

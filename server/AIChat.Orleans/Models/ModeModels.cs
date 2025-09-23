@@ -73,7 +73,7 @@ public sealed class ModeState
     /// Custom metadata associated with the mode.
     /// </summary>
     [Id(8)]
-    public Dictionary<string, object> Metadata { get; init; } = [];
+    public Dictionary<string, string> Metadata { get; init; } = [];
 
     /// <summary>
     /// Timestamp when the mode was created.
@@ -138,7 +138,7 @@ public sealed class ModeInitRequest
     /// <summary>
     /// Initial metadata to attach.
     /// </summary>
-    public Dictionary<string, object>? Metadata { get; init; }
+    public Dictionary<string, string>? Metadata { get; init; }
 
     /// <summary>
     /// Template ID to base this mode on.
@@ -199,7 +199,7 @@ public sealed class ModeChangeEvent
     /// Additional change metadata.
     /// </summary>
     [Id(7)]
-    public Dictionary<string, object>? Metadata { get; init; }
+    public Dictionary<string, string>? Metadata { get; init; }
 }
 
 // ============================================================================
@@ -435,7 +435,7 @@ public sealed class ModeTransitionRequest
     /// Additional data for the transition.
     /// </summary>
     [Id(4)]
-    public Dictionary<string, object>? TransitionData { get; init; }
+    public Dictionary<string, string>? TransitionData { get; init; }
 
     /// <summary>
     /// User initiating the transition.

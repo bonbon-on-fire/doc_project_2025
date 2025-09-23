@@ -477,7 +477,7 @@ public sealed class ConsentRecord
     /// Additional consent metadata.
     /// </summary>
     [Id(5)]
-    public Dictionary<string, object> Metadata { get; set; } = [];
+    public Dictionary<string, string> Metadata { get; set; } = [];
 }
 
 /// <summary>

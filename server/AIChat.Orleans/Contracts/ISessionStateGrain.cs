@@ -42,7 +42,7 @@ public interface ISessionStateGrain : IGrainWithStringKey
     /// <exception cref="SessionNotFoundException">Thrown when the session does not exist</exception>
     /// <exception cref="SessionDisconnectedException">Thrown when attempting to update a disconnected session</exception>
     [Alias("UpdateMetadataAsync")]
-    Task<SessionState> UpdateMetadataAsync(Dictionary<string, object> metadata, CancellationToken cancellationToken = default);
+    Task<SessionState> UpdateMetadataAsync(Dictionary<string, string> metadata, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Archives the session for historical reference.

@@ -240,7 +240,7 @@ public sealed class ClientPreferencesImport
     /// UI preferences from client-side storage.
     /// </summary>
     [Id(2)]
-    public Dictionary<string, object> UIPreferences { get; set; } = [];
+    public Dictionary<string, string> UIPreferences { get; set; } = [];
 
     /// <summary>
     /// Source identifier for the import (e.g., "client", "localStorage").

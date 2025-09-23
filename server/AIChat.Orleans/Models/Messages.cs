@@ -131,7 +131,7 @@ public sealed class StreamChunk
     /// Additional metadata for the chunk.
     /// </summary>
     [Id(9)]
-    public Dictionary<string, object>? Metadata { get; set; }
+    public Dictionary<string, string>? Metadata { get; set; }
 }
 
 /// <summary>

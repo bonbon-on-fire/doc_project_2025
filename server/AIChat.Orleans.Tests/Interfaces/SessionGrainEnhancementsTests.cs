@@ -111,7 +111,7 @@ public class SessionGrainEnhancementsTests
         {
             Transition = SessionStateTransition.Connect,
             Reason = "User initiated",
-            Metadata = new Dictionary<string, object> { ["key"] = "value" }
+            Metadata = new Dictionary<string, string> { ["key"] = "value" }
         };
 
         // Act & Assert
@@ -132,7 +132,7 @@ public class SessionGrainEnhancementsTests
             ErrorMessage = null,
             ErrorCode = null,
             Duration = TimeSpan.FromMilliseconds(100),
-            Context = new Dictionary<string, object> { ["operation"] = "test" }
+            Context = new Dictionary<string, string> { ["operation"] = "test" }
         };
 
         // Act & Assert

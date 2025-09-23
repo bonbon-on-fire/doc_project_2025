@@ -160,7 +160,7 @@ public class OrleansUserSessionStateManager : OrleansStateManagerBase<UserSessio
                 CurrentState = SessionLifecycleState.Initialized,
                 CreatedAt = now,
                 LastActivityAt = now,
-                Metadata = metadata ?? []
+                Metadata = metadata?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value?.ToString() ?? string.Empty) ?? []
             };
 
             // Validate the session state
@@ -525,11 +525,11 @@ public class OrleansUserSessionStateManager : OrleansStateManagerBase<UserSessio
                 LongestConnectionDuration = connectionData.LongestConnectionDuration ?? TimeSpan.Zero,
                 LastDisconnectionReason = connectionData.LastDisconnectionReason,
                 DisconnectionCount = connectionData.DisconnectionCount ?? 0,
-                Metadata = new Dictionary<string, object>
+                Metadata = new Dictionary<string, string>
                 {
                     ["userId"] = userId,
                     ["migratedFrom"] = "ConnectionStateTracker",
-                    ["migrationTimestamp"] = DateTime.UtcNow,
+                    ["migrationTimestamp"] = DateTime.UtcNow.ToString(),
                     ["originalStreamId"] = streamId
                 }
             };
@@ -844,7 +844,7 @@ public class OrleansUserSessionStateManager : OrleansStateManagerBase<UserSessio
             return StateResult<UserSessionState>.FromError("User ID is required in session metadata for creation");
         }
 
-        return await CreateSessionAsync(userId, entity.StreamId, entity.Metadata, cancellationToken);
+        return await CreateSessionAsync(userId, entity.StreamId, entity.Metadata?.ToDictionary(kvp => kvp.Key, kvp => (object)kvp.Value), cancellationToken);
     }
 
     /// <inheritdoc />

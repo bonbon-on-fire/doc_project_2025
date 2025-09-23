@@ -113,5 +113,5 @@ public interface IModeConfigurationGrain : IGrainWithStringKey
     /// <exception cref="ModeNotFoundException">Thrown when the mode does not exist</exception>
     [Alias("GetEffectiveConfigurationAsync")]
     [ReadOnly]
-    Task<ModeConfiguration> GetEffectiveConfigurationAsync(Dictionary<string, object>? overrides = null, CancellationToken cancellationToken = default);
+    Task<ModeConfiguration> GetEffectiveConfigurationAsync(Dictionary<string, string>? overrides = null, CancellationToken cancellationToken = default);
 }

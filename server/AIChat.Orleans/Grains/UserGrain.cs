@@ -4235,7 +4235,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             State.Preferences ??= new UserPreferencesState();
             State.PreferencesMetadata ??= new UserPreferencesMetadata();
 
-            State.Preferences.UIPreferences[key] = value;
+            State.Preferences.UIPreferences[key] = value?.ToString() ?? string.Empty;
             State.Preferences.Version++;
             State.Preferences.LastUpdated = DateTime.UtcNow;
 
@@ -4464,7 +4464,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             {
                 MessagePreferences = new Dictionary<string, MessagePreference>(State.Preferences.MessagePreferences),
                 SelectedModeId = State.Preferences.SelectedModeId,
-                UIPreferences = new Dictionary<string, object>(State.Preferences.UIPreferences),
+                UIPreferences = new Dictionary<string, string>(State.Preferences.UIPreferences),
                 LastUpdated = State.Preferences.LastUpdated,
                 Version = State.Preferences.Version
             };

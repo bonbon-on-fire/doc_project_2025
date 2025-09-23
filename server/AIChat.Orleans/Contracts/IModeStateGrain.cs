@@ -61,7 +61,7 @@ public interface IModeStateGrain : IGrainWithStringKey
     [RateLimit(20, 60, perUser: true)]
     [Telemetry(TelemetryLevel.Normal, includeParameters: true)]
     [Security(requireAuthorization: true, audit: true, classification: DataClassification.Internal)]
-    Task<ModeState> UpdateMetadataAsync(Dictionary<string, object> metadata, CancellationToken cancellationToken = default);
+    Task<ModeState> UpdateMetadataAsync(Dictionary<string, string> metadata, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Archives the mode, making it read-only.

@@ -78,7 +78,7 @@ public interface IModeTransitionGrain : IGrainWithStringKey
     /// <exception cref="PresetNotFoundException">Thrown when preset does not exist</exception>
     /// <exception cref="InvalidPresetException">Thrown when preset cannot be applied</exception>
     [Alias("ApplyPresetAsync")]
-    Task<ModePresetResult> ApplyPresetAsync(string presetId, Dictionary<string, object>? parameters = null, CancellationToken cancellationToken = default);
+    Task<ModePresetResult> ApplyPresetAsync(string presetId, Dictionary<string, string>? parameters = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Schedules a future mode transition.

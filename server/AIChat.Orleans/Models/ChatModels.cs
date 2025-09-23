@@ -213,7 +213,7 @@ public sealed class MessageResult
     /// Additional result metadata.
     /// </summary>
     [Id(5)]
-    public Dictionary<string, object>? Metadata { get; set; }
+    public Dictionary<string, string>? Metadata { get; set; }
 
     /// <summary>
     /// Creates a success result.

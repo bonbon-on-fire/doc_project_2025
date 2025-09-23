@@ -290,6 +290,9 @@ if (!orleansDisabled)
 
         Log.Information("Orleans configured successfully");
 
+        // Register Orleans Event Relay for ChatHub integration (Phase 3 - ORL-ST-P3-001)
+        _ = builder.Services.AddScoped<IOrleansEventRelay, OrleansEventRelay>();
+
         // Add health checks including Orleans
         _ = builder
             .Services.AddHealthChecks()
@@ -302,6 +305,9 @@ if (!orleansDisabled)
         // Log warning but don't fail startup - Orleans is optional in Phase 1
         Log.Warning(ex, "Failed to configure Orleans - Orleans integration will be disabled");
 
+        // Register Null Orleans Event Relay when Orleans configuration fails (Phase 3 - ORL-ST-P3-001)
+        _ = builder.Services.AddScoped<IOrleansEventRelay, NullOrleansEventRelay>();
+
         // Add basic health checks without Orleans
         _ = builder.Services.AddHealthChecks();
     }
@@ -309,6 +315,9 @@ if (!orleansDisabled)
 else
 {
     Log.Information("Orleans integration explicitly disabled");
+
+    // Register Null Orleans Event Relay when Orleans is disabled (Phase 3 - ORL-ST-P3-001)
+    _ = builder.Services.AddScoped<IOrleansEventRelay, NullOrleansEventRelay>();
 
     // Add basic health checks without Orleans
     _ = builder.Services.AddHealthChecks();
@@ -479,6 +488,12 @@ builder.Services.AddScoped<IModeService, ModeService>();
 builder.Services.AddScoped<
     AIChat.Orleans.Services.ISignalRBroadcastService,
     SignalRBroadcastService
+>();
+
+// Add Orleans event relay service for ChatHub integration (Phase 3 - ORL-ST-P3-001)
+builder.Services.AddScoped<
+    AIChat.Server.Services.IOrleansEventRelay,
+    AIChat.Server.Services.OrleansEventRelay
 >();
 
 // Add operation tracking service for Orleans background processing (Phase 3)
