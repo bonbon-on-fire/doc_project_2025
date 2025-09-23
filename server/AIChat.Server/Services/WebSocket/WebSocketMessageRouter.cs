@@ -149,10 +149,10 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
             activity?.SetTag("error.type", ex.GetType().Name);
             activity?.SetTag("operation.duration_ms", stopwatch.ElapsedMilliseconds);
 
-            return Task.FromResult(MessageRoutingResult.CreateFailure(
+            return MessageRoutingResult.CreateFailure(
                 $"Message routing error: {ex.Message}",
                 MessageRoutingDestination.Unknown,
-                stopwatch.ElapsedMilliseconds));
+                stopwatch.ElapsedMilliseconds);
         }
     }
 
@@ -197,9 +197,9 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
             activity?.SetTag("operation.success", false);
             activity?.SetTag("error.type", ex.GetType().Name);
 
-            return Task.FromResult(MessageRoutingResult.CreateFailure(
+            return MessageRoutingResult.CreateFailure(
                 $"Destination routing error: {ex.Message}",
-                destination));
+                destination);
         }
     }
 
@@ -236,8 +236,8 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
                 "Failed to route protocol message {MessageId} for protocol {Protocol}",
                 message.MessageId, protocol);
 
-            return Task.FromResult(MessageRoutingResult.CreateFailure(
-                $"Protocol routing error: {ex.Message}"));
+            return MessageRoutingResult.CreateFailure(
+                $"Protocol routing error: {ex.Message}");
         }
     }
 
@@ -265,25 +265,25 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
             activity?.SetTag("target.session.count", sessionList.Count);
 
             // Process sessions in parallel for better performance
-            var tasks = sessionList.Select(async sessionId =>
+            var tasks = sessionList.Select<string, Task<MessageRoutingResult>>(async sessionId =>
             {
                 try
                 {
                     var sessionInfo = await _sessionManager.GetSessionAsync(sessionId, cancellationToken);
                     if (sessionInfo == null)
                     {
-                        return Task.FromResult(MessageRoutingResult.CreateFailure(
+                        return MessageRoutingResult.CreateFailure(
                             $"Session {sessionId} not found",
-                            MessageRoutingDestination.Unknown));
+                            MessageRoutingDestination.Unknown);
                     }
 
                     return await RouteMessageAsync(message, sessionInfo, cancellationToken);
                 }
                 catch (Exception ex)
                 {
-                    return Task.FromResult(MessageRoutingResult.CreateFailure(
+                    return MessageRoutingResult.CreateFailure(
                         $"Broadcast error for session {sessionId}: {ex.Message}",
-                        MessageRoutingDestination.Unknown));
+                        MessageRoutingDestination.Unknown);
                 }
             });
 
@@ -336,17 +336,17 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
                 operationName: "ProcessHeartbeat",
                 cancellationToken: cancellationToken);
 
-            return Task.FromResult(MessageRoutingResult.CreateSuccess(
+            return MessageRoutingResult.CreateSuccess(
                 MessageRoutingDestination.HeartbeatHandler,
                 result.ResponseMessage,
                 0,
                 result.OrleansAttempted,
-                result.DirectServiceUsed));
+                result.DirectServiceUsed);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Heartbeat processing failed for session {SessionId}", sessionInfo.SessionId);
-            return Task.FromResult(MessageRoutingResult.CreateFailure($"Heartbeat error: {ex.Message}", MessageRoutingDestination.HeartbeatHandler));
+            return MessageRoutingResult.CreateFailure($"Heartbeat error: {ex.Message}", MessageRoutingDestination.HeartbeatHandler);
         }
     }
 
@@ -527,7 +527,7 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
             true));
     }
 
-    private Task<MessageRoutingResult> RouteCustomMessageAsync(
+    private async Task<MessageRoutingResult> RouteCustomMessageAsync(
         WebSocketMessage message,
         WebSocketSessionInfo sessionInfo,
         CancellationToken cancellationToken)
@@ -538,12 +538,12 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
         }
 
         _logger.LogWarning("No handler found for message type {MessageType}", message.Type);
-        return Task.FromResult(MessageRoutingResult.CreateFailure(
+        return MessageRoutingResult.CreateFailure(
             $"No handler registered for message type: {message.Type}",
-            MessageRoutingDestination.Unknown));
+            MessageRoutingDestination.Unknown);
     }
 
-    private Task<MessageRoutingResult> RouteNotificationMessageAsync(
+    private async Task<MessageRoutingResult> RouteNotificationMessageAsync(
         WebSocketMessage message,
         WebSocketSessionInfo sessionInfo,
         CancellationToken cancellationToken)
@@ -552,7 +552,7 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
         return await RouteGenericMessageAsync(message, sessionInfo, cancellationToken);
     }
 
-    private Task<MessageRoutingResult> RouteFileTransferMessageAsync(
+    private async Task<MessageRoutingResult> RouteFileTransferMessageAsync(
         WebSocketMessage message,
         WebSocketSessionInfo sessionInfo,
         CancellationToken cancellationToken)
@@ -561,7 +561,7 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
         return await RouteToDirectChatServiceAsync(message, sessionInfo, cancellationToken);
     }
 
-    private Task<MessageRoutingResult> RouteGenericMessageAsync(
+    private async Task<MessageRoutingResult> RouteGenericMessageAsync(
         WebSocketMessage message,
         WebSocketSessionInfo sessionInfo,
         CancellationToken cancellationToken)
