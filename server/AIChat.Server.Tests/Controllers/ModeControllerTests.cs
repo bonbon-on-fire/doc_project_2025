@@ -169,9 +169,15 @@ public class ModeControllerTests
             UpdatedAt = DateTime.UtcNow,
         };
 
-        _ = _modeServiceMock
-            .Setup(s => s.GetModeByIdAsync(modeId, userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((true, null, mode));
+        // Set up the router mock to return the expected ActionResult
+        _ = _modeRouterMock
+            .Setup(r => r.ExecuteModeOperationAsync<ActionResult<ModeDto>>(
+                modeId,
+                It.IsAny<Func<IModeGrain, Task<ActionResult<ModeDto>>>>(),
+                It.IsAny<Func<IModeService, Task<ActionResult<ModeDto>>>>(),
+                "GetMode",
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OkObjectResult(mode));
 
         // Act
         var result = await _controller.GetMode(modeId, userId);
@@ -190,9 +196,15 @@ public class ModeControllerTests
         var modeId = "non-existent";
         var userId = "test-user-4";
 
-        _ = _modeServiceMock
-            .Setup(s => s.GetModeByIdAsync(modeId, userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((false, "NotFound", null));
+        // Set up the router mock to return NotFound result
+        _ = _modeRouterMock
+            .Setup(r => r.ExecuteModeOperationAsync<ActionResult<ModeDto>>(
+                modeId,
+                It.IsAny<Func<IModeGrain, Task<ActionResult<ModeDto>>>>(),
+                It.IsAny<Func<IModeService, Task<ActionResult<ModeDto>>>>(),
+                "GetMode",
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new NotFoundObjectResult(new { Error = "Mode not found" }));
 
         // Act
         var result = await _controller.GetMode(modeId, userId);

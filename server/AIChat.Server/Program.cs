@@ -14,6 +14,8 @@ using AIChat.Server.Middleware;
 using AIChat.Server.Models;
 using AIChat.Server.Services;
 using AIChat.Server.Services.EventStore;
+using AIChat.Server.Services.ResponseCaching;
+using AIChat.Server.Services.ResponseCaching.Decorators;
 using AIChat.Server.Services.TestMode;
 using AIChat.Server.Storage;
 using AIChat.Server.Storage.Sqlite;
@@ -484,10 +486,37 @@ builder.Services.AddScoped<IChatServiceStreaming>(provider =>
 // Add mode service
 builder.Services.AddScoped<IModeService, ModeService>();
 
-// Add router services for Orleans integration (Phase 3 - ORL-ST-P3-003)
-builder.Services.AddScoped<AIChat.Server.Services.Routing.IModeRouter, AIChat.Server.Services.Routing.ModeRouter>();
-builder.Services.AddScoped<AIChat.Server.Services.Routing.IMonitoringRouter, AIChat.Server.Services.Routing.MonitoringRouter>();
-builder.Services.AddScoped<AIChat.Server.Services.Routing.ILogsRouter, AIChat.Server.Services.Routing.LogsRouter>();
+// Add Response Caching infrastructure (Phase 3 - ORL-ST-P3-004)
+builder.Services.AddIntelligentResponseCaching();
+
+// Add router services for Orleans integration with Response Caching (Phase 3 - ORL-ST-P3-003/004)
+// Register underlying routers as internal dependencies
+builder.Services.AddScoped<AIChat.Server.Services.Routing.ModeRouter>();
+builder.Services.AddScoped<AIChat.Server.Services.Routing.MonitoringRouter>();
+builder.Services.AddScoped<AIChat.Server.Services.Routing.LogsRouter>();
+
+// Register cached router decorators as primary implementations
+builder.Services.AddScoped<AIChat.Server.Services.Routing.IModeRouter>(serviceProvider =>
+    new CachedModeRouter(
+        serviceProvider.GetRequiredService<AIChat.Server.Services.Routing.ModeRouter>(),
+        serviceProvider.GetRequiredService<IResponseCacheManager>(),
+        serviceProvider.GetRequiredService<ICacheKeyGenerator>(),
+        serviceProvider.GetRequiredService<ILogger<CachedModeRouter>>()
+    ));
+builder.Services.AddScoped<AIChat.Server.Services.Routing.IMonitoringRouter>(serviceProvider =>
+    new CachedMonitoringRouter(
+        serviceProvider.GetRequiredService<AIChat.Server.Services.Routing.MonitoringRouter>(),
+        serviceProvider.GetRequiredService<IResponseCacheManager>(),
+        serviceProvider.GetRequiredService<ICacheKeyGenerator>(),
+        serviceProvider.GetRequiredService<ILogger<CachedMonitoringRouter>>()
+    ));
+builder.Services.AddScoped<AIChat.Server.Services.Routing.ILogsRouter>(serviceProvider =>
+    new CachedLogsRouter(
+        serviceProvider.GetRequiredService<AIChat.Server.Services.Routing.LogsRouter>(),
+        serviceProvider.GetRequiredService<IResponseCacheManager>(),
+        serviceProvider.GetRequiredService<ICacheKeyGenerator>(),
+        serviceProvider.GetRequiredService<ILogger<CachedLogsRouter>>()
+    ));
 
 // Add SignalR broadcasting service for Orleans integration (Phase 2/3)
 builder.Services.AddScoped<
@@ -611,19 +640,8 @@ builder.Services.AddSingleton<
     AIChat.Server.Services.Routing.DualModeRouter
 >();
 
-// Configure specialized routers for Orleans/Direct controller routing (Phase 3 - ORL-ST-P3-003)
-builder.Services.AddSingleton<
-    AIChat.Server.Services.Routing.IModeRouter,
-    AIChat.Server.Services.Routing.ModeRouter
->();
-builder.Services.AddSingleton<
-    AIChat.Server.Services.Routing.IMonitoringRouter,
-    AIChat.Server.Services.Routing.MonitoringRouter
->();
-builder.Services.AddSingleton<
-    AIChat.Server.Services.Routing.ILogsRouter,
-    AIChat.Server.Services.Routing.LogsRouter
->();
+// Note: Cached router decorators are already registered above as scoped services
+// Removed duplicate router registrations - using cached decorators from lines above
 
 var app = builder.Build();
 

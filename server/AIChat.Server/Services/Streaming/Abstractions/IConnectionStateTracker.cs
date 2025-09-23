@@ -1,3 +1,5 @@
+using Orleans;
+
 namespace AIChat.Server.Services.Streaming.Abstractions;
 
 /// <summary>
@@ -95,46 +97,55 @@ public interface IConnectionStateTracker
 /// <summary>
 /// Represents the state of a connection.
 /// </summary>
+[GenerateSerializer]
 public record ConnectionState
 {
     /// <summary>
     /// Gets the stream identifier.
     /// </summary>
+    [Id(0)]
     public required string StreamId { get; init; }
 
     /// <summary>
     /// Gets the current status of the connection.
     /// </summary>
+    [Id(1)]
     public required ConnectionStatus Status { get; init; }
 
     /// <summary>
     /// Gets the timestamp when the connection was established.
     /// </summary>
+    [Id(2)]
     public DateTime? ConnectedAt { get; init; }
 
     /// <summary>
     /// Gets the timestamp of the last disconnection.
     /// </summary>
+    [Id(3)]
     public DateTime? DisconnectedAt { get; init; }
 
     /// <summary>
     /// Gets the timestamp of the last activity.
     /// </summary>
+    [Id(4)]
     public required DateTime LastActivityAt { get; init; }
 
     /// <summary>
     /// Gets the number of reconnection attempts.
     /// </summary>
+    [Id(5)]
     public required int ReconnectionAttempts { get; init; }
 
     /// <summary>
     /// Gets the number of successful reconnections.
     /// </summary>
+    [Id(6)]
     public required int SuccessfulReconnections { get; init; }
 
     /// <summary>
     /// Gets the last disconnection reason if any.
     /// </summary>
+    [Id(7)]
     public string? LastDisconnectionReason { get; init; }
 
     /// <summary>
@@ -160,6 +171,7 @@ public record ConnectionState
 /// <summary>
 /// Defines the status of a connection.
 /// </summary>
+[GenerateSerializer]
 public enum ConnectionStatus
 {
     /// <summary>
@@ -196,51 +208,61 @@ public enum ConnectionStatus
 /// <summary>
 /// Metrics for a connection.
 /// </summary>
+[GenerateSerializer]
 public record ConnectionMetrics
 {
     /// <summary>
     /// Gets the stream identifier.
     /// </summary>
+    [Id(0)]
     public required string StreamId { get; init; }
 
     /// <summary>
     /// Gets the total connection time.
     /// </summary>
+    [Id(1)]
     public required TimeSpan TotalConnectionTime { get; init; }
 
     /// <summary>
     /// Gets the total disconnection time.
     /// </summary>
+    [Id(2)]
     public required TimeSpan TotalDisconnectionTime { get; init; }
 
     /// <summary>
     /// Gets the number of disconnections.
     /// </summary>
+    [Id(3)]
     public required int DisconnectionCount { get; init; }
 
     /// <summary>
     /// Gets the number of reconnection attempts.
     /// </summary>
+    [Id(4)]
     public required int ReconnectionAttempts { get; init; }
 
     /// <summary>
     /// Gets the number of successful reconnections.
     /// </summary>
+    [Id(5)]
     public required int SuccessfulReconnections { get; init; }
 
     /// <summary>
     /// Gets the average reconnection time.
     /// </summary>
+    [Id(6)]
     public TimeSpan AverageReconnectionTime { get; init; }
 
     /// <summary>
     /// Gets the connection uptime percentage.
     /// </summary>
+    [Id(7)]
     public double UptimePercentage { get; init; }
 
     /// <summary>
     /// Gets the longest continuous connection duration.
     /// </summary>
+    [Id(8)]
     public TimeSpan LongestConnectionDuration { get; init; }
 
     /// <summary>
@@ -253,41 +275,49 @@ public record ConnectionMetrics
 /// <summary>
 /// Health report for all tracked connections.
 /// </summary>
+[GenerateSerializer]
 public record ConnectionHealthReport
 {
     /// <summary>
     /// Gets the timestamp of the health check.
     /// </summary>
+    [Id(0)]
     public DateTime Timestamp { get; init; } = DateTime.UtcNow;
 
     /// <summary>
     /// Gets the total number of tracked connections.
     /// </summary>
+    [Id(1)]
     public required int TotalConnections { get; init; }
 
     /// <summary>
     /// Gets the number of healthy connections.
     /// </summary>
+    [Id(2)]
     public required int HealthyConnections { get; init; }
 
     /// <summary>
     /// Gets the number of unstable connections.
     /// </summary>
+    [Id(3)]
     public required int UnstableConnections { get; init; }
 
     /// <summary>
     /// Gets the number of disconnected connections.
     /// </summary>
+    [Id(4)]
     public required int DisconnectedConnections { get; init; }
 
     /// <summary>
     /// Gets the number of failed connections.
     /// </summary>
+    [Id(5)]
     public required int FailedConnections { get; init; }
 
     /// <summary>
     /// Gets individual connection states.
     /// </summary>
+    [Id(6)]
     public required IReadOnlyList<ConnectionState> ConnectionStates { get; init; }
 
     /// <summary>
