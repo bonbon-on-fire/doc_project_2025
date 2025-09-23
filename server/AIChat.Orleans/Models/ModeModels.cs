@@ -12,7 +12,7 @@ namespace AIChat.Orleans.Contracts;
 /// </summary>
 [GenerateSerializer]
 [Alias("AIChat.Orleans.Contracts.ModeState")]
-public sealed class ModeState
+public sealed record ModeState
 {
     /// <summary>
     /// Unique identifier for the mode.
@@ -609,32 +609,39 @@ public sealed class ModeTransitionOption
 /// <summary>
 /// Request to schedule a future transition.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.ScheduledTransitionRequest")]
 public sealed class ScheduledTransitionRequest
 {
     /// <summary>
     /// Target mode to transition to.
     /// </summary>
+    [Id(0)]
     [Required]
     public required string TargetModeId { get; init; }
 
     /// <summary>
     /// When to execute the transition.
     /// </summary>
+    [Id(1)]
     public required DateTime ScheduledTimeUtc { get; init; }
 
     /// <summary>
     /// Reason for the scheduled transition.
     /// </summary>
+    [Id(2)]
     public string? Reason { get; init; }
 
     /// <summary>
     /// Whether to preserve context during transition.
     /// </summary>
+    [Id(3)]
     public bool PreserveContext { get; init; } = true;
 
     /// <summary>
     /// Recurrence pattern if this is a recurring transition.
     /// </summary>
+    [Id(4)]
     public RecurrencePattern? Recurrence { get; init; }
 }
 
@@ -1392,36 +1399,44 @@ public sealed class TimeRestrictions
 /// <summary>
 /// Recurrence pattern for scheduled transitions.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.RecurrencePattern")]
 public sealed class RecurrencePattern
 {
     /// <summary>
     /// Type of recurrence.
     /// </summary>
+    [Id(0)]
     public RecurrenceType Type { get; init; }
 
     /// <summary>
     /// Interval between occurrences.
     /// </summary>
+    [Id(1)]
     public int Interval { get; init; } = 1;
 
     /// <summary>
     /// Days of week for weekly recurrence.
     /// </summary>
+    [Id(2)]
     public List<DayOfWeek>? DaysOfWeek { get; init; }
 
     /// <summary>
     /// Day of month for monthly recurrence.
     /// </summary>
+    [Id(3)]
     public int? DayOfMonth { get; init; }
 
     /// <summary>
     /// Maximum number of occurrences.
     /// </summary>
+    [Id(4)]
     public int? MaxOccurrences { get; init; }
 
     /// <summary>
     /// End date for recurrence.
     /// </summary>
+    [Id(5)]
     public DateTime? EndDate { get; init; }
 }
 

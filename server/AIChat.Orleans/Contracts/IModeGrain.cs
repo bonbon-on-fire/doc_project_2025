@@ -62,4 +62,17 @@ public interface IModeGrain
     // - ValidatePermissionsAsync(string userId, ModeAction action)
     // - ValidateStateAsync(bool deep)
     // - ValidateCompatibilityAsync(string sourceModeId, string targetModeId)
+
+    /// <summary>
+    /// Internal methods for thread-safe timer operations.
+    /// These methods ensure timer callbacks execute within the grain execution context.
+    /// </summary>
+    [Alias("AIChat.Orleans.Contracts.IModeGrain.InternalCleanupCachesAsync")]
+    Task InternalCleanupCachesAsync();
+
+    [Alias("AIChat.Orleans.Contracts.IModeGrain.InternalCollectMetricsAsync")]
+    Task InternalCollectMetricsAsync();
+
+    [Alias("AIChat.Orleans.Contracts.IModeGrain.InternalProcessScheduledTransitionsAsync")]
+    Task InternalProcessScheduledTransitionsAsync();
 }
