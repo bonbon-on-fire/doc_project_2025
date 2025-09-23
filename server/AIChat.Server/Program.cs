@@ -13,6 +13,7 @@ using AIChat.Server.Logging;
 using AIChat.Server.Middleware;
 using AIChat.Server.Models;
 using AIChat.Server.Services;
+using AIChat.Server.Services.EventStore;
 using AIChat.Server.Services.TestMode;
 using AIChat.Server.Storage;
 using AIChat.Server.Storage.Sqlite;
@@ -123,6 +124,15 @@ builder.Services.AddScoped<IModeStorage, SqliteModeStorage>();
 
 // Register TaskManagerService (using improved version)
 builder.Services.AddScoped<ITaskManagerService, ImprovedTaskManagerService>();
+
+// Register EventStore and Snapshot Management services (Phase 2 - ORL-ST-P2-009/010)
+// EventStore must be registered before SnapshotStore due to dependencies
+builder.Services.AddEventStore();
+builder.Services.AddSnapshotStore();
+
+// Add health checks for EventStore and SnapshotStore
+builder.Services.AddEventStoreHealthChecks();
+builder.Services.AddSnapshotStoreHealthChecks();
 
 // Add SignalR with configuration-based settings
 builder.Services.AddSignalR(hubOptions =>
