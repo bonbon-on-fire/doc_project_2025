@@ -45,6 +45,12 @@
     <PackageReference Include="Microsoft.FeatureManagement.AspNetCore" Version="3.0.0" />
   </ItemGroup>
 
+  <!-- Prometheus Metrics -->
+  <ItemGroup>
+    <PackageReference Include="prometheus-net" Version="8.2.1" />
+    <PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1" />
+  </ItemGroup>
+
   <!-- OpenTelemetry for distributed tracing -->
   <ItemGroup>
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.10.0" />

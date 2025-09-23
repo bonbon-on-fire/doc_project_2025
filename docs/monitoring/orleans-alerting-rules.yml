@@ -1,0 +1,185 @@
+groups:
+  - name: orleans_grains
+    interval: 30s
+    rules:
+      - alert: HighGrainErrorRate
+        expr: |
+          (
+            rate(orleans_grain_operation_errors_total[5m]) /
+            rate(orleans_grain_operation_duration_seconds_count[5m])
+          ) * 100 > 5
+        for: 2m
+        labels:
+          severity: warning
+          component: orleans
+          grain_type: "{{ $labels.grain_type }}"
+        annotations:
+          summary: "High error rate detected for {{ $labels.grain_type }}"
+          description: |
+            Grain {{ $labels.grain_type }} has error rate of {{ $value | humanizePercentage }}
+            over the last 5 minutes. This may indicate issues with grain operations.
+          runbook_url: "https://docs.example.com/runbooks/orleans/high-error-rate"
+
+      - alert: SlowGrainOperations
+        expr: |
+          histogram_quantile(0.95,
+            rate(orleans_grain_operation_duration_seconds_bucket[2m])
+          ) > 1.0
+        for: 2m
+        labels:
+          severity: warning
+          component: orleans
+          grain_type: "{{ $labels.grain_type }}"
+          operation_type: "{{ $labels.operation_type }}"
+        annotations:
+          summary: "Slow operations detected for {{ $labels.grain_type }}.{{ $labels.operation_type }}"
+          description: |
+            P95 latency for {{ $labels.grain_type }}.{{ $labels.operation_type }} is {{ $value }}s
+            over the last 2 minutes. This may indicate performance degradation.
+          runbook_url: "https://docs.example.com/runbooks/orleans/slow-operations"
+
+      - alert: HighGrainStateSize
+        expr: |
+          orleans_grain_state_size_bytes > 52428800  # 50MB
+        for: 5m
+        labels:
+          severity: warning
+          component: orleans
+          grain_type: "{{ $labels.grain_type }}"
+          grain_id: "{{ $labels.grain_id }}"
+        annotations:
+          summary: "Large grain state detected for {{ $labels.grain_type }}"
+          description: |
+            Grain {{ $labels.grain_type }}:{{ $labels.grain_id }} has state size of
+            {{ $value | humanizeBytes }}. This may indicate memory issues or data growth.
+          runbook_url: "https://docs.example.com/runbooks/orleans/large-state"
+
+      - alert: HighGrainActivationRate
+        expr: |
+          rate(orleans_grain_activations_total[5m]) > 2.0  # 2 activations per second
+        for: 3m
+        labels:
+          severity: warning
+          component: orleans
+          grain_type: "{{ $labels.grain_type }}"
+        annotations:
+          summary: "High activation rate detected for {{ $labels.grain_type }}"
+          description: |
+            {{ $labels.grain_type }} is activating at {{ $value }} grains per second
+            over the last 5 minutes. This may indicate grain hotspotting or high load.
+          runbook_url: "https://docs.example.com/runbooks/orleans/high-activation-rate"
+
+      - alert: LowOperationSuccessRate
+        expr: |
+          (
+            (
+              rate(orleans_grain_operation_duration_seconds_count[5m]) -
+              rate(orleans_grain_operation_errors_total[5m])
+            ) /
+            rate(orleans_grain_operation_duration_seconds_count[5m])
+          ) * 100 < 95
+        for: 5m
+        labels:
+          severity: critical
+          component: orleans
+          grain_type: "{{ $labels.grain_type }}"
+        annotations:
+          summary: "Low success rate for {{ $labels.grain_type }} operations"
+          description: |
+            {{ $labels.grain_type }} has success rate of {{ $value | humanizePercentage }}
+            over the last 5 minutes. This indicates significant operational issues.
+          runbook_url: "https://docs.example.com/runbooks/orleans/low-success-rate"
+
+      - alert: GrainMetricsDown
+        expr: |
+          up{job=~".*orleans.*"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: monitoring
+        annotations:
+          summary: "Orleans metrics endpoint is down"
+          description: |
+            The Orleans metrics endpoint {{ $labels.instance }} has been down for more than 1 minute.
+            Grain monitoring is not available.
+          runbook_url: "https://docs.example.com/runbooks/orleans/metrics-down"
+
+      - alert: NoGrainActivity
+        expr: |
+          rate(orleans_grain_operation_duration_seconds_count[10m]) == 0
+        for: 10m
+        labels:
+          severity: warning
+          component: orleans
+        annotations:
+          summary: "No grain activity detected"
+          description: |
+            No grain operations have been recorded for the last 10 minutes.
+            This may indicate system issues or complete lack of traffic.
+          runbook_url: "https://docs.example.com/runbooks/orleans/no-activity"
+
+  - name: orleans_memory
+    interval: 60s
+    rules:
+      - alert: TotalMemoryUsageHigh
+        expr: |
+          sum(orleans_grain_state_size_bytes) / (1024 * 1024 * 1024) > 1.0  # 1GB total
+        for: 5m
+        labels:
+          severity: warning
+          component: orleans
+        annotations:
+          summary: "High total memory usage by Orleans grains"
+          description: |
+            Total memory usage by all Orleans grains is {{ $value | humanize }}GB.
+            This may indicate memory pressure or excessive state size.
+          runbook_url: "https://docs.example.com/runbooks/orleans/high-memory"
+
+      - alert: MemoryGrowthRate
+        expr: |
+          increase(orleans_grain_state_size_bytes[1h]) / (1024 * 1024) > 100  # 100MB/hour growth
+        for: 15m
+        labels:
+          severity: warning
+          component: orleans
+          grain_type: "{{ $labels.grain_type }}"
+        annotations:
+          summary: "Rapid memory growth for {{ $labels.grain_type }}"
+          description: |
+            {{ $labels.grain_type }} memory usage increased by {{ $value | humanize }}MB
+            in the last hour. This may indicate a memory leak or data accumulation issue.
+          runbook_url: "https://docs.example.com/runbooks/orleans/memory-growth"
+
+  - name: orleans_user_connections
+    interval: 30s
+    rules:
+      - alert: HighUserConnections
+        expr: |
+          orleans_grain_active_connections{grain_type="UserGrain"} > 1000
+        for: 2m
+        labels:
+          severity: warning
+          component: orleans
+        annotations:
+          summary: "High number of active user connections"
+          description: |
+            There are {{ $value }} active user connections. This may indicate
+            high load or connection management issues.
+          runbook_url: "https://docs.example.com/runbooks/orleans/high-connections"
+
+      - alert: ConnectionImbalance
+        expr: |
+          (
+            max(orleans_grain_active_connections{grain_type="UserGrain"}) -
+            min(orleans_grain_active_connections{grain_type="UserGrain"})
+          ) > 100
+        for: 5m
+        labels:
+          severity: info
+          component: orleans
+        annotations:
+          summary: "Connection imbalance across UserGrains"
+          description: |
+            Connection distribution across UserGrains is imbalanced with a
+            difference of {{ $value }} connections between max and min.
+          runbook_url: "https://docs.example.com/runbooks/orleans/connection-imbalance"

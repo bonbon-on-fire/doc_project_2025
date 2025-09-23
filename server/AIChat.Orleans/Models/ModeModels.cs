@@ -902,67 +902,82 @@ public sealed class ToolValidationResult
 /// <summary>
 /// Result of prompt validation.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.PromptValidationResult")]
 public sealed class PromptValidationResult
 {
     /// <summary>
     /// Whether the prompt is valid.
     /// </summary>
+    [Id(0)]
     public required bool IsValid { get; init; }
 
     /// <summary>
     /// Character count of the prompt.
     /// </summary>
+    [Id(1)]
     public required int CharacterCount { get; init; }
 
     /// <summary>
     /// Estimated token count.
     /// </summary>
+    [Id(2)]
     public int? EstimatedTokenCount { get; init; }
 
     /// <summary>
     /// Validation issues found.
     /// </summary>
+    [Id(3)]
     public List<PromptIssue> Issues { get; init; } = [];
 
     /// <summary>
     /// Suggested improvements.
     /// </summary>
+    [Id(4)]
     public List<string> Suggestions { get; init; } = [];
 
     /// <summary>
     /// Content policy violations if any.
     /// </summary>
+    [Id(5)]
     public List<string> PolicyViolations { get; init; } = [];
 }
 
 /// <summary>
 /// Result of permission validation.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.PermissionValidationResult")]
 public sealed class PermissionValidationResult
 {
     /// <summary>
     /// Whether the user has permission.
     /// </summary>
+    [Id(0)]
     public required bool HasPermission { get; init; }
 
     /// <summary>
     /// Action that was validated.
     /// </summary>
+    [Id(1)]
     public required ModeAction Action { get; init; }
 
     /// <summary>
     /// Reason if permission is denied.
     /// </summary>
+    [Id(2)]
     public string? DenialReason { get; init; }
 
     /// <summary>
     /// Required permissions that are missing.
     /// </summary>
+    [Id(3)]
     public List<string> MissingPermissions { get; init; } = [];
 
     /// <summary>
     /// User's current permissions.
     /// </summary>
+    [Id(4)]
     public List<string> CurrentPermissions { get; init; } = [];
 }
 
@@ -1052,154 +1067,211 @@ public sealed class CompatibilityValidationResult
 /// <summary>
 /// Status of a mode.
 /// </summary>
+[GenerateSerializer]
 public enum ModeStatus
 {
     /// <summary>Mode is active and available</summary>
+    [Id(0)]
     Active,
     /// <summary>Mode is inactive but available</summary>
+    [Id(1)]
     Inactive,
     /// <summary>Mode is archived and read-only</summary>
+    [Id(2)]
     Archived,
     /// <summary>Mode is being initialized</summary>
+    [Id(3)]
     Initializing,
     /// <summary>Mode is in error state</summary>
+    [Id(4)]
     Error,
     /// <summary>Mode is under maintenance</summary>
+    [Id(5)]
     Maintenance
 }
 
 /// <summary>
 /// Type of mode change.
 /// </summary>
+[GenerateSerializer]
 public enum ModeChangeType
 {
     /// <summary>Mode was created</summary>
+    [Id(0)]
     Created,
     /// <summary>Configuration was updated</summary>
+    [Id(1)]
     ConfigurationUpdated,
     /// <summary>Metadata was updated</summary>
+    [Id(2)]
     MetadataUpdated,
     /// <summary>Status was changed</summary>
+    [Id(3)]
     StatusChanged,
     /// <summary>Mode was archived</summary>
+    [Id(4)]
     Archived,
     /// <summary>Mode was reset</summary>
+    [Id(5)]
     Reset,
     /// <summary>Transition occurred</summary>
+    [Id(6)]
     Transitioned,
     /// <summary>Mode was rolled back</summary>
+    [Id(7)]
     RolledBack,
     /// <summary>Tools were updated</summary>
+    [Id(8)]
     ToolsUpdated,
     /// <summary>Prompt was updated</summary>
+    [Id(9)]
     PromptUpdated
 }
 
 /// <summary>
 /// Actions that can be performed on modes.
 /// </summary>
+[GenerateSerializer]
 public enum ModeAction
 {
     /// <summary>View mode details</summary>
+    [Id(0)]
     View,
     /// <summary>Create new mode</summary>
+    [Id(1)]
     Create,
     /// <summary>Update mode configuration</summary>
+    [Id(2)]
     Update,
     /// <summary>Delete mode</summary>
+    [Id(3)]
     Delete,
     /// <summary>Archive mode</summary>
+    [Id(4)]
     Archive,
     /// <summary>Transition to mode</summary>
+    [Id(5)]
     Transition,
     /// <summary>Reset mode</summary>
+    [Id(6)]
     Reset,
     /// <summary>Export mode configuration</summary>
+    [Id(7)]
     Export,
     /// <summary>Import mode configuration</summary>
+    [Id(8)]
     Import
 }
 
 /// <summary>
 /// Category of validation rule.
 /// </summary>
+[GenerateSerializer]
 public enum ValidationRuleCategory
 {
     /// <summary>Configuration validation</summary>
+    [Id(0)]
     Configuration,
     /// <summary>Security validation</summary>
+    [Id(1)]
     Security,
     /// <summary>Performance validation</summary>
+    [Id(2)]
     Performance,
     /// <summary>Compatibility validation</summary>
+    [Id(3)]
     Compatibility,
     /// <summary>Content policy validation</summary>
+    [Id(4)]
     ContentPolicy,
     /// <summary>Business rule validation</summary>
+    [Id(5)]
     BusinessRule
 }
 
 /// <summary>
 /// Severity of validation issues.
 /// </summary>
+[GenerateSerializer]
 public enum ValidationSeverity
 {
     /// <summary>Informational only</summary>
+    [Id(0)]
     Info,
     /// <summary>Warning that should be addressed</summary>
+    [Id(1)]
     Warning,
     /// <summary>Error that must be fixed</summary>
+    [Id(2)]
     Error,
     /// <summary>Critical issue that blocks operation</summary>
+    [Id(3)]
     Critical
 }
 
 /// <summary>
 /// Overall validation status.
 /// </summary>
+[GenerateSerializer]
 public enum ValidationStatus
 {
     /// <summary>Validation passed</summary>
+    [Id(0)]
     Valid,
     /// <summary>Validation passed with warnings</summary>
+    [Id(1)]
     ValidWithWarnings,
     /// <summary>Validation failed</summary>
+    [Id(2)]
     Invalid,
     /// <summary>Validation could not be completed</summary>
+    [Id(3)]
     Unknown
 }
 
 /// <summary>
 /// Response format preference.
 /// </summary>
+[GenerateSerializer]
 public enum ResponseFormat
 {
     /// <summary>Plain text responses</summary>
+    [Id(0)]
     Text,
     /// <summary>Markdown formatted responses</summary>
+    [Id(1)]
     Markdown,
     /// <summary>HTML formatted responses</summary>
+    [Id(2)]
     Html,
     /// <summary>JSON structured responses</summary>
+    [Id(3)]
     Json,
     /// <summary>Code-optimized responses</summary>
+    [Id(4)]
     Code
 }
 
 /// <summary>
 /// Content filtering level.
 /// </summary>
+[GenerateSerializer]
 public enum ContentFilterLevel
 {
     /// <summary>No filtering</summary>
+    [Id(0)]
     None,
     /// <summary>Basic profanity filter</summary>
+    [Id(1)]
     Basic,
     /// <summary>Moderate content filtering</summary>
+    [Id(2)]
     Moderate,
     /// <summary>Strict content filtering</summary>
+    [Id(3)]
     Strict,
     /// <summary>Custom filtering rules</summary>
+    [Id(4)]
     Custom
 }
 
@@ -1300,26 +1372,32 @@ public sealed class ConstraintViolation
 /// <summary>
 /// Represents a prompt validation issue.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.PromptIssue")]
 public sealed class PromptIssue
 {
     /// <summary>
     /// Issue type.
     /// </summary>
+    [Id(0)]
     public required string Type { get; init; }
 
     /// <summary>
     /// Issue description.
     /// </summary>
+    [Id(1)]
     public required string Description { get; init; }
 
     /// <summary>
     /// Position in prompt where issue occurs.
     /// </summary>
+    [Id(2)]
     public int? Position { get; init; }
 
     /// <summary>
     /// Severity of the issue.
     /// </summary>
+    [Id(3)]
     public ValidationSeverity Severity { get; init; }
 }
 
@@ -1513,15 +1591,20 @@ public sealed class RecurrencePattern
 /// <summary>
 /// Type of recurrence pattern.
 /// </summary>
+[GenerateSerializer]
 public enum RecurrenceType
 {
     /// <summary>Daily recurrence</summary>
+    [Id(0)]
     Daily,
     /// <summary>Weekly recurrence</summary>
+    [Id(1)]
     Weekly,
     /// <summary>Monthly recurrence</summary>
+    [Id(2)]
     Monthly,
     /// <summary>Custom recurrence pattern</summary>
+    [Id(3)]
     Custom
 }
 

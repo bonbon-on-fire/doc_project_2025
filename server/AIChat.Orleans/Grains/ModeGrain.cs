@@ -24,7 +24,7 @@ public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDi
     private readonly ILogger<ModeGrain> _logger;
     private readonly IModeCacheManager _cacheManager;
     // private readonly OrleansGrainConfiguration _configuration;
-    // private readonly IOrleansMetricsCollector _metricsCollector;
+    private readonly IOrleansMetricsCollector _metricsCollector;
 
     private IGrainTimer? _metricsTimer;
     private IGrainTimer? _cacheEvictionTimer;
@@ -66,7 +66,7 @@ public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDi
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _cacheManager = cacheManager ?? throw new ArgumentNullException(nameof(cacheManager));
         // _configuration = configuration?.Value ?? throw new ArgumentNullException(nameof(configuration));
-        // _metricsCollector = metricsCollector ?? throw new ArgumentNullException(nameof(metricsCollector));
+        _metricsCollector = metricsCollector ?? throw new ArgumentNullException(nameof(metricsCollector));
     }
 
     #region Orleans Grain Lifecycle
@@ -78,6 +78,7 @@ public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDi
     public override async Task OnActivateAsync(CancellationToken cancellationToken)
     {
         using var activity = StartActivity(nameof(OnActivateAsync));
+        var activationStart = DateTime.UtcNow;
 
         try
         {
@@ -95,6 +96,14 @@ public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDi
 
             // Set up periodic timers
             SetupTimers();
+
+            // Record metrics for grain activation
+            var activationTime = (DateTime.UtcNow - activationStart).TotalMilliseconds;
+            await _metricsCollector.RecordGrainActivationAsync(
+                "ModeGrain",
+                this.GetPrimaryKeyString(),
+                activationTime
+            );
 
             _logger.LogInformation(
                 "ModeGrain {GrainId} activated. IsInitialized: {IsInitialized}, Version: {Version}",
@@ -130,6 +139,14 @@ public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDi
 
             // Perform final state save if there are pending changes
             await WriteStateAsync().ConfigureAwait(false);
+
+            // Record metrics for grain deactivation
+            var lifetimeMinutes = (DateTime.UtcNow - State.CreatedAtUtc).TotalMinutes;
+            await _metricsCollector.RecordGrainDeactivationAsync(
+                "ModeGrain",
+                this.GetPrimaryKeyString(),
+                lifetimeMinutes
+            );
 
             _logger.LogInformation(
                 "ModeGrain {GrainId} deactivated. Reason: {Reason}, FinalVersion: {Version}",
@@ -237,8 +254,13 @@ public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDi
                     request.IsSystem
                 );
 
-                // TODO: Collect metrics when methods are available
-                // _metricsCollector.RecordModeInitialized(modeId, request.IsSystem);
+                // Record successful initialization metrics
+                await _metricsCollector.RecordGrainOperationAsync(
+                    "ModeGrain",
+                    "InitializeMode",
+                    stopwatch.Elapsed.TotalMilliseconds,
+                    true
+                );
 
                 return modeState;
             }
@@ -451,8 +473,13 @@ public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDi
                     reason ?? "Not specified"
                 );
 
-                // TODO: Collect metrics when methods are available
-                // _metricsCollector.RecordModeArchived(this.GetPrimaryKeyString());
+                // Record successful archive operation metrics
+                await _metricsCollector.RecordGrainOperationAsync(
+                    "ModeGrain",
+                    "ArchiveMode",
+                    stopwatch.Elapsed.TotalMilliseconds,
+                    true
+                );
             }
             catch (Exception ex)
             {
@@ -3950,13 +3977,15 @@ public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDi
                 State.Performance.CacheHitRatePercent = (double)State.Metadata.CacheHits / totalCacheRequests * 100.0;
             }
 
-            // TODO: Report metrics when methods are available
-            // _metricsCollector.RecordModeGrainMetrics(
-            //     this.GetPrimaryKeyString(),
-            //     State.Performance.SuccessfulOperations,
-            //     State.Performance.FailedOperations,
-            //     State.Performance.CacheHitRatePercent
-            // );
+            // Report grain state metrics to central collector
+            var stateSize = System.Text.Json.JsonSerializer.Serialize(State).Length;
+            await _metricsCollector.RecordGrainStateMetricsAsync(
+                "ModeGrain",
+                this.GetPrimaryKeyString(),
+                stateSize,
+                0, // ModeGrain doesn't track connections like UserGrain
+                (int)State.Performance.SuccessfulOperations + (int)State.Performance.FailedOperations
+            );
 
             await Task.CompletedTask;
         }

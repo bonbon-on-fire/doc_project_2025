@@ -25,6 +25,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.FeatureManagement;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Prometheus;
 using Serilog;
 using Serilog.Formatting.Compact;
 
@@ -286,9 +287,21 @@ if (!orleansDisabled)
         _ = builder.Services.AddOrleansClient(builder.Configuration, builder.Environment);
 
         // Register Orleans metrics collector (needed for client-side operations)
-        _ = builder.Services.AddSingleton<
-            AIChat.Orleans.Metrics.IOrleansMetricsCollector,
-            AIChat.Orleans.Metrics.OrleansMetricsCollector
+        // First register the base collector
+        builder.Services.AddSingleton<AIChat.Orleans.Metrics.OrleansMetricsCollector>();
+
+        // Then wrap it with resilient decorator for circuit breaker protection
+        builder.Services.AddSingleton<AIChat.Orleans.Metrics.IOrleansMetricsCollector>(sp =>
+        {
+            var baseCollector = sp.GetRequiredService<AIChat.Orleans.Metrics.OrleansMetricsCollector>();
+            var logger = sp.GetRequiredService<ILogger<AIChat.Server.Services.Metrics.ResilientMetricsCollectorDecorator>>();
+            return new AIChat.Server.Services.Metrics.ResilientMetricsCollectorDecorator(baseCollector, logger);
+        });
+
+        // Register Prometheus metrics exporter for Orleans metrics
+        builder.Services.AddSingleton<
+            AIChat.Server.Services.Metrics.IPrometheusMetricsExporter,
+            AIChat.Server.Services.Metrics.PrometheusMetricsExporter
         >();
 
         Log.Information("Orleans configured successfully");
@@ -728,6 +741,9 @@ _ = Task.Run(async () =>
 
 app.UseCors("AllowSvelteApp");
 
+// Add Prometheus metrics middleware
+app.UseHttpMetrics();
+
 // Add Protocol Negotiation Middleware for SignalR/SSE selection
 app.UseProtocolNegotiation();
 
@@ -742,6 +758,9 @@ if (!app.Environment.IsEnvironment("Test"))
 
 app.MapControllers();
 app.MapHub<ChatHub>("/api/chat-hub");
+
+// Map Prometheus metrics endpoint explicitly
+app.MapMetrics("/metrics");
 
 // Add Server-Sent Events endpoint
 app.MapServerSentEvents("/api/chat-sse");
