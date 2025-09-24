@@ -1,12 +1,12 @@
 # Agent Mode Deployment and Loading Flow
 
 ## Overview
-This document explains how Agent Cards (modes) are loaded and connected to the ChatService in the deployed application.
+This document explains how Agent Cards (modes) are loaded and connected to the **Orleans ModeGrain** in the deployed application.
 
 ## Architecture Flow
 
 ```
-agents/ (source) → Build → bin/agents/ → ModeService → ChatService
+agents/ (source) → Build → bin/agents/ → ModeService → Orleans ModeGrain
                                               ↓
                                          ToolingService
 ```
@@ -38,7 +38,10 @@ This ensures agent files are:
 ### Service Registration (Program.cs)
 ```csharp
 builder.Services.AddSingleton<IModeService, ModeService>();
-builder.Services.AddScoped<IChatService, ChatService>();
+// Orleans ModeGrain integration
+builder.Services.AddOrleans(siloBuilder => {
+    siloBuilder.AddGrainService<ModeGrain>();
+});
 builder.Services.AddScoped<IToolingService, ToolingService>();
 ```
 
@@ -56,11 +59,12 @@ builder.Services.AddScoped<IToolingService, ToolingService>();
    - Parses using `AgentCardParser`
    - Caches in memory as `SystemModeConfig` objects
 
-2. **ChatService Integration**
-   - Receives `IModeService` via dependency injection
+2. **Orleans ModeGrain Integration**
+   - Orleans ModeGrain receives mode configurations via grain state
    - Uses modes for:
-     - System prompts: `_modeService.GetModeSystemPromptAsync()`
-     - Default models: `_modeService.GetModeDefaultModelAsync()`
+     - System prompts: `ModeGrain.GetModeSystemPromptAsync()`
+     - Default models: `ModeGrain.GetModeDefaultModelAsync()`
+     - Dynamic prompt generation with template system and caching
 
 3. **ToolingService Integration**
    - Also receives `IModeService` via DI
@@ -75,11 +79,12 @@ builder.Services.AddScoped<IToolingService, ToolingService>();
 
 ### When Creating a Chat
 1. User selects a mode (e.g., "coding", "research")
-2. ChatService receives mode ID in request
-3. Mode affects:
-   - **System Prompt**: Added to conversation context
-   - **Available Tools**: Filtered based on mode configuration
+2. Orleans ChatGrain receives mode ID in request and routes to ModeGrain
+3. Mode affects via Orleans ModeGrain:
+   - **System Prompt**: Generated dynamically with template system and cached
+   - **Available Tools**: Filtered based on mode configuration with Orleans caching
    - **Default Model**: Uses mode's preferred model if specified
+   - **State Persistence**: Mode configuration stored in Orleans grain state
 
 ### Tool Filtering Example
 Agent Card defines:
@@ -103,7 +108,9 @@ Result: Only web-search and TaskManager tools are available in that chat session
 
 ✅ **Service Dependencies**
 - ModeService registered as Singleton
-- ChatService and ToolingService have IModeService injected
+- Orleans ModeGrain configured with grain state persistence
+- Orleans ChatGrain integrated with ModeGrain for mode operations
+- ToolingService has Orleans routing for mode-based tool filtering
 - AgentCardParser available for parsing
 
 ## 5. Troubleshooting
@@ -141,7 +148,8 @@ bin/Release/net9.0/
 The key issue that was fixed: Agent Card files were not being included in the build output. The solution was to add them as Content items in the `.csproj` file with appropriate copy instructions. Now agents are:
 
 1. **Included in builds** automatically
-2. **Loaded at startup** by ModeService
-3. **Applied to chats** through ChatService
-4. **Filter tools** through ToolingService
+2. **Loaded at startup** by ModeService and integrated with Orleans ModeGrain
+3. **Applied to chats** through Orleans ChatGrain and ModeGrain integration
+4. **Filter tools** through ToolingService with Orleans-based mode routing
 5. **Available in deployment** without manual copying
+6. **Cached efficiently** through Orleans ModeGrain multi-layer caching system

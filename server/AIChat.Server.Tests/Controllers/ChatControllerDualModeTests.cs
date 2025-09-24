@@ -281,17 +281,19 @@ public class ChatControllerDualModeTests
             .Setup(x => x.CreateChatAsync(It.IsAny<AIChat.Server.Services.CreateChatRequest>()))
             .ReturnsAsync(chatResult);
 
-        // Setup the router to execute the direct service operation
+        // Setup the router to execute the direct service operation (5-parameter version with chatId)
         _ = _mockRouter
             .Setup(x => x.ExecuteAsync<ActionResult<ChatDto>>(
                 It.IsAny<Func<AIChat.Orleans.Contracts.IChatGrain, Task<ActionResult<ChatDto>>>>(),
                 It.IsAny<Func<IChatService, Task<ActionResult<ChatDto>>>>(),
                 It.IsAny<string>(),
+                It.IsAny<string>(),  // chatId parameter
                 It.IsAny<CancellationToken>()))
             .Returns(async (
                 Func<AIChat.Orleans.Contracts.IChatGrain, Task<ActionResult<ChatDto>>> orleansOp,
                 Func<IChatService, Task<ActionResult<ChatDto>>> directOp,
                 string operationName,
+                string chatId,  // chatId parameter
                 CancellationToken ct) =>
                     await directOp(_mockChatService.Object));
 
