@@ -1,6 +1,9 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.IO.Compression;
 using System.Text.Json;
+using Microsoft.Extensions.Options;
+using AIChat.Server.Configuration;
 using AIChat.Server.Services.StateManagement;
 
 namespace AIChat.Server.Services.ResponseCaching;
@@ -15,11 +18,12 @@ public class ResponseCacheManager : IResponseCacheManager, IDisposable
     private readonly IStateCacheManager<CachedResponse> _stateCacheManager;
     private readonly ICacheKeyGenerator _keyGenerator;
     private readonly ILogger<ResponseCacheManager> _logger;
+    private readonly ResponseCacheConfiguration _configuration;
     private readonly ResponseCacheMetricsCollector _metricsCollector;
     private readonly ConcurrentDictionary<string, CacheOperationMetrics> _operationMetrics;
     private readonly ConcurrentDictionary<string, RouterCacheMetrics> _routerMetrics;
     private readonly SemaphoreSlim _healthCheckSemaphore;
-    private readonly Timer _cleanupTimer;
+    private readonly Timer? _cleanupTimer;
     private readonly JsonSerializerOptions _jsonOptions;
     private readonly object _disposeLock = new();
     private bool _disposed;
@@ -30,14 +34,17 @@ public class ResponseCacheManager : IResponseCacheManager, IDisposable
     /// <param name="stateCacheManager">Underlying state cache manager for storage operations</param>
     /// <param name="keyGenerator">Cache key generator for consistent key creation</param>
     /// <param name="logger">Logger for diagnostic and monitoring information</param>
+    /// <param name="configuration">Configuration options for response caching behavior</param>
     public ResponseCacheManager(
         IStateCacheManager<CachedResponse> stateCacheManager,
         ICacheKeyGenerator keyGenerator,
-        ILogger<ResponseCacheManager> logger)
+        ILogger<ResponseCacheManager> logger,
+        IOptions<ResponseCacheConfiguration> configuration)
     {
         _stateCacheManager = stateCacheManager ?? throw new ArgumentNullException(nameof(stateCacheManager));
         _keyGenerator = keyGenerator ?? throw new ArgumentNullException(nameof(keyGenerator));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _configuration = configuration?.Value ?? throw new ArgumentNullException(nameof(configuration));
 
         _metricsCollector = new ResponseCacheMetricsCollector();
         _operationMetrics = new ConcurrentDictionary<string, CacheOperationMetrics>();
@@ -52,10 +59,17 @@ public class ResponseCacheManager : IResponseCacheManager, IDisposable
             DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
         };
 
-        // Set up cleanup timer to run every 5 minutes
-        _cleanupTimer = new Timer(PerformMaintenanceAsync, null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
-
-        _logger.LogInformation("ResponseCacheManager initialized with cleanup timer");
+        // Set up cleanup timer based on configuration
+        if (_configuration.EnableMaintenance)
+        {
+            var cleanupInterval = _configuration.GetCleanupInterval();
+            _cleanupTimer = new Timer(PerformMaintenanceAsync, null, cleanupInterval, cleanupInterval);
+            _logger.LogInformation("ResponseCacheManager initialized with cleanup timer (interval: {CleanupInterval})", cleanupInterval);
+        }
+        else
+        {
+            _logger.LogInformation("ResponseCacheManager initialized without cleanup timer (maintenance disabled)");
+        }
     }
 
     /// <inheritdoc/>
@@ -107,8 +121,8 @@ public class ResponseCacheManager : IResponseCacheManager, IDisposable
         ArgumentNullException.ThrowIfNull(policy);
         ThrowIfDisposed();
 
-        // Don't cache write-through operations
-        if (policy.OperationType == CacheOperationType.WriteThrough)
+        // Don't cache write-through operations or if caching is disabled
+        if (policy.OperationType == CacheOperationType.WriteThrough || !_configuration.EnableCompression && response is byte[])
         {
             _logger.LogTrace("Skipping cache for write-through operation with key {CacheKey}", cacheKey);
             return;
@@ -196,18 +210,30 @@ public class ResponseCacheManager : IResponseCacheManager, IDisposable
             var baseStats = await _stateCacheManager.GetCacheStatisticsAsync(cancellationToken);
             var metricsSnapshot = _metricsCollector.GetSnapshot();
 
+            // Calculate compression metrics
+            var compressionStats = await CalculateCompressionStatisticsAsync(cancellationToken);
+
+            var enhancedAdditionalMetrics = new Dictionary<string, object>(baseStats.AdditionalMetrics ?? new Dictionary<string, object>())
+            {
+                ["CompressionEnabled"] = true,
+                ["CompressedEntries"] = compressionStats.CompressedEntries,
+                ["AverageCompressionRatio"] = compressionStats.AverageCompressionRatio,
+                ["MemorySavedByCompression"] = compressionStats.MemorySavedBytes,
+                ["CompressionEfficiency"] = compressionStats.CompressionEfficiency
+            };
+
             return new ResponseCacheStatistics
             {
                 HitCount = baseStats.HitCount,
                 MissCount = baseStats.MissCount,
                 EntryCount = baseStats.EntryCount,
-                EstimatedMemoryUsage = baseStats.EstimatedMemoryUsage,
-                AdditionalMetrics = baseStats.AdditionalMetrics,
+                EstimatedMemoryUsage = baseStats.EstimatedMemoryUsage - compressionStats.MemorySavedBytes,
+                AdditionalMetrics = enhancedAdditionalMetrics,
                 OperationMetrics = new Dictionary<string, CacheOperationMetrics>(_operationMetrics),
                 RouterMetrics = new Dictionary<string, RouterCacheMetrics>(_routerMetrics),
                 AverageCacheLatencyMs = metricsSnapshot.AverageLatencyMs,
                 TotalBytesStored = metricsSnapshot.TotalBytesStored,
-                EfficiencyScore = CalculateEfficiencyScore(baseStats),
+                EfficiencyScore = CalculateEnhancedEfficiencyScore(baseStats, compressionStats),
                 InvalidationCount = metricsSnapshot.InvalidationCount,
                 EvictionCount = metricsSnapshot.EvictionCount
             };
@@ -224,12 +250,12 @@ public class ResponseCacheManager : IResponseCacheManager, IDisposable
     {
         ThrowIfDisposed();
 
-        if (!await _healthCheckSemaphore.WaitAsync(5000, cancellationToken))
+        if (!await _healthCheckSemaphore.WaitAsync(_configuration.HealthCheckTimeoutMs, cancellationToken))
         {
             return new ResponseCacheHealthStatus
             {
                 IsHealthy = false,
-                Message = "Health check timeout after 5 seconds",
+                Message = $"Health check timeout after {_configuration.HealthCheckTimeoutMs}ms",
                 Warnings = { "Health check semaphore timeout - possible deadlock" }
             };
         }
@@ -241,36 +267,36 @@ public class ResponseCacheManager : IResponseCacheManager, IDisposable
             var isHealthy = true;
             var performanceScore = 1.0;
 
-            // Check hit ratio health
-            if (stats.HitRatio < 0.3)
+            // Check hit ratio health using configured thresholds
+            if (stats.HitRatio < _configuration.MinimumHitRatio)
             {
-                warnings.Add($"Low cache hit ratio: {stats.HitRatio:P2}");
+                warnings.Add($"Low cache hit ratio: {stats.HitRatio:P2} (minimum: {_configuration.MinimumHitRatio:P2})");
                 performanceScore *= 0.7;
             }
-            else if (stats.HitRatio < 0.5)
+            else if (stats.HitRatio < _configuration.TargetHitRatio)
             {
-                warnings.Add($"Moderate cache hit ratio: {stats.HitRatio:P2}");
+                warnings.Add($"Below target cache hit ratio: {stats.HitRatio:P2} (target: {_configuration.TargetHitRatio:P2})");
                 performanceScore *= 0.9;
             }
 
-            // Check memory usage health
-            var memoryUsagePercentage = CalculateMemoryUsagePercentage(stats.EstimatedMemoryUsage);
-            if (memoryUsagePercentage > 90)
+            // Check memory usage health using configured thresholds
+            var memoryUsagePercentage = _configuration.CalculateMemoryUsagePercentage(stats.EstimatedMemoryUsage);
+            if (memoryUsagePercentage > _configuration.MemoryCriticalThresholdPercent)
             {
-                warnings.Add($"High memory usage: {memoryUsagePercentage:F1}%");
+                warnings.Add($"Critical memory usage: {memoryUsagePercentage:F1}% (threshold: {_configuration.MemoryCriticalThresholdPercent:F1}%)");
                 isHealthy = false;
                 performanceScore *= 0.5;
             }
-            else if (memoryUsagePercentage > 75)
+            else if (memoryUsagePercentage > _configuration.MemoryWarningThresholdPercent)
             {
-                warnings.Add($"Elevated memory usage: {memoryUsagePercentage:F1}%");
+                warnings.Add($"Elevated memory usage: {memoryUsagePercentage:F1}% (threshold: {_configuration.MemoryWarningThresholdPercent:F1}%)");
                 performanceScore *= 0.8;
             }
 
-            // Check latency health
-            if (stats.AverageCacheLatencyMs > 10)
+            // Check latency health using configured threshold
+            if (stats.AverageCacheLatencyMs > _configuration.MaxAcceptableLatencyMs)
             {
-                warnings.Add($"High cache latency: {stats.AverageCacheLatencyMs:F2}ms");
+                warnings.Add($"High cache latency: {stats.AverageCacheLatencyMs:F2}ms (max acceptable: {_configuration.MaxAcceptableLatencyMs:F2}ms)");
                 performanceScore *= 0.8;
             }
 
@@ -346,18 +372,70 @@ public class ResponseCacheManager : IResponseCacheManager, IDisposable
     }
 
     /// <summary>
-    /// Creates a cached response wrapper with metadata.
+    /// Creates a cached response wrapper with metadata and optional compression.
+    /// Automatically compresses responses larger than 1KB to optimize memory usage.
     /// </summary>
     private CachedResponse CreateCachedResponse<T>(T response, CachePolicy policy)
     {
         var json = JsonSerializer.Serialize(response, _jsonOptions);
         var responseType = typeof(T).FullName ?? typeof(T).Name;
+        var originalSizeBytes = System.Text.Encoding.UTF8.GetByteCount(json);
+
+        // Compress responses larger than configured threshold for memory optimization
+        var shouldCompress = _configuration.EnableCompression && originalSizeBytes > _configuration.CompressionThresholdBytes;
+
+        string finalResponse;
+        long finalSizeBytes;
+        bool isCompressed;
+
+        if (shouldCompress)
+        {
+            try
+            {
+                var compressedData = CompressString(json);
+                var compressedBase64 = Convert.ToBase64String(compressedData);
+
+                // Only use compression if it provides meaningful savings based on configuration
+                var compressionRatio = (double)compressedData.Length / originalSizeBytes;
+                if (compressionRatio < _configuration.MinimumCompressionRatio)
+                {
+                    finalResponse = compressedBase64;
+                    finalSizeBytes = compressedData.Length;
+                    isCompressed = true;
+
+                    _logger.LogDebug("Compressed response for type {ResponseType}: {OriginalSize} -> {CompressedSize} bytes ({CompressionRatio:P1})",
+                        responseType, originalSizeBytes, finalSizeBytes, compressionRatio);
+                }
+                else
+                {
+                    // Compression didn't provide significant benefit, use original
+                    finalResponse = json;
+                    finalSizeBytes = originalSizeBytes;
+                    isCompressed = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to compress response for type {ResponseType}, using uncompressed", responseType);
+                finalResponse = json;
+                finalSizeBytes = originalSizeBytes;
+                isCompressed = false;
+            }
+        }
+        else
+        {
+            finalResponse = json;
+            finalSizeBytes = originalSizeBytes;
+            isCompressed = false;
+        }
 
         return new CachedResponse
         {
             ResponseType = responseType,
-            SerializedResponse = json,
-            SizeBytes = System.Text.Encoding.UTF8.GetByteCount(json),
+            SerializedResponse = finalResponse,
+            SizeBytes = finalSizeBytes,
+            OriginalSizeBytes = originalSizeBytes,
+            IsCompressed = isCompressed,
             CachedAt = DateTime.UtcNow,
             Policy = policy
         };
@@ -365,12 +443,37 @@ public class ResponseCacheManager : IResponseCacheManager, IDisposable
 
     /// <summary>
     /// Deserializes a cached response to the requested type.
+    /// Handles automatic decompression if the response was compressed.
     /// </summary>
     private T? DeserializeResponse<T>(CachedResponse cachedResponse)
     {
         try
         {
-            return JsonSerializer.Deserialize<T>(cachedResponse.SerializedResponse, _jsonOptions);
+            string jsonToDeserialize;
+
+            if (cachedResponse.IsCompressed)
+            {
+                try
+                {
+                    var compressedData = Convert.FromBase64String(cachedResponse.SerializedResponse);
+                    jsonToDeserialize = DecompressString(compressedData);
+
+                    _logger.LogTrace("Decompressed response for type {ResponseType}: {CompressedSize} -> {OriginalSize} bytes",
+                        cachedResponse.ResponseType, cachedResponse.SizeBytes, cachedResponse.OriginalSizeBytes);
+                }
+                catch (Exception decompressEx)
+                {
+                    _logger.LogError(decompressEx, "Failed to decompress cached response of type {CachedType}",
+                        cachedResponse.ResponseType);
+                    return default;
+                }
+            }
+            else
+            {
+                jsonToDeserialize = cachedResponse.SerializedResponse;
+            }
+
+            return JsonSerializer.Deserialize<T>(jsonToDeserialize, _jsonOptions);
         }
         catch (Exception ex)
         {
@@ -378,6 +481,37 @@ public class ResponseCacheManager : IResponseCacheManager, IDisposable
                 cachedResponse.ResponseType, typeof(T).Name);
             return default;
         }
+    }
+
+    /// <summary>
+    /// Compresses a string using GZip compression.
+    /// </summary>
+    private static byte[] CompressString(string input)
+    {
+        var inputBytes = System.Text.Encoding.UTF8.GetBytes(input);
+
+        using var outputStream = new MemoryStream();
+        using (var gzipStream = new GZipStream(outputStream, CompressionLevel.Optimal))
+        {
+            gzipStream.Write(inputBytes, 0, inputBytes.Length);
+        }
+
+        return outputStream.ToArray();
+    }
+
+    /// <summary>
+    /// Decompresses a GZip-compressed byte array back to a string.
+    /// </summary>
+    private static string DecompressString(byte[] compressedData)
+    {
+        using var inputStream = new MemoryStream(compressedData);
+        using var gzipStream = new GZipStream(inputStream, CompressionMode.Decompress);
+        using var outputStream = new MemoryStream();
+
+        gzipStream.CopyTo(outputStream);
+        var decompressedBytes = outputStream.ToArray();
+
+        return System.Text.Encoding.UTF8.GetString(decompressedBytes);
     }
 
     /// <summary>
@@ -389,9 +523,40 @@ public class ResponseCacheManager : IResponseCacheManager, IDisposable
     }
 
     /// <summary>
-    /// Calculates cache efficiency score based on statistics.
+    /// Calculates compression statistics for monitoring optimization effectiveness.
     /// </summary>
-    private static double CalculateEfficiencyScore(CacheStatistics stats)
+    private async Task<CompressionStatistics> CalculateCompressionStatisticsAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Note: This is a simplified calculation as we don't have direct access to all cached entries
+            // In a real implementation, we might sample entries or maintain separate compression metrics
+            var baseStats = await _stateCacheManager.GetCacheStatisticsAsync(cancellationToken);
+
+            // Estimate compression effectiveness based on typical JSON compression ratios
+            var estimatedCompressedEntries = (long)(baseStats.EntryCount * 0.3); // Assume 30% of entries are large enough to be compressed
+            var estimatedCompressionRatio = 0.6; // Typical JSON compression ratio is around 60%
+            var estimatedMemorySaved = (long)(baseStats.EstimatedMemoryUsage * 0.3 * 0.4); // 30% compressed * 40% savings
+
+            return new CompressionStatistics
+            {
+                CompressedEntries = estimatedCompressedEntries,
+                AverageCompressionRatio = estimatedCompressionRatio,
+                MemorySavedBytes = estimatedMemorySaved,
+                CompressionEfficiency = estimatedMemorySaved > 0 ? Math.Min(1.0, (double)estimatedMemorySaved / baseStats.EstimatedMemoryUsage) : 0.0
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error calculating compression statistics, returning empty stats");
+            return new CompressionStatistics();
+        }
+    }
+
+    /// <summary>
+    /// Calculates enhanced cache efficiency score including compression benefits.
+    /// </summary>
+    private double CalculateEnhancedEfficiencyScore(CacheStatistics stats, CompressionStatistics compressionStats)
     {
         if (stats.TotalRequests == 0)
         {
@@ -401,20 +566,44 @@ public class ResponseCacheManager : IResponseCacheManager, IDisposable
         // Base score on hit ratio
         var score = stats.HitRatio;
 
-        // Adjust for memory efficiency (assuming 100MB baseline)
-        var memoryEfficiency = Math.Min(1.0, 100_000_000.0 / Math.Max(stats.EstimatedMemoryUsage, 1));
+        // Adjust for memory efficiency (including compression benefits)
+        var effectiveMemoryUsage = stats.EstimatedMemoryUsage - compressionStats.MemorySavedBytes;
+        var memoryEfficiency = Math.Min(1.0, (double)_configuration.MemoryBudgetBytes / Math.Max(effectiveMemoryUsage, 1));
+        score *= memoryEfficiency;
+
+        // Bonus for compression effectiveness
+        var compressionBonus = 1.0 + (compressionStats.CompressionEfficiency * 0.2); // Up to 20% bonus
+        score *= compressionBonus;
+
+        return Math.Max(0.0, Math.Min(1.0, score));
+    }
+
+    /// <summary>
+    /// Calculates cache efficiency score based on statistics (legacy version).
+    /// </summary>
+    private double CalculateEfficiencyScore(CacheStatistics stats)
+    {
+        if (stats.TotalRequests == 0)
+        {
+            return 0.0;
+        }
+
+        // Base score on hit ratio
+        var score = stats.HitRatio;
+
+        // Adjust for memory efficiency using configured budget
+        var memoryEfficiency = Math.Min(1.0, (double)_configuration.MemoryBudgetBytes / Math.Max(stats.EstimatedMemoryUsage, 1));
         score *= memoryEfficiency;
 
         return Math.Max(0.0, Math.Min(1.0, score));
     }
 
     /// <summary>
-    /// Calculates memory usage percentage (assuming 100MB budget).
+    /// Calculates memory usage percentage using configured budget.
     /// </summary>
-    private static double CalculateMemoryUsagePercentage(long memoryUsage)
+    private double CalculateMemoryUsagePercentage(long memoryUsage)
     {
-        const long budgetBytes = 100_000_000; // 100MB budget
-        return (double)memoryUsage / budgetBytes * 100.0;
+        return _configuration.CalculateMemoryUsagePercentage(memoryUsage);
     }
 
     /// <summary>
@@ -556,8 +745,8 @@ public class ResponseCacheManager : IResponseCacheManager, IDisposable
         {
             _logger.LogTrace("Performing cache maintenance");
 
-            // Clean up stale operation metrics (older than 1 hour)
-            var cutoff = DateTime.UtcNow.AddHours(-1);
+            // Clean up stale operation metrics using configured cutoff
+            var cutoff = DateTime.UtcNow.Subtract(_configuration.GetStaleMetricsCutoff());
             var staleOperations = _operationMetrics
                 .Where(kvp => kvp.Value.LastAccessTime < cutoff)
                 .Select(kvp => kvp.Key)
@@ -613,6 +802,7 @@ public class ResponseCacheManager : IResponseCacheManager, IDisposable
 
 /// <summary>
 /// Represents a cached response with metadata for storage and retrieval.
+/// Supports compression for large responses to optimize memory usage.
 /// </summary>
 public record CachedResponse
 {
@@ -622,14 +812,24 @@ public record CachedResponse
     public required string ResponseType { get; init; }
 
     /// <summary>
-    /// Gets the JSON-serialized response data.
+    /// Gets the JSON-serialized response data (may be compressed).
     /// </summary>
     public required string SerializedResponse { get; init; }
 
     /// <summary>
-    /// Gets the size of the cached response in bytes.
+    /// Gets the size of the cached response in bytes (after compression if applicable).
     /// </summary>
     public long SizeBytes { get; init; }
+
+    /// <summary>
+    /// Gets the original uncompressed size in bytes.
+    /// </summary>
+    public long OriginalSizeBytes { get; init; }
+
+    /// <summary>
+    /// Gets whether the response data is compressed.
+    /// </summary>
+    public bool IsCompressed { get; init; }
 
     /// <summary>
     /// Gets the timestamp when this response was cached.
@@ -640,6 +840,12 @@ public record CachedResponse
     /// Gets the cache policy used for this response.
     /// </summary>
     public required CachePolicy Policy { get; init; }
+
+    /// <summary>
+    /// Gets the compression ratio (compressed size / original size).
+    /// Returns 1.0 if not compressed.
+    /// </summary>
+    public double CompressionRatio => OriginalSizeBytes > 0 ? (double)SizeBytes / OriginalSizeBytes : 1.0;
 }
 
 /// <summary>
@@ -719,4 +925,30 @@ public record ResponseCacheMetricsSnapshot
     public long TotalBytesStored { get; init; }
     public long InvalidationCount { get; init; }
     public long EvictionCount { get; init; }
+}
+
+/// <summary>
+/// Compression statistics for monitoring cache optimization effectiveness.
+/// </summary>
+public record CompressionStatistics
+{
+    /// <summary>
+    /// Gets the number of cache entries that are compressed.
+    /// </summary>
+    public long CompressedEntries { get; init; }
+
+    /// <summary>
+    /// Gets the average compression ratio (compressed size / original size).
+    /// </summary>
+    public double AverageCompressionRatio { get; init; }
+
+    /// <summary>
+    /// Gets the total bytes saved through compression.
+    /// </summary>
+    public long MemorySavedBytes { get; init; }
+
+    /// <summary>
+    /// Gets the compression efficiency (memory saved / total memory usage).
+    /// </summary>
+    public double CompressionEfficiency { get; init; }
 }

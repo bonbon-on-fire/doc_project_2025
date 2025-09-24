@@ -1,8 +1,10 @@
+using AIChat.Server.Configuration;
 using AIChat.Server.Services.StateManagement;
 using AIChat.Server.Services.StateManagement.Caching;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Options;
 
 namespace AIChat.Server.Services.ResponseCaching;
 
@@ -38,7 +40,18 @@ public static class ResponseCacheServiceExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configureOptions);
 
-        // Configure options
+        // Configure cache-specific configurations
+        services.AddOptions<MemoryStateCacheConfiguration>()
+            .BindConfiguration(MemoryStateCacheConfiguration.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.AddOptions<ResponseCacheConfiguration>()
+            .BindConfiguration(ResponseCacheConfiguration.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        // Configure legacy options for backward compatibility
         services.Configure(configureOptions);
 
         // Register memory cache if not already registered
@@ -47,12 +60,13 @@ public static class ResponseCacheServiceExtensions
         // Register cache key generator
         services.AddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
 
-        // Register state cache manager for cached responses
+        // Register state cache manager for cached responses with configuration
         services.AddSingleton<IStateCacheManager<CachedResponse>>(serviceProvider =>
         {
             var memoryCache = serviceProvider.GetRequiredService<IMemoryCache>();
             var logger = serviceProvider.GetRequiredService<ILogger<MemoryStateCacheManager<CachedResponse>>>();
-            return new MemoryStateCacheManager<CachedResponse>(memoryCache, logger);
+            var configuration = serviceProvider.GetRequiredService<IOptions<MemoryStateCacheConfiguration>>();
+            return new MemoryStateCacheManager<CachedResponse>(memoryCache, logger, configuration);
         });
 
         // Register response cache manager
@@ -81,7 +95,18 @@ public static class ResponseCacheServiceExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentException.ThrowIfNullOrEmpty(connectionString);
 
-        // Configure options
+        // Register cache-specific configurations
+        services.AddOptions<MemoryStateCacheConfiguration>()
+            .BindConfiguration(MemoryStateCacheConfiguration.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.AddOptions<ResponseCacheConfiguration>()
+            .BindConfiguration(ResponseCacheConfiguration.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        // Configure legacy options for backward compatibility
         if (configureOptions != null)
         {
             services.Configure(configureOptions);
@@ -134,7 +159,18 @@ public static class ResponseCacheServiceExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(stateCacheManagerFactory);
 
-        // Configure options
+        // Register cache-specific configurations
+        services.AddOptions<MemoryStateCacheConfiguration>()
+            .BindConfiguration(MemoryStateCacheConfiguration.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.AddOptions<ResponseCacheConfiguration>()
+            .BindConfiguration(ResponseCacheConfiguration.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        // Configure legacy options for backward compatibility
         if (configureOptions != null)
         {
             services.Configure(configureOptions);

@@ -1,6 +1,8 @@
 using AIChat.Server.Services.StateManagement.Caching;
+using AIChat.Server.Configuration;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -14,13 +16,32 @@ public class MemoryStateCacheManagerTests : IDisposable
 {
     private readonly MemoryCache _memoryCache;
     private readonly Mock<ILogger<MemoryStateCacheManager<TestEntity>>> _mockLogger;
+    private readonly Mock<IOptions<MemoryStateCacheConfiguration>> _mockConfiguration;
     private readonly MemoryStateCacheManager<TestEntity> _cacheManager;
 
     public MemoryStateCacheManagerTests()
     {
         _memoryCache = new MemoryCache(new MemoryCacheOptions());
         _mockLogger = new Mock<ILogger<MemoryStateCacheManager<TestEntity>>>();
-        _cacheManager = new MemoryStateCacheManager<TestEntity>(_memoryCache, _mockLogger.Object);
+
+        // Setup default configuration for tests
+        var config = new MemoryStateCacheConfiguration
+        {
+            EnableDetailedLogging = true,
+            EnableMetricsCollection = true,
+            DefaultSlidingExpirationMinutes = 30,
+            MemoryEstimationSampleSize = 10,
+            FallbackMemoryEstimationBytes = 512L,
+            ObjectOverheadFactor = 1.4,
+            BaseObjectOverheadBytes = 64L,
+            MaxDegreeOfParallelism = 0,
+            EnableKeyTrackerCleanup = true
+        };
+
+        _mockConfiguration = new Mock<IOptions<MemoryStateCacheConfiguration>>();
+        _mockConfiguration.Setup(x => x.Value).Returns(config);
+
+        _cacheManager = new MemoryStateCacheManager<TestEntity>(_memoryCache, _mockLogger.Object, _mockConfiguration.Object);
     }
 
     [Fact]
