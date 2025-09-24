@@ -46,28 +46,17 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
     /// <param name="configuration">Configuration for Orleans grains</param>
     /// <param name="metricsCollector">Metrics collector for performance tracking</param>
     /// <param name="signalRBroadcast">SignalR broadcast service for real-time messaging (optional)</param>
-    /// <param name="chatServiceProxy">Chat service proxy for LLM processing (optional)</param>
     public ChatGrain(
         ILogger<ChatGrain> logger,
         IOptionsSnapshot<OrleansGrainConfiguration> configuration,
         IOrleansMetricsCollector metricsCollector,
-        ISignalRBroadcastService? signalRBroadcast = null,
-        IChatServiceProxy? chatServiceProxy = null
+        ISignalRBroadcastService? signalRBroadcast = null
     )
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _configuration = configuration?.Value ?? new OrleansGrainConfiguration();
         _metricsCollector = metricsCollector ?? throw new ArgumentNullException(nameof(metricsCollector));
         _signalRBroadcast = signalRBroadcast ?? new NullSignalRBroadcastService();
-
-        // Use default proxy if none provided - allows for testing and gradual rollout
-        if (chatServiceProxy == null)
-        {
-            var proxyLogger = new Microsoft.Extensions.Logging.Abstractions.NullLogger<DefaultChatServiceProxy>();
-        }
-        else
-        {
-        }
     }
 
     /// <inheritdoc />
