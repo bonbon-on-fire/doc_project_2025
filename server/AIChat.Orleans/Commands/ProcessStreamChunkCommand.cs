@@ -1,5 +1,7 @@
 using AIChat.Orleans.Contracts;
+using AIChat.Orleans.Services;
 using Microsoft.Extensions.Logging;
+using Orleans;
 
 namespace AIChat.Orleans.Commands;
 
@@ -112,19 +114,52 @@ public class ProcessStreamChunkCommand : OperationCommandBase<StreamChunk, bool>
                 Request.IsComplete
             );
 
-            // TODO: In complete implementation, this would:
-            // 1. Get all connections subscribed to the chat from UserGrain state
-            // 2. Filter active connections (not stale)
-            // 3. Send chunk to each connection via SignalR hub
-            // 4. Handle connection failures and retry logic
-            // 5. Update connection activity timestamps
-            // 6. Track chunk delivery status
-            // 7. Handle completion chunks specially (final processing, cleanup)
+            // Get required services from the execution context
+            var grainFactory = context.GetRequiredService<IGrainFactory>();
+            var signalRBroadcast = context.GetService<ISignalRBroadcastService>();
 
-            // Simulate chunk processing
-            var processingDelay = Request.IsComplete ? 100 : 25; // Completion chunks take longer
-            await Task.Delay(processingDelay, cancellationToken);
+            // Get the chat grain to process the stream chunk
+            var chatGrain = grainFactory.GetGrain<IChatGrain>(ChatId);
 
+            try
+            {
+                // Get participants to determine if we should process this chunk
+                var participants = await chatGrain.GetParticipantsAsync(cancellationToken);
+                var participantCount = participants?.Count ?? 0;
+
+                // Process the chunk through the chat grain's streaming capabilities
+                await chatGrain.ProcessStreamChunkAsync(Request, cancellationToken);
+
+                logger.LogDebug(
+                    "Processed stream chunk {ChunkIndex} for {ParticipantCount} participants",
+                    Request.ChunkIndex,
+                    participantCount
+                );
+
+                // If this is a completion chunk, do additional cleanup
+                if (Request.IsComplete && participantCount > 0)
+                {
+                    logger.LogInformation(
+                        "Stream completed for operation {OperationId} with {ParticipantCount} participants",
+                        OperationId,
+                        participantCount
+                    );
+                }
+            }
+            catch (Exception processingEx)
+            {
+                logger.LogError(
+                    processingEx,
+                    "Failed to process stream chunk {ChunkIndex} for operation {OperationId}",
+                    Request.ChunkIndex,
+                    OperationId
+                );
+                return CommandExecutionResult<bool>.Failed(
+                    $"Stream chunk processing failed: {processingEx.Message}"
+                );
+            }
+
+            // Log completion or regular chunk processing
             if (Request.IsComplete)
             {
                 logger.LogInformation(
@@ -144,10 +179,8 @@ public class ProcessStreamChunkCommand : OperationCommandBase<StreamChunk, bool>
                 );
             }
 
-            return CommandExecutionResult<bool>.Success(
-                true, // Successfully processed
-                processingDelay
-            );
+            var executionTime = (DateTime.UtcNow - CreatedAt).TotalMilliseconds;
+            return CommandExecutionResult<bool>.Success(true, (long)executionTime);
         }
         catch (Exception ex)
         {

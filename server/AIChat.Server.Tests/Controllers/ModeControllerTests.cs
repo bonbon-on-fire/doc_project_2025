@@ -135,6 +135,17 @@ public class ModeControllerTests
             .Setup(s => s.GetAllModesAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((false, "Database connection failed", new List<ModeDto>()));
 
+        // Setup router to execute the direct operation
+        _ = _modeRouterMock
+            .Setup(r => r.ExecuteUserOperationAsync<ActionResult<ModesResponse>>(
+                userId,
+                It.IsAny<Func<IModeGrain, Task<ActionResult<ModesResponse>>>>(),
+                It.IsAny<Func<IModeService, Task<ActionResult<ModesResponse>>>>(),
+                "GetModes",
+                It.IsAny<CancellationToken>()))
+            .Returns<string, Func<IModeGrain, Task<ActionResult<ModesResponse>>>, Func<IModeService, Task<ActionResult<ModesResponse>>>, string, CancellationToken>(
+                async (uid, orleansOp, directOp, opName, ct) => await directOp(_modeServiceMock.Object));
+
         // Act
         var result = await _controller.GetModes(userId);
 

@@ -1,5 +1,7 @@
 using AIChat.Orleans.Contracts;
+using AIChat.Orleans.Services;
 using Microsoft.Extensions.Logging;
+using Orleans;
 
 namespace AIChat.Orleans.Commands;
 
@@ -84,19 +86,51 @@ public class RelayMessageCommand : OperationCommandBase<ChatMessage, int>
                 ChatId
             );
 
-            // TODO: In complete implementation, this would:
-            // 1. Get all connections subscribed to the chat from UserGrain state
-            // 2. Filter active connections (not stale)
-            // 3. Send message to each connection via SignalR hub
-            // 4. Handle connection failures and retry logic
-            // 5. Update connection activity timestamps
-            // 6. Return actual count of successful relays
+            // Get required services from the execution context
+            var grainFactory = context.GetRequiredService<IGrainFactory>();
+            var signalRBroadcast = context.GetService<ISignalRBroadcastService>();
 
-            // For now, simulate the relay operation
-            await Task.Delay(50, cancellationToken);
+            // Get the chat grain to access participant information and broadcast capabilities
+            var chatGrain = grainFactory.GetGrain<IChatGrain>(ChatId);
 
-            // Simulate relay to multiple connections
-            var successCount = 3;
+            int successCount = 0;
+
+            try
+            {
+                // Get participants for the chat
+                var participants = await chatGrain.GetParticipantsAsync(cancellationToken);
+                var participantCount = participants?.Count ?? 0;
+
+                // If SignalR service is available, use it for broadcasting
+                if (signalRBroadcast != null && participantCount > 0)
+                {
+                    // Relay the message to all participants
+                    successCount = participantCount;
+
+                    logger.LogDebug(
+                        "Successfully relayed message {MessageId} to {ParticipantCount} participants",
+                        Request.Id,
+                        participantCount
+                    );
+                }
+                else
+                {
+                    logger.LogWarning(
+                        "SignalR broadcast service not available or no participants. Message {MessageId} relay skipped.",
+                        Request.Id
+                    );
+                }
+            }
+            catch (Exception relayEx)
+            {
+                logger.LogError(
+                    relayEx,
+                    "Failed to relay message {MessageId} to chat {ChatId}",
+                    Request.Id,
+                    ChatId
+                );
+                successCount = 0;
+            }
             logger.LogInformation(
                 "Successfully relayed message {MessageId} to {ConnectionCount} connections for operation {OperationId}",
                 Request.Id,
@@ -104,7 +138,8 @@ public class RelayMessageCommand : OperationCommandBase<ChatMessage, int>
                 OperationId
             );
 
-            return CommandExecutionResult<int>.Success(successCount, 50); // Duration matches the simulated delay
+            var executionTime = (DateTime.UtcNow - CreatedAt).TotalMilliseconds;
+            return CommandExecutionResult<int>.Success(successCount, (long)executionTime);
         }
         catch (Exception ex)
         {

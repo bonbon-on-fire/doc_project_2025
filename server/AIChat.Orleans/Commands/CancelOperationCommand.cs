@@ -1,4 +1,6 @@
+using AIChat.Orleans.Contracts;
 using Microsoft.Extensions.Logging;
+using Orleans;
 
 namespace AIChat.Orleans.Commands;
 
@@ -68,36 +70,34 @@ public class CancelOperationCommand : OperationCommandBase<string, bool>
                 OperationId
             );
 
-            // TODO: In complete implementation, this would:
-            // 1. Check if the target operation exists in the grain state
-            // 2. Verify the operation can be cancelled (not already completed/failed/cancelled)
-            // 3. Update the operation status to cancelled
-            // 4. Notify the background service to stop processing
-            // 5. Send cancellation notifications to connected clients
-            // 6. Clean up any resources associated with the operation
-            // 7. Update metrics and activity records
+            // Get required services from the execution context
+            var grainFactory = context.GetRequiredService<IGrainFactory>();
 
-            // Simulate cancellation logic
-            await Task.Delay(150, cancellationToken);
+            // Get the user grain to access operation state
+            var userGrain = grainFactory.GetGrain<IUserGrain>(UserId);
 
-            var wasCancelled = true; // Simulate successful cancellation
+            // Use the user grain's built-in cancellation method
+            var wasCancelled = await userGrain.CancelOperation(TargetOperationId);
 
             if (wasCancelled)
             {
                 logger.LogInformation(
-                    "Successfully cancelled operation {TargetOperationId}",
-                    TargetOperationId
+                    "Operation {TargetOperationId} successfully cancelled for user {UserId}",
+                    TargetOperationId,
+                    UserId
                 );
             }
             else
             {
                 logger.LogWarning(
-                    "Operation {TargetOperationId} could not be cancelled (may not exist or already completed)",
-                    TargetOperationId
+                    "Operation {TargetOperationId} could not be cancelled for user {UserId} (may not exist or already completed)",
+                    TargetOperationId,
+                    UserId
                 );
             }
 
-            return CommandExecutionResult<bool>.Success(wasCancelled, 150); // Duration matches the simulated delay
+            var executionTime = (DateTime.UtcNow - CreatedAt).TotalMilliseconds;
+            return CommandExecutionResult<bool>.Success(wasCancelled, (long)executionTime);
         }
         catch (Exception ex)
         {

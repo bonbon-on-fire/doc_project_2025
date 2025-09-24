@@ -17,6 +17,7 @@ using Orleans.Runtime;
 
 namespace AIChat.Orleans.Grains;
 
+
 /// <summary>
 /// User grain implementation providing user-centric operations.
 /// Maintains user state, connections, and handles message routing.
@@ -1200,8 +1201,43 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                 operationId
             );
 
-            // TODO: Phase 3 complete integration - this will be implemented when background service is available
-            // For now, we track the intent and provide the operation ID for coordination
+            // Execute message processing through ChatGrain for proper background integration
+            try
+            {
+                // Get the chat grain to handle the actual message processing
+                var chatGrain = GrainFactory.GetGrain<IChatGrain>(message.ChatId);
+
+                // Process the message through the chat grain
+                await chatGrain.ProcessMessageAsync(message);
+
+                // Update operation status to in progress
+                if (State.ActiveOperations.TryGetValue(operationId, out var operation))
+                {
+                    operation.Status = OperationStatus.InProgress;
+                    await WriteStateAsync();
+                }
+
+                _logger.LogInformation(
+                    "Message processing started successfully for operation {OperationId}",
+                    operationId
+                );
+            }
+            catch (Exception processingEx)
+            {
+                _logger.LogError(
+                    processingEx,
+                    "Failed to process message for operation {OperationId}",
+                    operationId
+                );
+
+                // Update operation status to failed
+                if (State.ActiveOperations.TryGetValue(operationId, out var operation))
+                {
+                    operation.Status = OperationStatus.Failed;
+                    operation.Error = processingEx.Message;
+                    await WriteStateAsync();
+                }
+            }
 
             // Record successful operation metrics
             var duration = (DateTime.UtcNow - operationStart).TotalMilliseconds;

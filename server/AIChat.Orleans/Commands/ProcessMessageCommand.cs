@@ -1,6 +1,7 @@
 using System.Text.Json;
 using AIChat.Orleans.Contracts;
 using Microsoft.Extensions.Logging;
+using Orleans;
 
 namespace AIChat.Orleans.Commands;
 
@@ -92,8 +93,8 @@ public class ProcessMessageCommand : OperationCommandBase<ChatMessage, string>
                 ChatId
             );
 
-            // TODO: This will be replaced with actual background service integration
-            // For now, we simulate the processing and return the operation ID
+            // Get required services from the execution context
+            var grainFactory = context.GetRequiredService<IGrainFactory>();
 
             // Ensure message has an ID
             if (string.IsNullOrWhiteSpace(Request.Id))
@@ -116,14 +117,30 @@ public class ProcessMessageCommand : OperationCommandBase<ChatMessage, string>
                 );
             }
 
-            // In the complete implementation, this would:
-            // 1. Queue the message for background processing
-            // 2. Coordinate with BackgroundChatService
-            // 3. Handle streaming responses
-            // 4. Manage operation lifecycle
+            // Get the chat grain to process the message directly
+            var chatGrain = grainFactory.GetGrain<IChatGrain>(ChatId);
 
-            // Simulate processing delay
-            await Task.Delay(100, cancellationToken);
+            try
+            {
+                // Process the message through the chat grain
+                var messageResult = await chatGrain.ProcessMessageAsync(Request, cancellationToken);
+
+                logger.LogInformation(
+                    "Message processed successfully for operation {OperationId}",
+                    OperationId
+                );
+            }
+            catch (Exception processingEx)
+            {
+                logger.LogWarning(
+                    processingEx,
+                    "Message processing failed for operation {OperationId}",
+                    OperationId
+                );
+                return CommandExecutionResult<string>.Failed(
+                    $"Message processing failed: {processingEx.Message}"
+                );
+            }
 
             logger.LogInformation(
                 "Message processing command completed for operation {OperationId}. Message ID: {MessageId}",
@@ -131,7 +148,8 @@ public class ProcessMessageCommand : OperationCommandBase<ChatMessage, string>
                 Request.Id
             );
 
-            return CommandExecutionResult<string>.Success(OperationId, 100); // Duration matches the simulated delay
+            var executionTime = (DateTime.UtcNow - CreatedAt).TotalMilliseconds;
+            return CommandExecutionResult<string>.Success(OperationId, (long)executionTime);
         }
         catch (Exception ex)
         {
@@ -204,21 +222,40 @@ public class ProcessMessageCommand : OperationCommandBase<ChatMessage, string>
                 OperationId
             );
 
-            // TODO: In complete implementation, this would:
-            // 1. Cancel the background processing operation
-            // 2. Clean up any partial results
-            // 3. Notify connected clients of cancellation
-            // 4. Update operation status
+            // Use the CancelOperationCommand to properly cancel this operation
+            var cancelCommand = new CancelOperationCommand(
+                Guid.NewGuid().ToString(), // New command ID for the cancellation
+                ChatId,
+                UserId,
+                OperationId // Target operation to cancel
+            );
 
-            // Simulate cancellation logic
-            await Task.Delay(50, cancellationToken);
+            // Execute the cancellation command
+            var cancelResult = await cancelCommand.ExecuteAsync(context, cancellationToken);
 
+            if (!cancelResult.IsSuccess)
+            {
+                logger.LogWarning(
+                    "Failed to cancel message processing operation {OperationId}: {Error}",
+                    OperationId,
+                    cancelResult.ErrorMessage
+                );
+                return false;
+            }
+
+            // Check if the cancellation was successful (the command returns bool data)
+            if (cancelResult is CommandExecutionResult<bool> typedResult)
+            {
+                return typedResult.Data;
+            }
+
+            // If we get here, the cancellation command executed but didn't return expected data
             logger.LogInformation(
-                "Successfully cancelled message processing for operation {OperationId}",
+                "Message processing cancellation completed for operation {OperationId}",
                 OperationId
             );
 
-            return true;
+            return true; // Assume success if command executed without errors
         }
         catch (Exception ex)
         {
