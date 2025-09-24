@@ -1,5 +1,5 @@
-using Microsoft.Extensions.Logging;
 using AIChat.Server.Services.EventStore;
+using Microsoft.Extensions.Logging;
 
 namespace AIChat.Server.Services.Recovery.Implementations;
 
@@ -910,8 +910,7 @@ public sealed class StateConsistencyVerifier : IStateConsistencyVerifier
         }
 
         // Use SHA256 for basic hash computation
-        using var sha256 = System.Security.Cryptography.SHA256.Create();
-        var hashBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(input));
+        var hashBytes = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(input));
         return Convert.ToHexString(hashBytes);
     }
 

@@ -1,5 +1,5 @@
-using Microsoft.Extensions.Logging;
 using AIChat.Server.Services.EventStore;
+using Microsoft.Extensions.Logging;
 
 namespace AIChat.Server.Services.Recovery.Implementations;
 
@@ -140,7 +140,7 @@ public sealed class AutomaticRecoveryService : IAutomaticRecoveryService
                 grainId, stopwatch.ElapsedMilliseconds, correlationId);
 
             return AutomaticRecoveryResult<T>.CreateRecoverySucceeded(
-                recoveryResult.State,
+                recoveryResult.State!,
                 recoveryNeed,
                 recoveryResult.Strategy,
                 recoveryResult.RecoveryType,
@@ -462,7 +462,9 @@ public sealed class AutomaticRecoveryService : IAutomaticRecoveryService
     /// <summary>
     /// Provides event notifications for recovery operations.
     /// </summary>
+    #pragma warning disable CS0414 // Field is assigned but its value is never used
     public event EventHandler<RecoveryEventArgs>? RecoveryEvent;
+    #pragma warning restore CS0414
 
     /// <summary>
     /// Disposes the automatic recovery service and releases resources.

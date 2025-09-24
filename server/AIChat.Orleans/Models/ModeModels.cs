@@ -1031,32 +1031,39 @@ public sealed class StateValidationReport
 /// <summary>
 /// Result of compatibility validation.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.CompatibilityValidationResult")]
 public sealed class CompatibilityValidationResult
 {
     /// <summary>
     /// Whether the modes are compatible.
     /// </summary>
+    [Id(0)]
     public required bool IsCompatible { get; init; }
 
     /// <summary>
     /// Compatibility score (0-100).
     /// </summary>
     [Range(0, 100)]
+    [Id(1)]
     public int CompatibilityScore { get; init; }
 
     /// <summary>
     /// Incompatibilities found.
     /// </summary>
+    [Id(2)]
     public List<Incompatibility> Incompatibilities { get; init; } = [];
 
     /// <summary>
     /// Warnings about the transition.
     /// </summary>
+    [Id(3)]
     public List<string> Warnings { get; init; } = [];
 
     /// <summary>
     /// Data that would be lost in transition.
     /// </summary>
+    [Id(4)]
     public List<string> DataLossRisks { get; init; } = [];
 }
 
@@ -1425,26 +1432,32 @@ public sealed class ConsistencyCheck
 /// <summary>
 /// Represents an incompatibility between modes.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.Incompatibility")]
 public sealed class Incompatibility
 {
     /// <summary>
     /// Type of incompatibility.
     /// </summary>
+    [Id(0)]
     public required string Type { get; init; }
 
     /// <summary>
     /// Description of the incompatibility.
     /// </summary>
+    [Id(1)]
     public required string Description { get; init; }
 
     /// <summary>
     /// Severity of the incompatibility.
     /// </summary>
+    [Id(2)]
     public ValidationSeverity Severity { get; init; }
 
     /// <summary>
     /// Possible resolution.
     /// </summary>
+    [Id(3)]
     public string? Resolution { get; init; }
 }
 

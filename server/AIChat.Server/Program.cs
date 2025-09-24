@@ -138,6 +138,29 @@ builder.Services.AddSnapshotStore();
 builder.Services.AddEventStoreHealthChecks();
 builder.Services.AddSnapshotStoreHealthChecks();
 
+// Register Point-in-Time Recovery services (Phase 4 - ORL-ST-P4-006)
+builder.Services.AddScoped<AIChat.Server.Services.Recovery.IPointInTimeRecoveryService>(provider =>
+{
+    var eventStore = provider.GetRequiredService<AIChat.Server.Services.EventStore.IEventStore>();
+    var snapshotStore = provider.GetRequiredService<AIChat.Server.Services.EventStore.ISnapshotStore>();
+    var recoveryOrchestrator = provider.GetRequiredService<AIChat.Server.Services.Recovery.IStateRecoveryOrchestrator>();
+    var logger = provider.GetRequiredService<ILogger<AIChat.Server.Services.Recovery.Implementations.PointInTimeRecoveryService>>();
+
+    // IStateConsistencyVerifier from ORL-ST-P4-005 may not be available yet - make it optional
+    var consistencyVerifier = provider.GetService<AIChat.Server.Services.Recovery.IStateConsistencyVerifier>();
+
+    return new AIChat.Server.Services.Recovery.Implementations.PointInTimeRecoveryService(
+        eventStore,
+        snapshotStore,
+        recoveryOrchestrator,
+        consistencyVerifier,
+        logger);
+});
+builder.Services.AddScoped<AIChat.Server.Services.Recovery.IRecoveryAuditService,
+    AIChat.Server.Services.Recovery.Implementations.RecoveryAuditService>();
+builder.Services.AddScoped<AIChat.Server.Services.Recovery.IRecoveryNotificationService,
+    AIChat.Server.Services.Recovery.Implementations.RecoveryNotificationService>();
+
 // Add SignalR with configuration-based settings
 builder.Services.AddSignalR(hubOptions =>
 {

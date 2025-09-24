@@ -1,5 +1,5 @@
-using Microsoft.Extensions.Logging;
 using AIChat.Server.Services.EventStore;
+using Microsoft.Extensions.Logging;
 
 namespace AIChat.Server.Services.Recovery.Implementations;
 
@@ -17,6 +17,8 @@ public sealed class StateRecoveryDetector : IStateRecoveryDetector
     /// Gets the name of this recovery detector implementation.
     /// </summary>
     public string Name => "DefaultStateRecoveryDetector";
+
+    private static readonly string[] issues = new[] { "State is null" };
 
     /// <summary>
     /// Initializes a new instance of the StateRecoveryDetector class.
@@ -134,7 +136,7 @@ public sealed class StateRecoveryDetector : IStateRecoveryDetector
             {
                 return StateValidationResult.Invalid(
                     StateRecoveryNeed.MissingState,
-                    new[] { "State is null" });
+                    issues);
             }
 
             // Basic structural validation

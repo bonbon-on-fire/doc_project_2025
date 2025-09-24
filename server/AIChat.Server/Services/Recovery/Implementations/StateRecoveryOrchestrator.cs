@@ -1,5 +1,5 @@
-using Microsoft.Extensions.Logging;
 using AIChat.Server.Services.EventStore;
+using Microsoft.Extensions.Logging;
 
 namespace AIChat.Server.Services.Recovery.Implementations;
 
