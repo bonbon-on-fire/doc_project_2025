@@ -168,6 +168,172 @@ public class DualModeRouter : IDualModeRouter, IDisposable
     }
 
     /// <inheritdoc/>
+    public async Task<T> ExecuteAsync<T>(
+        Func<IChatGrain, Task<T>> orleansOperation,
+        Func<IChatService, Task<T>> directOperation,
+        string operationName,
+        string chatId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(orleansOperation);
+        ArgumentNullException.ThrowIfNull(directOperation);
+        if (string.IsNullOrWhiteSpace(operationName))
+        {
+            throw new ArgumentNullException(nameof(operationName));
+        }
+        if (string.IsNullOrWhiteSpace(chatId))
+        {
+            throw new ArgumentNullException(nameof(chatId));
+        }
+
+        var stopwatch = Stopwatch.StartNew();
+        var operationId = Guid.NewGuid().ToString("N")[..8];
+
+        _logger.LogDebug("Starting chat-specific operation {OperationName} with ID {OperationId} for ChatId {ChatId}",
+            operationName, operationId, chatId);
+
+        var orleansAttempted = false;
+
+        try
+        {
+            // Check if Orleans is enabled and available
+            if (await ShouldUseOrleansAsync(cancellationToken))
+            {
+                orleansAttempted = true;
+                try
+                {
+                    var result = await ExecuteOrleansOperationAsync(orleansOperation, operationName, operationId, chatId, cancellationToken);
+                    _metricsCollector.RecordOrleansOperation(stopwatch.Elapsed, success: true);
+
+                    _logger.LogDebug("Orleans operation {OperationName} for ChatId {ChatId} completed successfully in {ElapsedMs}ms",
+                        operationName, chatId, stopwatch.ElapsedMilliseconds);
+
+                    return result;
+                }
+                catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+                {
+                    _logger.LogWarning(ex, "Orleans operation {OperationName} for ChatId {ChatId} failed, falling back to direct service",
+                        operationName, chatId);
+                    _metricsCollector.RecordOrleansOperation(stopwatch.Elapsed, success: false);
+                    HandleOrleansFailure();
+
+                    // Reset stopwatch for fallback operation timing
+                    stopwatch.Restart();
+                }
+            }
+
+            // Execute direct service operation (either as primary or fallback)
+            var directResult = await ExecuteDirectOperationAsync(directOperation, operationName, operationId, cancellationToken);
+            _metricsCollector.RecordDirectServiceOperation(stopwatch.Elapsed, success: true, isFallback: orleansAttempted);
+
+            _logger.LogDebug("Direct service operation {OperationName} for ChatId {ChatId} completed successfully in {ElapsedMs}ms",
+                operationName, chatId, stopwatch.ElapsedMilliseconds);
+
+            return directResult;
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogDebug("Operation {OperationName} for ChatId {ChatId} was cancelled", operationName, chatId);
+            _metricsCollector.RecordFailedOperation();
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "All routing options failed for operation {OperationName} for ChatId {ChatId}", operationName, chatId);
+            _metricsCollector.RecordFailedOperation();
+
+            throw new RouterException($"Operation {operationName} for ChatId {chatId} failed in all routing modes", ex)
+            {
+                OperationName = operationName,
+                OrleansAttempted = orleansAttempted,
+                DirectServiceAttempted = true
+            };
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task ExecuteAsync(
+        Func<IChatGrain, Task> orleansOperation,
+        Func<IChatService, Task> directOperation,
+        string operationName,
+        string chatId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(orleansOperation);
+        ArgumentNullException.ThrowIfNull(directOperation);
+        if (string.IsNullOrWhiteSpace(operationName))
+        {
+            throw new ArgumentNullException(nameof(operationName));
+        }
+        if (string.IsNullOrWhiteSpace(chatId))
+        {
+            throw new ArgumentNullException(nameof(chatId));
+        }
+
+        var stopwatch = Stopwatch.StartNew();
+        var operationId = Guid.NewGuid().ToString("N")[..8];
+
+        _logger.LogDebug("Starting chat-specific operation {OperationName} with ID {OperationId} for ChatId {ChatId}",
+            operationName, operationId, chatId);
+
+        var orleansAttempted = false;
+
+        try
+        {
+            // Check if Orleans is enabled and available
+            if (await ShouldUseOrleansAsync(cancellationToken))
+            {
+                orleansAttempted = true;
+                try
+                {
+                    await ExecuteOrleansOperationAsync(orleansOperation, operationName, operationId, chatId, cancellationToken);
+                    _metricsCollector.RecordOrleansOperation(stopwatch.Elapsed, success: true);
+
+                    _logger.LogDebug("Orleans operation {OperationName} for ChatId {ChatId} completed successfully in {ElapsedMs}ms",
+                        operationName, chatId, stopwatch.ElapsedMilliseconds);
+
+                    return;
+                }
+                catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+                {
+                    _logger.LogWarning(ex, "Orleans operation {OperationName} for ChatId {ChatId} failed, falling back to direct service",
+                        operationName, chatId);
+                    _metricsCollector.RecordOrleansOperation(stopwatch.Elapsed, success: false);
+                    HandleOrleansFailure();
+
+                    // Reset stopwatch for fallback operation timing
+                    stopwatch.Restart();
+                }
+            }
+
+            // Execute direct service operation (either as primary or fallback)
+            await ExecuteDirectOperationAsync(directOperation, operationName, operationId, cancellationToken);
+            _metricsCollector.RecordDirectServiceOperation(stopwatch.Elapsed, success: true, isFallback: orleansAttempted);
+
+            _logger.LogDebug("Direct service operation {OperationName} for ChatId {ChatId} completed successfully in {ElapsedMs}ms",
+                operationName, chatId, stopwatch.ElapsedMilliseconds);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogDebug("Operation {OperationName} for ChatId {ChatId} was cancelled", operationName, chatId);
+            _metricsCollector.RecordFailedOperation();
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "All routing options failed for operation {OperationName} for ChatId {ChatId}", operationName, chatId);
+            _metricsCollector.RecordFailedOperation();
+
+            throw new RouterException($"Operation {operationName} for ChatId {chatId} failed in all routing modes", ex)
+            {
+                OperationName = operationName,
+                OrleansAttempted = orleansAttempted,
+                DirectServiceAttempted = true
+            };
+        }
+    }
+
+    /// <inheritdoc/>
     public async Task<RouterHealthStatus> CheckHealthAsync(CancellationToken cancellationToken = default)
     {
         await _healthCheckSemaphore.WaitAsync(cancellationToken);
@@ -247,6 +413,76 @@ public class DualModeRouter : IDualModeRouter, IDisposable
         }
     }
 
+    private async Task<T> ExecuteOrleansOperationAsync<T>(
+        Func<IChatGrain, Task<T>> operation,
+        string operationName,
+        string operationId,
+        string chatId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Defensive check - this should never happen if ShouldUseOrleansAsync is working correctly
+            if (_grainFactory == null)
+            {
+                throw new InvalidOperationException("Orleans operation attempted but grain factory is null");
+            }
+
+            // Use the actual chat ID for Orleans grain routing
+            // This enables proper per-chat state management and eliminates the facade pattern
+            var grainKey = chatId;
+            var grain = _grainFactory.GetGrain<IChatGrain>(grainKey);
+
+            _logger.LogDebug("Executing Orleans operation {OperationName} on chat grain {GrainKey}", operationName, grainKey);
+
+            var result = await operation(grain);
+
+            // Reset circuit breaker on successful operation
+            ResetCircuitBreaker();
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Orleans operation {OperationName} for ChatId {ChatId} failed with grain factory", operationName, chatId);
+            throw;
+        }
+    }
+
+    private async Task ExecuteOrleansOperationAsync(
+        Func<IChatGrain, Task> operation,
+        string operationName,
+        string operationId,
+        string chatId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Defensive check - this should never happen if ShouldUseOrleansAsync is working correctly
+            if (_grainFactory == null)
+            {
+                throw new InvalidOperationException("Orleans operation attempted but grain factory is null");
+            }
+
+            // Use the actual chat ID for Orleans grain routing
+            // This enables proper per-chat state management and eliminates the facade pattern
+            var grainKey = chatId;
+            var grain = _grainFactory.GetGrain<IChatGrain>(grainKey);
+
+            _logger.LogDebug("Executing Orleans operation {OperationName} on chat grain {GrainKey}", operationName, grainKey);
+
+            await operation(grain);
+
+            // Reset circuit breaker on successful operation
+            ResetCircuitBreaker();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Orleans operation {OperationName} for ChatId {ChatId} failed with grain factory", operationName, chatId);
+            throw;
+        }
+    }
+
     private async Task<T> ExecuteDirectOperationAsync<T>(
         Func<IChatService, Task<T>> operation,
         string operationName,
@@ -257,6 +493,24 @@ public class DualModeRouter : IDualModeRouter, IDisposable
         {
             _logger.LogDebug("Executing direct service operation {OperationName}", operationName);
             return await operation(_chatService);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Direct service operation {OperationName} failed", operationName);
+            throw;
+        }
+    }
+
+    private async Task ExecuteDirectOperationAsync(
+        Func<IChatService, Task> operation,
+        string operationName,
+        string operationId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            _logger.LogDebug("Executing direct service operation {OperationName}", operationName);
+            await operation(_chatService);
         }
         catch (Exception ex)
         {

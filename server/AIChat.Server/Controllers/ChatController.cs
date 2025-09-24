@@ -48,46 +48,86 @@ public class ChatController(
     #region Router Pattern Helper Methods
 
     /// <summary>
-    /// Executes a pass-through operation where both Orleans and Direct implementations are identical.
-    /// This eliminates code duplication for operations that currently just call the direct service in both paths.
+    /// Executes an operation with distinct Orleans and Direct implementations.
+    /// Orleans path uses grains directly, Direct path uses ChatService.
     /// </summary>
     /// <typeparam name="T">The return type of the operation</typeparam>
-    /// <param name="operation">The operation to execute (same for both Orleans and Direct)</param>
+    /// <param name="orleansOperation">The Orleans grain-based operation</param>
+    /// <param name="directOperation">The direct service operation</param>
     /// <param name="operationName">Name of the operation for logging and metrics</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The result of the operation</returns>
-    private async Task<ActionResult<T>> ExecutePassThroughAsync<T>(
-        Func<IChatService, Task<ActionResult<T>>> operation,
+    private async Task<ActionResult<T>> ExecuteWithOrleansAsync<T>(
+        Func<IChatGrain, Task<ActionResult<T>>> orleansOperation,
+        Func<IChatService, Task<ActionResult<T>>> directOperation,
+        string operationName,
+        string chatId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _router.ExecuteAsync<ActionResult<T>>(
+            // Orleans operation - use grain directly with chat ID
+            orleansOperation,
+            // Direct service operation
+            directOperation,
+            operationName,
+            chatId,
+            cancellationToken
+        );
+    }
+
+    private async Task<ActionResult<T>> ExecuteWithOrleansAsync<T>(
+        Func<IChatGrain, Task<ActionResult<T>>> orleansOperation,
+        Func<IChatService, Task<ActionResult<T>>> directOperation,
         string operationName,
         CancellationToken cancellationToken = default)
     {
         return await _router.ExecuteAsync<ActionResult<T>>(
-            // Orleans operation - pass-through to direct service
-            async grain => await operation(_chatService),
+            // Orleans operation - use grain directly
+            orleansOperation,
             // Direct service operation
-            async service => await operation(service),
+            directOperation,
             operationName,
             cancellationToken
         );
     }
 
     /// <summary>
-    /// Executes a simple operation without return value where both Orleans and Direct implementations are identical.
+    /// Executes a simple operation without return value with distinct Orleans and Direct implementations.
     /// </summary>
-    /// <param name="operation">The operation to execute (same for both Orleans and Direct)</param>
+    /// <param name="orleansOperation">The Orleans grain-based operation</param>
+    /// <param name="directOperation">The direct service operation</param>
     /// <param name="operationName">Name of the operation for logging and metrics</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The result of the operation</returns>
-    private async Task<ActionResult> ExecutePassThroughAsync(
-        Func<IChatService, Task<ActionResult>> operation,
+    private async Task<ActionResult> ExecuteWithOrleansAsync(
+        Func<IChatGrain, Task<ActionResult>> orleansOperation,
+        Func<IChatService, Task<ActionResult>> directOperation,
+        string operationName,
+        string chatId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _router.ExecuteAsync(
+            // Orleans operation - use grain directly with chat ID
+            orleansOperation,
+            // Direct service operation
+            directOperation,
+            operationName,
+            chatId,
+            cancellationToken
+        );
+    }
+
+    private async Task<ActionResult> ExecuteWithOrleansAsync(
+        Func<IChatGrain, Task<ActionResult>> orleansOperation,
+        Func<IChatService, Task<ActionResult>> directOperation,
         string operationName,
         CancellationToken cancellationToken = default)
     {
-        return await _router.ExecuteAsync<ActionResult>(
-            // Orleans operation - pass-through to direct service
-            async grain => await operation(_chatService),
+        return await _router.ExecuteAsync(
+            // Orleans operation - use grain directly
+            orleansOperation,
             // Direct service operation
-            async service => await operation(service),
+            directOperation,
             operationName,
             cancellationToken
         );
@@ -110,6 +150,25 @@ public class ChatController(
             "Chat not found" => NotFound(new { Error = "Chat not found" }),
             "Operation not found" => NotFound(new { Error = "Operation not found" }),
             _ => StatusCode(500, new { Error = errorMessage ?? $"Failed to {operation.ToLower(System.Globalization.CultureInfo.InvariantCulture)}" })
+        };
+    }
+
+    /// <summary>
+    /// Converts Orleans ChatState to API ChatDto.
+    /// </summary>
+    /// <param name="chatState">Orleans chat state</param>
+    /// <returns>API chat DTO</returns>
+    private static ChatDto ConvertChatStateToDto(AIChat.Orleans.Contracts.ChatState chatState)
+    {
+        return new ChatDto
+        {
+            Id = chatState.ChatId,
+            UserId = chatState.CreatedBy,
+            Title = chatState.Title,
+            CreatedAt = chatState.CreatedAt,
+            UpdatedAt = chatState.LastActivityAt,
+            Messages = [], // TODO: Implement message retrieval from Orleans grain
+            Tasks = null // TODO: Implement task retrieval if needed
         };
     }
 
@@ -248,7 +307,30 @@ public class ChatController(
         CancellationToken cancellationToken = default
     )
     {
-        return await ExecutePassThroughAsync<ChatHistoryResponse>(
+        return await ExecuteWithOrleansAsync<ChatHistoryResponse>(
+            // Orleans implementation - TODO: Implement user-specific chat history in Orleans grains
+            async grain =>
+            {
+                try
+                {
+                    // For now, return empty chat history since user-specific operations
+                    // are not yet implemented in Orleans grain architecture
+                    // TODO: Implement user grain that manages chat history
+                    return Ok(new ChatHistoryResponse
+                    {
+                        Chats = [],
+                        TotalCount = 0,
+                        Page = page,
+                        PageSize = pageSize
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error retrieving chat history for user {UserId} via Orleans grain", userId);
+                    return CreateErrorResponse<ChatHistoryResponse>("Failed to retrieve chat history", "retrieving chat history", userId);
+                }
+            },
+            // Direct service implementation
             async service =>
             {
                 var result = await service.GetChatHistoryAsync(userId, page, pageSize);
@@ -277,7 +359,30 @@ public class ChatController(
     [HttpGet("{id}")]
     public async Task<ActionResult<ChatDto>> GetChat(string id, CancellationToken cancellationToken = default)
     {
-        return await ExecutePassThroughAsync<ChatDto>(
+        return await ExecuteWithOrleansAsync<ChatDto>(
+            // Orleans implementation - use grain directly
+            async grain =>
+            {
+                try
+                {
+                    var chatState = await grain.GetStateAsync();
+
+                    if (chatState == null)
+                    {
+                        return NotFound(new { Error = "Chat not found" });
+                    }
+
+                    // Convert Orleans ChatState to API ChatDto
+                    var chatDto = ConvertChatStateToDto(chatState);
+                    return Ok(chatDto);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error retrieving chat {ChatId} from Orleans grain", id);
+                    return CreateErrorResponse<ChatDto>("Failed to retrieve chat", "retrieving chat", id);
+                }
+            },
+            // Direct service implementation
             async service =>
             {
                 var result = await service.GetChatAsync(id);
@@ -290,6 +395,7 @@ public class ChatController(
                 return Ok(result.Chat);
             },
             "GetChat",
+            id, // Pass chat ID for Orleans grain routing
             cancellationToken
         );
     }
@@ -310,28 +416,49 @@ public class ChatController(
                 ModeId = request.ModeId,
             };
 
-            return await _router.ExecuteAsync<ActionResult<ChatDto>>(
-                // Orleans operation - TODO: Use grain.ProcessMessageAsync() when fully implemented
-                // For now, pass-through to direct service to maintain compatibility
+            return await ExecuteWithOrleansAsync<ChatDto>(
+                // Orleans implementation - use grain directly
                 async grain =>
                 {
-                    var result = await _chatService.SendMessageAsync(sendMessageRequest);
-
-                    if (!result.Success)
+                    try
                     {
-                        _logger.LogError(
-                            "Error sending message to chat {ChatId}: {Error}",
-                            request.ChatId,
-                            result.Error
-                        );
-                        return StatusCode(500, new { Error = result.Error ?? "Failed to send message" });
-                    }
+                        // Create Orleans ChatMessage from request
+                        var chatMessage = new AIChat.Orleans.Contracts.ChatMessage
+                        {
+                            Id = Guid.NewGuid().ToString(),
+                            ChatId = request.ChatId,
+                            UserId = request.UserId,
+                            Content = request.Message,
+                            Role = "user",
+                            Timestamp = DateTime.UtcNow,
+                            Metadata = request.ModeId != null ? $"{{\"modeId\":\"{request.ModeId}\"}}" : null
+                        };
 
-                    // Get the updated chat after processing
-                    var chatResult = await _chatService.GetChatAsync(request.ChatId);
-                    return Ok(chatResult.Chat);
+                        // Process message through Orleans grain
+                        var messageResult = await grain.ProcessMessageAsync(chatMessage);
+
+                        if (!messageResult.Success)
+                        {
+                            _logger.LogError(
+                                "Error processing message in Orleans grain for ChatId: {ChatId}, Error: {Error}",
+                                request.ChatId,
+                                messageResult.ErrorMessage
+                            );
+                            return StatusCode(500, new { Error = messageResult.ErrorMessage ?? "Failed to process message" });
+                        }
+
+                        // Get updated chat state and convert to DTO
+                        var chatState = await grain.GetStateAsync();
+                        var chatDto = ConvertChatStateToDto(chatState);
+                        return Ok(chatDto);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error processing message via Orleans grain for ChatId: {ChatId}", request.ChatId);
+                        return CreateErrorResponse<ChatDto>("Failed to process message", "processing message", request.ChatId);
+                    }
                 },
-                // Direct service operation
+                // Direct service implementation
                 async service =>
                 {
                     var result = await service.SendMessageAsync(sendMessageRequest);
@@ -351,35 +478,76 @@ public class ChatController(
                     return Ok(chatResult.Chat);
                 },
                 "CreateChat_ExistingChat",
+                request.ChatId, // Pass chat ID for Orleans grain routing
                 cancellationToken
             );
         }
 
         // Create new chat using router
-        return await _router.ExecuteAsync<ActionResult<ChatDto>>(
-            // Orleans operation - pass-through to direct service for now
-            // TODO: Use grain.InitializeAsync() when Orleans chat creation is fully implemented
+        // Generate new chat ID first for Orleans grain routing
+        var newChatId = Guid.NewGuid().ToString();
+
+        return await ExecuteWithOrleansAsync<ChatDto>(
+            // Orleans implementation - use grain directly
             async grain =>
             {
-                var createRequest = new Services.CreateChatRequest
+                try
                 {
-                    UserId = request.UserId,
-                    Message = request.Message,
-                    SystemPrompt = request.SystemPrompt,
-                    ModeId = request.ModeId,
-                };
+                    // Create Orleans ChatInitRequest from API request
+                    var initRequest = new AIChat.Orleans.Contracts.ChatInitRequest
+                    {
+                        ChatId = newChatId,
+                        Title = $"Chat {DateTime.UtcNow:yyyy-MM-dd HH:mm}",
+                        CreatedBy = request.UserId,
+                        ChatType = "ai-assistant",
+                        ModeId = request.ModeId,
+                        SystemPrompt = request.SystemPrompt,
+                        CreatedAt = DateTime.UtcNow
+                    };
 
-                var result = await _chatService.CreateChatAsync(createRequest);
+                    // Initialize chat through Orleans grain
+                    var chatState = await grain.InitializeAsync(initRequest);
 
-                if (!result.Success)
-                {
-                    _logger.LogError("Error creating chat: {Error}", result.Error);
-                    return StatusCode(500, new { Error = result.Error ?? "Failed to create chat" });
+                    // If there's an initial message, process it
+                    if (!string.IsNullOrEmpty(request.Message))
+                    {
+                        var initialMessage = new AIChat.Orleans.Contracts.ChatMessage
+                        {
+                            Id = Guid.NewGuid().ToString(),
+                            ChatId = newChatId,
+                            UserId = request.UserId,
+                            Content = request.Message,
+                            Role = "user",
+                            Timestamp = DateTime.UtcNow,
+                            Metadata = request.ModeId != null ? $"{{\"modeId\":\"{request.ModeId}\"}}" : null
+                        };
+
+                        var messageResult = await grain.ProcessMessageAsync(initialMessage);
+
+                        if (!messageResult.Success)
+                        {
+                            _logger.LogWarning(
+                                "Chat created but initial message processing failed for ChatId: {ChatId}, Error: {Error}",
+                                newChatId,
+                                messageResult.ErrorMessage
+                            );
+                        }
+
+                        // Get updated state after message processing
+                        chatState = await grain.GetStateAsync();
+                    }
+
+                    // Convert to DTO and return
+                    var chatDto = ConvertChatStateToDto(chatState);
+                    return CreatedAtAction(nameof(GetChat), new { id = chatDto.Id }, chatDto);
                 }
-
-                return CreatedAtAction(nameof(GetChat), new { id = result.Chat!.Id }, result.Chat);
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error creating chat via Orleans grain for ChatId: {ChatId}", newChatId);
+                    return CreateErrorResponse<ChatDto>("Failed to create chat", "creating chat");
+                }
             },
-            // Direct service operation
+            // Direct service implementation
             async service =>
             {
                 var createRequest = new Services.CreateChatRequest
@@ -401,6 +569,7 @@ public class ChatController(
                 return CreatedAtAction(nameof(GetChat), new { id = result.Chat!.Id }, result.Chat);
             },
             "CreateChat_NewChat",
+            newChatId, // Pass new chat ID for Orleans grain routing
             cancellationToken
         );
     }
@@ -409,13 +578,39 @@ public class ChatController(
     [HttpDelete("{id}")]
     public async Task<ActionResult> DeleteChat(string id, CancellationToken cancellationToken = default)
     {
-        return await ExecutePassThroughAsync(
+        return await ExecuteWithOrleansAsync(
+            // Orleans implementation - use grain directly
+            async grain =>
+            {
+                try
+                {
+                    // Archive the chat (logical deletion in Orleans)
+                    await grain.ArchiveAsync();
+                    return (ActionResult)NoContent();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error archiving chat {ChatId} via Orleans grain", id);
+
+                    // Check if it's a chat not found scenario
+                    if (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase) ||
+                        ex.GetType().Name.Contains("NotFound"))
+                    {
+                        return (ActionResult)NotFound(new { Error = "Chat not found" });
+                    }
+
+                    _logger.LogError("Error deleting chat {ChatId}: Failed to delete chat", id);
+                    return StatusCode(500, new { Error = "Failed to delete chat" });
+                }
+            },
+            // Direct service implementation
             async service =>
             {
                 var success = await service.DeleteChatAsync(id);
-                return !success ? NotFound(new { Error = "Chat not found" }) : NoContent();
+                return !success ? (ActionResult)NotFound(new { Error = "Chat not found" }) : (ActionResult)NoContent();
             },
             "DeleteChat",
+            id, // Pass chat ID for Orleans grain routing
             cancellationToken
         );
     }
@@ -424,7 +619,44 @@ public class ChatController(
     [HttpGet("{chatId}/tasks")]
     public async Task<ActionResult<GetTasksResponse>> GetTasks(string chatId, CancellationToken cancellationToken = default)
     {
-        return await ExecutePassThroughAsync<GetTasksResponse>(
+        return await ExecuteWithOrleansAsync<GetTasksResponse>(
+            // Orleans implementation - task functionality not yet implemented in grains
+            async grain =>
+            {
+                try
+                {
+                    // Verify chat exists by getting state
+                    var chatState = await grain.GetStateAsync();
+
+                    if (chatState == null)
+                    {
+                        return NotFound(new { Error = "Chat not found" });
+                    }
+
+                    // TODO: Implement task management functionality in Orleans grains
+                    // For now, return empty task list since tasks are not yet implemented in Orleans
+                    return Ok(new GetTasksResponse
+                    {
+                        ChatId = chatId,
+                        Tasks = [],
+                        Version = 0
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error retrieving tasks for chat {ChatId} via Orleans grain", chatId);
+
+                    // Check if it's a chat not found scenario
+                    if (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase) ||
+                        ex.GetType().Name.Contains("NotFound"))
+                    {
+                        return NotFound(new { Error = "Chat not found" });
+                    }
+
+                    return CreateErrorResponse<GetTasksResponse>("Failed to retrieve tasks", "retrieving tasks", chatId);
+                }
+            },
+            // Direct service implementation
             async service =>
             {
                 // Verify chat exists and user has access
@@ -462,6 +694,7 @@ public class ChatController(
                 );
             },
             "GetTasks",
+            chatId, // Pass chat ID for Orleans grain routing
             cancellationToken
         );
     }

@@ -3,12 +3,12 @@ using AIChat.Orleans.Configuration;
 using AIChat.Orleans.Contracts;
 using AIChat.Orleans.Metrics;
 using AIChat.Orleans.Models;
-using Orleans.Placement;
 using AIChat.Orleans.Services;
 using AIChat.Orleans.Tracing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orleans;
+using Orleans.Placement;
 using Orleans.Runtime;
 
 namespace AIChat.Orleans.Grains;

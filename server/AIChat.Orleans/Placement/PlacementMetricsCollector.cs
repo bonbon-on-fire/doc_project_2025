@@ -1,6 +1,6 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using Orleans.Runtime;
-using System.Collections.Concurrent;
 
 namespace AIChat.Orleans.Placement;
 

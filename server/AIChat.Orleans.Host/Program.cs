@@ -1,5 +1,6 @@
 using System.Globalization;
 using AIChat.Orleans.Configuration;
+using AIChat.Orleans.Host.Services;
 using AIChat.Orleans.Metrics;
 using AIChat.Orleans.Placement;
 using Microsoft.ApplicationInsights.AspNetCore.Extensions;
@@ -200,12 +201,20 @@ public class Program
                     // Phase 5: Add placement metrics collection (ORL-ST-P5-001)
                     _ = services.AddPlacementMetrics();
 
+                    // Add HTTP client for ChatServiceProxy
+                    _ = services.AddHttpClient<HttpChatServiceProxy>(client =>
+                    {
+                        // Configure base address - in production this should come from configuration
+                        // For development, assume Server runs on localhost:5000
+                        client.BaseAddress = new Uri("http://localhost:5000/");
+                        client.Timeout = TimeSpan.FromMinutes(5); // Long timeout for LLM processing
+                    });
+
                     // Add ChatServiceProxy for grain LLM processing
-                    // Default implementation provides simulated responses
-                    // In production, this should be replaced with actual ChatService integration
+                    // Production implementation that calls real Server API endpoints
                     _ = services.AddSingleton<
-                        Services.IChatServiceProxy,
-                        Services.DefaultChatServiceProxy
+                        AIChat.Orleans.Services.IChatServiceProxy,
+                        HttpChatServiceProxy
                     >();
 
                     // Add health checks

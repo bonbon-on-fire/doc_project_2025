@@ -2,9 +2,9 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Text.Json;
-using Microsoft.Extensions.Options;
 using AIChat.Server.Configuration;
 using AIChat.Server.Services.StateManagement;
+using Microsoft.Extensions.Options;
 
 namespace AIChat.Server.Services.ResponseCaching;
 

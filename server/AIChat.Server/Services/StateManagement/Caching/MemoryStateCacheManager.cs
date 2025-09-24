@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
+using AIChat.Server.Configuration;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
-using AIChat.Server.Configuration;
 
 namespace AIChat.Server.Services.StateManagement.Caching;
 

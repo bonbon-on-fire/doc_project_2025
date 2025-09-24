@@ -45,6 +45,47 @@ public interface IDualModeRouter
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Executes a chat-specific operation that returns a result, routing to Orleans grain or direct service based on configuration.
+    /// Uses the chat ID to route to the appropriate Orleans grain.
+    /// </summary>
+    /// <typeparam name="T">The type of result returned by the operation</typeparam>
+    /// <param name="orleansOperation">The operation to execute using Orleans grain</param>
+    /// <param name="directOperation">The fallback operation to execute using direct service</param>
+    /// <param name="operationName">Name of the operation for logging and metrics</param>
+    /// <param name="chatId">Chat ID to use for Orleans grain routing</param>
+    /// <param name="cancellationToken">Token to cancel the operation</param>
+    /// <returns>The result of the executed operation</returns>
+    /// <exception cref="ArgumentNullException">Thrown when operations or operationName are null</exception>
+    /// <exception cref="OperationCanceledException">Thrown when the operation is cancelled</exception>
+    /// <exception cref="RouterException">Thrown when both Orleans and direct operations fail</exception>
+    Task<T> ExecuteAsync<T>(
+        Func<IChatGrain, Task<T>> orleansOperation,
+        Func<IChatService, Task<T>> directOperation,
+        string operationName,
+        string chatId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Executes a chat-specific operation without a return value, routing to Orleans grain or direct service based on configuration.
+    /// Uses the chat ID to route to the appropriate Orleans grain.
+    /// </summary>
+    /// <param name="orleansOperation">The operation to execute using Orleans grain</param>
+    /// <param name="directOperation">The fallback operation to execute using direct service</param>
+    /// <param name="operationName">Name of the operation for logging and metrics</param>
+    /// <param name="chatId">Chat ID to use for Orleans grain routing</param>
+    /// <param name="cancellationToken">Token to cancel the operation</param>
+    /// <returns>Task representing the async operation</returns>
+    /// <exception cref="ArgumentNullException">Thrown when operations or operationName are null</exception>
+    /// <exception cref="OperationCanceledException">Thrown when the operation is cancelled</exception>
+    /// <exception cref="RouterException">Thrown when both Orleans and direct operations fail</exception>
+    Task ExecuteAsync(
+        Func<IChatGrain, Task> orleansOperation,
+        Func<IChatService, Task> directOperation,
+        string operationName,
+        string chatId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Checks if Orleans routing is currently enabled based on feature flags and system health.
     /// </summary>
     /// <param name="cancellationToken">Token to cancel the operation</param>

@@ -40,6 +40,7 @@ public static class WebSocketServiceExtensions
         ArgumentNullException.ThrowIfNull(app);
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
-        return app.UseMiddleware<WebSocketMiddleware>(path);
+        var options = new WebSocketMiddlewareOptions { WebSocketPath = path };
+        return app.UseMiddleware<WebSocketMiddleware>(options);
     }
 }

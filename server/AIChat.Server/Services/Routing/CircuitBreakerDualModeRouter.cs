@@ -169,6 +169,125 @@ public class CircuitBreakerDualModeRouter : IDualModeRouter
     }
 
     /// <inheritdoc />
+    public async Task<T> ExecuteAsync<T>(
+        Func<IChatGrain, Task<T>> orleansOperation,
+        Func<IChatService, Task<T>> directOperation,
+        string operationName,
+        string chatId,
+        CancellationToken cancellationToken = default)
+    {
+        using var activity = ActivitySource.StartActivity("CircuitBreakerExecuteWithChatId");
+        activity?.SetTag("operation.name", operationName);
+        activity?.SetTag("chat.id", chatId);
+
+        try
+        {
+            // Wrap the Orleans operation with circuit breaker
+            var wrappedOrleansOperation = new Func<IChatGrain, Task<T>>(async grain =>
+            {
+                return await _circuitBreakerPolicy.ExecuteAsync(async () =>
+                {
+                    _logger.LogTrace("Executing Orleans operation {OperationName} for ChatId {ChatId} through circuit breaker", operationName, chatId);
+                    return await orleansOperation(grain);
+                });
+            });
+
+            // Execute with circuit breaker protection using chat-specific routing
+            var result = await _innerRouter.ExecuteAsync(
+                wrappedOrleansOperation,
+                directOperation,
+                operationName,
+                chatId,
+                cancellationToken);
+
+            activity?.SetTag("operation.success", true);
+            return result;
+        }
+        catch (BrokenCircuitException ex)
+        {
+            // Circuit is open, fall back to direct service immediately
+            _logger.LogWarning(ex,
+                "Circuit breaker is open for operation {OperationName} ChatId {ChatId}, falling back to direct service",
+                operationName, chatId);
+
+            activity?.SetTag("circuit.state", "open");
+            activity?.SetTag("fallback.reason", "circuit_open");
+
+            // Execute direct operation when circuit is open
+            return await directOperation(null!);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Circuit breaker execution failed for operation {OperationName} ChatId {ChatId}",
+                operationName, chatId);
+
+            activity?.SetTag("operation.success", false);
+            activity?.SetTag("error.type", ex.GetType().Name);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task ExecuteAsync(
+        Func<IChatGrain, Task> orleansOperation,
+        Func<IChatService, Task> directOperation,
+        string operationName,
+        string chatId,
+        CancellationToken cancellationToken = default)
+    {
+        using var activity = ActivitySource.StartActivity("CircuitBreakerExecuteVoidWithChatId");
+        activity?.SetTag("operation.name", operationName);
+        activity?.SetTag("chat.id", chatId);
+
+        try
+        {
+            // Wrap the Orleans operation with circuit breaker
+            var wrappedOrleansOperation = new Func<IChatGrain, Task>(async grain =>
+            {
+                await _circuitBreakerPolicy.ExecuteAsync(async () =>
+                {
+                    _logger.LogTrace("Executing Orleans operation {OperationName} for ChatId {ChatId} through circuit breaker", operationName, chatId);
+                    await orleansOperation(grain);
+                });
+            });
+
+            // Execute with circuit breaker protection using chat-specific routing
+            await _innerRouter.ExecuteAsync(
+                wrappedOrleansOperation,
+                directOperation,
+                operationName,
+                chatId,
+                cancellationToken);
+
+            activity?.SetTag("operation.success", true);
+        }
+        catch (BrokenCircuitException ex)
+        {
+            // Circuit is open, fall back to direct service immediately
+            _logger.LogWarning(ex,
+                "Circuit breaker is open for operation {OperationName} ChatId {ChatId}, falling back to direct service",
+                operationName, chatId);
+
+            activity?.SetTag("circuit.state", "open");
+            activity?.SetTag("fallback.reason", "circuit_open");
+
+            // Execute direct operation when circuit is open
+            await directOperation(null!);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Circuit breaker execution failed for operation {OperationName} ChatId {ChatId}",
+                operationName, chatId);
+
+            activity?.SetTag("operation.success", false);
+            activity?.SetTag("error.type", ex.GetType().Name);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<bool> IsOrleansEnabledAsync(CancellationToken cancellationToken = default)
     {
         // Check if circuit is open

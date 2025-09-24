@@ -6,11 +6,11 @@ using AIChat.Orleans.Base;
 using AIChat.Orleans.Configuration;
 using AIChat.Orleans.Contracts;
 using AIChat.Orleans.Metrics;
-using Orleans.Placement;
 using AIChat.Orleans.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orleans;
+using Orleans.Placement;
 using Orleans.Runtime;
 
 namespace AIChat.Orleans.Grains;
