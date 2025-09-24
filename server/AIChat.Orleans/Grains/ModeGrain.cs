@@ -6,6 +6,7 @@ using AIChat.Orleans.Base;
 using AIChat.Orleans.Configuration;
 using AIChat.Orleans.Contracts;
 using AIChat.Orleans.Metrics;
+using Orleans.Placement;
 using AIChat.Orleans.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -19,6 +20,7 @@ namespace AIChat.Orleans.Grains;
 /// Implements all mode-related operations including state management, configuration, transitions, and validation.
 /// Uses Orleans native state persistence for optimal performance and consistency.
 /// </summary>
+[ActivationCountBasedPlacement]
 public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDisposable
 {
     private readonly ILogger<ModeGrain> _logger;

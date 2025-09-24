@@ -6,6 +6,7 @@ using AchieveAi.LmDotnetTools.Misc.Storage;
 using AchieveAi.LmDotnetTools.OpenAIProvider.Agents;
 using AIChat.Orleans.Client.Configuration;
 using AIChat.Orleans.Client.Services;
+using AIChat.Orleans.Placement;
 using AIChat.Orleans.Tracing;
 using AIChat.Server.HealthChecks;
 using AIChat.Server.Hubs;
@@ -326,6 +327,9 @@ if (!orleansDisabled)
             AIChat.Server.Services.Metrics.IPrometheusMetricsExporter,
             AIChat.Server.Services.Metrics.PrometheusMetricsExporter
         >();
+
+        // Phase 5: Add placement metrics collection (ORL-ST-P5-001)
+        builder.Services.AddPlacementMetrics();
 
         Log.Information("Orleans configured successfully");
 

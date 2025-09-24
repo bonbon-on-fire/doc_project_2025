@@ -3,6 +3,7 @@ using AIChat.Orleans.Configuration;
 using AIChat.Orleans.Contracts;
 using AIChat.Orleans.Metrics;
 using AIChat.Orleans.Models;
+using Orleans.Placement;
 using AIChat.Orleans.Services;
 using AIChat.Orleans.Tracing;
 using Microsoft.Extensions.Logging;
@@ -17,6 +18,7 @@ namespace AIChat.Orleans.Grains;
 /// Implements all chat-related operations including state management, messaging, streaming, and participant management.
 /// Uses Orleans native state persistence for optimal performance and consistency.
 /// </summary>
+[ActivationCountBasedPlacement]
 public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
 {
     private readonly ILogger<ChatGrain> _logger;

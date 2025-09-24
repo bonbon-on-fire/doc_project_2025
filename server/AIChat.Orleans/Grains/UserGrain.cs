@@ -7,6 +7,7 @@ using AIChat.Orleans.Configuration;
 using AIChat.Orleans.Contracts;
 using AIChat.Orleans.Metrics;
 using AIChat.Orleans.Models;
+using Orleans.Placement;
 using AIChat.Orleans.Services;
 using AIChat.Orleans.Tracing;
 using Microsoft.Extensions.Logging;
@@ -20,6 +21,7 @@ namespace AIChat.Orleans.Grains;
 /// User grain implementation providing user-centric operations.
 /// Maintains user state, connections, and handles message routing.
 /// </summary>
+[HashBasedPlacement]
 public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
 {
     private readonly ILogger<UserGrain> _logger;

@@ -1,6 +1,7 @@
 using System.Globalization;
 using AIChat.Orleans.Configuration;
 using AIChat.Orleans.Metrics;
+using AIChat.Orleans.Placement;
 using Microsoft.ApplicationInsights.AspNetCore.Extensions;
 using Orleans.Configuration;
 using Serilog;
@@ -65,17 +66,21 @@ public class Program
             .ConfigureWebHostDefaults(webBuilder =>
                 _ = webBuilder.Configure(app =>
                 {
-                    // Minimal web host for health checks and dashboard
+                    // Web host with controller support for proper API endpoints
                     _ = app.UseRouting();
                     _ = app.UseEndpoints(endpoints =>
                     {
+                        // Add controller routing for structured API endpoints
+                        _ = endpoints.MapControllers();
+
+                        // Keep basic health check as minimal API
                         _ = endpoints.MapGet(
                             "/health",
                             async context =>
                                 await context.Response.WriteAsync("Orleans Host is running")
                         );
 
-                        // Phase 4: Orleans Metrics API endpoint
+                        // Phase 4: Orleans Metrics API endpoint (minimal API for backward compatibility)
                         _ = endpoints.MapGet(
                             "/api/orleans/metrics",
                             async context =>
@@ -119,6 +124,8 @@ public class Program
                                 );
                             }
                         );
+
+                        // Note: Placement metrics endpoints moved to PlacementController for better architecture
                     });
                 })
             )
@@ -160,6 +167,14 @@ public class Program
             .ConfigureServices(
                 (context, services) =>
                 {
+                    // Add controller services for API endpoints
+                    _ = services.AddControllers()
+                        .AddJsonOptions(options =>
+                        {
+                            options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+                            options.JsonSerializerOptions.WriteIndented = true;
+                        });
+
                     // Configure Orleans grain settings
                     _ = services.Configure<OrleansGrainConfiguration>(
                         context.Configuration.GetSection(OrleansGrainConfiguration.SectionName)
@@ -181,6 +196,9 @@ public class Program
 
                     // Add Phase 4: Orleans Metrics Collection
                     _ = services.AddSingleton<IOrleansMetricsCollector, OrleansMetricsCollector>();
+
+                    // Phase 5: Add placement metrics collection (ORL-ST-P5-001)
+                    _ = services.AddPlacementMetrics();
 
                     // Add ChatServiceProxy for grain LLM processing
                     // Default implementation provides simulated responses
@@ -257,6 +275,16 @@ public class Program
 
         // Note: GrainPlacementOptions configuration updated for Orleans 9.x
         // ResourceOptimizedPlacement is used by default
+
+        // Phase 5: Grain placement optimization using built-in Orleans strategies (ORL-ST-P5-001)
+        // Custom placement attributes are applied directly to grain classes:
+        // - UserGrain: HashBasedPlacement for session stickiness
+        // - ChatGrain: ActivationCountBasedPlacement for load balancing
+        // - ModeGrain: ActivationCountBasedPlacement for resource optimization
+        // - HealthCheckGrain: Random placement by default
+
+        // Enable placement metrics collection through grain filters
+        _ = siloBuilder.UseOrleansPlacementMetrics();
 
         // Configure grain collection
         _ = siloBuilder.Configure<GrainCollectionOptions>(options =>

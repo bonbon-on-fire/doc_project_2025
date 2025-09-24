@@ -984,47 +984,57 @@ public sealed class PermissionValidationResult
 /// <summary>
 /// Comprehensive state validation report.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.StateValidationReport")]
 public sealed class StateValidationReport
 {
     /// <summary>
     /// Overall validation status.
     /// </summary>
+    [Id(0)]
     public required ValidationStatus Status { get; init; }
 
     /// <summary>
     /// Timestamp of validation.
     /// </summary>
+    [Id(1)]
     public required DateTime ValidatedAtUtc { get; init; }
 
     /// <summary>
     /// Configuration validation results.
     /// </summary>
+    [Id(2)]
     public ModeValidationResult? ConfigurationValidation { get; init; }
 
     /// <summary>
     /// Constraint validation results.
     /// </summary>
+    [Id(3)]
     public ConstraintCheckResult? ConstraintValidation { get; init; }
 
     /// <summary>
     /// Tool validation results.
     /// </summary>
+    [Id(4)]
     public ToolValidationResult? ToolValidation { get; init; }
 
     /// <summary>
     /// State consistency checks.
     /// </summary>
+    [Id(5)]
     public List<ConsistencyCheck> ConsistencyChecks { get; init; } = [];
 
     /// <summary>
     /// Overall health score (0-100).
     /// </summary>
     [Range(0, 100)]
+    [Id(6)]
     public int HealthScore { get; init; }
 
     /// <summary>
     /// Recommendations for improvement.
     /// </summary>
+    [Id(7)]
     public List<string> Recommendations { get; init; } = [];
 }
 
@@ -1411,21 +1421,26 @@ public sealed class PromptIssue
 /// <summary>
 /// Represents a consistency check result.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.ConsistencyCheck")]
 public sealed class ConsistencyCheck
 {
     /// <summary>
     /// Check name.
     /// </summary>
+    [Id(0)]
     public required string CheckName { get; init; }
 
     /// <summary>
     /// Whether the check passed.
     /// </summary>
+    [Id(1)]
     public required bool Passed { get; init; }
 
     /// <summary>
     /// Details about the check.
     /// </summary>
+    [Id(2)]
     public string? Details { get; init; }
 }
 
@@ -1625,40 +1640,49 @@ public enum RecurrenceType
 /// Information about a potential mode for transition evaluation.
 /// Used internally for determining available transitions.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.PotentialModeInfo")]
 public sealed class PotentialModeInfo
 {
     /// <summary>
     /// Mode identifier.
     /// </summary>
+    [Id(0)]
     public required string ModeId { get; init; }
 
     /// <summary>
     /// Display name of the mode.
     /// </summary>
+    [Id(1)]
     public required string Name { get; init; }
 
     /// <summary>
     /// Description of the mode.
     /// </summary>
+    [Id(2)]
     public required string Description { get; init; }
 
     /// <summary>
     /// Category of the mode.
     /// </summary>
+    [Id(3)]
     public required string Category { get; init; }
 
     /// <summary>
     /// Features provided by this mode.
     /// </summary>
+    [Id(4)]
     public required List<string> Features { get; init; }
 
     /// <summary>
     /// Required permissions to use this mode.
     /// </summary>
+    [Id(5)]
     public required List<string> RequiredPermissions { get; init; }
 
     /// <summary>
     /// Estimated time in milliseconds for transition to this mode.
     /// </summary>
+    [Id(6)]
     public required int EstimatedTransitionTimeMs { get; init; }
 }

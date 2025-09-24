@@ -9,6 +9,7 @@ namespace AIChat.Orleans.Grains;
 /// Orleans grain implementation for performing health checks on the Orleans cluster.
 /// Provides comprehensive health monitoring and diagnostics for the Orleans infrastructure.
 /// </summary>
+// Uses Orleans default random placement for even distribution across silos
 public sealed class HealthCheckGrain : Grain, IHealthCheckGrain
 {
     private readonly ILogger<HealthCheckGrain> _logger;
