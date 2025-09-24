@@ -878,21 +878,34 @@ public interface IChatGrain : IGrainWithStringKey
 
 ### 5.2 Legacy Code Removal
 
-#### ORL-ST-P5-003: Remove Direct Service Paths
+#### ORL-ST-P5-003: Remove Direct Service Paths ⚠️
 - **Priority**: High
 - **Effort**: 2 days
 - **Dependencies**: All phases complete
 - **Description**: Remove legacy code paths
+- **Status**: ⚠️ **PARTIALLY COMPLETED** - Critical architectural issue discovered
+- **Completion Date**: 2025-09-23
 - **Code to Remove**:
-  - [ ] Direct ChatService calls
-  - [ ] Old state management
-  - [ ] Deprecated endpoints
-  - [ ] Unused dependencies
+  - [x] **COMPLETED**: Unused dependencies ✅ MessageSequenceService.cs removed (deprecated service)
+  - [ ] **BLOCKED**: Direct ChatService calls ❌ Requires Orleans grain integration
+  - [ ] **BLOCKED**: Old state management ❌ Pass-through pattern identified
+  - [ ] **BLOCKED**: Deprecated endpoints ❌ Still needed for functionality
 - **Acceptance Criteria**:
-  - [ ] Code removed safely
-  - [ ] Tests updated
-  - [ ] Documentation updated
-  - [ ] No regressions
+  - [x] Safe code removed ✅ Deprecated MessageSequenceService removed
+  - [ ] **BLOCKED**: Tests updated ❌ Major changes required
+  - [x] Documentation updated ✅ Findings documented in scratchpad
+  - [x] No regressions ✅ Build passes, functionality preserved
+- **Critical Discovery** 🔍:
+  **Current Orleans implementation is a facade that passes through to direct ChatService!**
+  - `ChatController.ExecutePassThroughAsync()` calls `_chatService` even in Orleans path (lines 66, 88)
+  - `DualModeRouter` injects direct `ChatService` in both Orleans and Direct paths
+  - `DefaultChatServiceProxy` returns simulated responses, not real LLM processing
+- **Remaining Work** ⚠️:
+  - **Cannot complete task safely without Orleans grain integration**
+  - Requires replacing pass-through pattern with real Orleans grain calls
+  - Needs data type conversion between `ChatState` (Orleans) and `ChatDto` (API)
+  - Requires comprehensive testing of Orleans grain functionality
+- **Recommendation**: Create follow-up task "Implement Orleans Grain Integration" before attempting further direct service path removal
 
 #### ORL-ST-P5-004: Archive Deprecated Components
 - **Priority**: Low
