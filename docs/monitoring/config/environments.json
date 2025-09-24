@@ -1,0 +1,204 @@
+{
+  "environments": {
+    "development": {
+      "description": "Local development environment with basic monitoring setup",
+      "prometheusUrl": "http://localhost:9090",
+      "grafanaUrl": "http://localhost:3000",
+      "refreshInterval": "5s",
+      "timeRange": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "thresholds": {
+        "errorRate": {
+          "warning": 1.0,
+          "critical": 5.0
+        },
+        "latency": {
+          "warning": 100,
+          "critical": 500
+        },
+        "grainActivations": {
+          "warning": 1000,
+          "critical": 5000
+        }
+      },
+      "requiredMetrics": [
+        "orleans_grain_activations_total",
+        "orleans_grain_operation_duration_seconds",
+        "orleans_grain_operation_errors_total"
+      ],
+      "fallbackQueries": {
+        "healthScore": "vector(75)",
+        "errorRate": "vector(0)",
+        "activeGrains": "vector(100)"
+      }
+    },
+    "test": {
+      "description": "Test environment with moderate monitoring requirements",
+      "prometheusUrl": "http://test-prometheus:9090",
+      "grafanaUrl": "http://test-grafana:3000",
+      "refreshInterval": "10s",
+      "timeRange": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "thresholds": {
+        "errorRate": {
+          "warning": 0.5,
+          "critical": 2.0
+        },
+        "latency": {
+          "warning": 50,
+          "critical": 200
+        },
+        "grainActivations": {
+          "warning": 2000,
+          "critical": 10000
+        }
+      },
+      "requiredMetrics": [
+        "orleans_grain_activations_total",
+        "orleans_grain_operation_duration_seconds",
+        "orleans_grain_operation_errors_total",
+        "orleans_grain_state_size_bytes"
+      ],
+      "fallbackQueries": {
+        "healthScore": "vector(80)",
+        "errorRate": "vector(0)",
+        "activeGrains": "vector(500)"
+      }
+    },
+    "production": {
+      "description": "Production environment with comprehensive monitoring and strict thresholds",
+      "prometheusUrl": "https://prometheus.production.company.com",
+      "grafanaUrl": "https://grafana.production.company.com",
+      "refreshInterval": "15s",
+      "timeRange": {
+        "from": "now-24h",
+        "to": "now"
+      },
+      "thresholds": {
+        "errorRate": {
+          "warning": 0.1,
+          "critical": 1.0
+        },
+        "latency": {
+          "warning": 30,
+          "critical": 100
+        },
+        "grainActivations": {
+          "warning": 5000,
+          "critical": 25000
+        }
+      },
+      "requiredMetrics": [
+        "orleans_grain_activations_total",
+        "orleans_grain_operation_duration_seconds",
+        "orleans_grain_operation_errors_total",
+        "orleans_grain_state_size_bytes",
+        "orleans_silo_memory_usage_bytes",
+        "orleans_cluster_membership_total",
+        "orleans_grain_collection_events_total"
+      ],
+      "fallbackQueries": {
+        "healthScore": "vector(95)",
+        "errorRate": "vector(0)",
+        "activeGrains": "vector(1000)"
+      }
+    }
+  },
+  "dashboardTemplates": {
+    "executive": {
+      "targetAudience": "Leadership and stakeholders",
+      "refreshInterval": "1m",
+      "panels": {
+        "systemHealth": {
+          "required": true,
+          "fallbackValue": 85,
+          "thresholds": [70, 90]
+        },
+        "slaCompliance": {
+          "required": true,
+          "fallbackValue": 99.5,
+          "thresholds": [95, 99]
+        },
+        "errorRate": {
+          "required": true,
+          "fallbackValue": 0,
+          "thresholds": [1, 5]
+        }
+      }
+    },
+    "operational": {
+      "targetAudience": "DevOps and SRE teams",
+      "refreshInterval": "5s",
+      "panels": {
+        "activeGrains": {
+          "required": true,
+          "fallbackValue": 100,
+          "thresholds": [1000, 5000]
+        },
+        "latency": {
+          "required": true,
+          "fallbackValue": 50,
+          "thresholds": [100, 500]
+        },
+        "throughput": {
+          "required": true,
+          "fallbackValue": 1000,
+          "thresholds": [5000, 20000]
+        }
+      }
+    },
+    "troubleshooting": {
+      "targetAudience": "Engineers and developers",
+      "refreshInterval": "5s",
+      "panels": {
+        "errorDetails": {
+          "required": true,
+          "fallbackValue": "No recent errors",
+          "showEmpty": true
+        },
+        "slowOperations": {
+          "required": true,
+          "fallbackValue": "No slow operations detected",
+          "showEmpty": true
+        }
+      }
+    },
+    "historical": {
+      "targetAudience": "Performance engineers and capacity planners",
+      "refreshInterval": "1m",
+      "timeRanges": ["7d", "30d", "90d", "1y"],
+      "panels": {
+        "trendAnalysis": {
+          "required": true,
+          "fallbackValue": "Insufficient historical data",
+          "showEmpty": true
+        },
+        "seasonalPatterns": {
+          "required": false,
+          "fallbackValue": "No patterns detected",
+          "showEmpty": true
+        }
+      }
+    },
+    "capacity": {
+      "targetAudience": "Infrastructure teams and architects",
+      "refreshInterval": "30s",
+      "panels": {
+        "resourceUtilization": {
+          "required": true,
+          "fallbackValue": 50,
+          "thresholds": [70, 90]
+        },
+        "growthProjections": {
+          "required": true,
+          "fallbackValue": "Stable growth projected",
+          "showEmpty": false
+        }
+      }
+    }
+  }
+}

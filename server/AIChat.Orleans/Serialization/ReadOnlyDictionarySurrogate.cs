@@ -1,5 +1,5 @@
-using Orleans;
 using AIChat.Orleans.Contracts;
+using Orleans;
 
 namespace AIChat.Orleans.Serialization;
 

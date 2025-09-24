@@ -1,0 +1,586 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Orleans Historical Analysis Dashboard",
+    "tags": ["orleans", "historical", "trends", "analysis", "capacity"],
+    "style": "dark",
+    "timezone": "browser",
+    "refresh": "5m",
+    "time": {
+      "from": "now-30d",
+      "to": "now"
+    },
+    "templating": {
+      "list": [
+        {
+          "name": "grain_type",
+          "type": "query",
+          "query": "label_values(orleans_grain_activations_total, grain_type)",
+          "refresh": 1,
+          "includeAll": true,
+          "allValue": ".*",
+          "multi": true,
+          "options": [],
+          "current": {
+            "selected": true,
+            "text": "All",
+            "value": "$__all"
+          }
+        },
+        {
+          "name": "time_range",
+          "type": "custom",
+          "options": [
+            {
+              "text": "7 days",
+              "value": "7d",
+              "selected": false
+            },
+            {
+              "text": "30 days",
+              "value": "30d",
+              "selected": true
+            },
+            {
+              "text": "90 days",
+              "value": "90d",
+              "selected": false
+            },
+            {
+              "text": "1 year",
+              "value": "365d",
+              "selected": false
+            }
+          ],
+          "current": {
+            "text": "30 days",
+            "value": "30d"
+          }
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": "-- Grafana --",
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Long-term Performance Trends (P95 Latency)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(orleans_grain_operation_duration_seconds_bucket{grain_type=~\"$grain_type\"}[1h])) * 1000",
+            "legendFormat": "{{grain_type}} P95 Latency"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(orleans_grain_operation_duration_seconds_bucket{grain_type=~\"$grain_type\"}[1h])) * 1000",
+            "legendFormat": "{{grain_type}} P50 Latency"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Latency (ms)",
+            "min": 0
+          },
+          {
+            "show": false
+          }
+        ],
+        "xAxis": {
+          "show": true
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "legend": {
+          "show": true,
+          "values": true,
+          "min": true,
+          "max": true,
+          "current": true,
+          "avg": true
+        },
+        "lines": true,
+        "linewidth": 2,
+        "fill": 1,
+        "fillGradient": 3
+      },
+      {
+        "id": 2,
+        "title": "Error Rate Trends Over Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(orleans_grain_operation_errors_total{grain_type=~\"$grain_type\"}[1h]) / rate(orleans_grain_operation_duration_seconds_count{grain_type=~\"$grain_type\"}[1h]) * 100",
+            "legendFormat": "{{grain_type}} Error Rate %"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Error Rate (%)",
+            "min": 0,
+            "max": 10
+          },
+          {
+            "show": false
+          }
+        ],
+        "xAxis": {
+          "show": true
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "legend": {
+          "show": true,
+          "values": true,
+          "min": true,
+          "max": true,
+          "current": true,
+          "avg": true
+        },
+        "lines": true,
+        "linewidth": 2,
+        "fill": 1,
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [5],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "1h", "now"]
+              },
+              "reducer": {
+                "params": [],
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "for": "15m",
+          "frequency": "30s",
+          "handler": 1,
+          "name": "Historical Error Rate Trend Alert",
+          "noDataState": "no_data",
+          "notifications": []
+        }
+      },
+      {
+        "id": 3,
+        "title": "Capacity Utilization Growth Trends",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(orleans_grain_active_operations{grain_type=~\"$grain_type\"}) by (grain_type)",
+            "legendFormat": "{{grain_type}} Active Operations"
+          },
+          {
+            "expr": "rate(orleans_grain_activations_total{grain_type=~\"$grain_type\"}[1h])",
+            "legendFormat": "{{grain_type}} Activation Rate"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Count / Rate",
+            "min": 0
+          },
+          {
+            "show": false
+          }
+        ],
+        "xAxis": {
+          "show": true
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        },
+        "legend": {
+          "show": true,
+          "values": true,
+          "min": true,
+          "max": true,
+          "current": true,
+          "avg": true
+        },
+        "lines": true,
+        "linewidth": 2,
+        "fill": 1
+      },
+      {
+        "id": 4,
+        "title": "State Size Growth Analysis",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "avg(orleans_grain_state_size_bytes{grain_type=~\"$grain_type\"}) by (grain_type)",
+            "legendFormat": "{{grain_type}} Avg State Size"
+          },
+          {
+            "expr": "max(orleans_grain_state_size_bytes{grain_type=~\"$grain_type\"}) by (grain_type)",
+            "legendFormat": "{{grain_type}} Max State Size"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Size (bytes)",
+            "min": 0,
+            "logBase": 2
+          },
+          {
+            "show": false
+          }
+        ],
+        "xAxis": {
+          "show": true
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        },
+        "legend": {
+          "show": true,
+          "values": true,
+          "min": true,
+          "max": true,
+          "current": true,
+          "avg": true
+        },
+        "lines": true,
+        "linewidth": 2,
+        "fill": 1
+      },
+      {
+        "id": 5,
+        "title": "Daily Usage Pattern Heatmap",
+        "type": "heatmap",
+        "targets": [
+          {
+            "expr": "sum(rate(orleans_grain_operation_duration_seconds_count{grain_type=~\"$grain_type\"}[1h])) by (grain_type)",
+            "legendFormat": "{{grain_type}}"
+          }
+        ],
+        "heatmap": {
+          "xBucketNumber": 24,
+          "xBucketSize": "1h",
+          "yBucketNumber": 7,
+          "yBucketSize": "1d"
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        },
+        "legend": {
+          "show": true
+        }
+      },
+      {
+        "id": 6,
+        "title": "Weekly Comparative Analysis",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(orleans_grain_operation_duration_seconds_count{grain_type=~\"$grain_type\"}[1h])) by (grain_type)",
+            "legendFormat": "This Week - {{grain_type}}"
+          },
+          {
+            "expr": "sum(rate(orleans_grain_operation_duration_seconds_count{grain_type=~\"$grain_type\"}[1h] offset 1w)) by (grain_type)",
+            "legendFormat": "Last Week - {{grain_type}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Operations per second",
+            "min": 0
+          },
+          {
+            "show": false
+          }
+        ],
+        "xAxis": {
+          "show": true
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 16
+        },
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "avg": true
+        },
+        "lines": true,
+        "linewidth": 2,
+        "fill": 1
+      },
+      {
+        "id": 7,
+        "title": "Seasonal Pattern Detection (Monthly)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "avg_over_time(sum(rate(orleans_grain_operation_duration_seconds_count{grain_type=~\"$grain_type\"}[1h])) by (grain_type)[30d:1d])",
+            "legendFormat": "{{grain_type}} Monthly Average"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Operations per second (monthly avg)",
+            "min": 0
+          },
+          {
+            "show": false
+          }
+        ],
+        "xAxis": {
+          "show": true
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 24
+        },
+        "legend": {
+          "show": true,
+          "values": true,
+          "min": true,
+          "max": true,
+          "current": true,
+          "avg": true
+        },
+        "lines": true,
+        "linewidth": 3,
+        "fill": 2,
+        "fillGradient": 5
+      },
+      {
+        "id": 8,
+        "title": "Performance Degradation Detection",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "(\n  histogram_quantile(0.95, rate(orleans_grain_operation_duration_seconds_bucket{grain_type=~\"$grain_type\"}[1h]))\n  - \n  histogram_quantile(0.95, rate(orleans_grain_operation_duration_seconds_bucket{grain_type=~\"$grain_type\"}[1h] offset 7d))\n) * 1000",
+            "legendFormat": "{{grain_type}} P95 Latency Change (7d)"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Latency Change (ms)",
+            "logBase": 1
+          },
+          {
+            "show": false
+          }
+        ],
+        "xAxis": {
+          "show": true
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 32
+        },
+        "legend": {
+          "show": true,
+          "values": true,
+          "min": true,
+          "max": true,
+          "current": true,
+          "avg": true
+        },
+        "lines": true,
+        "linewidth": 2,
+        "fill": 1,
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [100],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "2h", "now"]
+              },
+              "reducer": {
+                "params": [],
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "for": "30m",
+          "frequency": "1m",
+          "handler": 1,
+          "name": "Performance Degradation Alert",
+          "noDataState": "no_data",
+          "notifications": []
+        }
+      },
+      {
+        "id": 9,
+        "title": "Growth Projections (Linear Trend)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "predict_linear(sum(orleans_grain_active_operations{grain_type=~\"$grain_type\"}) by (grain_type)[7d], 86400 * 30)",
+            "legendFormat": "{{grain_type}} Projected (30d)"
+          },
+          {
+            "expr": "sum(orleans_grain_active_operations{grain_type=~\"$grain_type\"}) by (grain_type)",
+            "legendFormat": "{{grain_type}} Current"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Active Operations (projected)",
+            "min": 0
+          },
+          {
+            "show": false
+          }
+        ],
+        "xAxis": {
+          "show": true
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 32
+        },
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "avg": true
+        },
+        "lines": true,
+        "linewidth": 2,
+        "fill": 1,
+        "dashes": true
+      },
+      {
+        "id": 10,
+        "title": "Historical Summary Statistics",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "avg_over_time(histogram_quantile(0.95, rate(orleans_grain_operation_duration_seconds_bucket{grain_type=~\"$grain_type\"}[1h]))[30d:1h]) * 1000",
+            "legendFormat": "{{grain_type}}_avg_p95_latency_ms",
+            "format": "table"
+          },
+          {
+            "expr": "max_over_time(histogram_quantile(0.95, rate(orleans_grain_operation_duration_seconds_bucket{grain_type=~\"$grain_type\"}[1h]))[30d:1h]) * 1000",
+            "legendFormat": "{{grain_type}}_max_p95_latency_ms",
+            "format": "table"
+          },
+          {
+            "expr": "avg_over_time((rate(orleans_grain_operation_errors_total{grain_type=~\"$grain_type\"}[1h]) / rate(orleans_grain_operation_duration_seconds_count{grain_type=~\"$grain_type\"}[1h]) * 100)[30d:1h])",
+            "legendFormat": "{{grain_type}}_avg_error_rate_pct",
+            "format": "table"
+          },
+          {
+            "expr": "sum(increase(orleans_grain_operation_duration_seconds_count{grain_type=~\"$grain_type\"}[30d])) by (grain_type)",
+            "legendFormat": "{{grain_type}}_total_operations_30d",
+            "format": "table"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "displayMode": "auto"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "options": {
+          "showHeader": true,
+          "sortBy": [
+            {
+              "desc": true,
+              "displayName": "grain_type"
+            }
+          ]
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 40
+        }
+      }
+    ]
+  },
+  "meta": {
+    "type": "db",
+    "canSave": true,
+    "canEdit": true,
+    "canAdmin": true,
+    "canStar": true,
+    "slug": "orleans-historical-analysis-dashboard",
+    "url": "/d/orleans-historical/orleans-historical-analysis-dashboard",
+    "expires": "0001-01-01T00:00:00Z",
+    "created": "2025-09-23T00:00:00Z",
+    "updated": "2025-09-23T00:00:00Z",
+    "updatedBy": "admin",
+    "createdBy": "admin",
+    "version": 1,
+    "hasAcl": false,
+    "isFolder": false,
+    "folderId": 0,
+    "folderTitle": "General",
+    "folderUrl": "",
+    "provisioned": false,
+    "provisionedExternalId": ""
+  }
+}

@@ -1,0 +1,702 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Orleans Capacity Planning Dashboard",
+    "tags": ["orleans", "capacity", "planning", "scaling", "resources"],
+    "style": "dark",
+    "timezone": "browser",
+    "refresh": "30s",
+    "time": {
+      "from": "now-7d",
+      "to": "now"
+    },
+    "templating": {
+      "list": [
+        {
+          "name": "grain_type",
+          "type": "query",
+          "query": "label_values(orleans_grain_activations_total, grain_type)",
+          "refresh": 1,
+          "includeAll": true,
+          "allValue": ".*",
+          "multi": true,
+          "options": [],
+          "current": {
+            "selected": true,
+            "text": "All",
+            "value": "$__all"
+          }
+        },
+        {
+          "name": "projection_days",
+          "type": "custom",
+          "options": [
+            {
+              "text": "7 days",
+              "value": "7",
+              "selected": false
+            },
+            {
+              "text": "30 days",
+              "value": "30",
+              "selected": true
+            },
+            {
+              "text": "90 days",
+              "value": "90",
+              "selected": false
+            },
+            {
+              "text": "180 days",
+              "value": "180",
+              "selected": false
+            }
+          ],
+          "current": {
+            "text": "30 days",
+            "value": "30"
+          }
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": "-- Grafana --",
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Current Resource Utilization",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "sum(orleans_grain_active_operations{grain_type=~\"$grain_type\"}) / 10000 * 100",
+            "legendFormat": "Active Operations %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 60
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            },
+            "unit": "percent",
+            "min": 0,
+            "max": 100
+          }
+        },
+        "options": {
+          "orientation": "auto",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "showThresholdLabels": true,
+          "showThresholdMarkers": true
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "Memory Utilization Efficiency",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "avg(orleans_grain_state_size_bytes{grain_type=~\"$grain_type\"}) / 1048576",
+            "legendFormat": "Avg State Size MB"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 10
+                },
+                {
+                  "color": "red",
+                  "value": 50
+                }
+              ]
+            },
+            "unit": "decmbytes",
+            "min": 0,
+            "max": 100
+          }
+        },
+        "options": {
+          "orientation": "auto",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "showThresholdLabels": true,
+          "showThresholdMarkers": true
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 6,
+          "y": 0
+        }
+      },
+      {
+        "id": 3,
+        "title": "Performance Efficiency Ratio",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "(\n  sum(rate(orleans_grain_operation_duration_seconds_count{grain_type=~\"$grain_type\"}[1h])) / \n  (sum(orleans_grain_active_operations{grain_type=~\"$grain_type\"}) + 1)\n)",
+            "legendFormat": "Ops per Active Grain"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 10
+                },
+                {
+                  "color": "green",
+                  "value": 50
+                }
+              ]
+            },
+            "unit": "short",
+            "min": 0,
+            "max": 200
+          }
+        },
+        "options": {
+          "orientation": "auto",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "showThresholdLabels": true,
+          "showThresholdMarkers": true
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 12,
+          "y": 0
+        }
+      },
+      {
+        "id": 4,
+        "title": "Scaling Threshold Alert",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "(\n  sum(orleans_grain_active_operations{grain_type=~\"$grain_type\"}) > 8000\n) OR (\n  avg(orleans_grain_state_size_bytes{grain_type=~\"$grain_type\"}) / 1048576 > 40\n) OR (\n  histogram_quantile(0.95, rate(orleans_grain_operation_duration_seconds_bucket{grain_type=~\"$grain_type\"}[1h])) * 1000 > 1000\n)",
+            "legendFormat": "Scale Now Required"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "displayMode": "basic"
+            },
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "text": "OK"
+                  },
+                  "1": {
+                    "text": "SCALE NEEDED"
+                  }
+                },
+                "type": "value"
+              }
+            ],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 1
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "options": {
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "textMode": "value_and_name",
+          "colorMode": "background"
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 18,
+          "y": 0
+        }
+      },
+      {
+        "id": 5,
+        "title": "Growth Rate Projections",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "predict_linear(sum(orleans_grain_active_operations{grain_type=~\"$grain_type\"}) by (grain_type)[7d], 86400 * $projection_days)",
+            "legendFormat": "{{grain_type}} Projected ($projection_days d)"
+          },
+          {
+            "expr": "sum(orleans_grain_active_operations{grain_type=~\"$grain_type\"}) by (grain_type)",
+            "legendFormat": "{{grain_type}} Current"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Active Operations",
+            "min": 0
+          },
+          {
+            "show": false
+          }
+        ],
+        "xAxis": {
+          "show": true
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        },
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "avg": true
+        },
+        "lines": true,
+        "linewidth": 2,
+        "fill": 1,
+        "dashes": true
+      },
+      {
+        "id": 6,
+        "title": "Capacity Utilization Trends",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(orleans_grain_active_operations{grain_type=~\"$grain_type\"}) / 10000 * 100",
+            "legendFormat": "Utilization %"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Capacity Utilization (%)",
+            "min": 0,
+            "max": 100
+          },
+          {
+            "show": false
+          }
+        ],
+        "xAxis": {
+          "show": true
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        },
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "avg": true,
+          "max": true
+        },
+        "lines": true,
+        "linewidth": 2,
+        "fill": 2,
+        "thresholds": [
+          {
+            "value": 80,
+            "colorMode": "critical",
+            "op": "gt",
+            "fill": true,
+            "line": true
+          },
+          {
+            "value": 60,
+            "colorMode": "warning",
+            "op": "gt",
+            "fill": false,
+            "line": true
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Cost Optimization Opportunities",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "(\n  rate(orleans_grain_operation_duration_seconds_count{grain_type=~\"$grain_type\"}[1h]) / \n  (orleans_grain_active_operations{grain_type=~\"$grain_type\"} + 1)\n) < 1",
+            "legendFormat": "{{grain_type}}",
+            "format": "table"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "displayMode": "auto"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 0.5
+                },
+                {
+                  "color": "green",
+                  "value": 10
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "options": {
+          "showHeader": true,
+          "sortBy": [
+            {
+              "desc": false,
+              "displayName": "Value"
+            }
+          ]
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 0,
+          "y": 16
+        }
+      },
+      {
+        "id": 8,
+        "title": "Resource Allocation Distribution",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "sum(orleans_grain_active_operations{grain_type=~\"$grain_type\"}) by (grain_type)",
+            "legendFormat": "{{grain_type}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "hideFrom": {
+                "tooltip": false,
+                "vis": false,
+                "legend": false
+              }
+            },
+            "mappings": [],
+            "unit": "short"
+          }
+        },
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "pieType": "pie",
+          "tooltip": {
+            "mode": "single"
+          },
+          "legend": {
+            "displayMode": "visible",
+            "placement": "right"
+          },
+          "displayLabels": ["name", "percent"]
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 8,
+          "y": 16
+        }
+      },
+      {
+        "id": 9,
+        "title": "Infrastructure Efficiency Score",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "(\n  (\n    (100 - (rate(orleans_grain_operation_errors_total{grain_type=~\"$grain_type\"}[1h]) / rate(orleans_grain_operation_duration_seconds_count{grain_type=~\"$grain_type\"}[1h]) * 100))\n    +\n    (100 - clamp_max(histogram_quantile(0.95, rate(orleans_grain_operation_duration_seconds_bucket{grain_type=~\"$grain_type\"}[1h])) * 1000 / 10, 100))\n    +\n    clamp_max((\n      sum(rate(orleans_grain_operation_duration_seconds_count{grain_type=~\"$grain_type\"}[1h])) / \n      (sum(orleans_grain_active_operations{grain_type=~\"$grain_type\"}) + 1)\n    ), 100)\n  ) / 3\n)",
+            "legendFormat": "Efficiency Score"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "displayMode": "basic"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 60
+                },
+                {
+                  "color": "green",
+                  "value": 80
+                }
+              ]
+            },
+            "unit": "percent",
+            "min": 0,
+            "max": 100
+          }
+        },
+        "options": {
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "textMode": "value_and_name",
+          "colorMode": "value"
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 16,
+          "y": 16
+        }
+      },
+      {
+        "id": 10,
+        "title": "Scaling Recommendations",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "predict_linear(sum(orleans_grain_active_operations{grain_type=~\"$grain_type\"}) by (grain_type)[7d], 86400 * 30) - sum(orleans_grain_active_operations{grain_type=~\"$grain_type\"}) by (grain_type)",
+            "legendFormat": "{{grain_type}}",
+            "format": "table"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "displayMode": "auto"
+            },
+            "mappings": [
+              {
+                "options": {
+                  "pattern": "^(.*)$",
+                  "result": {
+                    "text": "$1 additional capacity needed"
+                  }
+                },
+                "type": "regex"
+              }
+            ],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 100
+                },
+                {
+                  "color": "red",
+                  "value": 1000
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "options": {
+          "showHeader": true,
+          "sortBy": [
+            {
+              "desc": true,
+              "displayName": "Value"
+            }
+          ]
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 22
+        }
+      },
+      {
+        "id": 11,
+        "title": "Memory Growth Forecast",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "predict_linear(avg(orleans_grain_state_size_bytes{grain_type=~\"$grain_type\"}) by (grain_type)[7d], 86400 * $projection_days) / 1048576",
+            "legendFormat": "{{grain_type}} Projected Size (MB)"
+          },
+          {
+            "expr": "avg(orleans_grain_state_size_bytes{grain_type=~\"$grain_type\"}) by (grain_type) / 1048576",
+            "legendFormat": "{{grain_type}} Current Size (MB)"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Memory (MB)",
+            "min": 0,
+            "logBase": 2
+          },
+          {
+            "show": false
+          }
+        ],
+        "xAxis": {
+          "show": true
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 22
+        },
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "avg": true
+        },
+        "lines": true,
+        "linewidth": 2,
+        "fill": 1,
+        "dashes": true
+      }
+    ]
+  },
+  "meta": {
+    "type": "db",
+    "canSave": true,
+    "canEdit": true,
+    "canAdmin": true,
+    "canStar": true,
+    "slug": "orleans-capacity-planning-dashboard",
+    "url": "/d/orleans-capacity/orleans-capacity-planning-dashboard",
+    "expires": "0001-01-01T00:00:00Z",
+    "created": "2025-09-23T00:00:00Z",
+    "updated": "2025-09-23T00:00:00Z",
+    "updatedBy": "admin",
+    "createdBy": "admin",
+    "version": 1,
+    "hasAcl": false,
+    "isFolder": false,
+    "folderId": 0,
+    "folderTitle": "General",
+    "folderUrl": "",
+    "provisioned": false,
+    "provisionedExternalId": ""
+  }
+}

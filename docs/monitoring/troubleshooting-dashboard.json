@@ -1,0 +1,656 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Orleans Troubleshooting Dashboard",
+    "tags": ["orleans", "troubleshooting", "debugging", "errors", "performance"],
+    "style": "dark",
+    "timezone": "browser",
+    "refresh": "10s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "templating": {
+      "list": [
+        {
+          "name": "grain_type",
+          "type": "query",
+          "query": "label_values(orleans_grain_operation_duration_seconds_count, grain_type)",
+          "refresh": 1,
+          "includeAll": true,
+          "allValue": ".*",
+          "multi": true,
+          "options": [],
+          "current": {
+            "selected": true,
+            "text": "All",
+            "value": "$__all"
+          }
+        },
+        {
+          "name": "operation_type",
+          "type": "query",
+          "query": "label_values(orleans_grain_operation_duration_seconds_count{grain_type=~\"$grain_type\"}, operation_type)",
+          "refresh": 1,
+          "includeAll": true,
+          "allValue": ".*",
+          "multi": true,
+          "options": [],
+          "current": {
+            "selected": true,
+            "text": "All",
+            "value": "$__all"
+          }
+        },
+        {
+          "name": "grain_id",
+          "type": "query",
+          "query": "label_values(orleans_grain_state_size_bytes{grain_type=~\"$grain_type\"}, grain_id)",
+          "refresh": 1,
+          "includeAll": true,
+          "allValue": ".*",
+          "multi": true,
+          "options": [],
+          "current": {
+            "selected": true,
+            "text": "All",
+            "value": "$__all"
+          }
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": "-- Grafana --",
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Real-time Error Breakdown",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(orleans_grain_operation_errors_total{grain_type=~\"$grain_type\", operation_type=~\"$operation_type\"}[1m])",
+            "legendFormat": "{{grain_type}}.{{operation_type}} errors/sec"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Errors per second",
+            "min": 0
+          },
+          {
+            "show": false
+          }
+        ],
+        "xAxis": {
+          "show": true
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "max": true
+        },
+        "lines": true,
+        "linewidth": 2,
+        "fill": 1,
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [0.1],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "1m", "now"]
+              },
+              "reducer": {
+                "params": [],
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "for": "30s",
+          "frequency": "5s",
+          "handler": 1,
+          "name": "High Error Rate Alert",
+          "noDataState": "no_data",
+          "notifications": []
+        }
+      },
+      {
+        "id": 2,
+        "title": "Operation Latency Distribution (Current)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.99, rate(orleans_grain_operation_duration_seconds_bucket{grain_type=~\"$grain_type\", operation_type=~\"$operation_type\"}[1m])) * 1000",
+            "legendFormat": "{{grain_type}}.{{operation_type}} P99"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(orleans_grain_operation_duration_seconds_bucket{grain_type=~\"$grain_type\", operation_type=~\"$operation_type\"}[1m])) * 1000",
+            "legendFormat": "{{grain_type}}.{{operation_type}} P95"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(orleans_grain_operation_duration_seconds_bucket{grain_type=~\"$grain_type\", operation_type=~\"$operation_type\"}[1m])) * 1000",
+            "legendFormat": "{{grain_type}}.{{operation_type}} P50"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Latency (ms)",
+            "min": 0,
+            "logBase": 2
+          },
+          {
+            "show": false
+          }
+        ],
+        "xAxis": {
+          "show": true
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "max": true
+        },
+        "lines": true,
+        "linewidth": 2,
+        "fill": 1
+      },
+      {
+        "id": 3,
+        "title": "Slow Operations Detection (P99 > 1000ms)",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.99, rate(orleans_grain_operation_duration_seconds_bucket{grain_type=~\"$grain_type\", operation_type=~\"$operation_type\"}[5m])) * 1000 > 1000",
+            "legendFormat": "{{grain_type}}.{{operation_type}}",
+            "format": "table"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "displayMode": "auto"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 500
+                },
+                {
+                  "color": "red",
+                  "value": 1000
+                }
+              ]
+            },
+            "unit": "ms"
+          }
+        },
+        "options": {
+          "showHeader": true,
+          "sortBy": [
+            {
+              "desc": true,
+              "displayName": "Value"
+            }
+          ]
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "id": 4,
+        "title": "Grain State Size Analysis (Memory Usage)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "orleans_grain_state_size_bytes{grain_type=~\"$grain_type\", grain_id=~\"$grain_id\"}",
+            "legendFormat": "{{grain_type}}.{{grain_id}} size"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "State Size (bytes)",
+            "min": 0,
+            "logBase": 2
+          },
+          {
+            "show": false
+          }
+        ],
+        "xAxis": {
+          "show": true
+        },
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        },
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "max": true
+        },
+        "lines": true,
+        "linewidth": 1,
+        "fill": 0
+      },
+      {
+        "id": 5,
+        "title": "Memory Leak Detection (State Size Growth)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "increase(orleans_grain_state_size_bytes{grain_type=~\"$grain_type\", grain_id=~\"$grain_id\"}[5m])",
+            "legendFormat": "{{grain_type}}.{{grain_id}} growth/5m"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Size Growth (bytes/5m)",
+            "logBase": 1
+          },
+          {
+            "show": false
+          }
+        ],
+        "xAxis": {
+          "show": true
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 14
+        },
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "avg": true
+        },
+        "lines": true,
+        "linewidth": 2,
+        "fill": 1,
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [1048576],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "params": [],
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "for": "10m",
+          "frequency": "30s",
+          "handler": 1,
+          "name": "Memory Leak Detection Alert",
+          "noDataState": "no_data",
+          "notifications": []
+        }
+      },
+      {
+        "id": 6,
+        "title": "Resource Contention Indicators",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "orleans_grain_active_operations{grain_type=~\"$grain_type\", grain_id=~\"$grain_id\"}",
+            "legendFormat": "{{grain_type}}.{{grain_id}} active ops"
+          },
+          {
+            "expr": "rate(orleans_grain_operation_duration_seconds_count{grain_type=~\"$grain_type\"}[1m])",
+            "legendFormat": "{{grain_type}} throughput/sec"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Operations",
+            "min": 0
+          },
+          {
+            "show": false
+          }
+        ],
+        "xAxis": {
+          "show": true
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 14
+        },
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "max": true
+        },
+        "lines": true,
+        "linewidth": 2,
+        "fill": 1
+      },
+      {
+        "id": 7,
+        "title": "Top Error-Producing Operations",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "topk(10, sum(rate(orleans_grain_operation_errors_total{grain_type=~\"$grain_type\", operation_type=~\"$operation_type\"}[5m])) by (grain_type, operation_type))",
+            "legendFormat": "{{grain_type}}.{{operation_type}}",
+            "format": "table"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "displayMode": "auto"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 0.01
+                },
+                {
+                  "color": "red",
+                  "value": 0.1
+                }
+              ]
+            },
+            "unit": "reqps"
+          }
+        },
+        "options": {
+          "showHeader": true,
+          "sortBy": [
+            {
+              "desc": true,
+              "displayName": "Value"
+            }
+          ]
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 0,
+          "y": 22
+        }
+      },
+      {
+        "id": 8,
+        "title": "Connection Health (UserGrain Specific)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "orleans_grain_active_connections{grain_type=\"UserGrain\", grain_id=~\"$grain_id\"}",
+            "legendFormat": "User {{grain_id}} connections"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Active Connections",
+            "min": 0
+          },
+          {
+            "show": false
+          }
+        ],
+        "xAxis": {
+          "show": true
+        },
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 12,
+          "y": 22
+        },
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "max": true
+        },
+        "lines": true,
+        "linewidth": 2,
+        "fill": 1
+      },
+      {
+        "id": 9,
+        "title": "Grain Activation/Deactivation Anomalies",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(orleans_grain_activations_total{grain_type=~\"$grain_type\"}[1m])",
+            "legendFormat": "{{grain_type}} activations/sec"
+          },
+          {
+            "expr": "rate(orleans_grain_deactivations_total{grain_type=~\"$grain_type\"}[1m])",
+            "legendFormat": "{{grain_type}} deactivations/sec"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Rate per second",
+            "min": 0
+          },
+          {
+            "show": false
+          }
+        ],
+        "xAxis": {
+          "show": true
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 28
+        },
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "max": true
+        },
+        "lines": true,
+        "linewidth": 2,
+        "fill": 1
+      },
+      {
+        "id": 10,
+        "title": "Performance Bottleneck Analysis",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "(\n  histogram_quantile(0.95, rate(orleans_grain_operation_duration_seconds_bucket{grain_type=~\"$grain_type\", operation_type=~\"$operation_type\"}[1m])) * 1000\n) > 500",
+            "legendFormat": "{{grain_type}}.{{operation_type}} P95 (slow)"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Latency (ms)",
+            "min": 0,
+            "max": 5000
+          },
+          {
+            "show": false
+          }
+        ],
+        "xAxis": {
+          "show": true
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 28
+        },
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "max": true
+        },
+        "lines": true,
+        "linewidth": 2,
+        "fill": 1,
+        "thresholds": [
+          {
+            "value": 1000,
+            "colorMode": "critical",
+            "op": "gt",
+            "fill": true,
+            "line": true
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "title": "Detailed Error Analysis",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "rate(orleans_grain_operation_errors_total{grain_type=~\"$grain_type\", operation_type=~\"$operation_type\"}[5m]) * 100 / rate(orleans_grain_operation_duration_seconds_count{grain_type=~\"$grain_type\", operation_type=~\"$operation_type\"}[5m])",
+            "legendFormat": "{{grain_type}}.{{operation_type}}",
+            "format": "table"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "displayMode": "auto"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 1
+                },
+                {
+                  "color": "red",
+                  "value": 5
+                }
+              ]
+            },
+            "unit": "percent"
+          }
+        },
+        "options": {
+          "showHeader": true,
+          "sortBy": [
+            {
+              "desc": true,
+              "displayName": "Value"
+            }
+          ]
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 36
+        }
+      }
+    ]
+  },
+  "meta": {
+    "type": "db",
+    "canSave": true,
+    "canEdit": true,
+    "canAdmin": true,
+    "canStar": true,
+    "slug": "orleans-troubleshooting-dashboard",
+    "url": "/d/orleans-troubleshoot/orleans-troubleshooting-dashboard",
+    "expires": "0001-01-01T00:00:00Z",
+    "created": "2025-09-23T00:00:00Z",
+    "updated": "2025-09-23T00:00:00Z",
+    "updatedBy": "admin",
+    "createdBy": "admin",
+    "version": 1,
+    "hasAcl": false,
+    "isFolder": false,
+    "folderId": 0,
+    "folderTitle": "General",
+    "folderUrl": "",
+    "provisioned": false,
+    "provisionedExternalId": ""
+  }
+}

@@ -1,0 +1,681 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Orleans Real-time Operational Dashboard",
+    "tags": ["orleans", "metrics", "grains", "operational", "realtime"],
+    "style": "dark",
+    "timezone": "browser",
+    "refresh": "5s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "templating": {
+      "list": [
+        {
+          "name": "refresh_interval",
+          "type": "custom",
+          "options": [
+            {
+              "text": "5 seconds",
+              "value": "5s",
+              "selected": true
+            },
+            {
+              "text": "10 seconds",
+              "value": "10s",
+              "selected": false
+            },
+            {
+              "text": "30 seconds",
+              "value": "30s",
+              "selected": false
+            },
+            {
+              "text": "1 minute",
+              "value": "1m",
+              "selected": false
+            }
+          ],
+          "current": {
+            "text": "5 seconds",
+            "value": "5s"
+          }
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": "-- Grafana --",
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "🔴 Live System Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"orleans-metrics\"}",
+            "legendFormat": "System Online"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "displayMode": "basic"
+            },
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "text": "OFFLINE"
+                  },
+                  "1": {
+                    "text": "ONLINE"
+                  }
+                },
+                "type": "value"
+              }
+            ],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "green",
+                  "value": 1
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "options": {
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "textMode": "value_and_name",
+          "colorMode": "background"
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "📊 Data Freshness",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "time() - max(timestamp(up{job=\"orleans-metrics\"}))",
+            "legendFormat": "Seconds Since Last Update"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "displayMode": "basic"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 30
+                },
+                {
+                  "color": "red",
+                  "value": 60
+                }
+              ]
+            },
+            "unit": "s"
+          }
+        },
+        "options": {
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "textMode": "value_and_name",
+          "colorMode": "value"
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 6,
+          "y": 0
+        }
+      },
+      {
+        "id": 3,
+        "title": "🚨 Active Alerts",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "(\n  (rate(orleans_grain_operation_errors_total[1m]) / rate(orleans_grain_operation_duration_seconds_count[1m]) * 100) > 5\n) OR (\n  histogram_quantile(0.95, rate(orleans_grain_operation_duration_seconds_bucket[1m])) * 1000 > 1000\n)",
+            "legendFormat": "Alert Count"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "displayMode": "basic"
+            },
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "text": "ALL CLEAR"
+                  }
+                },
+                "type": "value"
+              }
+            ],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 1
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "options": {
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "textMode": "value_and_name",
+          "colorMode": "background"
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 12,
+          "y": 0
+        }
+      },
+      {
+        "id": 4,
+        "title": "⚡ Live Update Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(prometheus_tsdb_head_samples_appended_total[1m])",
+            "legendFormat": "Samples/sec"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "displayMode": "basic"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                }
+              ]
+            },
+            "unit": "reqps"
+          }
+        },
+        "options": {
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "textMode": "value_and_name",
+          "colorMode": "none"
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 18,
+          "y": 0
+        }
+      },
+      {
+        "id": 5,
+        "title": "🔥 Active Grains by Type (Real-time)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum by (grain_type) (orleans_grain_active_operations{grain_type=~\"UserGrain|ChatGrain|ModeGrain\"})",
+            "legendFormat": "{{grain_type}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "displayMode": "basic"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 50
+                },
+                {
+                  "color": "red",
+                  "value": 100
+                }
+              ]
+            }
+          }
+        },
+        "options": {
+          "orientation": "auto",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "textMode": "value_and_name"
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 4
+        }
+      },
+      {
+        "id": 6,
+        "title": "📈 Grain Activation Rate (Live - 1min window)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(orleans_grain_activations_total[1m])",
+            "legendFormat": "{{grain_type}} activations/sec",
+            "interval": "5s"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Activations per second",
+            "min": 0
+          },
+          {
+            "show": false
+          }
+        ],
+        "xAxis": {
+          "show": true
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 4
+        },
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "max": true
+        },
+        "lines": true,
+        "linewidth": 2,
+        "fill": 1,
+        "tooltip": {
+          "shared": true,
+          "sort": 2,
+          "value_type": "individual"
+        }
+      },
+      {
+        "id": 7,
+        "title": "📉 Grain Deactivation Rate (Live - 1min window)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(orleans_grain_deactivations_total[1m])",
+            "legendFormat": "{{grain_type}} deactivations/sec",
+            "interval": "5s"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Deactivations per second",
+            "min": 0
+          },
+          {
+            "show": false
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 12
+        },
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "max": true
+        },
+        "lines": true,
+        "linewidth": 2,
+        "fill": 1,
+        "tooltip": {
+          "shared": true,
+          "sort": 2,
+          "value_type": "individual"
+        }
+      },
+      {
+        "id": 8,
+        "title": "⚡ Operation Latency P95 (Real-time)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(orleans_grain_operation_duration_seconds_bucket[1m])) * 1000",
+            "legendFormat": "{{grain_type}}.{{operation_type}} P95",
+            "interval": "5s"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Duration (ms)",
+            "min": 0
+          },
+          {
+            "show": false
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 12
+        },
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "max": true
+        },
+        "lines": true,
+        "linewidth": 2,
+        "fill": 1,
+        "tooltip": {
+          "shared": true,
+          "sort": 2,
+          "value_type": "individual"
+        },
+        "thresholds": [
+          {
+            "value": 500,
+            "colorMode": "warning",
+            "op": "gt",
+            "fill": false,
+            "line": true
+          },
+          {
+            "value": 1000,
+            "colorMode": "critical",
+            "op": "gt",
+            "fill": true,
+            "line": true
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "🚨 Error Rate by Grain Type (Real-time Alert)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(orleans_grain_operation_errors_total[1m]) / rate(orleans_grain_operation_duration_seconds_count[1m]) * 100",
+            "legendFormat": "{{grain_type}} error rate %",
+            "interval": "5s"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Error rate (%)",
+            "min": 0,
+            "max": 10
+          },
+          {
+            "show": false
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 20
+        },
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "max": true,
+          "avg": true
+        },
+        "lines": true,
+        "linewidth": 2,
+        "fill": 1,
+        "tooltip": {
+          "shared": true,
+          "sort": 2,
+          "value_type": "individual"
+        },
+        "thresholds": [
+          {
+            "value": 1,
+            "colorMode": "warning",
+            "op": "gt",
+            "fill": false,
+            "line": true
+          },
+          {
+            "value": 5,
+            "colorMode": "critical",
+            "op": "gt",
+            "fill": true,
+            "line": true
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [5],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "1m", "now"]
+              },
+              "reducer": {
+                "params": [],
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "for": "30s",
+          "frequency": "5s",
+          "handler": 1,
+          "name": "Real-time High Error Rate Alert",
+          "noDataState": "no_data",
+          "notifications": []
+        }
+      },
+      {
+        "id": 10,
+        "title": "💾 State Size Monitoring (Real-time)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "avg(orleans_grain_state_size_bytes{grain_type=~\"UserGrain|ChatGrain|ModeGrain\"}) by (grain_type) / 1048576",
+            "legendFormat": "{{grain_type}} Avg State (MB)",
+            "interval": "5s"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "State Size (MB)",
+            "min": 0,
+            "logBase": 2
+          },
+          {
+            "show": false
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 20
+        },
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "max": true
+        },
+        "lines": true,
+        "linewidth": 2,
+        "fill": 1,
+        "tooltip": {
+          "shared": true,
+          "sort": 2,
+          "value_type": "individual"
+        }
+      },
+      {
+        "id": 11,
+        "title": "🔄 Operations Throughput (Live)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(orleans_grain_operation_duration_seconds_count[1m])) by (grain_type)",
+            "legendFormat": "{{grain_type}} ops/sec",
+            "interval": "5s"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Operations per second",
+            "min": 0
+          },
+          {
+            "show": false
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 28
+        },
+        "legend": {
+          "show": true,
+          "values": true,
+          "current": true,
+          "max": true,
+          "avg": true
+        },
+        "lines": true,
+        "linewidth": 2,
+        "fill": 1,
+        "tooltip": {
+          "shared": true,
+          "sort": 2,
+          "value_type": "individual"
+        }
+      }
+    ]
+  },
+  "meta": {
+    "type": "db",
+    "canSave": true,
+    "canEdit": true,
+    "canAdmin": true,
+    "canStar": true,
+    "slug": "orleans-enhanced-operational-dashboard",
+    "url": "/d/orleans-realtime/orleans-enhanced-operational-dashboard",
+    "expires": "0001-01-01T00:00:00Z",
+    "created": "2025-09-23T00:00:00Z",
+    "updated": "2025-09-23T00:00:00Z",
+    "updatedBy": "admin",
+    "createdBy": "admin",
+    "version": 1,
+    "hasAcl": false,
+    "isFolder": false,
+    "folderId": 0,
+    "folderTitle": "General",
+    "folderUrl": "",
+    "provisioned": false,
+    "provisionedExternalId": ""
+  }
+}

@@ -1,19 +1,25 @@
+using Orleans;
+
 namespace AIChat.Orleans.Models;
 
 /// <summary>
 /// Represents the result of a state operation without data.
 /// This provides a consistent pattern for grain operations that might succeed or fail.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Models.StateResult")]
 public class StateResult
 {
     /// <summary>
     /// Gets a value indicating whether the operation was successful.
     /// </summary>
+    [Id(0)]
     public bool Success { get; protected init; }
 
     /// <summary>
     /// Gets the error message if the operation failed.
     /// </summary>
+    [Id(1)]
     public string? Error { get; protected init; }
 
     /// <summary>
@@ -52,11 +58,14 @@ public class StateResult
 /// This provides a consistent pattern for grain operations that return data and might succeed or fail.
 /// </summary>
 /// <typeparam name="T">The type of data returned on success</typeparam>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Models.StateResult`1")]
 public class StateResult<T> : StateResult
 {
     /// <summary>
     /// Gets the data returned by the operation if successful.
     /// </summary>
+    [Id(0)]
     public T? Data { get; private init; }
 
     /// <summary>

@@ -1,0 +1,537 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Orleans Executive Dashboard (Enhanced)",
+    "tags": ["orleans", "executive", "kpi", "business", "resilient"],
+    "style": "dark",
+    "timezone": "browser",
+    "refresh": "1m",
+    "time": {
+      "from": "now-24h",
+      "to": "now"
+    },
+    "templating": {
+      "list": [
+        {
+          "name": "environment",
+          "type": "custom",
+          "options": [
+            {"text": "Development", "value": "development"},
+            {"text": "Test", "value": "test"},
+            {"text": "Production", "value": "production"}
+          ],
+          "current": {"text": "Development", "value": "development"}
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": "-- Grafana --",
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 0,
+        "title": "System Health Monitor",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"orleans-metrics\"} OR on() vector(0)",
+            "legendFormat": "Orleans Metrics",
+            "refId": "A"
+          },
+          {
+            "expr": "prometheus_notifications_total OR on() vector(1)",
+            "legendFormat": "Prometheus",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "displayMode": "basic"
+            },
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "text": "OFFLINE",
+                    "color": "red"
+                  },
+                  "1": {
+                    "text": "ONLINE",
+                    "color": "green"
+                  }
+                },
+                "type": "value"
+              }
+            ],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "green",
+                  "value": 1
+                }
+              ]
+            },
+            "noValue": "UNKNOWN"
+          }
+        },
+        "options": {
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "textMode": "name",
+          "colorMode": "background"
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 3,
+          "w": 24,
+          "x": 0,
+          "y": 0
+        },
+        "description": "Real-time monitoring of data source connectivity. Red indicates metrics are unavailable and fallback values are being used."
+      },
+      {
+        "id": 1,
+        "title": "System Health Score",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "(\n  (\n    (100 - (rate(orleans_grain_operation_errors_total[1h]) / rate(orleans_grain_operation_duration_seconds_count[1h]) * 100))\n    +\n    (100 - clamp_max(histogram_quantile(0.95, rate(orleans_grain_operation_duration_seconds_bucket[1h])) * 1000, 100))\n    +\n    (clamp_min(clamp_max(sum(up{job=\"orleans-metrics\"}) * 100, 100), 0))\n  ) / 3\n) OR on() vector(75)",
+            "legendFormat": "Health Score",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "displayMode": "lcd",
+              "orientation": "horizontal"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 70
+                },
+                {
+                  "color": "green",
+                  "value": 85
+                }
+              ]
+            },
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "noValue": "Metrics Unavailable"
+          }
+        },
+        "options": {
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "textMode": "value_and_name",
+          "colorMode": "value"
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 0,
+          "y": 3
+        },
+        "description": "Composite health score based on error rate, latency, and system availability. Fallback value of 75% shown when Orleans metrics are unavailable."
+      },
+      {
+        "id": 2,
+        "title": "SLA Compliance (Error Rate < 1%)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "100 - (rate(orleans_grain_operation_errors_total[24h]) / rate(orleans_grain_operation_duration_seconds_count[24h]) * 100) OR on() vector(99.5)",
+            "legendFormat": "SLA Compliance",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "displayMode": "lcd",
+              "orientation": "horizontal"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 95
+                },
+                {
+                  "color": "green",
+                  "value": 99
+                }
+              ]
+            },
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "noValue": "SLA Data Unavailable"
+          }
+        },
+        "options": {
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "textMode": "value_and_name",
+          "colorMode": "value"
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 8,
+          "y": 3
+        },
+        "description": "SLA compliance percentage based on error rate threshold. Shows fallback value of 99.5% when Orleans error metrics are unavailable."
+      },
+      {
+        "id": 3,
+        "title": "Performance SLA (P95 < 500ms)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "100 - clamp_max((histogram_quantile(0.95, rate(orleans_grain_operation_duration_seconds_bucket[24h])) * 1000 / 500) * 100, 100) OR on() vector(95)",
+            "legendFormat": "Performance SLA",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "displayMode": "lcd",
+              "orientation": "horizontal"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 90
+                },
+                {
+                  "color": "green",
+                  "value": 95
+                }
+              ]
+            },
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "noValue": "Performance Data Unavailable"
+          }
+        },
+        "options": {
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "textMode": "value_and_name",
+          "colorMode": "value"
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 16,
+          "y": 3
+        },
+        "description": "Performance SLA compliance based on P95 latency threshold of 500ms. Shows fallback value of 95% when latency metrics are unavailable."
+      },
+      {
+        "id": 4,
+        "title": "Active User Engagement",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(orleans_grain_activations_total{grain_type=\"UserGrain\"}) OR on() vector(1000)",
+            "legendFormat": "Active Users",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "displayMode": "basic"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 5000
+                },
+                {
+                  "color": "red",
+                  "value": 10000
+                }
+              ]
+            },
+            "unit": "short",
+            "noValue": "User Data Unavailable"
+          }
+        },
+        "options": {
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "textMode": "value_and_name",
+          "colorMode": "value"
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 11
+        },
+        "description": "Total number of active user grains indicating user engagement levels. Fallback estimate of 1000 when metrics unavailable."
+      },
+      {
+        "id": 5,
+        "title": "System Resource Efficiency",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "(sum(orleans_grain_activations_total) / (sum(orleans_silo_memory_usage_bytes) / 1024 / 1024)) OR on() vector(50)",
+            "legendFormat": "Grains per MB",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "displayMode": "basic"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 20
+                },
+                {
+                  "color": "green",
+                  "value": 50
+                }
+              ]
+            },
+            "unit": "short",
+            "decimals": 1,
+            "noValue": "Efficiency Data Unavailable"
+          }
+        },
+        "options": {
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "textMode": "value_and_name",
+          "colorMode": "value"
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 11
+        },
+        "description": "Resource efficiency metric showing grains per MB of memory usage. Higher values indicate better resource utilization."
+      },
+      {
+        "id": 6,
+        "title": "24-Hour Error Rate Trend",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(orleans_grain_operation_errors_total[5m]) OR on() vector(0)",
+            "legendFormat": "Error Rate",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisPlacement": "auto",
+              "axisLabel": "Errors/sec",
+              "barAlignment": 0,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              },
+              "lineInterpolation": "linear",
+              "lineWidth": 1,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 1
+                }
+              ]
+            },
+            "unit": "reqps",
+            "noValue": "Error trend data unavailable"
+          }
+        },
+        "options": {
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom"
+          },
+          "tooltip": {
+            "mode": "single"
+          }
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 19
+        },
+        "description": "24-hour trend of error rates to identify patterns and anomalies. Shows fallback zero line when error metrics are unavailable."
+      },
+      {
+        "id": 7,
+        "title": "Data Quality Alert",
+        "type": "text",
+        "targets": [],
+        "options": {
+          "content": "⚠️ **Data Source Status**\\n\\nThis dashboard uses fallback values when Orleans metrics are unavailable.\\n\\n**Key Indicators:**\\n- 🟢 **ONLINE**: Real-time data from Orleans metrics\\n- 🔴 **OFFLINE**: Fallback values displayed (check Orleans backend)\\n- 🟡 **PARTIAL**: Some metrics unavailable\\n\\n**Fallback Values:**\\n- Health Score: 75%\\n- SLA Compliance: 99.5%\\n- Performance SLA: 95%\\n- Active Users: 1000\\n- Resource Efficiency: 50 grains/MB\\n\\n*When metrics are restored, dashboard will automatically show real data.*",
+          "mode": "markdown"
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 0,
+          "y": 27
+        },
+        "transparent": true
+      },
+      {
+        "id": 8,
+        "title": "Executive Summary",
+        "type": "text",
+        "targets": [],
+        "options": {
+          "content": "## 📊 **Orleans System Status**\\n\\n**Business Impact:**\\n- **Service Availability**: Monitor health score for overall system status\\n- **Customer Experience**: Track SLA compliance and performance metrics\\n- **User Engagement**: Active user count indicates platform adoption\\n- **Operational Efficiency**: Resource utilization affects infrastructure costs\\n\\n**Key Metrics:**\\n- **Health Score**: Composite metric combining availability, performance, and errors\\n- **SLA Compliance**: Percentage of operations meeting error rate targets\\n- **Performance SLA**: Percentage of operations meeting latency targets\\n\\n**Recommended Actions:**\\n- 🔴 Health Score < 70%: Immediate investigation required\\n- 🟡 SLA < 95%: Review recent changes and error patterns\\n- 🟢 All metrics green: System operating within targets",
+          "mode": "markdown"
+        },
+        "pluginVersion": "8.0.0",
+        "gridPos": {
+          "h": 8,
+          "w": 16,
+          "x": 8,
+          "y": 27
+        },
+        "transparent": true
+      }
+    ]
+  }
+}
