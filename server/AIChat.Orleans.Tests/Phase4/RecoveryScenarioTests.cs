@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Runtime.CompilerServices;
 using AIChat.Orleans.Tests.TestUtilities;
 using AIChat.Orleans.Tests.TestUtilities.Mocks;
 using AIChat.Server.Configuration;
@@ -121,7 +122,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
         );
 
         var messagesProcessed = new List<string>();
-        var failureOccurred = false;
+        var testState = new TestState();
 
         // Setup bridge to fail mid-stream
         _ = bridgeFactory
@@ -137,22 +138,8 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
                         )
                     )
                     .Returns(
-                        async (IAsyncEnumerable<ChatStreamItem> items, CancellationToken ct) =>
-                        {
-                            var count = 0;
-                            await foreach (var item in items.WithCancellation(ct))
-                            {
-                                count++;
-                                if (count == 3 && !failureOccurred)
-                                {
-                                    failureOccurred = true;
-                                    throw new IOException("Simulated stream failure");
-                                }
-
-                                messagesProcessed.Add(item.Content ?? "");
-                                // Cannot use yield in lambda, need to return as enumerable
-                            }
-                        }
+                        (IAsyncEnumerable<ChatStreamItem> items, CancellationToken ct) =>
+                            CreateTestAsyncEnumerable(items, ct, messagesProcessed, testState)
                     );
 
                 return mockBridge.Object;
@@ -443,7 +430,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
         await _fixture.InitializeAsync();
 
         var processedMessages = new HashSet<string>();
-        var duplicateDetected = false;
+        var testState = new TestState();
 
         var config = new AIChat.Orleans.Tests.TestUtilities.Mocks.ResilientStreamingConfiguration
         {
@@ -455,7 +442,6 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
         var logger = new Mock<ILogger<AIChat.Orleans.Tests.TestUtilities.Mocks.ResilientStreamManager>>();
         var bridgeFactory = new Mock<ITestStreamingBridgeFactory>();
 
-        var failureSimulated = false;
         _ = bridgeFactory
             .Setup(x => x.CreateBridge())
             .Returns(() =>
@@ -469,28 +455,8 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
                         )
                     )
                     .Returns(
-                        async (IAsyncEnumerable<ChatStreamItem> items, CancellationToken ct) =>
-                        {
-                            var count = 0;
-                            await foreach (var item in items.WithCancellation(ct))
-                            {
-                                count++;
-                                var messageId = $"{item.Content}-{count}";
-
-                                if (!processedMessages.Add(messageId))
-                                {
-                                    duplicateDetected = true;
-                                }
-
-                                if (count == 5 && !failureSimulated)
-                                {
-                                    failureSimulated = true;
-                                    throw new IOException("Simulated failure");
-                                }
-
-                                // Cannot use yield in lambda, need to return as enumerable
-                            }
-                        }
+                        (IAsyncEnumerable<ChatStreamItem> items, CancellationToken ct) =>
+                            CreateTestAsyncEnumerableWithDuplicateCheck(items, ct, processedMessages, testState)
                     );
 
                 return mockBridge.Object;
@@ -525,7 +491,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
         );
 
         // Assert
-        _ = duplicateDetected.Should().BeFalse("Should not duplicate messages during recovery");
+        _ = testState.DuplicateDetected.Should().BeFalse("Should not duplicate messages during recovery");
         _ = processedMessages.Count.Should().Be(10, "Should process all unique messages");
 
         _output.WriteLine(
@@ -607,6 +573,61 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
             if (simulateFailure && count == failureAtCount && !failureOccurred)
             {
                 failureOccurred = true;
+                throw new IOException("Simulated failure");
+            }
+
+            yield return $"data: {item.Content}\n\n";
+        }
+    }
+
+    private class TestState
+    {
+        public bool FailureOccurred { get; set; }
+        public bool DuplicateDetected { get; set; }
+        public bool FailureSimulated { get; set; }
+    }
+
+    private static async IAsyncEnumerable<string> CreateTestAsyncEnumerable(
+        IAsyncEnumerable<ChatStreamItem> items,
+        [EnumeratorCancellation] CancellationToken ct,
+        List<string> messagesProcessed,
+        TestState state)
+    {
+        var count = 0;
+        await foreach (var item in items.WithCancellation(ct))
+        {
+            count++;
+            if (count == 3 && !state.FailureOccurred)
+            {
+                state.FailureOccurred = true;
+                throw new IOException("Simulated stream failure");
+            }
+
+            messagesProcessed.Add(item.Content ?? "");
+            yield return $"data: {item.Content}\n\n";
+        }
+    }
+
+    private static async IAsyncEnumerable<string> CreateTestAsyncEnumerableWithDuplicateCheck(
+        IAsyncEnumerable<ChatStreamItem> items,
+        [EnumeratorCancellation] CancellationToken ct,
+        HashSet<string> processedMessages,
+        TestState state)
+    {
+        var count = 0;
+        await foreach (var item in items.WithCancellation(ct))
+        {
+            count++;
+            var messageId = $"{item.Content}-{count}";
+
+            if (!processedMessages.Add(messageId))
+            {
+                state.DuplicateDetected = true;
+            }
+
+            if (count == 5 && !state.FailureSimulated)
+            {
+                state.FailureSimulated = true;
                 throw new IOException("Simulated failure");
             }
 

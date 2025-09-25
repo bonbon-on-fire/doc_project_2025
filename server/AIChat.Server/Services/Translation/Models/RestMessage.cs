@@ -265,7 +265,7 @@ public sealed class RestMessage
         }
 
         // Validate path format
-        if (!string.IsNullOrEmpty(Path) && !Path.StartsWith("/"))
+        if (!string.IsNullOrEmpty(Path) && !Path.StartsWith("/", StringComparison.Ordinal))
         {
             errors.Add("Request path should start with '/'");
         }

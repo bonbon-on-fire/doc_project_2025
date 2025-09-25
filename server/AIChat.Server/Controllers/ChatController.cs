@@ -709,6 +709,12 @@ public class ChatController(
         CancellationToken cancellationToken = default
     )
     {
+        // Validate request
+        if (string.IsNullOrWhiteSpace(request.UserId))
+        {
+            return BadRequest(new { error = "UserId is required and cannot be empty." });
+        }
+
         // Check protocol preference from middleware
         var protocol = HttpContext.Items["PreferredProtocol"] as string ?? "SSE";
 

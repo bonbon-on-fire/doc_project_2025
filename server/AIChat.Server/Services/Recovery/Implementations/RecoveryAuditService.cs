@@ -558,7 +558,7 @@ public class RecoveryAuditService : IRecoveryAuditService
         // Data rows
         foreach (var entry in entries)
         {
-            csv.AppendLine($"{EscapeCsv(entry.AuditId)},{EscapeCsv(entry.OperationId)},{EscapeCsv(entry.GrainId)},{EscapeCsv(entry.GrainType)},{EscapeCsv(entry.InitiatedBy)}," +
+            csv.AppendLine(CultureInfo.InvariantCulture, $"{EscapeCsv(entry.AuditId)},{EscapeCsv(entry.OperationId)},{EscapeCsv(entry.GrainId)},{EscapeCsv(entry.GrainType)},{EscapeCsv(entry.InitiatedBy)}," +
                           $"{entry.StartedAt:O},{entry.CompletedAt?.ToString("O", CultureInfo.InvariantCulture)}," +
                           $"{entry.TargetTimestamp?.ToString("O", CultureInfo.InvariantCulture)},{entry.ActualTimestamp?.ToString("O", CultureInfo.InvariantCulture)}," +
                           $"{entry.Success},{entry.StrategyUsed},{entry.EventsReplayed},{entry.RecoveryDuration.TotalMilliseconds}," +
@@ -595,19 +595,19 @@ public class RecoveryAuditService : IRecoveryAuditService
         foreach (var entry in entries)
         {
             xml.AppendLine("  <Entry>");
-            xml.AppendLine($"    <AuditId>{System.Security.SecurityElement.Escape(entry.AuditId)}</AuditId>");
-            xml.AppendLine($"    <OperationId>{System.Security.SecurityElement.Escape(entry.OperationId)}</OperationId>");
-            xml.AppendLine($"    <GrainId>{System.Security.SecurityElement.Escape(entry.GrainId)}</GrainId>");
-            xml.AppendLine($"    <GrainType>{System.Security.SecurityElement.Escape(entry.GrainType)}</GrainType>");
-            xml.AppendLine($"    <InitiatedBy>{System.Security.SecurityElement.Escape(entry.InitiatedBy)}</InitiatedBy>");
-            xml.AppendLine($"    <StartedAt>{entry.StartedAt:O}</StartedAt>");
+            xml.AppendLine(CultureInfo.InvariantCulture, $"    <AuditId>{System.Security.SecurityElement.Escape(entry.AuditId)}</AuditId>");
+            xml.AppendLine(CultureInfo.InvariantCulture, $"    <OperationId>{System.Security.SecurityElement.Escape(entry.OperationId)}</OperationId>");
+            xml.AppendLine(CultureInfo.InvariantCulture, $"    <GrainId>{System.Security.SecurityElement.Escape(entry.GrainId)}</GrainId>");
+            xml.AppendLine(CultureInfo.InvariantCulture, $"    <GrainType>{System.Security.SecurityElement.Escape(entry.GrainType)}</GrainType>");
+            xml.AppendLine(CultureInfo.InvariantCulture, $"    <InitiatedBy>{System.Security.SecurityElement.Escape(entry.InitiatedBy)}</InitiatedBy>");
+            xml.AppendLine(CultureInfo.InvariantCulture, $"    <StartedAt>{entry.StartedAt:O}</StartedAt>");
             if (entry.CompletedAt.HasValue)
-                xml.AppendLine($"    <CompletedAt>{entry.CompletedAt:O}</CompletedAt>");
-            xml.AppendLine($"    <Success>{entry.Success}</Success>");
-            xml.AppendLine($"    <StrategyUsed>{entry.StrategyUsed}</StrategyUsed>");
-            xml.AppendLine($"    <EventsReplayed>{entry.EventsReplayed}</EventsReplayed>");
-            xml.AppendLine($"    <RecoveryDuration>{entry.RecoveryDuration}</RecoveryDuration>");
-            xml.AppendLine($"    <CorrelationId>{System.Security.SecurityElement.Escape(entry.CorrelationId)}</CorrelationId>");
+                xml.AppendLine(CultureInfo.InvariantCulture, $"    <CompletedAt>{entry.CompletedAt:O}</CompletedAt>");
+            xml.AppendLine(CultureInfo.InvariantCulture, $"    <Success>{entry.Success}</Success>");
+            xml.AppendLine(CultureInfo.InvariantCulture, $"    <StrategyUsed>{entry.StrategyUsed}</StrategyUsed>");
+            xml.AppendLine(CultureInfo.InvariantCulture, $"    <EventsReplayed>{entry.EventsReplayed}</EventsReplayed>");
+            xml.AppendLine(CultureInfo.InvariantCulture, $"    <RecoveryDuration>{entry.RecoveryDuration}</RecoveryDuration>");
+            xml.AppendLine(CultureInfo.InvariantCulture, $"    <CorrelationId>{System.Security.SecurityElement.Escape(entry.CorrelationId)}</CorrelationId>");
             xml.AppendLine("  </Entry>");
         }
 
