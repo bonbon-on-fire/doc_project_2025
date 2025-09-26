@@ -1,9 +1,7 @@
 using System.Text.Json;
 using AIChat.Orleans.Contracts;
-using AIChat.Orleans.Grains;
 using AIChat.Orleans.Tests.TestUtilities.Infrastructure;
 using NUnit.Framework;
-using Orleans;
 
 namespace AIChat.Orleans.Tests.Phase2;
 
@@ -133,7 +131,7 @@ public class ChatGrainSequencingTests
 
         // Verify messages are in chat history in correct order
         var history = await _chatGrain!.GetHistoryAsync();
-        Assert.That(history.Count, Is.EqualTo(messageCount));
+        Assert.That(history, Has.Count.EqualTo(messageCount));
 
         for (int i = 0; i < history.Count; i++)
         {
@@ -179,7 +177,7 @@ public class ChatGrainSequencingTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(sequenceNumbers.Count, Is.EqualTo(concurrentMessages));
+            Assert.That(sequenceNumbers, Has.Count.EqualTo(concurrentMessages));
             Assert.That(sequenceNumbers.Distinct().Count(), Is.EqualTo(concurrentMessages), "All sequence numbers should be unique");
             Assert.That(sequenceNumbers.First(), Is.EqualTo(1), "First sequence number should be 1");
             Assert.That(sequenceNumbers.Last(), Is.EqualTo(concurrentMessages), $"Last sequence number should be {concurrentMessages}");
@@ -245,8 +243,11 @@ public class ChatGrainSequencingTests
 
         // Assert
         var editedSequence = GetSequenceNumberFromMessage(editedMessage);
-        Assert.That(editedSequence, Is.EqualTo(originalSequence), "Sequence number should be preserved after editing");
-        Assert.That(editedMessage.Content, Is.EqualTo("Edited content"));
+        Assert.Multiple(() =>
+        {
+            Assert.That(editedSequence, Is.EqualTo(originalSequence), "Sequence number should be preserved after editing");
+            Assert.That(editedMessage.Content, Is.EqualTo("Edited content"));
+        });
     }
 
     [Test]
@@ -283,7 +284,7 @@ public class ChatGrainSequencingTests
 
         // Verify remaining messages still have correct sequence numbers
         var history = await _chatGrain.GetHistoryAsync();
-        Assert.That(history.Count, Is.EqualTo(2));
+        Assert.That(history, Has.Count.EqualTo(2));
 
         var seq1 = GetSequenceNumberFromMessage(history.First(m => m.Content == "Message 1"));
         var seq3 = GetSequenceNumberFromMessage(history.First(m => m.Content == "Message 3"));

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 
 namespace AIChat.Server.Services.Translation.Models;
 
@@ -18,7 +19,7 @@ public sealed class SignalRMessage
     /// Parameters passed to the SignalR hub method.
     /// Key is the parameter name, value is the parameter value.
     /// </summary>
-    public Dictionary<string, object> Parameters { get; set; } = new();
+    public Dictionary<string, object> Parameters { get; set; } = [];
 
     /// <summary>
     /// SignalR connection identifier.
@@ -39,7 +40,7 @@ public sealed class SignalRMessage
     /// <summary>
     /// Additional metadata for the SignalR operation.
     /// </summary>
-    public Dictionary<string, object> Metadata { get; set; } = new();
+    public Dictionary<string, object> Metadata { get; set; } = [];
 
     /// <summary>
     /// Creates a SignalR message for a "SendMessage" operation.
@@ -128,7 +129,7 @@ public sealed class SignalRMessage
             // Try to convert if possible
             try
             {
-                return (T)Convert.ChangeType(value, typeof(T));
+                return (T)Convert.ChangeType(value, typeof(T), CultureInfo.InvariantCulture);
             }
             catch
             {
@@ -233,7 +234,7 @@ public sealed class SignalRResponse
     /// <summary>
     /// Arguments to pass to the client method.
     /// </summary>
-    public object[] Arguments { get; set; } = Array.Empty<object>();
+    public object[] Arguments { get; set; } = [];
 
     /// <summary>
     /// Target specification for the response (group, connection, user, etc.).
@@ -256,7 +257,7 @@ public sealed class SignalRResponse
         return new SignalRResponse
         {
             Method = "MessageReceived",
-            Arguments = new[] { message },
+            Arguments = [message],
             Target = SignalRTarget.Group($"chat_{chatId}"),
             Timestamp = DateTime.UtcNow
         };
@@ -273,7 +274,7 @@ public sealed class SignalRResponse
         return new SignalRResponse
         {
             Method = "StreamChunkReceived",
-            Arguments = new[] { chunk },
+            Arguments = [chunk],
             Target = SignalRTarget.Connection(connectionId),
             Timestamp = DateTime.UtcNow
         };
@@ -290,7 +291,7 @@ public sealed class SignalRResponse
         return new SignalRResponse
         {
             Method = "ErrorOccurred",
-            Arguments = new[] { error },
+            Arguments = [error],
             Target = SignalRTarget.Connection(connectionId),
             Timestamp = DateTime.UtcNow
         };
@@ -395,7 +396,7 @@ public sealed class ValidationResult
     /// <summary>
     /// Gets the first error message or empty string if valid.
     /// </summary>
-    public string FirstError => Errors.FirstOrDefault() ?? string.Empty;
+    public string FirstError => Errors.Count > 0 ? Errors[0] : string.Empty;
 
     /// <summary>
     /// Gets all error messages joined with a separator.

@@ -1,6 +1,4 @@
-using System.Diagnostics;
 using AIChat.Orleans.Contracts;
-using AIChat.Server.Services;
 using AIChat.Server.Services.Routing;
 
 namespace AIChat.Server.Services.ResponseCaching.Decorators;
@@ -122,7 +120,7 @@ public class CachedMonitoringRouter : CachedRouterBase<IMonitoringRouter>, IMoni
     public async Task<RouterHealthStatus> CheckHealthAsync(CancellationToken cancellationToken = default)
     {
         return await CreateEnhancedHealthStatusAsync(
-            originalHealthCheck: cancellationToken => InnerRouter.CheckHealthAsync(cancellationToken),
+            originalHealthCheck: InnerRouter.CheckHealthAsync,
             cancellationToken: cancellationToken);
     }
 
@@ -130,7 +128,7 @@ public class CachedMonitoringRouter : CachedRouterBase<IMonitoringRouter>, IMoni
     public async Task<RouterMetrics> GetMetricsAsync(CancellationToken cancellationToken = default)
     {
         return await CreateEnhancedMetricsAsync(
-            originalMetricsCheck: cancellationToken => InnerRouter.GetMetricsAsync(cancellationToken),
+            originalMetricsCheck: InnerRouter.GetMetricsAsync,
             cancellationToken: cancellationToken);
     }
 
@@ -141,9 +139,9 @@ public class CachedMonitoringRouter : CachedRouterBase<IMonitoringRouter>, IMoni
     {
         return operationName.ToLowerInvariant() switch
         {
-            "updatesystemhealth" => new[] { "Monitoring:GetSystemHealth:*", "Monitoring:GetMetrics:*" },
-            "updatecapacitymetrics" => new[] { "Monitoring:GetCapacityMetrics:*", "Monitoring:GetMetrics:*" },
-            "clearsessionmetrics" => new[] { "Monitoring:*:*" }, // Clear all monitoring cache
+            "updatesystemhealth" => ["Monitoring:GetSystemHealth:*", "Monitoring:GetMetrics:*"],
+            "updatecapacitymetrics" => ["Monitoring:GetCapacityMetrics:*", "Monitoring:GetMetrics:*"],
+            "clearsessionmetrics" => ["Monitoring:*:*"], // Clear all monitoring cache
             _ => base.GetInvalidationPatterns(operationName, parameters, userContext)
         };
     }

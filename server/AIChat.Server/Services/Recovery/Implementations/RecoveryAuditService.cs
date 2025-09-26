@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
-using Microsoft.Extensions.Logging;
 
 namespace AIChat.Server.Services.Recovery.Implementations;
 
@@ -17,6 +16,13 @@ public class RecoveryAuditService : IRecoveryAuditService
 
     // In-memory audit storage (in production, this would be a persistent store like database or event store)
     private readonly ConcurrentDictionary<string, RecoveryAuditEntry> _auditEntries = new();
+
+    // Cached JSON serializer options for performance
+    private static readonly JsonSerializerOptions CachedJsonOptions = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
     private readonly ConcurrentDictionary<string, string> _operationToAuditMap = new();
     private readonly ConcurrentDictionary<string, RecoveryProgressUpdate> _progressUpdates = new();
 
@@ -160,46 +166,74 @@ public class RecoveryAuditService : IRecoveryAuditService
 
             // Apply filters
             if (!string.IsNullOrEmpty(query.GrainId))
+            {
                 filteredEntries = filteredEntries.Where(e => e.GrainId == query.GrainId);
+            }
 
             if (!string.IsNullOrEmpty(query.GrainType))
+            {
                 filteredEntries = filteredEntries.Where(e => e.GrainType == query.GrainType);
+            }
 
             if (!string.IsNullOrEmpty(query.InitiatedBy))
+            {
                 filteredEntries = filteredEntries.Where(e => e.InitiatedBy == query.InitiatedBy);
+            }
 
             if (query.Success.HasValue)
+            {
                 filteredEntries = filteredEntries.Where(e => e.Success == query.Success.Value);
+            }
 
             if (query.FinalStatus.HasValue)
+            {
                 filteredEntries = filteredEntries.Where(e => e.FinalStatus == query.FinalStatus.Value);
+            }
 
             if (query.StrategyUsed.HasValue)
+            {
                 filteredEntries = filteredEntries.Where(e => e.StrategyUsed == query.StrategyUsed.Value);
+            }
 
             if (query.StartedAfter.HasValue)
+            {
                 filteredEntries = filteredEntries.Where(e => e.StartedAt >= query.StartedAfter.Value);
+            }
 
             if (query.StartedBefore.HasValue)
+            {
                 filteredEntries = filteredEntries.Where(e => e.StartedAt <= query.StartedBefore.Value);
+            }
 
             if (query.CompletedAfter.HasValue)
+            {
                 filteredEntries = filteredEntries.Where(e => e.CompletedAt >= query.CompletedAfter.Value);
+            }
 
             if (query.CompletedBefore.HasValue)
+            {
                 filteredEntries = filteredEntries.Where(e => e.CompletedAt <= query.CompletedBefore.Value);
+            }
 
             if (!string.IsNullOrEmpty(query.CorrelationId))
+            {
                 filteredEntries = filteredEntries.Where(e => e.CorrelationId == query.CorrelationId);
+            }
 
             if (!string.IsNullOrEmpty(query.SourceSystem))
+            {
                 filteredEntries = filteredEntries.Where(e => e.SourceSystem == query.SourceSystem);
+            }
 
             if (query.OnlyWithWarnings)
+            {
                 filteredEntries = filteredEntries.Where(e => e.Warnings.Count > 0);
+            }
 
             if (query.OnlyWithSnapshots)
+            {
                 filteredEntries = filteredEntries.Where(e => e.SnapshotUsed);
+            }
 
             // Apply sorting
             filteredEntries = query.SortOrder switch
@@ -218,7 +252,9 @@ public class RecoveryAuditService : IRecoveryAuditService
 
             // Apply pagination
             if (query.Skip.HasValue)
+            {
                 filteredEntries = filteredEntries.Skip(query.Skip.Value);
+            }
 
             var maxResults = query.MaxResults ?? 100;
             var resultEntries = filteredEntries.Take(maxResults).ToList();
@@ -526,20 +562,26 @@ public class RecoveryAuditService : IRecoveryAuditService
         Dictionary<string, object>? metadata2)
     {
         if (metadata1 == null && metadata2 == null)
+        {
             return null;
+        }
 
         var merged = new Dictionary<string, object>();
 
         if (metadata1 != null)
         {
             foreach (var kvp in metadata1)
+            {
                 merged[kvp.Key] = kvp.Value;
+            }
         }
 
         if (metadata2 != null)
         {
             foreach (var kvp in metadata2)
+            {
                 merged[kvp.Key] = kvp.Value; // Result metadata overwrites
+            }
         }
 
         return merged.Count > 0 ? merged : null;
@@ -573,13 +615,7 @@ public class RecoveryAuditService : IRecoveryAuditService
     /// </summary>
     private static byte[] ExportToJson(IReadOnlyList<RecoveryAuditEntry> entries)
     {
-        var options = new JsonSerializerOptions
-        {
-            WriteIndented = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        };
-
-        var json = JsonSerializer.Serialize(entries, options);
+        var json = JsonSerializer.Serialize(entries, CachedJsonOptions);
         return Encoding.UTF8.GetBytes(json);
     }
 
@@ -602,7 +638,10 @@ public class RecoveryAuditService : IRecoveryAuditService
             xml.AppendLine(CultureInfo.InvariantCulture, $"    <InitiatedBy>{System.Security.SecurityElement.Escape(entry.InitiatedBy)}</InitiatedBy>");
             xml.AppendLine(CultureInfo.InvariantCulture, $"    <StartedAt>{entry.StartedAt:O}</StartedAt>");
             if (entry.CompletedAt.HasValue)
+            {
                 xml.AppendLine(CultureInfo.InvariantCulture, $"    <CompletedAt>{entry.CompletedAt:O}</CompletedAt>");
+            }
+
             xml.AppendLine(CultureInfo.InvariantCulture, $"    <Success>{entry.Success}</Success>");
             xml.AppendLine(CultureInfo.InvariantCulture, $"    <StrategyUsed>{entry.StrategyUsed}</StrategyUsed>");
             xml.AppendLine(CultureInfo.InvariantCulture, $"    <EventsReplayed>{entry.EventsReplayed}</EventsReplayed>");
@@ -621,7 +660,9 @@ public class RecoveryAuditService : IRecoveryAuditService
     private static string EscapeCsv(string? value)
     {
         if (string.IsNullOrEmpty(value))
+        {
             return string.Empty;
+        }
 
         if (value.Contains(',') || value.Contains('"') || value.Contains('\n') || value.Contains('\r'))
         {

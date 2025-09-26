@@ -1,4 +1,3 @@
-using System;
 using AIChat.Orleans.Contracts;
 using NUnit.Framework;
 

@@ -135,7 +135,6 @@ public class WebSocketHandler : IWebSocketHandler
     private const int BufferSize = 4096;
     private const int MaxMessageSize = 1024 * 1024; // 1MB
     private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(30);
-    private static readonly TimeSpan ConnectionTimeout = TimeSpan.FromMinutes(5);
 
     // Cached JsonSerializerOptions for efficient serialization
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -663,7 +662,7 @@ public class WebSocketHandler : IWebSocketHandler
         // Process complete message
         if (result.EndOfMessage)
         {
-            await ProcessCompleteMessageAsync(webSocket, sessionInfo, messageBuffer.ToArray(), result.MessageType, cancellationToken);
+            await ProcessCompleteMessageAsync(webSocket, sessionInfo, [.. messageBuffer], result.MessageType, cancellationToken);
             messageBuffer.Clear();
         }
 
@@ -706,7 +705,7 @@ public class WebSocketHandler : IWebSocketHandler
         var protocolHeader = context.Request.Headers.SecWebSocketProtocol.FirstOrDefault();
         if (string.IsNullOrEmpty(protocolHeader))
         {
-            return new[] { "generic-v1" }; // Default protocol
+            return ["generic-v1"]; // Default protocol
         }
 
         return protocolHeader.Split(',').Select(p => p.Trim());

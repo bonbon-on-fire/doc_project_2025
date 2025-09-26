@@ -37,7 +37,7 @@ public class SseMetricsRecorder : ISseMetricsRecorder
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _connectionMetrics = new ConcurrentDictionary<string, ConnectionMetricsData>();
-        _allLatencies = new ConcurrentBag<double>();
+        _allLatencies = [];
         _errorsByType = new ConcurrentDictionary<string, long>();
         _messagesByEventType = new ConcurrentDictionary<string, long>();
         _startTime = DateTime.UtcNow;
@@ -379,7 +379,7 @@ public class SseMetricsRecorder : ISseMetricsRecorder
         return prom.ToString();
     }
 
-    private class ConnectionMetricsData
+    private sealed class ConnectionMetricsData
     {
         public string ConnectionId { get; set; } = string.Empty;
         public bool IsConnected { get; set; }
@@ -399,6 +399,6 @@ public class SseMetricsRecorder : ISseMetricsRecorder
         public double CurrentBufferUtilization { get; set; }
         public double PeakBufferUtilization { get; set; }
         public int BufferOverflowCount { get; set; }
-        public List<double> MessageLatencies { get; } = new();
+        public List<double> MessageLatencies { get; } = [];
     }
 }

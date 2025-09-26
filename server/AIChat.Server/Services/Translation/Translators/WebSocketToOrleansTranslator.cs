@@ -86,44 +86,47 @@ public class WebSocketToOrleansTranslator : MessageTranslatorBase<WebSocketMessa
             activity?.SetTag("orleans.message_id", chatMessage.Id);
             activity?.SetTag("orleans.chat_id", chatMessage.ChatId);
 
-            return TranslationResult<ChatMessage>.SuccessWithTypes<WebSocketMessage, ChatMessage>(chatMessage, stopwatch.Elapsed);
+            return TranslationResult.SuccessWithTypes<WebSocketMessage, ChatMessage>(chatMessage, stopwatch.Elapsed);
         }
         catch (InvalidOperationException ex)
         {
             stopwatch.Stop();
             var errorMessage = $"Unsupported message type: {ex.Message}";
-            Logger.LogWarning(ex, errorMessage);
+            Logger.LogWarning(ex, "Unsupported message type: {ExceptionMessage}", ex.Message);
             UpdateFailureMetrics(stopwatch.Elapsed, "UNSUPPORTED_MESSAGE_TYPE", context);
             activity?.SetTag("translation.success", false);
             activity?.SetTag("error.type", "UnsupportedMessageType");
-            return TranslationResult<ChatMessage>.Failure(errorMessage, "UNSUPPORTED_MESSAGE_TYPE", stopwatch.Elapsed);
+            return TranslationResult.Failure<ChatMessage>(errorMessage, "UNSUPPORTED_MESSAGE_TYPE", stopwatch.Elapsed);
         }
         catch (JsonException ex)
         {
             stopwatch.Stop();
             var errorMessage = $"Invalid JSON in WebSocket payload: {ex.Message}";
-            Logger.LogWarning(ex, errorMessage);
+            Logger.LogWarning(ex, "Invalid JSON in WebSocket payload: {ExceptionMessage}", ex.Message);
             UpdateFailureMetrics(stopwatch.Elapsed, "INVALID_JSON_PAYLOAD", context);
             activity?.SetTag("translation.success", false);
             activity?.SetTag("error.type", "JsonException");
-            return TranslationResult<ChatMessage>.Failure(errorMessage, "INVALID_JSON_PAYLOAD", stopwatch.Elapsed);
+            return TranslationResult.Failure<ChatMessage>(errorMessage, "INVALID_JSON_PAYLOAD", stopwatch.Elapsed);
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
             var errorMessage = $"Translation failed: {ex.Message}";
-            Logger.LogError(ex, errorMessage);
+            Logger.LogError(ex, "Translation failed: {ExceptionMessage}", ex.Message);
             UpdateFailureMetrics(stopwatch.Elapsed, "TRANSLATION_ERROR", context);
             activity?.SetTag("translation.success", false);
             activity?.SetTag("error.type", ex.GetType().Name);
-            return TranslationResult<ChatMessage>.Failure(errorMessage, "TRANSLATION_ERROR", stopwatch.Elapsed);
+            return TranslationResult.Failure<ChatMessage>(errorMessage, "TRANSLATION_ERROR", stopwatch.Elapsed);
         }
     }
 
     /// <inheritdoc />
     public override bool CanTranslate(WebSocketMessage source)
     {
-        if (source == null) return false;
+        if (source == null)
+        {
+            return false;
+        }
 
         var supportedTypes = new[]
         {
@@ -142,11 +145,7 @@ public class WebSocketToOrleansTranslator : MessageTranslatorBase<WebSocketMessa
         CancellationToken cancellationToken)
     {
         // Extract chat message payload
-        var payload = ExtractPayload<ChatMessagePayload>(source.Payload);
-        if (payload == null)
-        {
-            throw new InvalidOperationException("Invalid chat message payload format");
-        }
+        var payload = ExtractPayload<ChatMessagePayload>(source.Payload) ?? throw new InvalidOperationException("Invalid chat message payload format");
 
         // Use SessionId from context if available, otherwise use SessionId from message
         var userId = context.UserId ?? payload.UserId ?? source.SessionId;
@@ -185,14 +184,14 @@ public class WebSocketToOrleansTranslator : MessageTranslatorBase<WebSocketMessa
             Id = source.MessageId,
             ChatId = "system", // Protocol negotiation is not chat-specific
             UserId = userId,
-            Content = $"Protocol negotiation: {string.Join(", ", payload?.SupportedProtocols ?? new List<string>())}",
+            Content = $"Protocol negotiation: {string.Join(", ", payload?.SupportedProtocols ?? [])}",
             Role = "system",
             Timestamp = source.Timestamp,
             IsStreaming = false,
             Metadata = CreateMetadata(source, context, new Dictionary<string, object>
             {
                 ["action"] = "protocol_negotiation",
-                ["supportedProtocols"] = payload?.SupportedProtocols ?? new List<string>(),
+                ["supportedProtocols"] = payload?.SupportedProtocols ?? [],
                 ["preferredProtocol"] = payload?.PreferredProtocol ?? "unknown"
             })
         };
@@ -200,7 +199,7 @@ public class WebSocketToOrleansTranslator : MessageTranslatorBase<WebSocketMessa
 
     private ChatMessage CreateControlMessage(WebSocketMessage source, TranslationContext context)
     {
-        var payload = ExtractPayload<Dictionary<string, object>>(source.Payload) ?? new Dictionary<string, object>();
+        var payload = ExtractPayload<Dictionary<string, object>>(source.Payload) ?? [];
         var userId = context.UserId ?? source.SessionId;
         var action = payload.GetValueOrDefault("action", "unknown")?.ToString() ?? "unknown";
         var chatId = payload.GetValueOrDefault("chatId", "system").ToString();
@@ -345,21 +344,24 @@ public class WebSocketToOrleansTranslator : MessageTranslatorBase<WebSocketMessa
     protected override TranslationResult<ChatMessage>? ValidateSource(WebSocketMessage source, TranslationContext context)
     {
         var baseValidation = base.ValidateSource(source, context);
-        if (baseValidation != null) return baseValidation;
+        if (baseValidation != null)
+        {
+            return baseValidation;
+        }
 
         if (string.IsNullOrEmpty(source.Type))
         {
-            return TranslationResult<ChatMessage>.Failure("WebSocket message type is required", "MISSING_MESSAGE_TYPE");
+            return TranslationResult.Failure<ChatMessage>("WebSocket message type is required", "MISSING_MESSAGE_TYPE");
         }
 
         if (string.IsNullOrEmpty(source.SessionId))
         {
-            return TranslationResult<ChatMessage>.Failure("WebSocket session ID is required", "MISSING_SESSION_ID");
+            return TranslationResult.Failure<ChatMessage>("WebSocket session ID is required", "MISSING_SESSION_ID");
         }
 
         if (source.Payload == null)
         {
-            return TranslationResult<ChatMessage>.Failure("WebSocket message payload is required", "MISSING_PAYLOAD");
+            return TranslationResult.Failure<ChatMessage>("WebSocket message payload is required", "MISSING_PAYLOAD");
         }
 
         return null; // No validation errors
@@ -369,16 +371,19 @@ public class WebSocketToOrleansTranslator : MessageTranslatorBase<WebSocketMessa
     protected override TranslationResult<ChatMessage>? ValidateTarget(ChatMessage target, TranslationContext context)
     {
         var baseValidation = base.ValidateTarget(target, context);
-        if (baseValidation != null) return baseValidation;
+        if (baseValidation != null)
+        {
+            return baseValidation;
+        }
 
         if (string.IsNullOrEmpty(target.ChatId))
         {
-            return TranslationResult<ChatMessage>.Failure("ChatId is required in Orleans message", "MISSING_CHAT_ID");
+            return TranslationResult.Failure<ChatMessage>("ChatId is required in Orleans message", "MISSING_CHAT_ID");
         }
 
         if (string.IsNullOrEmpty(target.UserId))
         {
-            return TranslationResult<ChatMessage>.Failure("UserId is required in Orleans message", "MISSING_USER_ID");
+            return TranslationResult.Failure<ChatMessage>("UserId is required in Orleans message", "MISSING_USER_ID");
         }
 
         return null; // No validation errors

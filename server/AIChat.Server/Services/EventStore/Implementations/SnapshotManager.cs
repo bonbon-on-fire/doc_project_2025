@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 
 namespace AIChat.Server.Services.EventStore.Implementations;
 
@@ -17,7 +18,7 @@ public sealed class SnapshotManager : ISnapshotManager
     /// </summary>
     public string Name => "Default Snapshot Manager";
 
-    private static readonly string[] DefaultValidationIssues = new[] { "Snapshot not found or metadata is missing" };
+    private static readonly string[] DefaultValidationIssues = ["Snapshot not found or metadata is missing"];
 
     /// <summary>
     /// Initializes a new instance of the SnapshotManager class.
@@ -48,7 +49,9 @@ public sealed class SnapshotManager : ISnapshotManager
         ArgumentNullException.ThrowIfNull(policy);
 
         if (currentVersion < 0)
+        {
             throw new ArgumentOutOfRangeException(nameof(currentVersion), "Version cannot be negative");
+        }
 
         try
         {
@@ -163,7 +166,7 @@ public sealed class SnapshotManager : ISnapshotManager
             _logger.LogDebug("Creating snapshot for stream {StreamId} at version {Version}", streamId, version);
 
             // Add creation metadata
-            var snapshotMetadata = new Dictionary<string, object>(metadata ?? new Dictionary<string, object>())
+            var snapshotMetadata = new Dictionary<string, object>(metadata ?? [])
             {
                 ["createdBy"] = Name,
                 ["createdAt"] = DateTimeOffset.UtcNow,
@@ -207,7 +210,7 @@ public sealed class SnapshotManager : ISnapshotManager
         try
         {
             _logger.LogDebug("Restoring state from snapshot for stream {StreamId}, target version: {TargetVersion}",
-                streamId, targetVersion?.ToString() ?? "latest");
+                streamId, targetVersion?.ToString(CultureInfo.InvariantCulture) ?? "latest");
 
             // Find the best snapshot for the target version
             var snapshotResult = targetVersion.HasValue
@@ -227,13 +230,13 @@ public sealed class SnapshotManager : ISnapshotManager
 
                 if (!fullReplayResult.Success)
                 {
-                    return SnapshotRestoreResult<T>.CreateFailure(
+                    return SnapshotRestoreResult.CreateFailure<T>(
                         fullReplayResult.Error ?? "Event replay failed",
                         SnapshotErrorCode.InternalError,
                         restorationTime: stopwatch.Elapsed);
                 }
 
-                return SnapshotRestoreResult<T>.CreateSuccess(
+                return SnapshotRestoreResult.CreateSuccess(
                     fullReplayResult.State,
                     fullReplayResult.Version,
                     -1, // No snapshot used
@@ -287,7 +290,7 @@ public sealed class SnapshotManager : ISnapshotManager
                 streamId, snapshotVersion, finalVersion, eventsReplayed,
                 stopwatch.Elapsed, estimatedTimeSaved);
 
-            return SnapshotRestoreResult<T>.CreateSuccess(
+            return SnapshotRestoreResult.CreateSuccess(
                 currentState,
                 finalVersion,
                 snapshotVersion,
@@ -376,7 +379,7 @@ public sealed class SnapshotManager : ISnapshotManager
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to validate snapshot integrity for {SnapshotId}", snapshotId);
-            throw SnapshotManagerException.ValidationFailed(snapshotId, new[] { ex.Message });
+            throw SnapshotManagerException.ValidationFailed(snapshotId, [ex.Message]);
         }
     }
 
@@ -403,7 +406,7 @@ public sealed class SnapshotManager : ISnapshotManager
             {
                 stopwatch.Stop();
                 _logger.LogInformation("No snapshots found for cleanup");
-                return SnapshotCleanupResult.CreateSuccess(0, 0, Array.Empty<SnapshotCleanupDetail>(), stopwatch.Elapsed);
+                return SnapshotCleanupResult.CreateSuccess(0, 0, [], stopwatch.Elapsed);
             }
 
             var cleanupDetails = new List<SnapshotCleanupDetail>();

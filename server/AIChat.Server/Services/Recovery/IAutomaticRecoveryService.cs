@@ -1,5 +1,4 @@
 using AIChat.Server.Services.EventStore;
-using Orleans;
 
 namespace AIChat.Server.Services.Recovery;
 
@@ -457,7 +456,7 @@ public record RecoveryPolicy
     /// <summary>
     /// Whether to enable periodic integrity checks for this grain type.
     /// </summary>
-    public bool EnablePeriodicIntegrityChecks { get; init; } = false;
+    public bool EnablePeriodicIntegrityChecks { get; init; }
 
     /// <summary>
     /// Default interval for periodic integrity checks.
@@ -570,7 +569,7 @@ public record RecoveryPolicyConfigurationResult
     /// <summary>
     /// Any warnings about the policy configuration.
     /// </summary>
-    public IReadOnlyList<string> Warnings { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> Warnings { get; init; } = [];
 
     /// <summary>
     /// Any error message if configuration failed.
@@ -594,7 +593,7 @@ public record RecoveryPolicyConfigurationResult
             Success = true,
             GrainType = grainType,
             AppliedPolicy = appliedPolicy,
-            Warnings = warnings ?? Array.Empty<string>()
+            Warnings = warnings ?? []
         };
     }
 

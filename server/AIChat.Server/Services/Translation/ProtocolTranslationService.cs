@@ -49,7 +49,7 @@ public sealed class ProtocolTranslationService : IProtocolTranslationService, ID
         TranslationContext context,
         CancellationToken cancellationToken = default)
     {
-        if (_disposed) throw new ObjectDisposedException(nameof(ProtocolTranslationService));
+        ObjectDisposedException.ThrowIf(_disposed, this);
 
         using var activity = _activitySource.StartActivity("TranslateAsync");
         var stopwatch = Stopwatch.StartNew();
@@ -77,7 +77,7 @@ public sealed class ProtocolTranslationService : IProtocolTranslationService, ID
             if (translator == null)
             {
                 var errorMessage = $"No suitable translator found for {typeof(TSource).Name} to {typeof(TTarget).Name}";
-                var result = TranslationResult<TTarget>.Failure(errorMessage, "NO_TRANSLATOR");
+                var result = TranslationResult.Failure<TTarget>(errorMessage, "NO_TRANSLATOR");
                 await RecordTranslationAsync(result, stopwatch.Elapsed, context, null);
                 return result;
             }
@@ -106,7 +106,7 @@ public sealed class ProtocolTranslationService : IProtocolTranslationService, ID
         TranslationContext context,
         CancellationToken cancellationToken = default)
     {
-        if (_disposed) throw new ObjectDisposedException(nameof(ProtocolTranslationService));
+        ObjectDisposedException.ThrowIf(_disposed, this);
 
         if (!_options.EnableBatchTranslation)
         {
@@ -135,49 +135,56 @@ public sealed class ProtocolTranslationService : IProtocolTranslationService, ID
     /// <inheritdoc />
     public bool CanTranslate<TSource, TTarget>()
     {
-        if (_disposed) throw new ObjectDisposedException(nameof(ProtocolTranslationService));
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
         return _translatorRegistry.CanTranslate<TSource, TTarget>();
     }
 
     /// <inheritdoc />
     public bool CanTranslate(Type sourceType, Type targetType)
     {
-        if (_disposed) throw new ObjectDisposedException(nameof(ProtocolTranslationService));
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
         return _translatorRegistry.CanTranslate(sourceType, targetType);
     }
 
     /// <inheritdoc />
     public IEnumerable<(Type SourceType, Type TargetType)> GetSupportedTranslations()
     {
-        if (_disposed) throw new ObjectDisposedException(nameof(ProtocolTranslationService));
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
         return _translatorRegistry.GetSupportedTranslations();
     }
 
     /// <inheritdoc />
     public IEnumerable<string> GetRegisteredTranslators()
     {
-        if (_disposed) throw new ObjectDisposedException(nameof(ProtocolTranslationService));
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
         return _translatorRegistry.GetRegisteredTranslators();
     }
 
     /// <inheritdoc />
     public async Task<TranslationMetrics> GetMetricsAsync()
     {
-        if (_disposed) throw new ObjectDisposedException(nameof(ProtocolTranslationService));
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
         return await _metricsCollector.GetGlobalMetricsAsync();
     }
 
     /// <inheritdoc />
     public async Task<TranslationMetrics?> GetTranslatorMetricsAsync(string translatorName)
     {
-        if (_disposed) throw new ObjectDisposedException(nameof(ProtocolTranslationService));
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
         return await _metricsCollector.GetTranslatorMetricsAsync(translatorName);
     }
 
     /// <inheritdoc />
     public async Task ResetMetricsAsync()
     {
-        if (_disposed) throw new ObjectDisposedException(nameof(ProtocolTranslationService));
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
         await _metricsCollector.ResetMetricsAsync();
         _logger.LogInformation("All translation metrics have been reset");
     }
@@ -185,7 +192,7 @@ public sealed class ProtocolTranslationService : IProtocolTranslationService, ID
     /// <inheritdoc />
     public async Task<TranslationHealthCheckResult> CheckHealthAsync(CancellationToken cancellationToken = default)
     {
-        if (_disposed) throw new ObjectDisposedException(nameof(ProtocolTranslationService));
+        ObjectDisposedException.ThrowIf(_disposed, this);
 
         var stopwatch = Stopwatch.StartNew();
         try
@@ -219,12 +226,12 @@ public sealed class ProtocolTranslationService : IProtocolTranslationService, ID
     {
         if (source == null)
         {
-            return TranslationResult<TTarget>.Failure("Source cannot be null", "NULL_SOURCE");
+            return TranslationResult.Failure<TTarget>("Source cannot be null", "NULL_SOURCE");
         }
 
         if (context == null)
         {
-            return TranslationResult<TTarget>.Failure("Translation context cannot be null", "NULL_CONTEXT");
+            return TranslationResult.Failure<TTarget>("Translation context cannot be null", "NULL_CONTEXT");
         }
 
         activity?.SetTag("source.type", typeof(TSource).Name);
@@ -322,9 +329,9 @@ public sealed class ProtocolTranslationService : IProtocolTranslationService, ID
 
     private async Task<TranslationResult<TTarget>> HandleCancellationAsync<TTarget>(TimeSpan elapsed, TranslationContext context)
     {
-        var errorMessage = "Translation operation was cancelled or timed out";
-        _logger.LogWarning(errorMessage);
-        var result = TranslationResult<TTarget>.Failure(errorMessage, "TIMEOUT", elapsed);
+        const string errorMessage = "Translation operation was cancelled or timed out";
+        _logger.LogWarning("Translation operation was cancelled or timed out");
+        var result = TranslationResult.Failure<TTarget>(errorMessage, "TIMEOUT", elapsed);
         await RecordTranslationAsync(result, elapsed, context, null);
         return result;
     }
@@ -336,9 +343,9 @@ public sealed class ProtocolTranslationService : IProtocolTranslationService, ID
         Activity? activity)
     {
         var errorMessage = $"Translation failed with exception: {ex.Message}";
-        _logger.LogError(ex, errorMessage);
+        _logger.LogError(ex, "Translation failed with exception: {ExceptionMessage}", ex.Message);
         activity?.SetTag("error.type", ex.GetType().Name);
-        var result = TranslationResult<TTarget>.Failure(errorMessage, "EXCEPTION", elapsed);
+        var result = TranslationResult.Failure<TTarget>(errorMessage, "EXCEPTION", elapsed);
         await RecordTranslationAsync(result, elapsed, context, null);
         return result;
     }

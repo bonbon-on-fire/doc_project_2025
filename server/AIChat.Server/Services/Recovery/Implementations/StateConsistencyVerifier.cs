@@ -1,5 +1,4 @@
 using AIChat.Server.Services.EventStore;
-using Microsoft.Extensions.Logging;
 
 namespace AIChat.Server.Services.Recovery.Implementations;
 
@@ -11,6 +10,12 @@ public sealed class StateConsistencyVerifier : IStateConsistencyVerifier
 {
     private readonly IEventStore _eventStore;
     private readonly ILogger<StateConsistencyVerifier> _logger;
+
+    // Cached JSON serializer options for performance
+    private static readonly System.Text.Json.JsonSerializerOptions CachedJsonOptions = new()
+    {
+        ReferenceHandler = null // No circular reference handling
+    };
 
     /// <summary>
     /// Gets the name of this consistency verifier implementation.
@@ -677,10 +682,7 @@ public sealed class StateConsistencyVerifier : IStateConsistencyVerifier
         try
         {
             // Simple check by attempting JSON serialization without circular reference handling
-            System.Text.Json.JsonSerializer.Serialize(state, new System.Text.Json.JsonSerializerOptions
-            {
-                ReferenceHandler = null // No circular reference handling
-            });
+            System.Text.Json.JsonSerializer.Serialize(state, CachedJsonOptions);
             return false;
         }
         catch (System.Text.Json.JsonException)
@@ -854,7 +856,7 @@ public sealed class StateConsistencyVerifier : IStateConsistencyVerifier
     /// <summary>
     /// Generates recommendations based on identified issues.
     /// </summary>
-    private static IReadOnlyList<string> GenerateRecommendations(List<string> allIssues)
+    private static List<string> GenerateRecommendations(List<string> allIssues)
     {
         var recommendations = new List<string>();
 

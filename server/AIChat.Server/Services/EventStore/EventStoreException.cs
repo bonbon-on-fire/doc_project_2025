@@ -67,13 +67,19 @@ public class EventStoreException : Exception
         var details = new List<string> { $"Message: {Message}", $"ErrorCode: {ErrorCode}" };
 
         if (!string.IsNullOrEmpty(StreamId))
+        {
             details.Add($"StreamId: {StreamId}");
+        }
 
         if (!string.IsNullOrEmpty(EventId))
+        {
             details.Add($"EventId: {EventId}");
+        }
 
         if (!string.IsNullOrEmpty(CorrelationId))
+        {
             details.Add($"CorrelationId: {CorrelationId}");
+        }
 
         if (Context?.Count > 0)
         {
@@ -82,7 +88,9 @@ public class EventStoreException : Exception
         }
 
         if (InnerException != null)
+        {
             details.Add($"InnerException: {InnerException.Message}");
+        }
 
         return string.Join(Environment.NewLine, details);
     }
@@ -346,7 +354,7 @@ public class EventValidationException : EventStoreException
         string? correlationId = null,
         Exception? innerException = null)
         : this(
-            new[] { validationError },
+            [validationError],
             eventId,
             streamId,
             correlationId,

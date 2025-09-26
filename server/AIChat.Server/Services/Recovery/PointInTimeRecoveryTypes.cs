@@ -1,5 +1,3 @@
-using Orleans;
-
 namespace AIChat.Server.Services.Recovery;
 
 /// <summary>
@@ -270,7 +268,7 @@ public record PointInTimeRecoveryResult<T>
     /// Warning messages from the recovery operation.
     /// </summary>
     [Id(10)]
-    public IReadOnlyList<string> Warnings { get; set; } = Array.Empty<string>();
+    public IReadOnlyList<string> Warnings { get; set; } = [];
 
     /// <summary>
     /// Any error that occurred during recovery.
@@ -296,74 +294,6 @@ public record PointInTimeRecoveryResult<T>
     [Id(14)]
     public DateTimeOffset CompletedAt { get; set; } = DateTimeOffset.UtcNow;
 
-    /// <summary>
-    /// Creates a successful point-in-time recovery result.
-    /// </summary>
-    /// <param name="operationId">The operation identifier</param>
-    /// <param name="recoveredState">The recovered state</param>
-    /// <param name="actualTimestamp">The actual timestamp recovered to</param>
-    /// <param name="actualVersion">The actual version recovered to</param>
-    /// <param name="strategyUsed">The strategy that was used</param>
-    /// <param name="eventsReplayed">Number of events replayed</param>
-    /// <param name="recoveryDuration">Time taken for recovery</param>
-    /// <param name="snapshotId">ID of snapshot used, if any</param>
-    /// <param name="validationResult">Validation result</param>
-    /// <param name="correlationId">Correlation ID</param>
-    /// <returns>A successful recovery result</returns>
-    public static PointInTimeRecoveryResult<T> CreateSuccess(
-        string operationId,
-        T recoveredState,
-        DateTimeOffset? actualTimestamp,
-        long? actualVersion,
-        RecoveryStrategy strategyUsed,
-        int eventsReplayed,
-        TimeSpan recoveryDuration,
-        string? snapshotId = null,
-        ConsistencyVerificationResult? validationResult = null,
-        string correlationId = "")
-    {
-        return new PointInTimeRecoveryResult<T>
-        {
-            OperationId = operationId,
-            Status = RecoveryStatus.Completed,
-            RecoveredState = recoveredState,
-            ActualTimestamp = actualTimestamp,
-            ActualVersion = actualVersion,
-            StrategyUsed = strategyUsed,
-            EventsReplayed = eventsReplayed,
-            RecoveryDuration = recoveryDuration,
-            SnapshotId = snapshotId,
-            ValidationResult = validationResult,
-            CorrelationId = correlationId
-        };
-    }
-
-    /// <summary>
-    /// Creates a failed point-in-time recovery result.
-    /// </summary>
-    /// <param name="operationId">The operation identifier</param>
-    /// <param name="error">The error that occurred</param>
-    /// <param name="strategyUsed">The strategy that was attempted</param>
-    /// <param name="recoveryDuration">Time taken before failure</param>
-    /// <param name="correlationId">Correlation ID</param>
-    /// <returns>A failed recovery result</returns>
-    public static PointInTimeRecoveryResult<T> CreateFailure(
-        string operationId,
-        Exception error,
-        RecoveryStrategy strategyUsed = RecoveryStrategy.HybridRecovery,
-        TimeSpan recoveryDuration = default,
-        string correlationId = "")
-    {
-        return new PointInTimeRecoveryResult<T>
-        {
-            OperationId = operationId,
-            Status = RecoveryStatus.Failed,
-            Error = error,
-            StrategyUsed = strategyUsed,
-            RecoveryDuration = recoveryDuration,
-            CorrelationId = correlationId
-        };
-    }
 }
 
 /// <summary>
@@ -605,13 +535,13 @@ public record PointInTimeRecoveryValidationResult
     /// Issues that prevent or complicate recovery.
     /// </summary>
     [Id(4)]
-    public IReadOnlyList<string> Issues { get; set; } = Array.Empty<string>();
+    public IReadOnlyList<string> Issues { get; set; } = [];
 
     /// <summary>
     /// Warnings about the recovery operation.
     /// </summary>
     [Id(5)]
-    public IReadOnlyList<string> Warnings { get; set; } = Array.Empty<string>();
+    public IReadOnlyList<string> Warnings { get; set; } = [];
 
     /// <summary>
     /// Whether the requested timestamp/version has data available.
@@ -660,7 +590,7 @@ public record PointInTimeRecoveryValidationResult
             EstimatedDuration = estimatedDuration,
             RecommendedStrategy = recommendedStrategy,
             SnapshotsAvailable = snapshotsAvailable,
-            Warnings = warnings ?? Array.Empty<string>(),
+            Warnings = warnings ?? [],
             DataAvailable = true
         };
     }
@@ -682,6 +612,84 @@ public record PointInTimeRecoveryValidationResult
             NearestRecoveryPoint = nearestPoint,
             ConfidenceLevel = 0.0,
             DataAvailable = false
+        };
+    }
+}
+
+/// <summary>
+/// Non-generic factory class for creating PointInTimeRecoveryResult instances.
+/// This pattern eliminates CA1000 warnings about static members on generic types.
+/// </summary>
+public static class PointInTimeRecoveryResult
+{
+    /// <summary>
+    /// Creates a successful point-in-time recovery result.
+    /// </summary>
+    /// <typeparam name="T">The type of state that was recovered</typeparam>
+    /// <param name="operationId">The operation identifier</param>
+    /// <param name="recoveredState">The recovered state</param>
+    /// <param name="actualTimestamp">The actual timestamp recovered to</param>
+    /// <param name="actualVersion">The actual version recovered to</param>
+    /// <param name="strategyUsed">The strategy that was used</param>
+    /// <param name="eventsReplayed">Number of events replayed</param>
+    /// <param name="recoveryDuration">Time taken for recovery</param>
+    /// <param name="snapshotId">ID of snapshot used, if any</param>
+    /// <param name="validationResult">Validation result</param>
+    /// <param name="correlationId">Correlation ID</param>
+    /// <returns>A successful recovery result</returns>
+    public static PointInTimeRecoveryResult<T> CreateSuccess<T>(
+        string operationId,
+        T recoveredState,
+        DateTimeOffset? actualTimestamp,
+        long? actualVersion,
+        RecoveryStrategy strategyUsed,
+        int eventsReplayed,
+        TimeSpan recoveryDuration,
+        string? snapshotId = null,
+        ConsistencyVerificationResult? validationResult = null,
+        string correlationId = "")
+    {
+        return new PointInTimeRecoveryResult<T>
+        {
+            OperationId = operationId,
+            Status = RecoveryStatus.Completed,
+            RecoveredState = recoveredState,
+            ActualTimestamp = actualTimestamp,
+            ActualVersion = actualVersion,
+            StrategyUsed = strategyUsed,
+            EventsReplayed = eventsReplayed,
+            RecoveryDuration = recoveryDuration,
+            SnapshotId = snapshotId,
+            ValidationResult = validationResult,
+            CorrelationId = correlationId
+        };
+    }
+
+    /// <summary>
+    /// Creates a failed point-in-time recovery result.
+    /// </summary>
+    /// <typeparam name="T">The type of state that was being recovered</typeparam>
+    /// <param name="operationId">The operation identifier</param>
+    /// <param name="error">The error that occurred</param>
+    /// <param name="strategyUsed">The strategy that was attempted</param>
+    /// <param name="recoveryDuration">Time taken before failure</param>
+    /// <param name="correlationId">Correlation ID</param>
+    /// <returns>A failed recovery result</returns>
+    public static PointInTimeRecoveryResult<T> CreateFailure<T>(
+        string operationId,
+        Exception error,
+        RecoveryStrategy strategyUsed = RecoveryStrategy.HybridRecovery,
+        TimeSpan recoveryDuration = default,
+        string correlationId = "")
+    {
+        return new PointInTimeRecoveryResult<T>
+        {
+            OperationId = operationId,
+            Status = RecoveryStatus.Failed,
+            Error = error,
+            StrategyUsed = strategyUsed,
+            RecoveryDuration = recoveryDuration,
+            CorrelationId = correlationId
         };
     }
 }

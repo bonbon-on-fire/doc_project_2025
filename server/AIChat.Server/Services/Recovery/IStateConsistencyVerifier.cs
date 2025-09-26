@@ -188,7 +188,7 @@ public record DataIntegrityVerificationResult
     /// <summary>
     /// Data integrity issues found, if any.
     /// </summary>
-    public IReadOnlyList<string> IntegrityIssues { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> IntegrityIssues { get; init; } = [];
 
     /// <summary>
     /// Data integrity issues (alias for IntegrityIssues for compatibility).
@@ -198,7 +198,7 @@ public record DataIntegrityVerificationResult
     /// <summary>
     /// Data integrity warnings found, if any.
     /// </summary>
-    public IReadOnlyList<string> Warnings { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> Warnings { get; init; } = [];
 
     /// <summary>
     /// Confidence level in the integrity verification (0.0 to 1.0).
@@ -301,17 +301,17 @@ public record EventStreamAlignmentResult
     /// <summary>
     /// Alignment issues found, if any.
     /// </summary>
-    public IReadOnlyList<string> AlignmentIssues { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> AlignmentIssues { get; init; } = [];
 
     /// <summary>
     /// Missing events that should be applied to reach alignment.
     /// </summary>
-    public IReadOnlyList<string> MissingEvents { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> MissingEvents { get; init; } = [];
 
     /// <summary>
     /// Extra events that shouldn't be in the current state.
     /// </summary>
-    public IReadOnlyList<string> ExtraEvents { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> ExtraEvents { get; init; } = [];
 
     /// <summary>
     /// Alignment issues (alias for AlignmentIssues for compatibility).
@@ -321,7 +321,7 @@ public record EventStreamAlignmentResult
     /// <summary>
     /// Alignment warnings found, if any.
     /// </summary>
-    public IReadOnlyList<string> Warnings { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> Warnings { get; init; } = [];
 
     /// <summary>
     /// Creates an aligned result.
@@ -361,8 +361,8 @@ public record EventStreamAlignmentResult
             CurrentVersion = currentVersion,
             ExpectedVersion = expectedVersion,
             AlignmentIssues = alignmentIssues,
-            MissingEvents = missingEvents ?? Array.Empty<string>(),
-            ExtraEvents = extraEvents ?? Array.Empty<string>()
+            MissingEvents = missingEvents ?? [],
+            ExtraEvents = extraEvents ?? []
         };
     }
 
@@ -410,22 +410,22 @@ public record CrossGrainConsistencyResult
     /// <summary>
     /// The grains that were checked for consistency.
     /// </summary>
-    public IReadOnlyList<string> CheckedGrains { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> CheckedGrains { get; init; } = [];
 
     /// <summary>
     /// Consistency issues found between grains.
     /// </summary>
-    public IReadOnlyList<string> ConsistencyIssues { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> ConsistencyIssues { get; init; } = [];
 
     /// <summary>
     /// Grains that have inconsistent states.
     /// </summary>
-    public IReadOnlyList<string> InconsistentGrains { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> InconsistentGrains { get; init; } = [];
 
     /// <summary>
     /// Consistency constraints that were violated.
     /// </summary>
-    public IReadOnlyList<string> ViolatedConstraints { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> ViolatedConstraints { get; init; } = [];
 
     /// <summary>
     /// Creates a consistent result.
@@ -437,7 +437,7 @@ public record CrossGrainConsistencyResult
         return new CrossGrainConsistencyResult
         {
             IsConsistent = true,
-            CheckedGrains = checkedGrains ?? Array.Empty<string>()
+            CheckedGrains = checkedGrains ?? []
         };
     }
 
@@ -457,8 +457,8 @@ public record CrossGrainConsistencyResult
         {
             IsConsistent = false,
             ConsistencyIssues = consistencyIssues,
-            InconsistentGrains = inconsistentGrains ?? Array.Empty<string>(),
-            ViolatedConstraints = violatedConstraints ?? Array.Empty<string>()
+            InconsistentGrains = inconsistentGrains ?? [],
+            ViolatedConstraints = violatedConstraints ?? []
         };
     }
 }
@@ -506,12 +506,12 @@ public record ComprehensiveConsistencyResult
     /// <summary>
     /// Summary of all issues found across all verification types.
     /// </summary>
-    public IReadOnlyList<string> AllIssues { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> AllIssues { get; init; } = [];
 
     /// <summary>
     /// Recommendations for addressing consistency issues.
     /// </summary>
-    public IReadOnlyList<string> Recommendations { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> Recommendations { get; init; } = [];
 
     /// <summary>
     /// Time taken for the comprehensive verification.
@@ -596,12 +596,12 @@ public record ConsistencyVerificationMetrics
     /// <summary>
     /// Distribution of verification types performed.
     /// </summary>
-    public Dictionary<string, long> VerificationTypeDistribution { get; init; } = new();
+    public Dictionary<string, long> VerificationTypeDistribution { get; init; } = [];
 
     /// <summary>
     /// Distribution of consistency issues found.
     /// </summary>
-    public Dictionary<string, long> ConsistencyIssueDistribution { get; init; } = new();
+    public Dictionary<string, long> ConsistencyIssueDistribution { get; init; } = [];
 
     /// <summary>
     /// Average consistency score across all verifications.

@@ -1,7 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Reflection;
-using Microsoft.Extensions.Logging;
 
 namespace AIChat.Server.Services.StateManagement.Validation;
 
@@ -486,13 +485,24 @@ public abstract class StateValidatorBase<T> : IStateValidator<T> where T : class
         var errorMessage = validationResult.ErrorMessage ?? "";
 
         if (errorMessage.Contains("required", StringComparison.OrdinalIgnoreCase))
+        {
             return ValidationErrorCode.Required;
+        }
+
         if (errorMessage.Contains("length", StringComparison.OrdinalIgnoreCase))
+        {
             return ValidationErrorCode.TooLong;
+        }
+
         if (errorMessage.Contains("range", StringComparison.OrdinalIgnoreCase))
+        {
             return ValidationErrorCode.OutOfRange;
+        }
+
         if (errorMessage.Contains("format", StringComparison.OrdinalIgnoreCase))
+        {
             return ValidationErrorCode.InvalidFormat;
+        }
 
         return ValidationErrorCode.Custom;
     }
@@ -560,14 +570,20 @@ internal sealed class ValidationMetricsCollector
         {
             _totalValidations++;
             if (isSuccessful)
+            {
                 _successfulValidations++;
+            }
             else
+            {
                 _failedValidations++;
+            }
 
             var durationMs = duration.TotalMilliseconds;
             _totalDurationMs += durationMs;
             if (durationMs > _maxDurationMs)
+            {
                 _maxDurationMs = durationMs;
+            }
 
             _operationCounts.TryGetValue(operationType, out var count);
             _operationCounts[operationType] = count + 1;

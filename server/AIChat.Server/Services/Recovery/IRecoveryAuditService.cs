@@ -203,7 +203,7 @@ public record AuditRetentionPolicy
     /// <summary>
     /// Whether to archive entries before deletion.
     /// </summary>
-    public bool ArchiveBeforeDelete { get; init; } = false;
+    public bool ArchiveBeforeDelete { get; init; }
 
     /// <summary>
     /// Archive storage location if archiving is enabled.
@@ -300,22 +300,22 @@ public record RecoveryAuditMetrics
     /// <summary>
     /// Distribution of recovery strategies used.
     /// </summary>
-    public Dictionary<RecoveryStrategy, long> StrategyUsageCount { get; init; } = new();
+    public Dictionary<RecoveryStrategy, long> StrategyUsageCount { get; init; } = [];
 
     /// <summary>
     /// Distribution of who initiated recoveries.
     /// </summary>
-    public Dictionary<string, long> InitiatorUsageCount { get; init; } = new();
+    public Dictionary<string, long> InitiatorUsageCount { get; init; } = [];
 
     /// <summary>
     /// Distribution of recovery reasons.
     /// </summary>
-    public Dictionary<string, long> ReasonUsageCount { get; init; } = new();
+    public Dictionary<string, long> ReasonUsageCount { get; init; } = [];
 
     /// <summary>
     /// Distribution of grain types recovered.
     /// </summary>
-    public Dictionary<string, long> GrainTypeUsageCount { get; init; } = new();
+    public Dictionary<string, long> GrainTypeUsageCount { get; init; } = [];
 
     /// <summary>
     /// Number of recoveries that used snapshots.
@@ -428,7 +428,7 @@ public record RecoveryAuditHealthStatus
     /// <summary>
     /// Any health status messages.
     /// </summary>
-    public IReadOnlyList<string> Messages { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> Messages { get; init; } = [];
 
     /// <summary>
     /// Additional health details.
@@ -474,7 +474,7 @@ public record RecoveryAuditHealthStatus
             IsHealthy = false,
             ServiceName = serviceName,
             StorageHealthy = storageHealthy,
-            Messages = messages ?? Array.Empty<string>()
+            Messages = messages ?? []
         };
     }
 }

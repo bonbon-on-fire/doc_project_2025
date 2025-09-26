@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using AIChat.Server.Services.EventStore;
 using AIChat.Server.Services.Recovery;
 using Microsoft.AspNetCore.Mvc;
 
@@ -108,7 +107,7 @@ public class PointInTimeRecoveryController : ControllerBase
             {
                 var operationId = await _recoveryService.StartBackgroundRecoveryAsync(
                     request,
-                    grainType => _projectionFactory.CreateProjection<object>(grainType),
+                    _projectionFactory.CreateProjection<object>,
                     cancellationToken);
 
                 // Start audit tracking

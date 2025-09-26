@@ -135,7 +135,9 @@ public class SseProtocolHandler : ISseProtocolHandler
         foreach (var line in eventLines)
         {
             if (string.IsNullOrWhiteSpace(line))
+            {
                 continue;
+            }
 
             var colonIndex = line.IndexOf(':');
             if (colonIndex == -1)
@@ -182,7 +184,7 @@ public class SseProtocolHandler : ISseProtocolHandler
 
                 default:
                     // Unknown field - could be custom extension
-                    message.Metadata ??= new Dictionary<string, object>();
+                    message.Metadata ??= [];
                     message.Metadata[field] = value;
                     _logger.LogTrace("Unknown SSE field: {Field}={Value}", field, value);
                     break;

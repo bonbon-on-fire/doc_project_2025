@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using Orleans;
 
 namespace AIChat.Server.Services.SignalRBuffering.Models;
 
@@ -79,7 +78,7 @@ public record SignalRMessage
     /// Used for custom filtering, routing, and analytics.
     /// </summary>
     [Id(8)]
-    public Dictionary<string, object> Metadata { get; init; } = new();
+    public Dictionary<string, object> Metadata { get; init; } = [];
 
     /// <summary>
     /// Gets the timestamp of the last delivery attempt.

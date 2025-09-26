@@ -162,7 +162,7 @@ public class SignalRBufferConfiguration
     /// Gets or sets additional custom configuration properties.
     /// Used for experimental features and environment-specific settings.
     /// </summary>
-    public Dictionary<string, object> CustomSettings { get; set; } = new();
+    public Dictionary<string, object> CustomSettings { get; set; } = [];
 
     /// <summary>
     /// Validates the configuration and returns any validation errors.
@@ -173,26 +173,40 @@ public class SignalRBufferConfiguration
         var errors = new List<string>();
 
         if (MaxBufferSize <= 0)
+        {
             errors.Add("MaxBufferSize must be greater than 0");
+        }
 
         if (BatchSize > MaxBufferSize)
+        {
             errors.Add("BatchSize cannot be larger than MaxBufferSize");
+        }
 
         if (ProcessingInterval < TimeSpan.FromMilliseconds(1))
+        {
             errors.Add("ProcessingInterval must be at least 1 millisecond");
+        }
 
         if (DegradedThresholdPercent >= UnhealthyThresholdPercent)
+        {
             errors.Add("DegradedThresholdPercent must be less than UnhealthyThresholdPercent");
+        }
 
         if (MaxRetryInterval < RetryInterval)
+        {
             errors.Add("MaxRetryInterval must be greater than or equal to RetryInterval");
+        }
 
         if (MaxDeadLetterQueueSize > MaxBufferSize)
+        {
             errors.Add("MaxDeadLetterQueueSize should not exceed MaxBufferSize");
+        }
 
         var validOverflowStrategies = new[] { "DropOldest", "DropNewest", "DropByPriority", "Blocking" };
         if (!validOverflowStrategies.Contains(OverflowStrategy))
+        {
             errors.Add($"OverflowStrategy must be one of: {string.Join(", ", validOverflowStrategies)}");
+        }
 
         return errors;
     }

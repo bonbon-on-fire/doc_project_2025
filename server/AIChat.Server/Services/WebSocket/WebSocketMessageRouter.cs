@@ -35,9 +35,9 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
     private long _failedMessages;
     private long _orleansAttempts;
     private long _directServiceUses;
-    private readonly Dictionary<MessageRoutingDestination, long> _messagesByDestination = new();
-    private readonly Dictionary<string, long> _messagesByType = new();
-    private readonly Dictionary<string, long> _messagesByProtocol = new();
+    private readonly Dictionary<MessageRoutingDestination, long> _messagesByDestination = [];
+    private readonly Dictionary<string, long> _messagesByType = [];
+    private readonly Dictionary<string, long> _messagesByProtocol = [];
     private readonly object _statisticsLock = new();
 
     /// <summary>
@@ -307,10 +307,10 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
             activity?.SetTag("operation.success", false);
             activity?.SetTag("error.type", ex.GetType().Name);
 
-            return new List<MessageRoutingResult>
-            {
+            return
+            [
                 MessageRoutingResult.CreateFailure($"Broadcast error: {ex.Message}", MessageRoutingDestination.Broadcast)
-            };
+            ];
         }
     }
 
@@ -414,6 +414,7 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
     public async Task<MessageRoutingStatistics> GetStatisticsAsync(
         CancellationToken cancellationToken = default)
     {
+        await Task.CompletedTask; // Suppress CS1998
         lock (_statisticsLock)
         {
             var statistics = new MessageRoutingStatistics
@@ -699,10 +700,14 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
         }
 
         if (orleansAttempted)
+        {
             Interlocked.Increment(ref _orleansAttempts);
+        }
 
         if (directServiceUsed)
+        {
             Interlocked.Increment(ref _directServiceUses);
+        }
     }
 
     #endregion

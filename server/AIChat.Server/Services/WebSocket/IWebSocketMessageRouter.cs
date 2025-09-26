@@ -153,7 +153,7 @@ public record MessageRoutingResult
     /// <summary>
     /// Gets additional routing metadata.
     /// </summary>
-    public Dictionary<string, object> Metadata { get; init; } = new();
+    public Dictionary<string, object> Metadata { get; init; } = [];
 
     /// <summary>
     /// Gets the time taken to process the message in milliseconds.
@@ -294,17 +294,17 @@ public record MessageRoutingStatistics
     /// <summary>
     /// Gets the count of messages by destination.
     /// </summary>
-    public Dictionary<MessageRoutingDestination, long> MessagesByDestination { get; init; } = new();
+    public Dictionary<MessageRoutingDestination, long> MessagesByDestination { get; init; } = [];
 
     /// <summary>
     /// Gets the count of messages by type.
     /// </summary>
-    public Dictionary<string, long> MessagesByType { get; init; } = new();
+    public Dictionary<string, long> MessagesByType { get; init; } = [];
 
     /// <summary>
     /// Gets the count of messages by protocol.
     /// </summary>
-    public Dictionary<string, long> MessagesByProtocol { get; init; } = new();
+    public Dictionary<string, long> MessagesByProtocol { get; init; } = [];
 
     /// <summary>
     /// Gets the average processing time in milliseconds.

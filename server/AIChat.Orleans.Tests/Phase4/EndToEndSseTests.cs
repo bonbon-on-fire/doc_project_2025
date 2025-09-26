@@ -1,7 +1,6 @@
 using System.Net.Http.Json;
 using AIChat.Orleans.Contracts;
 using AIChat.Orleans.Tests.TestUtilities;
-using AIChat.Server.Models;
 using AIChat.Server.Services;
 using FluentAssertions;
 using Xunit;

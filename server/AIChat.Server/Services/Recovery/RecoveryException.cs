@@ -1,5 +1,4 @@
 using System.Runtime.Serialization;
-using Orleans;
 
 namespace AIChat.Server.Services.Recovery;
 
@@ -14,11 +13,13 @@ public class RecoveryException : Exception
     /// <summary>
     /// Gets the grain ID associated with the recovery failure.
     /// </summary>
+    [Id(0)]
     public string? GrainId { get; }
 
     /// <summary>
     /// Gets the correlation ID for tracking the recovery operation.
     /// </summary>
+    [Id(1)]
     public string? CorrelationId { get; }
 
     /// <summary>
@@ -76,7 +77,10 @@ public class RecoveryException : Exception
     /// </summary>
     /// <param name="info">The SerializationInfo that holds the serialized object data</param>
     /// <param name="context">The StreamingContext that contains contextual information</param>
+    [Obsolete("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.", DiagnosticId = "SYSLIB0051", UrlFormat = "https://aka.ms/dotnet-warnings/{0}")]
+#pragma warning disable SYSLIB0051 // Formatter-based serialization is obsolete
     protected RecoveryException(SerializationInfo info, System.Runtime.Serialization.StreamingContext context) : base(info, context)
+#pragma warning restore SYSLIB0051
     {
         GrainId = info.GetString(nameof(GrainId));
         CorrelationId = info.GetString(nameof(CorrelationId));
@@ -87,12 +91,15 @@ public class RecoveryException : Exception
     /// </summary>
     /// <param name="info">The SerializationInfo that holds the serialized object data</param>
     /// <param name="context">The StreamingContext that contains contextual information</param>
+    [Obsolete("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.", DiagnosticId = "SYSLIB0051", UrlFormat = "https://aka.ms/dotnet-warnings/{0}")]
+#pragma warning disable SYSLIB0051 // Formatter-based serialization is obsolete
     public override void GetObjectData(SerializationInfo info, System.Runtime.Serialization.StreamingContext context)
     {
         base.GetObjectData(info, context);
         info.AddValue(nameof(GrainId), GrainId);
         info.AddValue(nameof(CorrelationId), CorrelationId);
     }
+#pragma warning restore SYSLIB0051
 }
 
 /// <summary>
@@ -160,9 +167,11 @@ public class StateRecoveryDetectionException : RecoveryException
     /// </summary>
     /// <param name="info">The SerializationInfo that holds the serialized object data</param>
     /// <param name="context">The StreamingContext that contains contextual information</param>
+#pragma warning disable SYSLIB0051 // Formatter-based serialization is obsolete
     protected StateRecoveryDetectionException(SerializationInfo info, System.Runtime.Serialization.StreamingContext context) : base(info, context)
     {
     }
+#pragma warning restore SYSLIB0051
 }
 
 /// <summary>
@@ -176,6 +185,7 @@ public class StateRecoveryOrchestrationException : RecoveryException
     /// <summary>
     /// Gets the recovery strategy that failed.
     /// </summary>
+    [Id(0)]
     public RecoveryStrategy? FailedStrategy { get; }
 
     /// <summary>
@@ -257,21 +267,26 @@ public class StateRecoveryOrchestrationException : RecoveryException
     /// </summary>
     /// <param name="info">The SerializationInfo that holds the serialized object data</param>
     /// <param name="context">The StreamingContext that contains contextual information</param>
+#pragma warning disable SYSLIB0051 // Formatter-based serialization is obsolete
     protected StateRecoveryOrchestrationException(SerializationInfo info, System.Runtime.Serialization.StreamingContext context) : base(info, context)
     {
         FailedStrategy = (RecoveryStrategy?)info.GetValue(nameof(FailedStrategy), typeof(RecoveryStrategy?));
     }
+#pragma warning restore SYSLIB0051
 
     /// <summary>
     /// Sets the SerializationInfo with information about the exception.
     /// </summary>
     /// <param name="info">The SerializationInfo that holds the serialized object data</param>
     /// <param name="context">The StreamingContext that contains contextual information</param>
+    [Obsolete("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.", DiagnosticId = "SYSLIB0051", UrlFormat = "https://aka.ms/dotnet-warnings/{0}")]
+#pragma warning disable SYSLIB0051 // Formatter-based serialization is obsolete
     public override void GetObjectData(SerializationInfo info, System.Runtime.Serialization.StreamingContext context)
     {
         base.GetObjectData(info, context);
         info.AddValue(nameof(FailedStrategy), FailedStrategy);
     }
+#pragma warning restore SYSLIB0051
 }
 
 /// <summary>
@@ -285,6 +300,7 @@ public class StateConsistencyVerificationException : RecoveryException
     /// <summary>
     /// Gets the consistency issues found during verification.
     /// </summary>
+    [Id(0)]
     public IReadOnlyList<string> ConsistencyIssues { get; }
 
     /// <summary>
@@ -292,7 +308,7 @@ public class StateConsistencyVerificationException : RecoveryException
     /// </summary>
     public StateConsistencyVerificationException() : base("State consistency verification failed")
     {
-        ConsistencyIssues = Array.Empty<string>();
+        ConsistencyIssues = [];
     }
 
     /// <summary>
@@ -301,7 +317,7 @@ public class StateConsistencyVerificationException : RecoveryException
     /// <param name="message">The message that describes the error</param>
     public StateConsistencyVerificationException(string? message) : base(message)
     {
-        ConsistencyIssues = Array.Empty<string>();
+        ConsistencyIssues = [];
     }
 
     /// <summary>
@@ -318,7 +334,7 @@ public class StateConsistencyVerificationException : RecoveryException
         string? correlationId)
         : base(message, grainId, correlationId)
     {
-        ConsistencyIssues = consistencyIssues ?? Array.Empty<string>();
+        ConsistencyIssues = consistencyIssues ?? [];
     }
 
     /// <summary>
@@ -331,7 +347,7 @@ public class StateConsistencyVerificationException : RecoveryException
     public StateConsistencyVerificationException(string? message, string? grainId, string? grainType, Exception? innerException)
         : base(message, grainId, null, innerException)
     {
-        ConsistencyIssues = Array.Empty<string>();
+        ConsistencyIssues = [];
         // Store grainType in Data dictionary for additional context
         if (grainType != null)
         {
@@ -346,7 +362,7 @@ public class StateConsistencyVerificationException : RecoveryException
     /// <param name="innerException">The exception that is the cause of the current exception</param>
     public StateConsistencyVerificationException(string? message, Exception? innerException) : base(message, innerException)
     {
-        ConsistencyIssues = Array.Empty<string>();
+        ConsistencyIssues = [];
     }
 
     /// <summary>
@@ -354,22 +370,27 @@ public class StateConsistencyVerificationException : RecoveryException
     /// </summary>
     /// <param name="info">The SerializationInfo that holds the serialized object data</param>
     /// <param name="context">The StreamingContext that contains contextual information</param>
+#pragma warning disable SYSLIB0051 // Formatter-based serialization is obsolete
     protected StateConsistencyVerificationException(SerializationInfo info, System.Runtime.Serialization.StreamingContext context) : base(info, context)
     {
         var issuesArray = info.GetValue(nameof(ConsistencyIssues), typeof(string[])) as string[];
-        ConsistencyIssues = issuesArray ?? Array.Empty<string>();
+        ConsistencyIssues = issuesArray ?? [];
     }
+#pragma warning restore SYSLIB0051
 
     /// <summary>
     /// Sets the SerializationInfo with information about the exception.
     /// </summary>
     /// <param name="info">The SerializationInfo that holds the serialized object data</param>
     /// <param name="context">The StreamingContext that contains contextual information</param>
+    [Obsolete("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.", DiagnosticId = "SYSLIB0051", UrlFormat = "https://aka.ms/dotnet-warnings/{0}")]
+#pragma warning disable SYSLIB0051 // Formatter-based serialization is obsolete
     public override void GetObjectData(SerializationInfo info, System.Runtime.Serialization.StreamingContext context)
     {
         base.GetObjectData(info, context);
         info.AddValue(nameof(ConsistencyIssues), ConsistencyIssues.ToArray());
     }
+#pragma warning restore SYSLIB0051
 }
 
 /// <summary>
@@ -420,7 +441,9 @@ public class AutomaticRecoveryServiceException : RecoveryException
     /// </summary>
     /// <param name="info">The SerializationInfo that holds the serialized object data</param>
     /// <param name="context">The StreamingContext that contains contextual information</param>
+#pragma warning disable SYSLIB0051 // Formatter-based serialization is obsolete
     protected AutomaticRecoveryServiceException(SerializationInfo info, System.Runtime.Serialization.StreamingContext context) : base(info, context)
     {
     }
+#pragma warning restore SYSLIB0051
 }

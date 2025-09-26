@@ -94,7 +94,7 @@ public class JsonEventSerializer : IEventSerializer
     {
         _options = options ?? DefaultOptions;
         _logger = logger;
-        _eventTypeRegistry = new Dictionary<string, Type>();
+        _eventTypeRegistry = [];
 
         // Register known event types
         RegisterKnownEventTypes();
@@ -176,18 +176,20 @@ public class JsonEventSerializer : IEventSerializer
             using var document = JsonDocument.Parse(eventData);
             var root = document.RootElement;
 
-            IEvent parsedEvent;
+            IEvent? parsedEvent;
             if (root.TryGetProperty("eventType", out var eventTypeProperty) &&
                 root.TryGetProperty("data", out var dataProperty))
             {
                 // This is envelope format - deserialize the data part
                 var dataJson = dataProperty.GetRawText();
-                parsedEvent = JsonSerializer.Deserialize(dataJson, type, _options) as IEvent;
+                var deserializedData = JsonSerializer.Deserialize(dataJson, type, _options);
+                parsedEvent = deserializedData as IEvent;
             }
             else
             {
                 // This is direct event data format (backward compatibility)
-                parsedEvent = JsonSerializer.Deserialize(eventData, type, _options) as IEvent;
+                var deserializedData = JsonSerializer.Deserialize(eventData, type, _options);
+                parsedEvent = deserializedData as IEvent;
             }
 
             if (parsedEvent == null)
@@ -243,12 +245,12 @@ public class JsonEventSerializer : IEventSerializer
             {
                 // This is envelope format - deserialize the data part
                 var dataJson = dataProperty.GetRawText();
-                parsedEvent = JsonSerializer.Deserialize<T>(dataJson, _options);
+                parsedEvent = JsonSerializer.Deserialize<T>(dataJson, _options)!;
             }
             else
             {
                 // This is direct event data format (backward compatibility)
-                parsedEvent = JsonSerializer.Deserialize<T>(eventData, _options);
+                parsedEvent = JsonSerializer.Deserialize<T>(eventData, _options)!;
             }
 
             if (parsedEvent == null)
@@ -285,7 +287,9 @@ public class JsonEventSerializer : IEventSerializer
     public string? SerializeMetadata(Dictionary<string, object>? metadata)
     {
         if (metadata == null || metadata.Count == 0)
+        {
             return null;
+        }
 
         try
         {
@@ -310,7 +314,9 @@ public class JsonEventSerializer : IEventSerializer
     public Dictionary<string, object>? DeserializeMetadata(string? metadataJson)
     {
         if (string.IsNullOrEmpty(metadataJson))
+        {
             return null;
+        }
 
         try
         {

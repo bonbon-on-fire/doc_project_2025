@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using AIChat.Orleans.Contracts;
-using AIChat.Orleans.Models;
 using AIChat.Server.Services.Translation.Models;
 
 namespace AIChat.Server.Services.Translation.Translators;
@@ -82,17 +81,17 @@ public class OrleansToSignalRTranslator : MessageTranslatorBase<MessageResult, S
             activity?.SetTag("signalr.method", signalRResponse.Method);
             activity?.SetTag("signalr.target_type", signalRResponse.Target.Type.ToString());
 
-            return TranslationResult<SignalRResponse>.SuccessWithTypes<MessageResult, SignalRResponse>(signalRResponse, stopwatch.Elapsed);
+            return TranslationResult.SuccessWithTypes<MessageResult, SignalRResponse>(signalRResponse, stopwatch.Elapsed);
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
             var errorMessage = $"Translation failed: {ex.Message}";
-            Logger.LogError(ex, errorMessage);
+            Logger.LogError(ex, "Translation failed: {ExceptionMessage}", ex.Message);
             UpdateFailureMetrics(stopwatch.Elapsed, "TRANSLATION_ERROR", context);
             activity?.SetTag("translation.success", false);
             activity?.SetTag("error.type", ex.GetType().Name);
-            return TranslationResult<SignalRResponse>.Failure(errorMessage, "TRANSLATION_ERROR", stopwatch.Elapsed);
+            return TranslationResult.Failure<SignalRResponse>(errorMessage, "TRANSLATION_ERROR", stopwatch.Elapsed);
         }
     }
 
@@ -108,6 +107,7 @@ public class OrleansToSignalRTranslator : MessageTranslatorBase<MessageResult, S
         TranslationContext context,
         CancellationToken cancellationToken)
     {
+        await Task.CompletedTask; // Suppress CS1998
         var message = source.Message!;
 
         // Determine the target for the SignalR response
@@ -159,7 +159,7 @@ public class OrleansToSignalRTranslator : MessageTranslatorBase<MessageResult, S
         return new SignalRResponse
         {
             Method = "MessageReceived",
-            Arguments = new object[] { messageData },
+            Arguments = [messageData],
             Target = target,
             Timestamp = DateTime.UtcNow
         };
@@ -179,7 +179,7 @@ public class OrleansToSignalRTranslator : MessageTranslatorBase<MessageResult, S
         return new SignalRResponse
         {
             Method = "UserJoined",
-            Arguments = new object[] { joinData },
+            Arguments = [joinData],
             Target = target,
             Timestamp = DateTime.UtcNow
         };
@@ -199,7 +199,7 @@ public class OrleansToSignalRTranslator : MessageTranslatorBase<MessageResult, S
         return new SignalRResponse
         {
             Method = "UserLeft",
-            Arguments = new object[] { leaveData },
+            Arguments = [leaveData],
             Target = target,
             Timestamp = DateTime.UtcNow
         };
@@ -218,7 +218,7 @@ public class OrleansToSignalRTranslator : MessageTranslatorBase<MessageResult, S
         return new SignalRResponse
         {
             Method = "HeartbeatResponse",
-            Arguments = new object[] { heartbeatData },
+            Arguments = [heartbeatData],
             Target = target,
             Timestamp = DateTime.UtcNow
         };
@@ -241,7 +241,7 @@ public class OrleansToSignalRTranslator : MessageTranslatorBase<MessageResult, S
         return new SignalRResponse
         {
             Method = "ControlResponse",
-            Arguments = new object[] { controlData },
+            Arguments = [controlData],
             Target = target,
             Timestamp = DateTime.UtcNow
         };
@@ -277,32 +277,35 @@ public class OrleansToSignalRTranslator : MessageTranslatorBase<MessageResult, S
     {
         if (string.IsNullOrEmpty(metadata))
         {
-            return new Dictionary<string, object>();
+            return [];
         }
 
         try
         {
             return System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(metadata)
-                   ?? new Dictionary<string, object>();
+                   ?? [];
         }
         catch (Exception)
         {
             // Failed to parse metadata, return empty dictionary
-            return new Dictionary<string, object>();
+            return [];
         }
     }
 
     private static string? ExtractSessionId(ChatMessage message)
     {
         var metadata = ParseMetadata(message.Metadata);
-        return ((IReadOnlyDictionary<string, object?>)metadata).GetValueOrDefault("sessionId", null)?.ToString();
+        return metadata.TryGetValue("sessionId", out var value) ? value?.ToString() : null;
     }
 
     /// <inheritdoc />
     protected override TranslationResult<SignalRResponse>? ValidateSource(MessageResult source, TranslationContext context)
     {
         var baseValidation = base.ValidateSource(source, context);
-        if (baseValidation != null) return baseValidation;
+        if (baseValidation != null)
+        {
+            return baseValidation;
+        }
 
         // MessageResult can be successful or failed, both are valid for translation
         return null; // No validation errors
@@ -312,21 +315,24 @@ public class OrleansToSignalRTranslator : MessageTranslatorBase<MessageResult, S
     protected override TranslationResult<SignalRResponse>? ValidateTarget(SignalRResponse target, TranslationContext context)
     {
         var baseValidation = base.ValidateTarget(target, context);
-        if (baseValidation != null) return baseValidation;
+        if (baseValidation != null)
+        {
+            return baseValidation;
+        }
 
         if (string.IsNullOrEmpty(target.Method))
         {
-            return TranslationResult<SignalRResponse>.Failure("SignalR method is required", "MISSING_SIGNALR_METHOD");
+            return TranslationResult.Failure<SignalRResponse>("SignalR method is required", "MISSING_SIGNALR_METHOD");
         }
 
         if (target.Arguments == null)
         {
-            return TranslationResult<SignalRResponse>.Failure("SignalR arguments cannot be null", "NULL_SIGNALR_ARGUMENTS");
+            return TranslationResult.Failure<SignalRResponse>("SignalR arguments cannot be null", "NULL_SIGNALR_ARGUMENTS");
         }
 
         if (target.Target == null)
         {
-            return TranslationResult<SignalRResponse>.Failure("SignalR target cannot be null", "NULL_SIGNALR_TARGET");
+            return TranslationResult.Failure<SignalRResponse>("SignalR target cannot be null", "NULL_SIGNALR_TARGET");
         }
 
         return null; // No validation errors

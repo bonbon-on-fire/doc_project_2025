@@ -24,7 +24,7 @@ public class OrleansEventRelay : IOrleansEventRelay
     private static readonly ActivitySource ActivitySource = new("AIChat.Server.OrleansEventRelay");
 
     // Track active subscriptions for health monitoring with timestamps
-    private readonly Dictionary<string, EventSubscription> _activeSubscriptions = new();
+    private readonly Dictionary<string, EventSubscription> _activeSubscriptions = [];
     private readonly object _subscriptionLock = new();
     private readonly DateTime _serviceStartTime = DateTime.UtcNow;
     private long _totalOperationsCounter;

@@ -1,6 +1,4 @@
 using System.Globalization;
-using System.Text;
-using AIChat.Server.Storage.Sqlite;
 using Microsoft.Data.Sqlite;
 
 namespace AIChat.Server.Services.EventStore.Implementations;
@@ -664,25 +662,39 @@ public sealed partial class SqliteEventStore : IEventQuery, IEventReplay
         var parts = new List<string>();
 
         if (!string.IsNullOrEmpty(query.StreamId))
+        {
             parts.Add($"StreamId={query.StreamId}");
+        }
 
         if (!string.IsNullOrEmpty(query.EventType))
+        {
             parts.Add($"EventType={query.EventType}");
+        }
 
         if (query.FromTimestamp.HasValue)
+        {
             parts.Add($"FromTime={query.FromTimestamp:s}");
+        }
 
         if (query.ToTimestamp.HasValue)
+        {
             parts.Add($"ToTime={query.ToTimestamp:s}");
+        }
 
         if (query.FromVersion.HasValue)
+        {
             parts.Add($"FromVersion={query.FromVersion}");
+        }
 
         if (query.ToVersion.HasValue)
+        {
             parts.Add($"ToVersion={query.ToVersion}");
+        }
 
         if (!string.IsNullOrEmpty(query.CorrelationId))
+        {
             parts.Add($"CorrelationId={query.CorrelationId}");
+        }
 
         parts.Add($"Page={query.Page}");
         parts.Add($"PageSize={query.PageSize}");

@@ -1,9 +1,13 @@
 using System.Globalization;
 using System.Net.Http.Json;
+using System.Runtime.CompilerServices;
 using AIChat.Orleans.Tests.TestUtilities.Builders;
-using AIChat.Orleans.Tests.TestUtilities.Mocks;
 using AIChat.Server.Services;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Serilog;
+using Serilog.Context;
+using Serilog.Core.Enrichers;
+using Serilog.Formatting.Compact;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -15,13 +19,85 @@ namespace AIChat.Orleans.Tests.TestUtilities.Base;
 /// </summary>
 public abstract class OrleansTestBase : IClassFixture<OrleansTestFixture>
 {
+    private static readonly object _loggerLock = new();
+    private static bool _loggerInitialized;
+    protected static readonly ILogger TestLogger = Log.ForContext<OrleansTestBase>();
+
     protected OrleansTestFixture Fixture { get; }
     protected ITestOutputHelper Output { get; }
 
     protected OrleansTestBase(OrleansTestFixture fixture, ITestOutputHelper output)
     {
+        InitializeSerilogOnce();
         Fixture = fixture;
         Output = output;
+    }
+
+    private static void InitializeSerilogOnce()
+    {
+        if (_loggerInitialized)
+        {
+            return;
+        }
+
+        lock (_loggerLock)
+        {
+            if (_loggerInitialized)
+            {
+                return;
+            }
+
+            // Find solution root and create log directory
+            var currentDir = Directory.GetCurrentDirectory();
+            var solutionRoot = currentDir;
+
+            // Navigate up to find solution root
+            while (solutionRoot != null && !Directory.Exists(Path.Combine(solutionRoot, "test-logs")) &&
+                   !File.Exists(Path.Combine(solutionRoot, "DOC_Project_2025.sln")))
+            {
+                var parent = Directory.GetParent(solutionRoot);
+                solutionRoot = parent?.FullName;
+            }
+
+            var logPath = solutionRoot != null
+                ? Path.Combine(solutionRoot, "test-logs")
+                : Path.GetFullPath("test-logs");
+
+            Directory.CreateDirectory(logPath);
+
+            var logFileName = Path.Combine(logPath, "orleans-tests-.jsonl");
+
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Debug()
+                .Enrich.FromLogContext()
+                .WriteTo.File(
+                    formatter: new CompactJsonFormatter(),
+                    path: logFileName,
+                    rollingInterval: RollingInterval.Day,
+                    retainedFileCountLimit: 7,
+                    shared: true
+                )
+                .CreateLogger();
+
+            _loggerInitialized = true;
+        }
+    }
+
+    protected IDisposable LogTestContext([CallerMemberName] string testName = "")
+    {
+        var testClass = GetType().Name;
+        return LogContext.Push(
+            new PropertyEnricher("TestName", testName),
+            new PropertyEnricher("TestClass", testClass)
+        );
+    }
+
+    protected void LogTestActivity(string message, [CallerMemberName] string testName = "")
+    {
+        using (LogTestContext(testName))
+        {
+            TestLogger.Information(message);
+        }
     }
 
     /// <summary>

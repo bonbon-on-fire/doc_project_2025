@@ -209,7 +209,7 @@ public static class ProtocolTranslationHealthCheckExtensions
         return builder.AddCheck<ProtocolTranslationHealthCheck>(
             name,
             failureStatus,
-            tags ?? Array.Empty<string>());
+            tags ?? []);
     }
 
     /// <summary>

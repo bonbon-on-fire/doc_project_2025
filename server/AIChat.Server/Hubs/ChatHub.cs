@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using AIChat.Orleans.Contracts;
-using AIChat.Orleans.Services;
 using AIChat.Server.Services;
 using AIChat.Server.Services.Routing;
 using Microsoft.AspNetCore.SignalR;
@@ -452,13 +451,19 @@ public class ChatHub : Hub
     private static ValidationResult ValidateChatId(string chatId)
     {
         if (string.IsNullOrWhiteSpace(chatId))
+        {
             return ValidationResult.Failure("Chat ID cannot be null or empty");
+        }
 
         if (chatId.Length > 100)
+        {
             return ValidationResult.Failure("Chat ID cannot exceed 100 characters");
+        }
 
         if (!Guid.TryParse(chatId, out _))
+        {
             return ValidationResult.Failure("Chat ID must be a valid GUID format");
+        }
 
         return ValidationResult.Success();
     }
@@ -469,10 +474,14 @@ public class ChatHub : Hub
     private static ValidationResult ValidateMessage(string message)
     {
         if (string.IsNullOrWhiteSpace(message))
+        {
             return ValidationResult.Failure("Message content cannot be null or empty");
+        }
 
         if (message.Length > 10000)
+        {
             return ValidationResult.Failure("Message content cannot exceed 10,000 characters");
+        }
 
         return ValidationResult.Success();
     }
@@ -576,7 +585,7 @@ public class ChatHub : Hub
     /// <summary>
     /// Standardized error response model.
     /// </summary>
-    private record StandardErrorResponse
+    private sealed record StandardErrorResponse
     {
         public required string Operation { get; init; }
         public required string ErrorMessage { get; init; }

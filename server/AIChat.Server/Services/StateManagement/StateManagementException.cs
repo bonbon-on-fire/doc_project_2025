@@ -357,7 +357,7 @@ public class StateManagementException : Exception
             details.Add($"Operation: {Operation}");
         }
 
-        if (Context?.Any() == true)
+        if (Context?.Count > 0)
         {
             var contextStr = string.Join(", ", Context.Select(kv => $"{kv.Key}: {kv.Value}"));
             details.Add($"Context: {contextStr}");

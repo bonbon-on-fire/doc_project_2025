@@ -4,7 +4,6 @@ using System.Text.Json;
 using AIChat.Orleans.Tests.TestUtilities;
 using AIChat.Orleans.Tests.TestUtilities.Base;
 using AIChat.Orleans.Tests.TestUtilities.Builders;
-using AIChat.Server.Services;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;

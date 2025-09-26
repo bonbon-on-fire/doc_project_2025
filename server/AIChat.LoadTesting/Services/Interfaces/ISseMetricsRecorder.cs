@@ -201,10 +201,10 @@ public class AggregatedSseMetrics
     /// <summary>
     /// Gets or sets error distribution by type.
     /// </summary>
-    public Dictionary<string, long> ErrorsByType { get; set; } = new();
+    public Dictionary<string, long> ErrorsByType { get; set; } = [];
 
     /// <summary>
     /// Gets or sets message distribution by event type.
     /// </summary>
-    public Dictionary<string, long> MessagesByEventType { get; set; } = new();
+    public Dictionary<string, long> MessagesByEventType { get; set; } = [];
 }

@@ -61,7 +61,7 @@ public class WebSocketSessionInfo
     /// Gets or sets connection-specific metadata.
     /// Can include client information, feature flags, etc.
     /// </summary>
-    public Dictionary<string, object> Metadata { get; set; } = new();
+    public Dictionary<string, object> Metadata { get; set; } = [];
 
     /// <summary>
     /// Gets or sets connection metrics for monitoring.

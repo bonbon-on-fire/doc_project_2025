@@ -1,7 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using AIChat.Orleans.Contracts;
-using Orleans;
 using Xunit;
 
 namespace AIChat.Orleans.Tests.Models;

@@ -317,13 +317,13 @@ public class WebSocketMiddlewareOptions
     /// Gets or sets the allowed origins for WebSocket connections.
     /// If empty, all origins are allowed.
     /// </summary>
-    public List<string> AllowedOrigins { get; set; } = new();
+    public List<string> AllowedOrigins { get; set; } = [];
 
     /// <summary>
     /// Gets or sets required headers for WebSocket requests.
     /// Key is header name, value is expected value (null means any value is acceptable).
     /// </summary>
-    public Dictionary<string, string?> RequiredHeaders { get; set; } = new();
+    public Dictionary<string, string?> RequiredHeaders { get; set; } = [];
 
     /// <summary>
     /// Gets or sets whether rate limiting is enabled.

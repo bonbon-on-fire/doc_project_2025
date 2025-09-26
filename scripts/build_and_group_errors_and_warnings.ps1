@@ -358,6 +358,50 @@ try {
         Export-ToJson -GroupedIssues $groupedIssues -FilePath $defaultFile
     }
 
+    # Validation: Exit with error code if issues are found
+    # Filter out submodule issues (we can't control external dependencies)
+    $nonSubmoduleIssues = $groupedIssues | Where-Object {
+        $hasNonSubmoduleFile = $false
+        foreach ($file in $_.Files) {
+            if (-not ($file.File -like "*\submodules\*")) {
+                $hasNonSubmoduleFile = $true
+                break
+            }
+        }
+        $hasNonSubmoduleFile
+    }
+
+    $errorCount = ($nonSubmoduleIssues | Where-Object { $_.Type -eq "error" } | Measure-Object Count -Sum).Sum
+    $warningCount = ($nonSubmoduleIssues | Where-Object { $_.Type -eq "warning" } | Measure-Object Count -Sum).Sum
+
+    # Count submodule warnings for informational purposes
+    $submoduleWarningCount = ($groupedIssues | Where-Object {
+        $_.Type -eq "warning" -and
+        ($_.Files | Where-Object { $_.File -like "*\submodules\*" }).Count -eq $_.Files.Count
+    } | Measure-Object Count -Sum).Sum
+
+    if ($errorCount -gt 0) {
+        Write-ColorOutput ""
+        Write-ColorOutput "❌ VALIDATION FAILED: $errorCount error(s) found" $ErrorColor
+        exit 1
+    }
+
+    if ($warningCount -gt 0) {
+        Write-ColorOutput ""
+        Write-ColorOutput "⚠️  VALIDATION FAILED: $warningCount warning(s) found in project code" $WarningColor
+        Write-ColorOutput "All warnings must be resolved before proceeding" $WarningColor
+        exit 1
+    }
+
+    if ($submoduleWarningCount -gt 0) {
+        Write-ColorOutput ""
+        Write-ColorOutput "ℹ️  Note: $submoduleWarningCount warning(s) found in external submodules (not counted)" $InfoColor
+    }
+
+    Write-ColorOutput ""
+    Write-ColorOutput "✅ VALIDATION PASSED: No errors or warnings found" $SuccessColor
+    exit 0
+
 }
 catch {
     Write-ColorOutput "Error occurred: $($_.Exception.Message)" $ErrorColor

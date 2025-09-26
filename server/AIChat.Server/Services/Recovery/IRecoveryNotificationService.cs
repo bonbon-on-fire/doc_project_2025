@@ -1,4 +1,4 @@
-using Orleans;
+using System.Globalization;
 
 namespace AIChat.Server.Services.Recovery;
 
@@ -50,7 +50,7 @@ public interface IRecoveryNotificationService
     /// <param name="operationId">The recovery operation ID</param>
     /// <param name="status">Final recovery status</param>
     /// <param name="result">Recovery result details (if successful)</param>
-    /// <param name="error">Error information (if failed)</param>
+    /// <param name="errorInfo">Error information (if failed)</param>
     /// <param name="cancellationToken">Token to cancel the operation</param>
     /// <returns>A task representing the notification operation</returns>
     /// <exception cref="ArgumentNullException">Thrown when connectionId or operationId is null</exception>
@@ -159,7 +159,7 @@ public record RecoveryProgressDetails
     /// Any warnings encountered during progress.
     /// </summary>
     [Id(5)]
-    public IReadOnlyList<string> Warnings { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> Warnings { get; init; } = [];
 
     /// <summary>
     /// Additional progress information.
@@ -221,7 +221,7 @@ public record RecoveryCompletionResult
     /// Any warnings from the recovery.
     /// </summary>
     [Id(7)]
-    public IReadOnlyList<string> Warnings { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> Warnings { get; init; } = [];
 
     /// <summary>
     /// Summary message about the recovery.
@@ -265,7 +265,7 @@ public record RecoveryErrorInfo
     /// Suggested actions for resolving the error.
     /// </summary>
     [Id(4)]
-    public IReadOnlyList<string> SuggestedActions { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> SuggestedActions { get; init; } = [];
 
     /// <summary>
     /// Additional error details.
@@ -337,8 +337,8 @@ public record RecoveryNotification
             CorrelationId = request.CorrelationId,
             Data = new Dictionary<string, object>
             {
-                ["targetTimestamp"] = request.TargetTimestamp?.ToString("yyyy-MM-dd HH:mm:ss") ?? "Not specified",
-                ["targetVersion"] = request.TargetVersion?.ToString() ?? "Not specified",
+                ["targetTimestamp"] = request.TargetTimestamp?.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) ?? "Not specified",
+                ["targetVersion"] = request.TargetVersion?.ToString(CultureInfo.InvariantCulture) ?? "Not specified",
                 ["initiatedBy"] = request.InitiatedBy ?? "Unknown",
                 ["reason"] = request.Reason ?? "Not specified"
             }
@@ -393,7 +393,7 @@ public record RecoveryNotification
     /// <param name="grainId">The grain ID</param>
     /// <param name="status">Final status</param>
     /// <param name="result">Result details</param>
-    /// <param name="error">Error details</param>
+    /// <param name="errorInfo">Error details</param>
     /// <returns>A completed notification</returns>
     public static RecoveryNotification Completed(
         string operationId,
@@ -409,8 +409,8 @@ public record RecoveryNotification
 
         if (result != null)
         {
-            data["actualTimestamp"] = result.ActualTimestamp?.ToString("yyyy-MM-dd HH:mm:ss") ?? "Not specified";
-            data["actualVersion"] = result.ActualVersion?.ToString() ?? "Not specified";
+            data["actualTimestamp"] = result.ActualTimestamp?.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) ?? "Not specified";
+            data["actualVersion"] = result.ActualVersion?.ToString(CultureInfo.InvariantCulture) ?? "Not specified";
             data["strategyUsed"] = result.StrategyUsed.ToString();
             data["eventsReplayed"] = result.EventsReplayed;
             data["recoveryDuration"] = result.RecoveryDuration;
@@ -522,7 +522,7 @@ public record RecoveryNotificationHealthStatus
     /// Any health issues.
     /// </summary>
     [Id(6)]
-    public IReadOnlyList<string> Issues { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> Issues { get; init; } = [];
 
     /// <summary>
     /// Creates a healthy status.
@@ -603,7 +603,7 @@ public record RecoveryNotificationMetrics
     /// Distribution of notification types.
     /// </summary>
     [Id(4)]
-    public Dictionary<RecoveryNotificationType, long> NotificationTypeDistribution { get; init; } = new();
+    public Dictionary<RecoveryNotificationType, long> NotificationTypeDistribution { get; init; } = [];
 
     /// <summary>
     /// Current active connections.

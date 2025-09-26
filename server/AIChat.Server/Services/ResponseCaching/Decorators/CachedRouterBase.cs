@@ -250,10 +250,10 @@ public abstract class CachedRouterBase<TRouter> : IDisposable where TRouter : cl
         if (operationLower.Contains("create") || operationLower.Contains("update") || operationLower.Contains("delete"))
         {
             // For write operations, invalidate all related cached entries
-            return new[] { $"{RouterTypeName}:*:*:*:*" };
+            return [$"{RouterTypeName}:*:*:*:*"];
         }
 
-        return Array.Empty<string>();
+        return [];
     }
 
     /// <summary>

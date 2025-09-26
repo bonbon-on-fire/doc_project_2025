@@ -1,5 +1,3 @@
-using Orleans;
-
 namespace AIChat.Server.Services.EventStore.Orleans;
 
 /// <summary>
@@ -160,7 +158,7 @@ public record GrainSnapshotConfiguration
     /// <summary>
     /// Gets whether to create snapshots during grain deactivation.
     /// </summary>
-    public bool CreateOnDeactivation { get; init; } = false;
+    public bool CreateOnDeactivation { get; init; }
 
     /// <summary>
     /// Gets whether to attempt state restoration from snapshots during activation.
@@ -176,7 +174,7 @@ public record GrainSnapshotConfiguration
     /// Gets whether to fail grain activation if snapshot restoration fails.
     /// If false, will fall back to full event replay.
     /// </summary>
-    public bool FailActivationOnSnapshotError { get; init; } = false;
+    public bool FailActivationOnSnapshotError { get; init; }
 
     /// <summary>
     /// Gets the grain type name for logging and metrics.
@@ -186,7 +184,7 @@ public record GrainSnapshotConfiguration
     /// <summary>
     /// Gets additional configuration metadata.
     /// </summary>
-    public Dictionary<string, object> Metadata { get; init; } = new();
+    public Dictionary<string, object> Metadata { get; init; } = [];
 
     /// <summary>
     /// Creates a default configuration for a grain type.
@@ -240,7 +238,7 @@ public record GrainSnapshotInitializationResult
     /// <summary>
     /// Gets additional initialization metadata.
     /// </summary>
-    public Dictionary<string, object> Metadata { get; init; } = new();
+    public Dictionary<string, object> Metadata { get; init; } = [];
 
     /// <summary>
     /// Creates a successful initialization result.
@@ -256,7 +254,7 @@ public record GrainSnapshotInitializationResult
         {
             Success = true,
             SnapshotContext = snapshotContext,
-            Metadata = metadata ?? new Dictionary<string, object>()
+            Metadata = metadata ?? []
         };
     }
 
@@ -271,6 +269,56 @@ public record GrainSnapshotInitializationResult
         {
             Success = false,
             Error = error
+        };
+    }
+}
+
+/// <summary>
+/// Factory methods for creating grain state restoration results.
+/// </summary>
+public static class GrainStateRestorationResult
+{
+    /// <summary>
+    /// Creates a successful restoration result.
+    /// </summary>
+    /// <typeparam name="TState">The type of grain state</typeparam>
+    /// <param name="state">The restored state</param>
+    /// <param name="version">The restored version</param>
+    /// <param name="metrics">Performance metrics</param>
+    /// <returns>Successful restoration result</returns>
+    public static GrainStateRestorationResult<TState> CreateSuccess<TState>(
+        TState state,
+        long version,
+        RestorationMetrics? metrics = null)
+        where TState : class
+    {
+        return new GrainStateRestorationResult<TState>
+        {
+            Success = true,
+            RestoredState = state,
+            RestoredVersion = version,
+            ShouldFallbackToEventReplay = false,
+            Metrics = metrics
+        };
+    }
+
+    /// <summary>
+    /// Creates a failed restoration result with fallback recommendation.
+    /// </summary>
+    /// <typeparam name="TState">The type of grain state</typeparam>
+    /// <param name="error">The restoration error</param>
+    /// <param name="shouldFallback">Whether to recommend event replay fallback</param>
+    /// <returns>Failed restoration result</returns>
+    public static GrainStateRestorationResult<TState> CreateFailure<TState>(
+        string error,
+        bool shouldFallback = true)
+        where TState : class
+    {
+        return new GrainStateRestorationResult<TState>
+        {
+            Success = false,
+            Error = error,
+            ShouldFallbackToEventReplay = shouldFallback
         };
     }
 }
@@ -310,46 +358,6 @@ public record GrainStateRestorationResult<TState> where TState : class
     /// Gets any restoration error.
     /// </summary>
     public string? Error { get; init; }
-
-    /// <summary>
-    /// Creates a successful restoration result.
-    /// </summary>
-    /// <param name="state">The restored state</param>
-    /// <param name="version">The restored version</param>
-    /// <param name="metrics">Performance metrics</param>
-    /// <returns>Successful restoration result</returns>
-    public static GrainStateRestorationResult<TState> CreateSuccess(
-        TState state,
-        long version,
-        RestorationMetrics? metrics = null)
-    {
-        return new GrainStateRestorationResult<TState>
-        {
-            Success = true,
-            RestoredState = state,
-            RestoredVersion = version,
-            ShouldFallbackToEventReplay = false,
-            Metrics = metrics
-        };
-    }
-
-    /// <summary>
-    /// Creates a failed restoration result with fallback recommendation.
-    /// </summary>
-    /// <param name="error">The restoration error</param>
-    /// <param name="shouldFallback">Whether to recommend event replay fallback</param>
-    /// <returns>Failed restoration result</returns>
-    public static GrainStateRestorationResult<TState> CreateFailure(
-        string error,
-        bool shouldFallback = true)
-    {
-        return new GrainStateRestorationResult<TState>
-        {
-            Success = false,
-            Error = error,
-            ShouldFallbackToEventReplay = shouldFallback
-        };
-    }
 }
 
 /// <summary>
@@ -632,5 +640,5 @@ public record GrainSnapshotErrorHandlingResult
     /// <summary>
     /// Gets additional error handling metadata.
     /// </summary>
-    public Dictionary<string, object> Metadata { get; init; } = new();
+    public Dictionary<string, object> Metadata { get; init; } = [];
 }

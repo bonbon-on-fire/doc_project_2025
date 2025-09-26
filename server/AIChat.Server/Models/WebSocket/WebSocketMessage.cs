@@ -103,7 +103,7 @@ public class ProtocolNegotiationPayload
     /// Gets or sets the list of protocols supported or requested by the client.
     /// </summary>
     [JsonPropertyName("supportedProtocols")]
-    public List<string> SupportedProtocols { get; set; } = new();
+    public List<string> SupportedProtocols { get; set; } = [];
 
     /// <summary>
     /// Gets or sets the preferred protocol for the connection.
@@ -115,7 +115,7 @@ public class ProtocolNegotiationPayload
     /// Gets or sets the client capabilities for protocol features.
     /// </summary>
     [JsonPropertyName("capabilities")]
-    public Dictionary<string, object> Capabilities { get; set; } = new();
+    public Dictionary<string, object> Capabilities { get; set; } = [];
 }
 
 /// <summary>

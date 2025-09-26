@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using Orleans;
 
 namespace AIChat.Server.Services.SignalRBuffering.Models;
 
@@ -52,7 +51,7 @@ public record BufferResult
     /// Used for detailed diagnostics and analytics.
     /// </summary>
     [Id(5)]
-    public Dictionary<string, object> Metadata { get; init; } = new();
+    public Dictionary<string, object> Metadata { get; init; } = [];
 
     /// <summary>
     /// Creates a successful buffer result.
@@ -66,7 +65,7 @@ public record BufferResult
             Success = true,
             Result = BufferOperationResult.Enqueued,
             CurrentBufferSize = currentBufferSize,
-            Metadata = metadata ?? new()
+            Metadata = metadata ?? []
         };
 
     /// <summary>

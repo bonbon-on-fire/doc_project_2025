@@ -1,6 +1,5 @@
 using AIChat.Orleans.Contracts;
 using NUnit.Framework;
-using Orleans;
 using Orleans.TestingHost;
 
 namespace AIChat.Orleans.Tests.Phase1;

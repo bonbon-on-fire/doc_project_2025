@@ -213,7 +213,7 @@ public class ResponseCacheManager : IResponseCacheManager, IDisposable
             // Calculate compression metrics
             var compressionStats = await CalculateCompressionStatisticsAsync(cancellationToken);
 
-            var enhancedAdditionalMetrics = new Dictionary<string, object>(baseStats.AdditionalMetrics ?? new Dictionary<string, object>())
+            var enhancedAdditionalMetrics = new Dictionary<string, object>(baseStats.AdditionalMetrics ?? [])
             {
                 ["CompressionEnabled"] = true,
                 ["CompressedEntries"] = compressionStats.CompressedEntries,
@@ -578,33 +578,8 @@ public class ResponseCacheManager : IResponseCacheManager, IDisposable
         return Math.Max(0.0, Math.Min(1.0, score));
     }
 
-    /// <summary>
-    /// Calculates cache efficiency score based on statistics (legacy version).
-    /// </summary>
-    private double CalculateEfficiencyScore(CacheStatistics stats)
-    {
-        if (stats.TotalRequests == 0)
-        {
-            return 0.0;
-        }
-
-        // Base score on hit ratio
-        var score = stats.HitRatio;
-
-        // Adjust for memory efficiency using configured budget
-        var memoryEfficiency = Math.Min(1.0, (double)_configuration.MemoryBudgetBytes / Math.Max(stats.EstimatedMemoryUsage, 1));
-        score *= memoryEfficiency;
-
-        return Math.Max(0.0, Math.Min(1.0, score));
-    }
-
-    /// <summary>
-    /// Calculates memory usage percentage using configured budget.
-    /// </summary>
-    private double CalculateMemoryUsagePercentage(long memoryUsage)
-    {
-        return _configuration.CalculateMemoryUsagePercentage(memoryUsage);
-    }
+    // Removed unused private methods CalculateEfficiencyScore and CalculateMemoryUsagePercentage
+    // These were legacy implementations that have been replaced by methods in the configuration class
 
     /// <summary>
     /// Records cache hit metrics.

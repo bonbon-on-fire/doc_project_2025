@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using AIChat.Orleans.Contracts;
 using AIChat.Server.Services.Routing;
 
@@ -123,7 +122,7 @@ public class CachedModeRouter : CachedRouterBase<IModeRouter>, IModeRouter
     public async Task<RouterHealthStatus> CheckHealthAsync(CancellationToken cancellationToken = default)
     {
         return await CreateEnhancedHealthStatusAsync(
-            originalHealthCheck: cancellationToken => InnerRouter.CheckHealthAsync(cancellationToken),
+            originalHealthCheck: InnerRouter.CheckHealthAsync,
             cancellationToken: cancellationToken);
     }
 
@@ -131,7 +130,7 @@ public class CachedModeRouter : CachedRouterBase<IModeRouter>, IModeRouter
     public async Task<RouterMetrics> GetMetricsAsync(CancellationToken cancellationToken = default)
     {
         return await CreateEnhancedMetricsAsync(
-            originalMetricsCheck: cancellationToken => InnerRouter.GetMetricsAsync(cancellationToken),
+            originalMetricsCheck: InnerRouter.GetMetricsAsync,
             cancellationToken: cancellationToken);
     }
 
@@ -142,9 +141,9 @@ public class CachedModeRouter : CachedRouterBase<IModeRouter>, IModeRouter
     {
         return operationName.ToLowerInvariant() switch
         {
-            "createmode" => new[] { "Mode:GetModes:*", "Mode:GetMode:*" },
-            "updatemode" => new[] { "Mode:GetModes:*", "Mode:GetMode:*" },
-            "deletemode" => new[] { "Mode:GetModes:*", "Mode:GetMode:*" },
+            "createmode" => ["Mode:GetModes:*", "Mode:GetMode:*"],
+            "updatemode" => ["Mode:GetModes:*", "Mode:GetMode:*"],
+            "deletemode" => ["Mode:GetModes:*", "Mode:GetMode:*"],
             _ => base.GetInvalidationPatterns(operationName, parameters, userContext)
         };
     }

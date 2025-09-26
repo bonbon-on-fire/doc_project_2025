@@ -76,7 +76,7 @@ public class WebSocketSessionManager : IWebSocketSessionManager
                 LastHeartbeat = DateTime.UtcNow,
                 LastActivity = DateTime.UtcNow,
                 Status = WebSocketConnectionStatus.Connected,
-                Metadata = metadata ?? new(),
+                Metadata = metadata ?? [],
                 Metrics = new WebSocketConnectionMetrics()
             };
 

@@ -2,9 +2,6 @@ using System.IO.Compression;
 using AIChat.Server.Services.EventStore.Implementations;
 using AIChat.Server.Services.EventStore.Orleans;
 using AIChat.Server.Storage.Sqlite;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 
 namespace AIChat.Server.Services.EventStore;
 

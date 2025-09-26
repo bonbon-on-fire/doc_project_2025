@@ -3,7 +3,6 @@ using AIChat.Orleans.Contracts;
 using Microsoft.Extensions.Options;
 using Polly;
 using Polly.CircuitBreaker;
-using Polly.Extensions.Http;
 
 namespace AIChat.Server.Services.Routing;
 
@@ -15,7 +14,7 @@ namespace AIChat.Server.Services.Routing;
 public class CircuitBreakerDualModeRouter : IDualModeRouter
 {
     private readonly IDualModeRouter _innerRouter;
-    private readonly IAsyncPolicy _circuitBreakerPolicy;
+    private readonly AsyncCircuitBreakerPolicy _circuitBreakerPolicy;
     private readonly ILogger<CircuitBreakerDualModeRouter> _logger;
     private static readonly ActivitySource ActivitySource = new("AIChat.Server.CircuitBreakerRouter");
 
@@ -23,8 +22,6 @@ public class CircuitBreakerDualModeRouter : IDualModeRouter
     private long _circuitOpenCount;
     private long _circuitHalfOpenCount;
     private long _circuitClosedCount;
-    private DateTime _lastCircuitOpenTime;
-    private DateTime _lastCircuitCloseTime;
 
     /// <summary>
     /// Initializes a new instance of the CircuitBreakerDualModeRouter.
@@ -44,7 +41,7 @@ public class CircuitBreakerDualModeRouter : IDualModeRouter
 
         // Configure circuit breaker with exponential backoff
         _circuitBreakerPolicy = Policy
-            .Handle<Exception>(ex => ShouldHandleException(ex))
+            .Handle<Exception>(ShouldHandleException)
             .AdvancedCircuitBreakerAsync(
                 failureThreshold: 0.5, // 50% failure rate
                 samplingDuration: TimeSpan.FromSeconds(10),
@@ -359,7 +356,6 @@ public class CircuitBreakerDualModeRouter : IDualModeRouter
     private void OnCircuitBreak(Exception exception, TimeSpan duration)
     {
         Interlocked.Increment(ref _circuitOpenCount);
-        _lastCircuitOpenTime = DateTime.UtcNow;
 
         _logger.LogWarning(exception,
             "Circuit breaker opened due to {ExceptionType}. Break duration: {BreakDurationSeconds}s",
@@ -369,7 +365,6 @@ public class CircuitBreakerDualModeRouter : IDualModeRouter
     private void OnCircuitReset()
     {
         Interlocked.Increment(ref _circuitClosedCount);
-        _lastCircuitCloseTime = DateTime.UtcNow;
 
         _logger.LogInformation("Circuit breaker reset to closed state");
     }

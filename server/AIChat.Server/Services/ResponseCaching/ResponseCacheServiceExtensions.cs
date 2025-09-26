@@ -14,7 +14,7 @@ namespace AIChat.Server.Services.ResponseCaching;
 /// </summary>
 public static class ResponseCacheServiceExtensions
 {
-    private static readonly string[] tags = new[] { "cache", "performance" };
+    private static readonly string[] tags = ["cache", "performance"];
     /// <summary>
     /// Adds intelligent response caching services to the service collection with default configuration.
     /// This is the recommended way to add response caching for most applications.
@@ -140,7 +140,7 @@ public static class ResponseCacheServiceExtensions
         return services;
     }
 
-    private static readonly string[] tagsArray = new[] { "cache", "redis" };
+    private static readonly string[] tagsArray = ["cache", "redis"];
 
     /// <summary>
     /// Adds response caching with custom state cache manager implementation.

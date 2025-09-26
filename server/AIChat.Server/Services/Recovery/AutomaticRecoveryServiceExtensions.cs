@@ -1,9 +1,6 @@
 using AIChat.Server.Services.EventStore;
 // Note: Implementation classes will be created - removing this for now
 // using AIChat.Server.Services.Recovery.Implementations;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 
 namespace AIChat.Server.Services.Recovery;
 
@@ -225,7 +222,7 @@ public class AutomaticRecoveryOptions
     /// <summary>
     /// Gets or sets whether to enable periodic integrity checks globally.
     /// </summary>
-    public bool EnablePeriodicIntegrityChecks { get; set; } = false;
+    public bool EnablePeriodicIntegrityChecks { get; set; }
 
     /// <summary>
     /// Gets or sets the default interval for periodic integrity checks.
@@ -250,12 +247,12 @@ public class AutomaticRecoveryOptions
     /// <summary>
     /// Gets or sets grain type-specific recovery policies.
     /// </summary>
-    public Dictionary<string, RecoveryPolicy> GrainTypePolicies { get; set; } = new();
+    public Dictionary<string, RecoveryPolicy> GrainTypePolicies { get; set; } = [];
 
     /// <summary>
     /// Gets or sets custom recovery settings.
     /// </summary>
-    public Dictionary<string, object> CustomSettings { get; set; } = new();
+    public Dictionary<string, object> CustomSettings { get; set; } = [];
 
     /// <summary>
     /// Gets the recovery policy for a specific grain type, or the default policy if not configured.
@@ -465,7 +462,7 @@ public record RecoveryDeactivationResult
     /// <summary>
     /// Cleanup actions that were performed.
     /// </summary>
-    public IReadOnlyList<string> CleanupActions { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> CleanupActions { get; init; } = [];
 
     /// <summary>
     /// Any error that occurred during deactivation handling.

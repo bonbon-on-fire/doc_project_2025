@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using AIChat.Orleans.Metrics;
 
 namespace AIChat.Server.Services.Metrics;
@@ -12,7 +11,7 @@ public class ResilientMetricsCollectorDecorator : IOrleansMetricsCollector
     private readonly IOrleansMetricsCollector _inner;
     private readonly ILogger<ResilientMetricsCollectorDecorator> _logger;
 
-    private int _consecutiveFailures = 0;
+    private int _consecutiveFailures;
     private DateTime _circuitOpenedAt = DateTime.MinValue;
     private readonly int _failureThreshold = 5;
     private readonly TimeSpan _circuitBreakerTimeout = TimeSpan.FromMinutes(1);
@@ -88,7 +87,7 @@ public class ResilientMetricsCollectorDecorator : IOrleansMetricsCollector
     public async Task<OrleansMetricsSummary> GetMetricsSummaryAsync()
     {
         return await ExecuteWithCircuitBreakerAsync(
-            () => _inner.GetMetricsSummaryAsync(),
+            _inner.GetMetricsSummaryAsync,
             "GetMetricsSummary",
             () => Task.FromResult(new OrleansMetricsSummary()));
     }
@@ -104,7 +103,7 @@ public class ResilientMetricsCollectorDecorator : IOrleansMetricsCollector
     public async Task ResetMetricsAsync()
     {
         await ExecuteWithCircuitBreakerAsync(
-            () => _inner.ResetMetricsAsync(),
+            _inner.ResetMetricsAsync,
             "ResetMetrics");
     }
 
@@ -163,7 +162,7 @@ public class ResilientMetricsCollectorDecorator : IOrleansMetricsCollector
         if (state == CircuitState.Open)
         {
             _logger.LogDebug("Circuit breaker is open, using fallback for {OperationName}", operationName);
-            return fallbackAction != null ? await fallbackAction() : default(T)!;
+            return fallbackAction != null ? await fallbackAction() : default!;
         }
 
         try
@@ -201,7 +200,7 @@ public class ResilientMetricsCollectorDecorator : IOrleansMetricsCollector
                     _failureThreshold);
             }
 
-            return fallbackAction != null ? await fallbackAction() : default(T)!;
+            return fallbackAction != null ? await fallbackAction() : default!;
         }
     }
 

@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using AIChat.Server.Services.EventStore;
-using Microsoft.Extensions.Logging;
 
 namespace AIChat.Server.Services.Recovery.Implementations;
 
@@ -74,7 +73,7 @@ public class PointInTimeRecoveryService : IPointInTimeRecoveryService
 
             if (targetVersion == null)
             {
-                return PointInTimeRecoveryResult<T>.CreateFailure(
+                return PointInTimeRecoveryResult.CreateFailure<T>(
                     operationId,
                     new RecoveryException($"No events found for grain {request.GrainId} at or before timestamp {request.TargetTimestamp}"),
                     RecoveryStrategy.FullReplay,
@@ -120,7 +119,7 @@ public class PointInTimeRecoveryService : IPointInTimeRecoveryService
             }
 
             // Step 4: Convert to point-in-time result
-            var result = PointInTimeRecoveryResult<T>.CreateSuccess(
+            var result = PointInTimeRecoveryResult.CreateSuccess<T>(
                 operationId,
                 recoveryResult.RecoveredState!,
                 request.TargetTimestamp,
@@ -144,7 +143,7 @@ public class PointInTimeRecoveryService : IPointInTimeRecoveryService
                 "Point-in-time recovery failed for grain {GrainId}. Operation: {OperationId}",
                 request.GrainId, operationId);
 
-            return PointInTimeRecoveryResult<T>.CreateFailure(
+            return PointInTimeRecoveryResult.CreateFailure<T>(
                 operationId,
                 new RecoveryException($"Point-in-time recovery failed: {ex.Message}", ex),
                 request.PreferredStrategy ?? RecoveryStrategy.HybridRecovery,
@@ -214,7 +213,7 @@ public class PointInTimeRecoveryService : IPointInTimeRecoveryService
             // Find timestamp for the recovered version
             var actualTimestamp = await FindTimestampAtVersionAsync(grainId, recoveryResult.FinalVersion, cancellationToken);
 
-            var result = PointInTimeRecoveryResult<T>.CreateSuccess(
+            var result = PointInTimeRecoveryResult.CreateSuccess<T>(
                 operationId,
                 recoveryResult.RecoveredState!,
                 actualTimestamp,
@@ -237,7 +236,7 @@ public class PointInTimeRecoveryService : IPointInTimeRecoveryService
                 "Version-based recovery failed for grain {GrainId}. Operation: {OperationId}",
                 grainId, operationId);
 
-            return PointInTimeRecoveryResult<T>.CreateFailure(
+            return PointInTimeRecoveryResult.CreateFailure<T>(
                 operationId,
                 new RecoveryException($"Version-based recovery failed: {ex.Message}", ex),
                 RecoveryStrategy.HybridRecovery,
@@ -505,6 +504,7 @@ public class PointInTimeRecoveryService : IPointInTimeRecoveryService
         Func<string, object> projectionFactory,
         CancellationToken cancellationToken = default)
     {
+        await Task.CompletedTask; // Suppress CS1998
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(projectionFactory);
 
@@ -570,6 +570,7 @@ public class PointInTimeRecoveryService : IPointInTimeRecoveryService
     /// <inheritdoc />
     public async Task<RecoveryMetrics> GetRecoveryMetricsAsync(CancellationToken cancellationToken = default)
     {
+        await Task.CompletedTask; // Suppress CS1998
         // In a full implementation, this would query metrics from a metrics store
         // For now, return basic metrics from background operations
         var operations = _backgroundOperations.Values.ToList();
@@ -674,7 +675,7 @@ public class PointInTimeRecoveryService : IPointInTimeRecoveryService
         try
         {
             var eventsResult = await _eventStore.GetEventsAsync(grainId, version, version, cancellationToken);
-            return eventsResult.Events.FirstOrDefault()?.Timestamp;
+            return eventsResult.Events.Count > 0 ? eventsResult.Events[0].Timestamp : null;
         }
         catch (Exception ex)
         {
@@ -759,7 +760,7 @@ public class PointInTimeRecoveryService : IPointInTimeRecoveryService
         {
             _logger.LogError(ex, "Background recovery operation {OperationId} failed", operation.OperationId);
             operation.Status = RecoveryStatus.Failed;
-            operation.Result = PointInTimeRecoveryResult<object>.CreateFailure(
+            operation.Result = PointInTimeRecoveryResult.CreateFailure<object>(
                 operation.OperationId,
                 ex,
                 RecoveryStrategy.HybridRecovery);
@@ -773,7 +774,7 @@ public class PointInTimeRecoveryService : IPointInTimeRecoveryService
     /// <summary>
     /// Represents a background recovery operation.
     /// </summary>
-    private class BackgroundRecoveryOperation
+    private sealed class BackgroundRecoveryOperation
     {
         public required string OperationId { get; init; }
         public required PointInTimeRecoveryRequest Request { get; init; }

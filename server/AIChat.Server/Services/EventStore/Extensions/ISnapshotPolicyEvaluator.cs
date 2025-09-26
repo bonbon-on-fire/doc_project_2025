@@ -94,7 +94,7 @@ public record SnapshotPolicyContext
     /// <summary>
     /// Gets additional context metadata.
     /// </summary>
-    public Dictionary<string, object> Metadata { get; init; } = new();
+    public Dictionary<string, object> Metadata { get; init; } = [];
 
     /// <summary>
     /// Gets the evaluation timestamp.
@@ -125,7 +125,7 @@ public record RetentionPolicyContext
     /// <summary>
     /// Gets additional context metadata.
     /// </summary>
-    public Dictionary<string, object> Metadata { get; init; } = new();
+    public Dictionary<string, object> Metadata { get; init; } = [];
 
     /// <summary>
     /// Gets the evaluation timestamp.
@@ -156,17 +156,17 @@ public record PolicyEvaluationResult
     /// <summary>
     /// Gets the criteria that triggered the decision.
     /// </summary>
-    public IReadOnlyList<string> TriggeredCriteria { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> TriggeredCriteria { get; init; } = [];
 
     /// <summary>
     /// Gets additional evaluation metadata.
     /// </summary>
-    public Dictionary<string, object> Metadata { get; init; } = new();
+    public Dictionary<string, object> Metadata { get; init; } = [];
 
     /// <summary>
     /// Gets the recommended snapshot priority (higher = more important).
     /// </summary>
-    public int Priority { get; init; } = 0;
+    public int Priority { get; init; }
 
     /// <summary>
     /// Creates a result indicating snapshot should be created.
@@ -237,7 +237,7 @@ public record RetentionEvaluationResult
     /// <summary>
     /// Gets additional evaluation metadata.
     /// </summary>
-    public Dictionary<string, object> Metadata { get; init; } = new();
+    public Dictionary<string, object> Metadata { get; init; } = [];
 
     /// <summary>
     /// Creates a result indicating cleanup should proceed.
@@ -270,7 +270,7 @@ public record RetentionEvaluationResult
         return new RetentionEvaluationResult
         {
             ShouldCleanup = false,
-            CandidatesForDeletion = Array.Empty<SnapshotCleanupCandidate>(),
+            CandidatesForDeletion = [],
             Reason = reason
         };
     }
@@ -294,7 +294,7 @@ public record SnapshotCleanupCandidate
     /// <summary>
     /// Gets the priority for cleanup (higher = clean up sooner).
     /// </summary>
-    public int Priority { get; init; } = 0;
+    public int Priority { get; init; }
 
     /// <summary>
     /// Gets the estimated space that would be reclaimed.
@@ -315,17 +315,17 @@ public record PolicyValidationResult
     /// <summary>
     /// Gets validation issues found.
     /// </summary>
-    public IReadOnlyList<string> Issues { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> Issues { get; init; } = [];
 
     /// <summary>
     /// Gets validation warnings.
     /// </summary>
-    public IReadOnlyList<string> Warnings { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> Warnings { get; init; } = [];
 
     /// <summary>
     /// Gets additional validation metadata.
     /// </summary>
-    public Dictionary<string, object> Metadata { get; init; } = new();
+    public Dictionary<string, object> Metadata { get; init; } = [];
 
     /// <summary>
     /// Creates a valid policy result.
@@ -337,7 +337,7 @@ public record PolicyValidationResult
         return new PolicyValidationResult
         {
             IsValid = true,
-            Warnings = warnings ?? Array.Empty<string>()
+            Warnings = warnings ?? []
         };
     }
 
@@ -355,7 +355,7 @@ public record PolicyValidationResult
         {
             IsValid = false,
             Issues = issues,
-            Warnings = warnings ?? Array.Empty<string>()
+            Warnings = warnings ?? []
         };
     }
 }

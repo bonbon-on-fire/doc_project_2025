@@ -1,5 +1,3 @@
-using Orleans;
-
 namespace AIChat.Server.Services.Recovery;
 
 /// <summary>
@@ -242,6 +240,83 @@ public record StateRecoveryRequest
 }
 
 /// <summary>
+/// Factory methods for creating state recovery results.
+/// </summary>
+public static class StateRecoveryResult
+{
+    /// <summary>
+    /// Creates a successful recovery result.
+    /// </summary>
+    /// <typeparam name="T">The type of state that was recovered</typeparam>
+    /// <param name="recoveredState">The recovered state</param>
+    /// <param name="recoveryType">The type of recovery performed</param>
+    /// <param name="strategyUsed">The strategy that was used</param>
+    /// <param name="finalVersion">The final state version</param>
+    /// <param name="eventsReplayed">Number of events replayed</param>
+    /// <param name="recoveryTime">Time taken for recovery</param>
+    /// <param name="snapshotUsed">Whether a snapshot was used</param>
+    /// <param name="snapshotVersion">The snapshot version used, if any</param>
+    /// <param name="correlationId">The correlation ID</param>
+    /// <param name="metadata">Additional metadata</param>
+    /// <returns>A successful recovery result</returns>
+    public static StateRecoveryResult<T> CreateSuccess<T>(
+        T recoveredState,
+        RecoveryType recoveryType,
+        RecoveryStrategy strategyUsed,
+        long finalVersion,
+        int eventsReplayed,
+        TimeSpan recoveryTime,
+        bool snapshotUsed = false,
+        long? snapshotVersion = null,
+        string correlationId = "",
+        Dictionary<string, object>? metadata = null)
+    {
+        return new StateRecoveryResult<T>
+        {
+            Success = true,
+            RecoveredState = recoveredState,
+            RecoveryType = recoveryType,
+            StrategyUsed = strategyUsed,
+            FinalVersion = finalVersion,
+            EventsReplayed = eventsReplayed,
+            RecoveryTime = recoveryTime,
+            SnapshotUsed = snapshotUsed,
+            SnapshotVersion = snapshotVersion,
+            CorrelationId = correlationId,
+            Metadata = metadata
+        };
+    }
+
+    /// <summary>
+    /// Creates a failed recovery result.
+    /// </summary>
+    /// <typeparam name="T">The type of state that was recovered</typeparam>
+    /// <param name="error">The error message</param>
+    /// <param name="strategyUsed">The strategy that was attempted</param>
+    /// <param name="recoveryTime">Time taken before failure</param>
+    /// <param name="correlationId">The correlation ID</param>
+    /// <param name="metadata">Additional metadata</param>
+    /// <returns>A failed recovery result</returns>
+    public static StateRecoveryResult<T> CreateFailure<T>(
+        string error,
+        RecoveryStrategy strategyUsed = RecoveryStrategy.HybridRecovery,
+        TimeSpan recoveryTime = default,
+        string correlationId = "",
+        Dictionary<string, object>? metadata = null)
+    {
+        return new StateRecoveryResult<T>
+        {
+            Success = false,
+            Error = error,
+            StrategyUsed = strategyUsed,
+            RecoveryTime = recoveryTime,
+            CorrelationId = correlationId,
+            Metadata = metadata
+        };
+    }
+}
+
+/// <summary>
 /// Represents the result of a state recovery operation.
 /// </summary>
 /// <typeparam name="T">The type of state that was recovered</typeparam>
@@ -337,72 +412,210 @@ public record StateRecoveryResult<T>
     [Id(12)]
     public DateTimeOffset CompletedAt { get; init; } = DateTimeOffset.UtcNow;
 
+}
+
+/// <summary>
+/// Factory methods for creating automatic recovery results.
+/// </summary>
+public static class AutomaticRecoveryResult
+{
     /// <summary>
-    /// Creates a successful recovery result.
+    /// Creates a result where no recovery was needed.
     /// </summary>
-    /// <param name="recoveredState">The recovered state</param>
+    /// <typeparam name="T">The type of state that was recovered</typeparam>
+    /// <param name="originalState">The original state that was valid</param>
+    /// <returns>A result indicating no recovery was needed</returns>
+    public static AutomaticRecoveryResult<T> NoRecoveryNeeded<T>(T originalState)
+    {
+        return new AutomaticRecoveryResult<T>
+        {
+            RecoveryPerformed = false,
+            RecoveredState = originalState,
+            Success = true,
+            RecoveryType = RecoveryType.None
+        };
+    }
+
+    /// <summary>
+    /// Creates a result where no recovery was needed (alternate factory method).
+    /// </summary>
+    /// <typeparam name="T">The type of state that was recovered</typeparam>
+    /// <param name="currentState">The current state that was valid</param>
+    /// <param name="elapsed">The time elapsed during evaluation</param>
+    /// <param name="correlationId">The correlation ID for tracking</param>
+    /// <returns>A result indicating no recovery was needed</returns>
+    public static AutomaticRecoveryResult<T> CreateNoRecoveryNeeded<T>(T currentState, TimeSpan elapsed, string correlationId)
+    {
+        return new AutomaticRecoveryResult<T>
+        {
+            RecoveryPerformed = false,
+            RecoveredState = currentState,
+            Success = true,
+            RecoveryType = RecoveryType.None,
+            RecoveryTime = elapsed,
+            Metadata = new Dictionary<string, object> { ["CorrelationId"] = correlationId }
+        };
+    }
+
+    /// <summary>
+    /// Creates a result where recovery was skipped due to constraints.
+    /// </summary>
+    /// <typeparam name="T">The type of state that was recovered</typeparam>
+    /// <param name="currentState">The current state (unchanged)</param>
+    /// <param name="recoveryNeed">The recovery need that was identified</param>
+    /// <param name="costEstimate">The cost estimate for recovery</param>
+    /// <param name="reason">The reason recovery was skipped</param>
+    /// <param name="elapsed">The time elapsed during evaluation</param>
+    /// <param name="correlationId">The correlation ID for tracking</param>
+    /// <returns>A result indicating recovery was skipped</returns>
+    public static AutomaticRecoveryResult<T> CreateRecoverySkipped<T>(
+        T? currentState,
+        StateRecoveryNeed recoveryNeed,
+        object costEstimate,
+        string reason,
+        TimeSpan elapsed,
+        string correlationId)
+    {
+        return new AutomaticRecoveryResult<T>
+        {
+            RecoveryPerformed = false,
+            RecoveredState = currentState,
+            Success = false,
+            RecoveryType = RecoveryType.None,
+            RecoveryTime = elapsed,
+            Metadata = new Dictionary<string, object>
+            {
+                ["SkipReason"] = reason,
+                ["RecoveryNeed"] = recoveryNeed.ToString(),
+                ["CostEstimate"] = costEstimate,
+                ["CorrelationId"] = correlationId
+            }
+        };
+    }
+
+    /// <summary>
+    /// Creates a result where recovery failed.
+    /// </summary>
+    /// <typeparam name="T">The type of state that was recovered</typeparam>
+    /// <param name="currentState">The current state</param>
+    /// <param name="recoveryNeed">The recovery need that was identified</param>
+    /// <param name="error">The error that occurred</param>
+    /// <param name="elapsed">The time elapsed during recovery attempt</param>
+    /// <param name="correlationId">The correlation ID for tracking</param>
+    /// <returns>A result indicating recovery failed</returns>
+    public static AutomaticRecoveryResult<T> CreateRecoveryFailed<T>(
+        T? currentState,
+        StateRecoveryNeed recoveryNeed,
+        string error,
+        TimeSpan elapsed,
+        string correlationId)
+    {
+        return new AutomaticRecoveryResult<T>
+        {
+            RecoveryPerformed = true,
+            RecoveredState = currentState,
+            Success = false,
+            RecoveryType = RecoveryType.FallbackState,
+            RecoveryTime = elapsed,
+            Error = error,
+            Metadata = new Dictionary<string, object>
+            {
+                ["RecoveryNeed"] = recoveryNeed.ToString(),
+                ["CorrelationId"] = correlationId
+            }
+        };
+    }
+
+    /// <summary>
+    /// Creates a result where recovery succeeded.
+    /// </summary>
+    /// <typeparam name="T">The type of state that was recovered</typeparam>
+    /// <param name="recoveredState">The successfully recovered state</param>
+    /// <param name="recoveryNeed">The recovery need that was identified</param>
+    /// <param name="strategy">The strategy used for recovery</param>
     /// <param name="recoveryType">The type of recovery performed</param>
-    /// <param name="strategyUsed">The strategy that was used</param>
-    /// <param name="finalVersion">The final state version</param>
+    /// <param name="finalVersion">The final version of recovered state</param>
     /// <param name="eventsReplayed">Number of events replayed</param>
-    /// <param name="recoveryTime">Time taken for recovery</param>
     /// <param name="snapshotUsed">Whether a snapshot was used</param>
-    /// <param name="snapshotVersion">The snapshot version used, if any</param>
-    /// <param name="correlationId">The correlation ID</param>
-    /// <param name="metadata">Additional metadata</param>
-    /// <returns>A successful recovery result</returns>
-    public static StateRecoveryResult<T> CreateSuccess(
+    /// <param name="elapsed">The time elapsed during recovery</param>
+    /// <param name="correlationId">The correlation ID for tracking</param>
+    /// <returns>A result indicating recovery succeeded</returns>
+    public static AutomaticRecoveryResult<T> CreateRecoverySucceeded<T>(
         T recoveredState,
+        StateRecoveryNeed recoveryNeed,
+        RecoveryStrategy strategy,
         RecoveryType recoveryType,
-        RecoveryStrategy strategyUsed,
         long finalVersion,
         int eventsReplayed,
+        bool snapshotUsed,
+        TimeSpan elapsed,
+        string correlationId)
+    {
+        return new AutomaticRecoveryResult<T>
+        {
+            RecoveryPerformed = true,
+            RecoveredState = recoveredState,
+            Success = true,
+            RecoveryType = recoveryType,
+            RecoveryTime = elapsed,
+            Metadata = new Dictionary<string, object>
+            {
+                ["RecoveryNeed"] = recoveryNeed.ToString(),
+                ["Strategy"] = strategy.ToString(),
+                ["FinalVersion"] = finalVersion,
+                ["EventsReplayed"] = eventsReplayed,
+                ["SnapshotUsed"] = snapshotUsed,
+                ["CorrelationId"] = correlationId
+            }
+        };
+    }
+
+    /// <summary>
+    /// Creates a result for successful recovery.
+    /// </summary>
+    /// <typeparam name="T">The type of state that was recovered</typeparam>
+    /// <param name="recoveredState">The recovered state</param>
+    /// <param name="recoveryType">The type of recovery performed</param>
+    /// <param name="recoveryTime">Time taken for recovery</param>
+    /// <param name="metadata">Additional metadata</param>
+    /// <returns>A successful recovery result</returns>
+    public static AutomaticRecoveryResult<T> RecoverySuccessful<T>(
+        T recoveredState,
+        RecoveryType recoveryType,
         TimeSpan recoveryTime,
-        bool snapshotUsed = false,
-        long? snapshotVersion = null,
-        string correlationId = "",
         Dictionary<string, object>? metadata = null)
     {
-        return new StateRecoveryResult<T>
+        return new AutomaticRecoveryResult<T>
         {
-            Success = true,
+            RecoveryPerformed = true,
             RecoveredState = recoveredState,
             RecoveryType = recoveryType,
-            StrategyUsed = strategyUsed,
-            FinalVersion = finalVersion,
-            EventsReplayed = eventsReplayed,
+            Success = true,
             RecoveryTime = recoveryTime,
-            SnapshotUsed = snapshotUsed,
-            SnapshotVersion = snapshotVersion,
-            CorrelationId = correlationId,
             Metadata = metadata
         };
     }
 
     /// <summary>
-    /// Creates a failed recovery result.
+    /// Creates a result for failed recovery.
     /// </summary>
+    /// <typeparam name="T">The type of state that was recovered</typeparam>
     /// <param name="error">The error message</param>
-    /// <param name="strategyUsed">The strategy that was attempted</param>
     /// <param name="recoveryTime">Time taken before failure</param>
-    /// <param name="correlationId">The correlation ID</param>
-    /// <param name="metadata">Additional metadata</param>
+    /// <param name="fallbackState">Fallback state if available</param>
     /// <returns>A failed recovery result</returns>
-    public static StateRecoveryResult<T> CreateFailure(
+    public static AutomaticRecoveryResult<T> RecoveryFailed<T>(
         string error,
-        RecoveryStrategy strategyUsed = RecoveryStrategy.HybridRecovery,
-        TimeSpan recoveryTime = default,
-        string correlationId = "",
-        Dictionary<string, object>? metadata = null)
+        TimeSpan recoveryTime,
+        T? fallbackState = default)
     {
-        return new StateRecoveryResult<T>
+        return new AutomaticRecoveryResult<T>
         {
+            RecoveryPerformed = true,
+            RecoveredState = fallbackState,
             Success = false,
             Error = error,
-            StrategyUsed = strategyUsed,
-            RecoveryTime = recoveryTime,
-            CorrelationId = correlationId,
-            Metadata = metadata
+            RecoveryTime = recoveryTime
         };
     }
 }
@@ -456,200 +669,6 @@ public record AutomaticRecoveryResult<T>
     /// </summary>
     [Id(6)]
     public Dictionary<string, object>? Metadata { get; init; }
-
-    /// <summary>
-    /// Creates a result where no recovery was needed.
-    /// </summary>
-    /// <param name="originalState">The original state that was valid</param>
-    /// <returns>A result indicating no recovery was needed</returns>
-    public static AutomaticRecoveryResult<T> NoRecoveryNeeded(T originalState)
-    {
-        return new AutomaticRecoveryResult<T>
-        {
-            RecoveryPerformed = false,
-            RecoveredState = originalState,
-            Success = true,
-            RecoveryType = RecoveryType.None
-        };
-    }
-
-    /// <summary>
-    /// Creates a result where no recovery was needed (alternate factory method).
-    /// </summary>
-    /// <param name="currentState">The current state that was valid</param>
-    /// <param name="elapsed">The time elapsed during evaluation</param>
-    /// <param name="correlationId">The correlation ID for tracking</param>
-    /// <returns>A result indicating no recovery was needed</returns>
-    public static AutomaticRecoveryResult<T> CreateNoRecoveryNeeded(T currentState, TimeSpan elapsed, string correlationId)
-    {
-        return new AutomaticRecoveryResult<T>
-        {
-            RecoveryPerformed = false,
-            RecoveredState = currentState,
-            Success = true,
-            RecoveryType = RecoveryType.None,
-            RecoveryTime = elapsed,
-            Metadata = new Dictionary<string, object> { ["CorrelationId"] = correlationId }
-        };
-    }
-
-    /// <summary>
-    /// Creates a result where recovery was skipped.
-    /// </summary>
-    /// <param name="currentState">The current state</param>
-    /// <param name="recoveryNeed">The recovery need that was identified</param>
-    /// <param name="costEstimate">The estimated cost of recovery</param>
-    /// <param name="reason">The reason recovery was skipped</param>
-    /// <param name="elapsed">The time elapsed during evaluation</param>
-    /// <param name="correlationId">The correlation ID for tracking</param>
-    /// <returns>A result indicating recovery was skipped</returns>
-    public static AutomaticRecoveryResult<T> CreateRecoverySkipped(
-        T currentState,
-        StateRecoveryNeed recoveryNeed,
-        object costEstimate,
-        string reason,
-        TimeSpan elapsed,
-        string correlationId)
-    {
-        return new AutomaticRecoveryResult<T>
-        {
-            RecoveryPerformed = false,
-            RecoveredState = currentState,
-            Success = true,
-            RecoveryType = RecoveryType.None,
-            RecoveryTime = elapsed,
-            Metadata = new Dictionary<string, object>
-            {
-                ["SkipReason"] = reason,
-                ["RecoveryNeed"] = recoveryNeed.ToString(),
-                ["CostEstimate"] = costEstimate,
-                ["CorrelationId"] = correlationId
-            }
-        };
-    }
-
-    /// <summary>
-    /// Creates a result for failed recovery (alternate factory method).
-    /// </summary>
-    /// <param name="currentState">The current state</param>
-    /// <param name="recoveryNeed">The recovery need that was identified</param>
-    /// <param name="error">The error message</param>
-    /// <param name="elapsed">Time taken before failure</param>
-    /// <param name="correlationId">The correlation ID for tracking</param>
-    /// <returns>A failed recovery result</returns>
-    public static AutomaticRecoveryResult<T> CreateRecoveryFailed(
-        T currentState,
-        StateRecoveryNeed recoveryNeed,
-        string error,
-        TimeSpan elapsed,
-        string correlationId)
-    {
-        return new AutomaticRecoveryResult<T>
-        {
-            RecoveryPerformed = true,
-            RecoveredState = currentState,
-            Success = false,
-            Error = error,
-            RecoveryTime = elapsed,
-            RecoveryType = RecoveryType.FallbackState,
-            Metadata = new Dictionary<string, object>
-            {
-                ["RecoveryNeed"] = recoveryNeed.ToString(),
-                ["CorrelationId"] = correlationId
-            }
-        };
-    }
-
-    /// <summary>
-    /// Creates a result for successful recovery (alternate factory method).
-    /// </summary>
-    /// <param name="recoveredState">The recovered state</param>
-    /// <param name="recoveryNeed">The recovery need that was identified</param>
-    /// <param name="strategy">The strategy used for recovery</param>
-    /// <param name="recoveryType">The type of recovery performed</param>
-    /// <param name="finalVersion">The final version of recovered state</param>
-    /// <param name="eventsReplayed">Number of events replayed</param>
-    /// <param name="snapshotUsed">Whether a snapshot was used</param>
-    /// <param name="elapsed">Time taken for recovery</param>
-    /// <param name="correlationId">The correlation ID for tracking</param>
-    /// <returns>A successful recovery result</returns>
-    public static AutomaticRecoveryResult<T> CreateRecoverySucceeded(
-        T recoveredState,
-        StateRecoveryNeed recoveryNeed,
-        RecoveryStrategy strategy,
-        RecoveryType recoveryType,
-        long finalVersion,
-        int eventsReplayed,
-        bool snapshotUsed,
-        TimeSpan elapsed,
-        string correlationId)
-    {
-        return new AutomaticRecoveryResult<T>
-        {
-            RecoveryPerformed = true,
-            RecoveredState = recoveredState,
-            RecoveryType = recoveryType,
-            Success = true,
-            RecoveryTime = elapsed,
-            Metadata = new Dictionary<string, object>
-            {
-                ["RecoveryNeed"] = recoveryNeed.ToString(),
-                ["Strategy"] = strategy.ToString(),
-                ["FinalVersion"] = finalVersion,
-                ["EventsReplayed"] = eventsReplayed,
-                ["SnapshotUsed"] = snapshotUsed,
-                ["CorrelationId"] = correlationId
-            }
-        };
-    }
-
-    /// <summary>
-    /// Creates a result for successful recovery.
-    /// </summary>
-    /// <param name="recoveredState">The recovered state</param>
-    /// <param name="recoveryType">The type of recovery performed</param>
-    /// <param name="recoveryTime">Time taken for recovery</param>
-    /// <param name="metadata">Additional metadata</param>
-    /// <returns>A successful recovery result</returns>
-    public static AutomaticRecoveryResult<T> RecoverySuccessful(
-        T recoveredState,
-        RecoveryType recoveryType,
-        TimeSpan recoveryTime,
-        Dictionary<string, object>? metadata = null)
-    {
-        return new AutomaticRecoveryResult<T>
-        {
-            RecoveryPerformed = true,
-            RecoveredState = recoveredState,
-            RecoveryType = recoveryType,
-            Success = true,
-            RecoveryTime = recoveryTime,
-            Metadata = metadata
-        };
-    }
-
-    /// <summary>
-    /// Creates a result for failed recovery.
-    /// </summary>
-    /// <param name="error">The error message</param>
-    /// <param name="recoveryTime">Time taken before failure</param>
-    /// <param name="fallbackState">Fallback state if available</param>
-    /// <returns>A failed recovery result</returns>
-    public static AutomaticRecoveryResult<T> RecoveryFailed(
-        string error,
-        TimeSpan recoveryTime,
-        T? fallbackState = default)
-    {
-        return new AutomaticRecoveryResult<T>
-        {
-            RecoveryPerformed = true,
-            RecoveredState = fallbackState,
-            Success = false,
-            Error = error,
-            RecoveryTime = recoveryTime,
-            RecoveryType = RecoveryType.FallbackState
-        };
-    }
 }
 
 /// <summary>
@@ -662,45 +681,56 @@ public record StateValidationResult
     /// <summary>
     /// Whether the state is valid.
     /// </summary>
+    [Id(0)]
     public required bool IsValid { get; init; }
 
     /// <summary>
     /// The type of recovery needed if state is invalid.
     /// </summary>
+    [Id(1)]
     public StateRecoveryNeed RecoveryNeed { get; init; }
 
     /// <summary>
     /// Validation issues found, if any.
     /// </summary>
-    public IReadOnlyList<string> ValidationIssues { get; init; } = Array.Empty<string>();
+    [Id(2)]
+    public IReadOnlyList<string> ValidationIssues { get; init; } = [];
 
     /// <summary>
     /// Whether the state data is structurally intact.
     /// </summary>
+    [Id(3)]
     public bool IsStructurallyIntact { get; init; } = true;
 
     /// <summary>
     /// Whether the state passes business rule validation.
     /// </summary>
+    [Id(4)]
     public bool PassesBusinessRules { get; init; } = true;
 
     /// <summary>
     /// Confidence level in the validation result (0.0 to 1.0).
     /// </summary>
+    [Id(5)]
     public double ConfidenceLevel { get; init; } = 1.0;
 
     /// <summary>
     /// Additional metadata about the validation.
     /// </summary>
+    [Id(6)]
     public Dictionary<string, object>? Metadata { get; init; }
 
     /// <summary>
     /// Creates a valid state result.
     /// </summary>
-    /// <returns>A validation result indicating valid state</returns>
+    /// <returns>A valid state result</returns>
     public static StateValidationResult Valid()
     {
-        return new StateValidationResult { IsValid = true };
+        return new StateValidationResult
+        {
+            IsValid = true,
+            RecoveryNeed = StateRecoveryNeed.None
+        };
     }
 
     /// <summary>
@@ -710,10 +740,10 @@ public record StateValidationResult
     /// <param name="issues">Validation issues found</param>
     /// <param name="isStructurallyIntact">Whether data structure is intact</param>
     /// <param name="passesBusinessRules">Whether business rules pass</param>
-    /// <returns>A validation result indicating invalid state</returns>
+    /// <returns>An invalid state result</returns>
     public static StateValidationResult Invalid(
         StateRecoveryNeed recoveryNeed,
-        IReadOnlyList<string>? issues = null,
+        IReadOnlyList<string> issues,
         bool isStructurallyIntact = false,
         bool passesBusinessRules = false)
     {
@@ -721,9 +751,10 @@ public record StateValidationResult
         {
             IsValid = false,
             RecoveryNeed = recoveryNeed,
-            ValidationIssues = issues ?? Array.Empty<string>(),
+            ValidationIssues = issues,
             IsStructurallyIntact = isStructurallyIntact,
-            PassesBusinessRules = passesBusinessRules
+            PassesBusinessRules = passesBusinessRules,
+            ConfidenceLevel = 0.0
         };
     }
 }
@@ -738,66 +769,79 @@ public record ConsistencyVerificationResult
     /// <summary>
     /// Whether the state is consistent.
     /// </summary>
+    [Id(0)]
     public required bool IsConsistent { get; init; }
 
     /// <summary>
     /// Consistency issues found, if any.
     /// </summary>
-    public IReadOnlyList<string> Issues { get; init; } = Array.Empty<string>();
+    [Id(1)]
+    public IReadOnlyList<string> Issues { get; init; } = [];
 
     /// <summary>
     /// Whether data integrity checks passed.
     /// </summary>
+    [Id(2)]
     public bool DataIntegrityValid { get; init; } = true;
 
     /// <summary>
     /// Whether event stream alignment is correct.
     /// </summary>
+    [Id(3)]
     public bool EventStreamAligned { get; init; } = true;
 
     /// <summary>
     /// Whether cross-grain consistency is maintained.
     /// </summary>
+    [Id(4)]
     public bool CrossGrainConsistent { get; init; } = true;
 
     /// <summary>
     /// Confidence level in the consistency verification (0.0 to 1.0).
     /// </summary>
+    [Id(5)]
     public double ConfidenceLevel { get; init; } = 1.0;
 
     /// <summary>
     /// Confidence score in the consistency verification (0.0 to 1.0).
     /// </summary>
+    [Id(6)]
     public double ConfidenceScore { get; init; } = 1.0;
 
     /// <summary>
     /// Consistency warnings found, if any.
     /// </summary>
-    public IReadOnlyList<string> Warnings { get; init; } = Array.Empty<string>();
+    [Id(7)]
+    public IReadOnlyList<string> Warnings { get; init; } = [];
 
     /// <summary>
     /// The data integrity verification result.
     /// </summary>
+    [Id(8)]
     public DataIntegrityVerificationResult? DataIntegrityResult { get; init; }
 
     /// <summary>
     /// The business rules validation result.
     /// </summary>
+    [Id(9)]
     public BusinessRuleValidationResult? BusinessRulesResult { get; init; }
 
     /// <summary>
     /// The event stream alignment result.
     /// </summary>
+    [Id(10)]
     public EventStreamAlignmentResult? EventStreamAlignmentResult { get; init; }
 
     /// <summary>
     /// The verification time taken.
     /// </summary>
+    [Id(11)]
     public TimeSpan VerificationTime { get; init; }
 
     /// <summary>
     /// The timestamp when verification was performed.
     /// </summary>
+    [Id(12)]
     public DateTimeOffset Timestamp { get; init; } = DateTimeOffset.UtcNow;
 
     /// <summary>
@@ -837,27 +881,32 @@ public record BusinessRuleValidationResult
     /// <summary>
     /// Whether all business rules are satisfied.
     /// </summary>
+    [Id(0)]
     public required bool IsValid { get; init; }
 
     /// <summary>
     /// Business rule violations found, if any.
     /// </summary>
-    public IReadOnlyList<string> Violations { get; init; } = Array.Empty<string>();
+    [Id(1)]
+    public IReadOnlyList<string> Violations { get; init; } = [];
 
     /// <summary>
     /// Severity of the violations (if any).
     /// </summary>
+    [Id(2)]
     public ValidationSeverity Severity { get; init; } = ValidationSeverity.None;
 
     /// <summary>
     /// Whether the violations are recoverable.
     /// </summary>
+    [Id(3)]
     public bool IsRecoverable { get; init; } = true;
 
     /// <summary>
     /// Business rule warnings found, if any.
     /// </summary>
-    public IReadOnlyList<string> Warnings { get; init; } = Array.Empty<string>();
+    [Id(4)]
+    public IReadOnlyList<string> Warnings { get; init; } = [];
 
     /// <summary>
     /// Creates a valid business rule result.
@@ -939,21 +988,25 @@ public record RecoveryMetrics
     /// <summary>
     /// Total number of recovery operations attempted.
     /// </summary>
+    [Id(0)]
     public long TotalRecoveryAttempts { get; init; }
 
     /// <summary>
     /// Number of successful recoveries.
     /// </summary>
+    [Id(1)]
     public long SuccessfulRecoveries { get; init; }
 
     /// <summary>
     /// Number of failed recoveries.
     /// </summary>
+    [Id(2)]
     public long FailedRecoveries { get; init; }
 
     /// <summary>
     /// Average recovery time in milliseconds.
     /// </summary>
+    [Id(3)]
     public double AverageRecoveryTimeMs { get; init; }
 
     /// <summary>
@@ -966,16 +1019,19 @@ public record RecoveryMetrics
     /// <summary>
     /// Distribution of recovery strategies used.
     /// </summary>
-    public Dictionary<RecoveryStrategy, long> StrategyUsage { get; init; } = new();
+    [Id(4)]
+    public Dictionary<RecoveryStrategy, long> StrategyUsage { get; init; } = [];
 
     /// <summary>
     /// Distribution of recovery types performed.
     /// </summary>
-    public Dictionary<RecoveryType, long> RecoveryTypes { get; init; } = new();
+    [Id(5)]
+    public Dictionary<RecoveryType, long> RecoveryTypes { get; init; } = [];
 
     /// <summary>
     /// Timestamp when metrics were collected.
     /// </summary>
+    [Id(6)]
     public DateTimeOffset CollectedAt { get; init; } = DateTimeOffset.UtcNow;
 
     /// <summary>
@@ -1004,36 +1060,43 @@ public record BusinessRuleViolation
     /// <summary>
     /// Gets the name of the business rule that was violated.
     /// </summary>
+    [Id(0)]
     public required string RuleName { get; init; }
 
     /// <summary>
     /// Gets a human-readable description of the violation.
     /// </summary>
+    [Id(1)]
     public required string Description { get; init; }
 
     /// <summary>
     /// Gets the severity level of this violation.
     /// </summary>
+    [Id(2)]
     public required ValidationSeverity Severity { get; init; }
 
     /// <summary>
     /// Gets the property path where the violation occurred, if applicable.
     /// </summary>
+    [Id(3)]
     public string? PropertyPath { get; init; }
 
     /// <summary>
     /// Gets additional metadata about the violation.
     /// </summary>
+    [Id(4)]
     public Dictionary<string, object>? Metadata { get; init; }
 
     /// <summary>
     /// Gets whether this violation can be automatically corrected.
     /// </summary>
+    [Id(5)]
     public bool IsAutoCorrectable { get; init; } = false;
 
     /// <summary>
     /// Gets the timestamp when this violation was detected.
     /// </summary>
+    [Id(6)]
     public DateTimeOffset DetectedAt { get; init; } = DateTimeOffset.UtcNow;
 }
 
@@ -1080,41 +1143,49 @@ public record IntegrityCheckScheduleResult
     /// <summary>
     /// Gets the grain ID for which the check was scheduled.
     /// </summary>
+    [Id(0)]
     public required string GrainId { get; init; }
 
     /// <summary>
     /// Gets the grain type for which the check was scheduled.
     /// </summary>
+    [Id(1)]
     public required string GrainType { get; init; }
 
     /// <summary>
     /// Gets the priority of the scheduled check.
     /// </summary>
+    [Id(2)]
     public IntegrityCheckPriority Priority { get; init; }
 
     /// <summary>
     /// Gets when the check was scheduled.
     /// </summary>
+    [Id(3)]
     public DateTimeOffset ScheduledAt { get; init; }
 
     /// <summary>
     /// Gets whether the scheduling was successful.
     /// </summary>
+    [Id(4)]
     public bool IsScheduled { get; init; }
 
     /// <summary>
     /// Gets the unique identifier for this scheduled check.
     /// </summary>
+    [Id(5)]
     public string? ScheduleId { get; init; }
 
     /// <summary>
     /// Gets any message about the scheduling result.
     /// </summary>
+    [Id(6)]
     public string? Message { get; init; }
 
     /// <summary>
     /// Gets any error that occurred during scheduling.
     /// </summary>
+    [Id(7)]
     public string? Error { get; init; }
 }
 
@@ -1129,31 +1200,37 @@ public record AutomaticRecoveryHealthStatus
     /// <summary>
     /// Gets whether the service is healthy overall.
     /// </summary>
+    [Id(0)]
     public bool IsHealthy { get; init; }
 
     /// <summary>
     /// Gets the name of the service.
     /// </summary>
+    [Id(1)]
     public required string ServiceName { get; init; }
 
     /// <summary>
     /// Gets when the health check was performed.
     /// </summary>
+    [Id(2)]
     public DateTimeOffset CheckedAt { get; init; }
 
     /// <summary>
     /// Gets health status of individual components.
     /// </summary>
+    [Id(3)]
     public Dictionary<string, bool>? ComponentStatuses { get; init; }
 
     /// <summary>
     /// Gets any health status message.
     /// </summary>
+    [Id(4)]
     public string? Message { get; init; }
 
     /// <summary>
     /// Gets additional health details.
     /// </summary>
+    [Id(5)]
     public Dictionary<string, object>? Details { get; init; }
 }
 
@@ -1168,41 +1245,49 @@ public record AutomaticRecoveryConfiguration
     /// <summary>
     /// Gets the name of the service.
     /// </summary>
+    [Id(0)]
     public required string ServiceName { get; init; }
 
     /// <summary>
     /// Gets the name of the detector component.
     /// </summary>
+    [Id(1)]
     public required string DetectorName { get; init; }
 
     /// <summary>
     /// Gets the name of the orchestrator component.
     /// </summary>
+    [Id(2)]
     public required string OrchestratorName { get; init; }
 
     /// <summary>
     /// Gets the name of the verifier component.
     /// </summary>
+    [Id(3)]
     public required string VerifierName { get; init; }
 
     /// <summary>
     /// Gets whether the service is enabled.
     /// </summary>
+    [Id(4)]
     public bool IsEnabled { get; init; }
 
     /// <summary>
     /// Gets the default recovery strategy.
     /// </summary>
+    [Id(5)]
     public RecoveryStrategy DefaultStrategy { get; init; }
 
     /// <summary>
     /// Gets configuration settings.
     /// </summary>
+    [Id(6)]
     public Dictionary<string, object>? Settings { get; init; }
 
     /// <summary>
     /// Gets when the configuration was last updated.
     /// </summary>
+    [Id(7)]
     public DateTimeOffset LastUpdated { get; init; }
 }
 

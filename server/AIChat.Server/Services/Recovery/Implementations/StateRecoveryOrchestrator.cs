@@ -1,5 +1,4 @@
 using AIChat.Server.Services.EventStore;
-using Microsoft.Extensions.Logging;
 
 namespace AIChat.Server.Services.Recovery.Implementations;
 
@@ -74,7 +73,7 @@ public sealed class StateRecoveryOrchestrator : IStateRecoveryOrchestrator
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogError(ex, "Error recovering state for grain {GrainId}", request.GrainId);
-            return StateRecoveryResult<T>.CreateFailure(
+            return StateRecoveryResult.CreateFailure<T>(
                 $"Recovery failed: {ex.Message}",
                 request.PreferredStrategy ?? RecoveryStrategy.HybridRecovery,
                 stopwatch.Elapsed,
@@ -186,7 +185,7 @@ public sealed class StateRecoveryOrchestrator : IStateRecoveryOrchestrator
             _logger.LogError(ex, "Error executing recovery strategy {Strategy} for grain {GrainId}",
                 strategy, request.GrainId);
 
-            return StateRecoveryResult<T>.CreateFailure(
+            return StateRecoveryResult.CreateFailure<T>(
                 $"Strategy {strategy} failed: {ex.Message}",
                 strategy,
                 stopwatch.Elapsed,
@@ -414,7 +413,7 @@ public sealed class StateRecoveryOrchestrator : IStateRecoveryOrchestrator
                 request.GrainType);
         }
 
-        return StateRecoveryResult<T>.CreateSuccess(
+        return StateRecoveryResult.CreateSuccess(
             restoreResult.State!,
             RecoveryType.SnapshotWithReplay,
             RecoveryStrategy.SnapshotFirst,
@@ -450,7 +449,7 @@ public sealed class StateRecoveryOrchestrator : IStateRecoveryOrchestrator
                 request.GrainType);
         }
 
-        return StateRecoveryResult<T>.CreateSuccess(
+        return StateRecoveryResult.CreateSuccess(
             replayResult.State,
             RecoveryType.FullEventReplay,
             RecoveryStrategy.FullReplay,
@@ -502,7 +501,7 @@ public sealed class StateRecoveryOrchestrator : IStateRecoveryOrchestrator
 
         var initialState = projection.CreateInitialState();
 
-        return StateRecoveryResult<T>.CreateSuccess(
+        return StateRecoveryResult.CreateSuccess(
             initialState,
             RecoveryType.DefaultInitialization,
             RecoveryStrategy.EmptyState,

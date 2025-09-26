@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text;
 using AIChat.Server.Storage.Sqlite;
 using Microsoft.Data.Sqlite;
 

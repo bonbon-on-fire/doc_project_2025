@@ -4,7 +4,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using AIChat.Orleans.Contracts;
 using AIChat.Orleans.Services;
-using Microsoft.Extensions.Logging;
 
 namespace AIChat.Server.Services.Orleans;
 

@@ -60,10 +60,10 @@ public class RestToOrleansTranslator : MessageTranslatorBase<RestMessage, ChatMe
             if (!restValidation.IsValid)
             {
                 var errorMessage = $"Invalid REST message: {restValidation.GetErrorsString()}";
-                Logger.LogWarning(errorMessage);
+                Logger.LogWarning("Invalid REST message: {ValidationErrors}", restValidation.GetErrorsString());
                 stopwatch.Stop();
                 UpdateFailureMetrics(stopwatch.Elapsed, "INVALID_REST_MESSAGE", context);
-                return TranslationResult<ChatMessage>.Failure(errorMessage, "INVALID_REST_MESSAGE", stopwatch.Elapsed);
+                return TranslationResult.Failure<ChatMessage>(errorMessage, "INVALID_REST_MESSAGE", stopwatch.Elapsed);
             }
 
             // Perform operation-specific translation
@@ -99,34 +99,37 @@ public class RestToOrleansTranslator : MessageTranslatorBase<RestMessage, ChatMe
             activity?.SetTag("orleans.message_id", chatMessage.Id);
             activity?.SetTag("orleans.chat_id", chatMessage.ChatId);
 
-            return TranslationResult<ChatMessage>.SuccessWithTypes<RestMessage, ChatMessage>(chatMessage, stopwatch.Elapsed);
+            return TranslationResult.SuccessWithTypes<RestMessage, ChatMessage>(chatMessage, stopwatch.Elapsed);
         }
         catch (JsonException ex)
         {
             stopwatch.Stop();
             var errorMessage = $"Invalid JSON in REST body: {ex.Message}";
-            Logger.LogWarning(ex, errorMessage);
+            Logger.LogWarning(ex, "Invalid JSON in REST body: {ExceptionMessage}", ex.Message);
             UpdateFailureMetrics(stopwatch.Elapsed, "INVALID_JSON_BODY", context);
             activity?.SetTag("translation.success", false);
             activity?.SetTag("error.type", "JsonException");
-            return TranslationResult<ChatMessage>.Failure(errorMessage, "INVALID_JSON_BODY", stopwatch.Elapsed);
+            return TranslationResult.Failure<ChatMessage>(errorMessage, "INVALID_JSON_BODY", stopwatch.Elapsed);
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
             var errorMessage = $"Translation failed: {ex.Message}";
-            Logger.LogError(ex, errorMessage);
+            Logger.LogError(ex, "Translation failed: {ExceptionMessage}", ex.Message);
             UpdateFailureMetrics(stopwatch.Elapsed, "TRANSLATION_ERROR", context);
             activity?.SetTag("translation.success", false);
             activity?.SetTag("error.type", ex.GetType().Name);
-            return TranslationResult<ChatMessage>.Failure(errorMessage, "TRANSLATION_ERROR", stopwatch.Elapsed);
+            return TranslationResult.Failure<ChatMessage>(errorMessage, "TRANSLATION_ERROR", stopwatch.Elapsed);
         }
     }
 
     /// <inheritdoc />
     public override bool CanTranslate(RestMessage source)
     {
-        if (source == null) return false;
+        if (source == null)
+        {
+            return false;
+        }
 
         var supportedOperations = new[]
         {
@@ -386,16 +389,19 @@ public class RestToOrleansTranslator : MessageTranslatorBase<RestMessage, ChatMe
     protected override TranslationResult<ChatMessage>? ValidateSource(RestMessage source, TranslationContext context)
     {
         var baseValidation = base.ValidateSource(source, context);
-        if (baseValidation != null) return baseValidation;
+        if (baseValidation != null)
+        {
+            return baseValidation;
+        }
 
         if (string.IsNullOrEmpty(source.Method))
         {
-            return TranslationResult<ChatMessage>.Failure("HTTP method is required", "MISSING_HTTP_METHOD");
+            return TranslationResult.Failure<ChatMessage>("HTTP method is required", "MISSING_HTTP_METHOD");
         }
 
         if (string.IsNullOrEmpty(source.Path))
         {
-            return TranslationResult<ChatMessage>.Failure("Request path is required", "MISSING_REQUEST_PATH");
+            return TranslationResult.Failure<ChatMessage>("Request path is required", "MISSING_REQUEST_PATH");
         }
 
         return null; // No validation errors
@@ -405,16 +411,19 @@ public class RestToOrleansTranslator : MessageTranslatorBase<RestMessage, ChatMe
     protected override TranslationResult<ChatMessage>? ValidateTarget(ChatMessage target, TranslationContext context)
     {
         var baseValidation = base.ValidateTarget(target, context);
-        if (baseValidation != null) return baseValidation;
+        if (baseValidation != null)
+        {
+            return baseValidation;
+        }
 
         if (string.IsNullOrEmpty(target.ChatId))
         {
-            return TranslationResult<ChatMessage>.Failure("ChatId is required in Orleans message", "MISSING_CHAT_ID");
+            return TranslationResult.Failure<ChatMessage>("ChatId is required in Orleans message", "MISSING_CHAT_ID");
         }
 
         if (string.IsNullOrEmpty(target.UserId))
         {
-            return TranslationResult<ChatMessage>.Failure("UserId is required in Orleans message", "MISSING_USER_ID");
+            return TranslationResult.Failure<ChatMessage>("UserId is required in Orleans message", "MISSING_USER_ID");
         }
 
         return null; // No validation errors

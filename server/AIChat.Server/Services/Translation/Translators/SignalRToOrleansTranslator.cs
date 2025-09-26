@@ -56,10 +56,10 @@ public class SignalRToOrleansTranslator : MessageTranslatorBase<SignalRMessage, 
             if (!signalRValidation.IsValid)
             {
                 var errorMessage = $"Invalid SignalR message: {signalRValidation.GetErrorsString()}";
-                Logger.LogWarning(errorMessage);
+                Logger.LogWarning("Invalid SignalR message: {ValidationErrors}", signalRValidation.GetErrorsString());
                 stopwatch.Stop();
                 UpdateFailureMetrics(stopwatch.Elapsed, "INVALID_SIGNALR_MESSAGE", context);
-                return TranslationResult<ChatMessage>.Failure(errorMessage, "INVALID_SIGNALR_MESSAGE", stopwatch.Elapsed);
+                return TranslationResult.Failure<ChatMessage>(errorMessage, "INVALID_SIGNALR_MESSAGE", stopwatch.Elapsed);
             }
 
             // Perform operation-specific translation
@@ -92,34 +92,37 @@ public class SignalRToOrleansTranslator : MessageTranslatorBase<SignalRMessage, 
             activity?.SetTag("orleans.message_id", chatMessage.Id);
             activity?.SetTag("orleans.chat_id", chatMessage.ChatId);
 
-            return TranslationResult<ChatMessage>.SuccessWithTypes<SignalRMessage, ChatMessage>(chatMessage, stopwatch.Elapsed);
+            return TranslationResult.SuccessWithTypes<SignalRMessage, ChatMessage>(chatMessage, stopwatch.Elapsed);
         }
         catch (InvalidOperationException ex)
         {
             stopwatch.Stop();
             var errorMessage = $"Unsupported operation: {ex.Message}";
-            Logger.LogWarning(ex, errorMessage);
+            Logger.LogWarning(ex, "Unsupported operation: {ExceptionMessage}", ex.Message);
             UpdateFailureMetrics(stopwatch.Elapsed, "UNSUPPORTED_OPERATION", context);
             activity?.SetTag("translation.success", false);
             activity?.SetTag("error.type", "UnsupportedOperation");
-            return TranslationResult<ChatMessage>.Failure(errorMessage, "UNSUPPORTED_OPERATION", stopwatch.Elapsed);
+            return TranslationResult.Failure<ChatMessage>(errorMessage, "UNSUPPORTED_OPERATION", stopwatch.Elapsed);
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
             var errorMessage = $"Translation failed: {ex.Message}";
-            Logger.LogError(ex, errorMessage);
+            Logger.LogError(ex, "Translation failed: {ExceptionMessage}", ex.Message);
             UpdateFailureMetrics(stopwatch.Elapsed, "TRANSLATION_ERROR", context);
             activity?.SetTag("translation.success", false);
             activity?.SetTag("error.type", ex.GetType().Name);
-            return TranslationResult<ChatMessage>.Failure(errorMessage, "TRANSLATION_ERROR", stopwatch.Elapsed);
+            return TranslationResult.Failure<ChatMessage>(errorMessage, "TRANSLATION_ERROR", stopwatch.Elapsed);
         }
     }
 
     /// <inheritdoc />
     public override bool CanTranslate(SignalRMessage source)
     {
-        if (source == null) return false;
+        if (source == null)
+        {
+            return false;
+        }
 
         var supportedOperations = new[] { "sendmessage", "joinchatgroup", "leavechatgroup" };
         return supportedOperations.Contains(source.Operation.ToLowerInvariant());
@@ -259,16 +262,19 @@ public class SignalRToOrleansTranslator : MessageTranslatorBase<SignalRMessage, 
     protected override TranslationResult<ChatMessage>? ValidateSource(SignalRMessage source, TranslationContext context)
     {
         var baseValidation = base.ValidateSource(source, context);
-        if (baseValidation != null) return baseValidation;
+        if (baseValidation != null)
+        {
+            return baseValidation;
+        }
 
         if (string.IsNullOrEmpty(source.Operation))
         {
-            return TranslationResult<ChatMessage>.Failure("SignalR operation is required", "MISSING_OPERATION");
+            return TranslationResult.Failure<ChatMessage>("SignalR operation is required", "MISSING_OPERATION");
         }
 
         if (string.IsNullOrEmpty(source.ConnectionId))
         {
-            return TranslationResult<ChatMessage>.Failure("SignalR connection ID is required", "MISSING_CONNECTION_ID");
+            return TranslationResult.Failure<ChatMessage>("SignalR connection ID is required", "MISSING_CONNECTION_ID");
         }
 
         return null; // No validation errors
@@ -278,21 +284,24 @@ public class SignalRToOrleansTranslator : MessageTranslatorBase<SignalRMessage, 
     protected override TranslationResult<ChatMessage>? ValidateTarget(ChatMessage target, TranslationContext context)
     {
         var baseValidation = base.ValidateTarget(target, context);
-        if (baseValidation != null) return baseValidation;
+        if (baseValidation != null)
+        {
+            return baseValidation;
+        }
 
         if (string.IsNullOrEmpty(target.ChatId))
         {
-            return TranslationResult<ChatMessage>.Failure("ChatId is required in Orleans message", "MISSING_CHAT_ID");
+            return TranslationResult.Failure<ChatMessage>("ChatId is required in Orleans message", "MISSING_CHAT_ID");
         }
 
         if (string.IsNullOrEmpty(target.UserId))
         {
-            return TranslationResult<ChatMessage>.Failure("UserId is required in Orleans message", "MISSING_USER_ID");
+            return TranslationResult.Failure<ChatMessage>("UserId is required in Orleans message", "MISSING_USER_ID");
         }
 
         if (string.IsNullOrEmpty(target.Content))
         {
-            return TranslationResult<ChatMessage>.Failure("Content is required in Orleans message", "MISSING_CONTENT");
+            return TranslationResult.Failure<ChatMessage>("Content is required in Orleans message", "MISSING_CONTENT");
         }
 
         return null; // No validation errors

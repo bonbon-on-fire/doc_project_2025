@@ -1,5 +1,3 @@
-using AIChat.Server.Services.Translation.Translators;
-
 namespace AIChat.Server.Services.Translation;
 
 /// <summary>
@@ -154,12 +152,12 @@ public sealed class TranslationHealthCheckResult
     /// <summary>
     /// Additional data about the health check.
     /// </summary>
-    public Dictionary<string, object> Data { get; set; } = new();
+    public Dictionary<string, object> Data { get; set; } = [];
 
     /// <summary>
     /// Individual translator health results.
     /// </summary>
-    public Dictionary<string, TranslatorHealthResult> TranslatorResults { get; set; } = new();
+    public Dictionary<string, TranslatorHealthResult> TranslatorResults { get; set; } = [];
 
     /// <summary>
     /// Creates a healthy result.
@@ -259,7 +257,7 @@ public sealed class TranslatorHealthResult
     /// <summary>
     /// Additional health data.
     /// </summary>
-    public Dictionary<string, object> Data { get; set; } = new();
+    public Dictionary<string, object> Data { get; set; } = [];
 }
 
 /// <summary>

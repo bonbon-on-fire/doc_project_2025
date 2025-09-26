@@ -1,5 +1,3 @@
-using Orleans;
-
 namespace AIChat.Server.Services.Recovery;
 
 /// <summary>
@@ -190,7 +188,7 @@ public record RecoveryProgressUpdate
     /// Any warnings encountered during this step.
     /// </summary>
     [Id(10)]
-    public IReadOnlyList<string> Warnings { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> Warnings { get; init; } = [];
 }
 
 /// <summary>
@@ -288,7 +286,7 @@ public record RecoveryAuditResult
     /// Warning messages from the recovery operation.
     /// </summary>
     [Id(14)]
-    public IReadOnlyList<string> Warnings { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> Warnings { get; init; } = [];
 
     /// <summary>
     /// Size of data that was processed during recovery.
@@ -482,7 +480,7 @@ public record RecoveryAuditEntry
     /// Warning messages from the recovery operation.
     /// </summary>
     [Id(21)]
-    public IReadOnlyList<string> Warnings { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> Warnings { get; init; } = [];
 
     /// <summary>
     /// Source system that initiated the recovery.
@@ -574,20 +572,26 @@ public record RecoveryAuditEntry
         Dictionary<string, object>? resultMetadata)
     {
         if (requestMetadata == null && resultMetadata == null)
+        {
             return null;
+        }
 
         var merged = new Dictionary<string, object>();
 
         if (requestMetadata != null)
         {
             foreach (var kvp in requestMetadata)
+            {
                 merged[kvp.Key] = kvp.Value;
+            }
         }
 
         if (resultMetadata != null)
         {
             foreach (var kvp in resultMetadata)
+            {
                 merged[kvp.Key] = kvp.Value; // Result metadata overwrites request metadata
+            }
         }
 
         return merged.Count > 0 ? merged : null;
@@ -864,7 +868,7 @@ public record RecoveryAuditQueryResult
     {
         return new RecoveryAuditQueryResult
         {
-            Entries = Array.Empty<RecoveryAuditEntry>(),
+            Entries = [],
             TotalCount = 0,
             HasMoreResults = false,
             Query = query,

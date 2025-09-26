@@ -1,5 +1,4 @@
 using AIChat.Server.Models;
-using Microsoft.Extensions.Logging;
 
 namespace AIChat.Server.Services.StateManagement.Validation;
 
@@ -210,50 +209,46 @@ public sealed class ChatValidator : StateValidatorBase<Chat>
     /// <inheritdoc />
     protected override IEnumerable<ValidationRuleInfo> GetCustomValidationRules(ValidationOperation operation)
     {
-        var rules = new List<ValidationRuleInfo>();
-
-        // Common rules for all operations
-        rules.Add(ValidationRuleInfo.Create(
+        var rules = new List<ValidationRuleInfo>
+        {
+            // Common rules for all operations
+            ValidationRuleInfo.Create(
             "ChatId_GuidFormat",
             "Chat ID GUID Format",
             "Chat ID must be a valid GUID format",
             nameof(Chat.Id),
-            ValidationErrorCode.InvalidFormat));
-
-        rules.Add(ValidationRuleInfo.Create(
+            ValidationErrorCode.InvalidFormat),
+            ValidationRuleInfo.Create(
             "UserId_GuidFormat",
             "User ID GUID Format",
             "User ID must be a valid GUID format",
             nameof(Chat.UserId),
-            ValidationErrorCode.InvalidFormat));
-
-        rules.Add(ValidationRuleInfo.Create(
+            ValidationErrorCode.InvalidFormat),
+            ValidationRuleInfo.Create(
             "UserId_ReferentialIntegrity",
             "User Existence Check",
             "Referenced user must exist in the system",
             nameof(Chat.UserId),
-            ValidationErrorCode.ReferentialIntegrity));
-
-        rules.Add(ValidationRuleInfo.Create(
+            ValidationErrorCode.ReferentialIntegrity),
+            ValidationRuleInfo.Create(
             "Title_SafeContent",
             "Safe Title Content",
             "Chat title must not contain unsafe content",
             nameof(Chat.Title),
-            ValidationErrorCode.BusinessRuleViolation));
-
-        rules.Add(ValidationRuleInfo.Create(
+            ValidationErrorCode.BusinessRuleViolation),
+            ValidationRuleInfo.Create(
             "CreatedAt_NotFuture",
             "Created Date Validation",
             "Created date cannot be in the future",
             nameof(Chat.CreatedAt),
-            ValidationErrorCode.OutOfRange));
-
-        rules.Add(ValidationRuleInfo.Create(
+            ValidationErrorCode.OutOfRange),
+            ValidationRuleInfo.Create(
             "UpdatedAt_AfterCreated",
             "Update Date Validation",
             "Updated date must be after created date",
             nameof(Chat.UpdatedAt),
-            ValidationErrorCode.BusinessRuleViolation));
+            ValidationErrorCode.BusinessRuleViolation)
+        };
 
         // Operation-specific rules
         if (operation == ValidationOperation.Update)

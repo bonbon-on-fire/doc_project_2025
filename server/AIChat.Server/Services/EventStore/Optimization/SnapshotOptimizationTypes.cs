@@ -43,7 +43,7 @@ public record SnapshotOptimizationConfiguration
     /// <summary>
     /// Gets whether to enable prefetching of related snapshots.
     /// </summary>
-    public bool EnablePrefetching { get; init; } = false;
+    public bool EnablePrefetching { get; init; }
 
     /// <summary>
     /// Gets the maximum memory usage for caching in bytes.
@@ -101,7 +101,7 @@ public record SnapshotOptimizationConfiguration
 /// <summary>
 /// Represents a cached snapshot entry.
 /// </summary>
-internal record CachedSnapshot
+internal sealed record CachedSnapshot
 {
     /// <summary>
     /// Gets the cached snapshot data.
@@ -132,7 +132,7 @@ internal record CachedSnapshot
 /// <summary>
 /// Represents cached metadata entry.
 /// </summary>
-internal record CachedMetadata
+internal sealed record CachedMetadata
 {
     /// <summary>
     /// Gets the cached metadata.
@@ -148,7 +148,7 @@ internal record CachedMetadata
 /// <summary>
 /// Represents a batched operation.
 /// </summary>
-internal class BatchedOperation
+internal sealed class BatchedOperation
 {
     /// <summary>
     /// Gets or sets the operation type.
@@ -209,6 +209,7 @@ public class PerformanceMetrics
     private long _totalRetrievalTimeMs;
     private long _totalCreationTimeMs;
 
+#pragma warning disable CA1051 // Do not declare visible instance fields - required for Interlocked operations
     /// <summary>
     /// Gets the number of cache hits.
     /// </summary>
@@ -233,6 +234,7 @@ public class PerformanceMetrics
     /// Gets the error count.
     /// </summary>
     public long ErrorCount;
+#pragma warning restore CA1051
 
     /// <summary>
     /// Gets the average retrieval time.

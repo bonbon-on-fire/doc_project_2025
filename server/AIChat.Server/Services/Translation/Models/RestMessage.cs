@@ -24,17 +24,17 @@ public sealed class RestMessage
     /// <summary>
     /// HTTP headers from the request.
     /// </summary>
-    public Dictionary<string, string> Headers { get; set; } = new();
+    public Dictionary<string, string> Headers { get; set; } = [];
 
     /// <summary>
     /// Query parameters from the request URL.
     /// </summary>
-    public Dictionary<string, string> QueryParameters { get; set; } = new();
+    public Dictionary<string, string> QueryParameters { get; set; } = [];
 
     /// <summary>
     /// Path parameters extracted from the URL route.
     /// </summary>
-    public Dictionary<string, string> PathParameters { get; set; } = new();
+    public Dictionary<string, string> PathParameters { get; set; } = [];
 
     /// <summary>
     /// Request body content (typically JSON for API requests).
@@ -54,7 +54,7 @@ public sealed class RestMessage
     /// <summary>
     /// Additional metadata for the REST operation.
     /// </summary>
-    public Dictionary<string, object> Metadata { get; set; } = new();
+    public Dictionary<string, object> Metadata { get; set; } = [];
 
     /// <summary>
     /// Content type of the request body.
@@ -98,8 +98,8 @@ public sealed class RestMessage
             UserId = userId,
             QueryParameters = new Dictionary<string, string>
             {
-                ["page"] = page.ToString(),
-                ["pageSize"] = pageSize.ToString()
+                ["page"] = page.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["pageSize"] = pageSize.ToString(System.Globalization.CultureInfo.InvariantCulture)
             },
             Timestamp = DateTime.UtcNow
         };
@@ -197,7 +197,10 @@ public sealed class RestMessage
     /// <returns>Deserialized body or default value if unable to convert</returns>
     public T? GetBodyAs<T>()
     {
-        if (Body == null) return default;
+        if (Body == null)
+        {
+            return default;
+        }
 
         if (Body is T directCast)
         {
@@ -265,7 +268,7 @@ public sealed class RestMessage
         }
 
         // Validate path format
-        if (!string.IsNullOrEmpty(Path) && !Path.StartsWith("/", StringComparison.Ordinal))
+        if (!string.IsNullOrEmpty(Path) && !Path.StartsWith('/'))
         {
             errors.Add("Request path should start with '/'");
         }
@@ -291,8 +294,8 @@ public sealed class RestMessage
         {
             ("POST", var p) when p.Contains("/message") => "SendMessage",
             ("GET", var p) when p.Contains("/history") => "GetChatHistory",
-            ("GET", var p) when p.EndsWith("/chat") || p.Contains("/chat/") => "GetChat",
-            ("POST", var p) when p.EndsWith("/chat") => "CreateChat",
+            ("GET", var p) when p.EndsWith("/chat", StringComparison.Ordinal) || p.Contains("/chat/") => "GetChat",
+            ("POST", var p) when p.EndsWith("/chat", StringComparison.Ordinal) => "CreateChat",
             ("DELETE", var p) when p.Contains("/chat/") => "DeleteChat",
             ("GET", var p) when p.Contains("/tasks") => "GetTasks",
             ("POST", var p) when p.Contains("/stream") => "StartStream",
@@ -345,7 +348,7 @@ public sealed class RestResponse
     /// <summary>
     /// HTTP headers for the response.
     /// </summary>
-    public Dictionary<string, string> Headers { get; set; } = new();
+    public Dictionary<string, string> Headers { get; set; } = [];
 
     /// <summary>
     /// Content type of the response body.

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using AIChat.Server.Models;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 
 namespace AIChat.Server.Tests.Models;
@@ -7,15 +8,24 @@ namespace AIChat.Server.Tests.Models;
 /// <summary>
 /// Tests for McpConfiguration and function filtering configuration models
 /// </summary>
-public class McpConfigurationTests
+public class McpConfigurationTests : BaseApiTest
 {
+    public McpConfigurationTests(WebApplicationFactory<Program> factory) : base(factory)
+    {
+    }
+
     #region FunctionFilterConfig Tests
 
     [Fact]
     public void FunctionFilterConfigDefaultValuesAreCorrect()
     {
+        // Test the JSONL logging functionality
+        using var testContext = LogTestContext();
+        LogTestActivity("Starting FunctionFilterConfig default values test");
+
         // Arrange & Act
         var config = new FunctionFilterConfig();
+        TestLogger.Information("Created new FunctionFilterConfig instance");
 
         // Assert
         Assert.False(config.EnableFiltering);
@@ -23,6 +33,11 @@ public class McpConfigurationTests
         Assert.Null(config.GlobalBlockedFunctions);
         Assert.True(config.UsePrefixOnlyForCollisions);
         Assert.Null(config.ProviderConfigs);
+
+        LogTestActivity("Test completed successfully - all default values verified");
+
+        // Ensure logs are written to disk
+        Serilog.Log.CloseAndFlush();
     }
 
     [Fact]

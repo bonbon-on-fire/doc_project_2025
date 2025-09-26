@@ -44,6 +44,7 @@ public class MonitoringController : ControllerBase
             // Orleans operation - TODO: Map to appropriate grain method
             async healthGrain =>
             {
+                await Task.CompletedTask; // Suppress CS1998
                 // For now, use pass-through to direct service
                 // Future enhancement: Use grain.GetSystemMetricsAsync() when implemented
                 var metrics = _monitoringService.GetCurrentMetrics();
@@ -53,6 +54,7 @@ public class MonitoringController : ControllerBase
             // Direct service operation
             async service =>
             {
+                await Task.CompletedTask; // Suppress CS1998
                 var metrics = service.GetCurrentMetrics();
                 var alertStates = service.GetAlertStates();
                 return CreateMetricsResponse(metrics, alertStates);
@@ -124,6 +126,7 @@ public class MonitoringController : ControllerBase
             // Orleans operation - TODO: Map to appropriate grain method
             async healthGrain =>
             {
+                await Task.CompletedTask; // Suppress CS1998
                 // For now, use pass-through to direct service
                 // Future enhancement: Use grain.GetHistoricalMetricsAsync(metricName, timeRange) when implemented
                 var timeRange = TimeSpan.FromHours(Math.Min(hours, 24)); // Limit to 24 hours
@@ -133,6 +136,7 @@ public class MonitoringController : ControllerBase
             // Direct service operation
             async service =>
             {
+                await Task.CompletedTask; // Suppress CS1998
                 var timeRange = TimeSpan.FromHours(Math.Min(hours, 24)); // Limit to 24 hours
                 var historicalData = service.GetHistoricalMetrics(metricName, timeRange);
                 return CreateMetricHistoryResponse(metricName, timeRange, historicalData);
@@ -191,6 +195,7 @@ public class MonitoringController : ControllerBase
             // Orleans operation - TODO: Map to appropriate grain method
             async healthGrain =>
             {
+                await Task.CompletedTask; // Suppress CS1998
                 // For now, use pass-through to direct service
                 // Future enhancement: Use grain.GetSystemHealthAsync() when implemented
                 var metrics = _monitoringService.GetCurrentMetrics();
@@ -200,6 +205,7 @@ public class MonitoringController : ControllerBase
             // Direct service operation
             async service =>
             {
+                await Task.CompletedTask; // Suppress CS1998
                 var metrics = service.GetCurrentMetrics();
                 var alertStates = service.GetAlertStates();
                 return CreateSystemHealthResponse(metrics, alertStates);
@@ -283,6 +289,7 @@ public class MonitoringController : ControllerBase
             // Orleans operation - TODO: Map to appropriate grain method
             async healthGrain =>
             {
+                await Task.CompletedTask; // Suppress CS1998
                 // For now, use pass-through to direct service
                 // Future enhancement: Use grain.GetCapacityMetricsAsync() when implemented
                 return CreateCapacityMetricsResponse();
@@ -290,6 +297,7 @@ public class MonitoringController : ControllerBase
             // Direct service operation
             async service =>
             {
+                await Task.CompletedTask; // Suppress CS1998
                 return CreateCapacityMetricsResponse();
             },
             "GetCapacityMetrics",
@@ -384,6 +392,7 @@ public class MonitoringController : ControllerBase
             // Orleans operation - TODO: Map to appropriate grain method
             async healthGrain =>
             {
+                await Task.CompletedTask; // Suppress CS1998
                 // For now, use pass-through to direct service
                 // Future enhancement: Use grain.GetDashboardConfigAsync() when implemented
                 return CreateDashboardConfigResponse();
@@ -391,6 +400,7 @@ public class MonitoringController : ControllerBase
             // Direct service operation
             async service =>
             {
+                await Task.CompletedTask; // Suppress CS1998
                 return CreateDashboardConfigResponse();
             },
             "GetDashboardConfig",
@@ -511,6 +521,7 @@ public class MonitoringController : ControllerBase
             // Orleans operation - TODO: Map to appropriate grain method
             async healthGrain =>
             {
+                await Task.CompletedTask; // Suppress CS1998
                 // For now, use pass-through to direct service
                 // Future enhancement: Use grain.ExportPrometheusMetricsAsync() when implemented
                 return CreatePrometheusExportResponse();
@@ -518,6 +529,7 @@ public class MonitoringController : ControllerBase
             // Direct service operation
             async service =>
             {
+                await Task.CompletedTask; // Suppress CS1998
                 return CreatePrometheusExportResponse();
             },
             "ExportPrometheus",

@@ -254,12 +254,12 @@ public record PointInTimeRecoveryHealthStatus
     /// <summary>
     /// Health status of dependent services.
     /// </summary>
-    public Dictionary<string, bool> DependencyHealth { get; init; } = new();
+    public Dictionary<string, bool> DependencyHealth { get; init; } = [];
 
     /// <summary>
     /// Any health status messages.
     /// </summary>
-    public IReadOnlyList<string> Messages { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> Messages { get; init; } = [];
 
     /// <summary>
     /// Additional health details.
@@ -300,7 +300,7 @@ public record PointInTimeRecoveryHealthStatus
         {
             IsHealthy = true,
             ServiceName = serviceName,
-            DependencyHealth = dependencyHealth ?? new Dictionary<string, bool>()
+            DependencyHealth = dependencyHealth ?? []
         };
     }
 
@@ -320,8 +320,8 @@ public record PointInTimeRecoveryHealthStatus
         {
             IsHealthy = false,
             ServiceName = serviceName,
-            Messages = messages ?? Array.Empty<string>(),
-            DependencyHealth = dependencyHealth ?? new Dictionary<string, bool>()
+            Messages = messages ?? [],
+            DependencyHealth = dependencyHealth ?? []
         };
     }
 }

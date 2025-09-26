@@ -3,7 +3,6 @@ using AIChat.Server.Models.WebSocket;
 using AIChat.Server.Services.Translation.Extensions.HealthChecks;
 using AIChat.Server.Services.Translation.Models;
 using AIChat.Server.Services.Translation.Translators;
-using Microsoft.Extensions.Options;
 
 namespace AIChat.Server.Services.Translation.Extensions;
 
@@ -377,7 +376,7 @@ public class ValidationResult
     /// <summary>
     /// Gets the first error message or empty string if valid.
     /// </summary>
-    public string FirstError => Errors.FirstOrDefault() ?? string.Empty;
+    public string FirstError => Errors.Count > 0 ? Errors[0] : string.Empty;
 
     /// <summary>
     /// Gets all error messages joined with a separator.

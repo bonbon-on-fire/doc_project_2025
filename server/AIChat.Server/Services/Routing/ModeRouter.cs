@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using AIChat.Orleans.Contracts;
 using Microsoft.Extensions.Options;

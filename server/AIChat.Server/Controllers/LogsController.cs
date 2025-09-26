@@ -81,11 +81,8 @@ public class LogsController : ControllerBase
             logEntry,
             // Orleans operation - TODO: Map to appropriate grain method for distributed logging coordination
             null, // For now, no Orleans operation (direct file logging is more efficient for simple logging)
-            // Direct operation
-            async entry =>
-            {
-                return await CreateLogEntryResponse(entry);
-            },
+                  // Direct operation
+            CreateLogEntryResponse,
             "LogClientEntry",
             cancellationToken
         );

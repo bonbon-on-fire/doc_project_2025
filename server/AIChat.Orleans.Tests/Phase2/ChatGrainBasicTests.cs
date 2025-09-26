@@ -1,8 +1,6 @@
 using AIChat.Orleans.Contracts;
-using AIChat.Orleans.Grains;
 using AIChat.Orleans.Tests.TestUtilities.Infrastructure;
 using NUnit.Framework;
-using Orleans;
 
 namespace AIChat.Orleans.Tests.Phase2;
 

@@ -1,5 +1,4 @@
 using AIChat.Server.Services.EventStore;
-using Microsoft.Extensions.Logging;
 
 namespace AIChat.Server.Services.Recovery.Implementations;
 
@@ -18,7 +17,7 @@ public sealed class StateRecoveryDetector : IStateRecoveryDetector
     /// </summary>
     public string Name => "DefaultStateRecoveryDetector";
 
-    private static readonly string[] issues = new[] { "State is null" };
+    private static readonly string[] issues = ["State is null"];
 
     /// <summary>
     /// Initializes a new instance of the StateRecoveryDetector class.
@@ -205,6 +204,7 @@ public sealed class StateRecoveryDetector : IStateRecoveryDetector
         long expectedVersion,
         CancellationToken cancellationToken = default)
     {
+        await Task.CompletedTask; // Suppress CS1998
         ArgumentNullException.ThrowIfNull(grainId);
         ArgumentNullException.ThrowIfNull(grainType);
 
@@ -324,6 +324,7 @@ public sealed class StateRecoveryDetector : IStateRecoveryDetector
         RecoveryCostEstimate costEstimate,
         CancellationToken cancellationToken = default)
     {
+        await Task.CompletedTask; // Suppress CS1998
         ArgumentNullException.ThrowIfNull(grainId);
         ArgumentNullException.ThrowIfNull(grainType);
         ArgumentNullException.ThrowIfNull(costEstimate);

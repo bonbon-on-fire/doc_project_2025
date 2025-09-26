@@ -1,6 +1,62 @@
 namespace AIChat.Server.Services.EventStore;
 
 /// <summary>
+/// Factory methods for creating snapshot results.
+/// </summary>
+public static class SnapshotResult
+{
+    /// <summary>
+    /// Creates a successful result with snapshot data.
+    /// </summary>
+    /// <typeparam name="T">The type of state stored in the snapshot</typeparam>
+    /// <param name="data">The snapshot data</param>
+    /// <param name="metadata">The snapshot metadata</param>
+    /// <returns>A successful snapshot result</returns>
+    public static SnapshotResult<T> CreateSuccess<T>(T data, SnapshotMetadata metadata)
+    {
+        return new SnapshotResult<T>
+        {
+            Success = true,
+            Data = data,
+            Metadata = metadata
+        };
+    }
+
+    /// <summary>
+    /// Creates a result indicating no snapshot was found.
+    /// </summary>
+    /// <typeparam name="T">The type of state stored in the snapshot</typeparam>
+    /// <returns>A not found snapshot result</returns>
+    public static SnapshotResult<T> CreateNotFound<T>()
+    {
+        return new SnapshotResult<T>
+        {
+            Success = false,
+            ErrorCode = SnapshotErrorCode.SnapshotNotFound
+        };
+    }
+
+    /// <summary>
+    /// Creates a failed result.
+    /// </summary>
+    /// <typeparam name="T">The type of state stored in the snapshot</typeparam>
+    /// <param name="error">The error message</param>
+    /// <param name="errorCode">The error code</param>
+    /// <returns>A failed snapshot result</returns>
+    public static SnapshotResult<T> CreateFailure<T>(
+        string error,
+        SnapshotErrorCode errorCode = SnapshotErrorCode.InternalError)
+    {
+        return new SnapshotResult<T>
+        {
+            Success = false,
+            Error = error,
+            ErrorCode = errorCode
+        };
+    }
+}
+
+/// <summary>
 /// Represents the result of a snapshot read operation.
 /// </summary>
 /// <typeparam name="T">The type of state stored in the snapshot</typeparam>
@@ -35,53 +91,6 @@ public record SnapshotResult<T>
     /// Gets the timestamp when the operation completed.
     /// </summary>
     public DateTimeOffset CompletedAt { get; init; } = DateTimeOffset.UtcNow;
-
-    /// <summary>
-    /// Creates a successful result with snapshot data.
-    /// </summary>
-    /// <param name="data">The snapshot data</param>
-    /// <param name="metadata">The snapshot metadata</param>
-    /// <returns>A successful snapshot result</returns>
-    public static SnapshotResult<T> CreateSuccess(T data, SnapshotMetadata metadata)
-    {
-        return new SnapshotResult<T>
-        {
-            Success = true,
-            Data = data,
-            Metadata = metadata
-        };
-    }
-
-    /// <summary>
-    /// Creates a result indicating no snapshot was found.
-    /// </summary>
-    /// <returns>A not found snapshot result</returns>
-    public static SnapshotResult<T> CreateNotFound()
-    {
-        return new SnapshotResult<T>
-        {
-            Success = false,
-            ErrorCode = SnapshotErrorCode.SnapshotNotFound
-        };
-    }
-
-    /// <summary>
-    /// Creates a failed result.
-    /// </summary>
-    /// <param name="error">The error message</param>
-    /// <param name="errorCode">The error code</param>
-    /// <returns>A failed snapshot result</returns>
-    public static SnapshotResult<T> CreateFailure(
-        string error,
-        SnapshotErrorCode errorCode = SnapshotErrorCode.InternalError)
-    {
-        return new SnapshotResult<T>
-        {
-            Success = false,
-            Error = error,
-            ErrorCode = errorCode
-        };
-    }
 }
 
 /// <summary>
@@ -279,7 +288,7 @@ public record SnapshotQueryResult
     {
         return new SnapshotQueryResult
         {
-            Snapshots = Array.Empty<SnapshotMetadata>(),
+            Snapshots = [],
             TotalCount = 0,
             Page = 1,
             PageSize = 100
@@ -477,28 +486,44 @@ public record SnapshotQuery
     public (bool IsValid, string? Error) Validate()
     {
         if (PageSize <= 0)
+        {
             return (false, "PageSize must be greater than 0");
+        }
 
         if (Page <= 0)
+        {
             return (false, "Page must be greater than 0");
+        }
 
         if (FromTimestamp.HasValue && ToTimestamp.HasValue && FromTimestamp > ToTimestamp)
+        {
             return (false, "FromTimestamp cannot be greater than ToTimestamp");
+        }
 
         if (FromVersion.HasValue && ToVersion.HasValue && FromVersion > ToVersion)
+        {
             return (false, "FromVersion cannot be greater than ToVersion");
+        }
 
         if ((FromVersion.HasValue || ToVersion.HasValue) && string.IsNullOrEmpty(StreamId))
+        {
             return (false, "Version filters require a specific StreamId");
+        }
 
         if (MinCompressedSize.HasValue && MinCompressedSize < 0)
+        {
             return (false, "MinCompressedSize cannot be negative");
+        }
 
         if (MaxCompressedSize.HasValue && MaxCompressedSize < 0)
+        {
             return (false, "MaxCompressedSize cannot be negative");
+        }
 
         if (MinCompressedSize.HasValue && MaxCompressedSize.HasValue && MinCompressedSize > MaxCompressedSize)
+        {
             return (false, "MinCompressedSize cannot be greater than MaxCompressedSize");
+        }
 
         return (true, null);
     }

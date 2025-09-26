@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Text.Json;
 using AIChat.Server.Services.Routing;
 using Microsoft.AspNetCore.Mvc;
@@ -106,7 +105,7 @@ public class CachedLogsRouter : CachedRouterBase<ILogsRouter>, ILogsRouter
     public async Task<RouterHealthStatus> CheckHealthAsync(CancellationToken cancellationToken = default)
     {
         return await CreateEnhancedHealthStatusAsync(
-            originalHealthCheck: cancellationToken => InnerRouter.CheckHealthAsync(cancellationToken),
+            originalHealthCheck: InnerRouter.CheckHealthAsync,
             cancellationToken: cancellationToken);
     }
 
@@ -114,7 +113,7 @@ public class CachedLogsRouter : CachedRouterBase<ILogsRouter>, ILogsRouter
     public async Task<RouterMetrics> GetMetricsAsync(CancellationToken cancellationToken = default)
     {
         return await CreateEnhancedMetricsAsync(
-            originalMetricsCheck: cancellationToken => InnerRouter.GetMetricsAsync(cancellationToken),
+            originalMetricsCheck: InnerRouter.GetMetricsAsync,
             cancellationToken: cancellationToken);
     }
 
@@ -127,9 +126,9 @@ public class CachedLogsRouter : CachedRouterBase<ILogsRouter>, ILogsRouter
     {
         return operationName.ToLowerInvariant() switch
         {
-            "clearlogfiles" => new[] { "Logs:*:*:*:*" }, // Clear all log cache
-            "rotatelogs" => new[] { "Logs:GetLogs:*", "Logs:SearchLogs:*" }, // Invalidate read operations
-            "purgeoldlogs" => new[] { "Logs:GetLogs:*", "Logs:SearchLogs:*", "Logs:ExportLogs:*" }, // Invalidate read and export operations
+            "clearlogfiles" => ["Logs:*:*:*:*"], // Clear all log cache
+            "rotatelogs" => ["Logs:GetLogs:*", "Logs:SearchLogs:*"], // Invalidate read operations
+            "purgeoldlogs" => ["Logs:GetLogs:*", "Logs:SearchLogs:*", "Logs:ExportLogs:*"], // Invalidate read and export operations
             _ => base.GetInvalidationPatterns(operationName, parameters, userContext)
         };
     }

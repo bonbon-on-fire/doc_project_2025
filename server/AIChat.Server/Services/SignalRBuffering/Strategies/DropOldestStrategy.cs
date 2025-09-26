@@ -84,7 +84,7 @@ public class DropOldestStrategy : IBufferOverflowStrategy
                 stopwatch.Stop();
                 return Task.FromResult(OverflowResult.CreateSuccess(
                     StrategyName,
-                    Array.Empty<SignalRMessage>(),
+                    [],
                     stopwatch.Elapsed,
                     new Dictionary<string, object>
                     {

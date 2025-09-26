@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Collections.ObjectModel;
 using AIChat.Server.Services.Translation.Translators;
 
 namespace AIChat.Server.Services.Translation;
@@ -81,13 +82,13 @@ public sealed class TranslatorRegistry : ITranslatorRegistry
     private readonly ConcurrentDictionary<(Type, Type), object?> _translatorCache = new();
 
     // Cached supported translations (initialized once)
-    private readonly Lazy<IReadOnlyList<(Type SourceType, Type TargetType)>> _supportedTranslations;
+    private readonly Lazy<ReadOnlyCollection<(Type SourceType, Type TargetType)>> _supportedTranslations;
 
     // Cached translator names (initialized once)
-    private readonly Lazy<IReadOnlyList<string>> _translatorNames;
+    private readonly Lazy<ReadOnlyCollection<string>> _translatorNames;
 
     // Cached translator lookup by name (initialized once)
-    private readonly Lazy<IReadOnlyDictionary<string, object>> _translatorsByName;
+    private readonly Lazy<System.Collections.ObjectModel.ReadOnlyDictionary<string, object>> _translatorsByName;
 
     // Statistics tracking
     private long _cacheHits;
@@ -105,9 +106,9 @@ public sealed class TranslatorRegistry : ITranslatorRegistry
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         // Initialize lazy cached collections
-        _supportedTranslations = new Lazy<IReadOnlyList<(Type, Type)>>(DiscoverSupportedTranslations);
-        _translatorNames = new Lazy<IReadOnlyList<string>>(DiscoverTranslatorNames);
-        _translatorsByName = new Lazy<IReadOnlyDictionary<string, object>>(DiscoverTranslatorsByName);
+        _supportedTranslations = new Lazy<ReadOnlyCollection<(Type, Type)>>(DiscoverSupportedTranslations);
+        _translatorNames = new Lazy<ReadOnlyCollection<string>>(DiscoverTranslatorNames);
+        _translatorsByName = new Lazy<System.Collections.ObjectModel.ReadOnlyDictionary<string, object>>(DiscoverTranslatorsByName);
 
         _logger.LogInformation("TranslatorRegistry initialized with lazy discovery");
     }
@@ -232,7 +233,7 @@ public sealed class TranslatorRegistry : ITranslatorRegistry
         };
     }
 
-    private IReadOnlyList<(Type SourceType, Type TargetType)> DiscoverSupportedTranslations()
+    private ReadOnlyCollection<(Type SourceType, Type TargetType)> DiscoverSupportedTranslations()
     {
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         var supportedTranslations = new List<(Type, Type)>();
@@ -241,7 +242,7 @@ public sealed class TranslatorRegistry : ITranslatorRegistry
         {
             // Get all services that implement IMessageTranslator<,>
             var translatorServices = _serviceProvider.GetServices<object>()
-                .Where(service => IsTranslatorService(service))
+                .Where(IsTranslatorService)
                 .ToList();
 
             foreach (var service in translatorServices)
@@ -270,7 +271,7 @@ public sealed class TranslatorRegistry : ITranslatorRegistry
         }
     }
 
-    private IReadOnlyList<string> DiscoverTranslatorNames()
+    private ReadOnlyCollection<string> DiscoverTranslatorNames()
     {
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         var translatorNames = new List<string>();
@@ -306,7 +307,7 @@ public sealed class TranslatorRegistry : ITranslatorRegistry
         }
     }
 
-    private IReadOnlyDictionary<string, object> DiscoverTranslatorsByName()
+    private System.Collections.ObjectModel.ReadOnlyDictionary<string, object> DiscoverTranslatorsByName()
     {
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         var translatorsByName = new Dictionary<string, object>();
@@ -333,12 +334,12 @@ public sealed class TranslatorRegistry : ITranslatorRegistry
                 stopwatch.ElapsedMilliseconds
             );
 
-            return translatorsByName.AsReadOnly();
+            return new System.Collections.ObjectModel.ReadOnlyDictionary<string, object>(translatorsByName);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to build translator lookup dictionary");
-            return new Dictionary<string, object>().AsReadOnly();
+            return new System.Collections.ObjectModel.ReadOnlyDictionary<string, object>(new Dictionary<string, object>());
         }
     }
 

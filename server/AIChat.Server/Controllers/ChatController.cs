@@ -55,6 +55,7 @@ public class ChatController(
     /// <param name="orleansOperation">The Orleans grain-based operation</param>
     /// <param name="directOperation">The direct service operation</param>
     /// <param name="operationName">Name of the operation for logging and metrics</param>
+    /// <param name="chatId">The chat identifier</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The result of the operation</returns>
     private async Task<ActionResult<T>> ExecuteWithOrleansAsync<T>(
@@ -75,21 +76,6 @@ public class ChatController(
         );
     }
 
-    private async Task<ActionResult<T>> ExecuteWithOrleansAsync<T>(
-        Func<IChatGrain, Task<ActionResult<T>>> orleansOperation,
-        Func<IChatService, Task<ActionResult<T>>> directOperation,
-        string operationName,
-        CancellationToken cancellationToken = default)
-    {
-        return await _router.ExecuteAsync<ActionResult<T>>(
-            // Orleans operation - use grain directly
-            orleansOperation,
-            // Direct service operation
-            directOperation,
-            operationName,
-            cancellationToken
-        );
-    }
 
     /// <summary>
     /// Executes a simple operation without return value with distinct Orleans and Direct implementations.
@@ -97,6 +83,7 @@ public class ChatController(
     /// <param name="orleansOperation">The Orleans grain-based operation</param>
     /// <param name="directOperation">The direct service operation</param>
     /// <param name="operationName">Name of the operation for logging and metrics</param>
+    /// <param name="chatId">The chat identifier</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The result of the operation</returns>
     private async Task<ActionResult> ExecuteWithOrleansAsync(
@@ -113,22 +100,6 @@ public class ChatController(
             directOperation,
             operationName,
             chatId,
-            cancellationToken
-        );
-    }
-
-    private async Task<ActionResult> ExecuteWithOrleansAsync(
-        Func<IChatGrain, Task<ActionResult>> orleansOperation,
-        Func<IChatService, Task<ActionResult>> directOperation,
-        string operationName,
-        CancellationToken cancellationToken = default)
-    {
-        return await _router.ExecuteAsync(
-            // Orleans operation - use grain directly
-            orleansOperation,
-            // Direct service operation
-            directOperation,
-            operationName,
             cancellationToken
         );
     }
@@ -191,7 +162,7 @@ public class ChatController(
     {
         return await _router.ExecuteAsync(
             operation,
-            async _ => throw new InvalidOperationException($"Direct service does not support {operationName}"),
+            _ => Task.FromException<T>(new InvalidOperationException($"Direct service does not support {operationName}")),
             operationName,
             cancellationToken);
     }
@@ -311,6 +282,7 @@ public class ChatController(
             // Orleans implementation - TODO: Implement user-specific chat history in Orleans grains
             async grain =>
             {
+                await Task.CompletedTask; // Suppress CS1998
                 try
                 {
                     // For now, return empty chat history since user-specific operations
@@ -351,6 +323,7 @@ public class ChatController(
                 return Ok(response);
             },
             "GetChatHistory",
+            userId, // Use userId as the routing key
             cancellationToken
         );
     }
@@ -586,7 +559,7 @@ public class ChatController(
                 {
                     // Archive the chat (logical deletion in Orleans)
                     await grain.ArchiveAsync();
-                    return (ActionResult)NoContent();
+                    return NoContent();
                 }
                 catch (Exception ex)
                 {
@@ -596,7 +569,7 @@ public class ChatController(
                     if (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase) ||
                         ex.GetType().Name.Contains("NotFound"))
                     {
-                        return (ActionResult)NotFound(new { Error = "Chat not found" });
+                        return NotFound(new { Error = "Chat not found" });
                     }
 
                     _logger.LogError("Error deleting chat {ChatId}: Failed to delete chat", id);
@@ -607,7 +580,7 @@ public class ChatController(
             async service =>
             {
                 var success = await service.DeleteChatAsync(id);
-                return !success ? (ActionResult)NotFound(new { Error = "Chat not found" }) : (ActionResult)NoContent();
+                return !success ? NotFound(new { Error = "Chat not found" }) : NoContent();
             },
             "DeleteChat",
             id, // Pass chat ID for Orleans grain routing
@@ -907,6 +880,7 @@ public class ChatController(
 
             // Get initialization metadata
             var initResult = await _chatService.PrepareUnifiedStreamChatAsync(streamRequest);
+            ArgumentNullException.ThrowIfNull(initResult, "Failed to initialize chat stream");
             chatId = initResult.ChatId;
 
             // Return operation ID immediately to SignalR client
@@ -935,12 +909,15 @@ public class ChatController(
                             initResult.UserSequenceNumber
                         );
 
-                        await _hubContext
-                            .Clients.Group($"chat_{initResult.ChatId}")
-                            .SendAsync(
-                                "ReceiveInit",
-                                new { OperationId = operationId, Envelope = initEnvelope }
-                            );
+                        if (_hubContext != null)
+                        {
+                            await _hubContext
+                                .Clients.Group($"chat_{initResult.ChatId}")
+                                .SendAsync(
+                                    "ReceiveInit",
+                                    new { OperationId = operationId, Envelope = initEnvelope }
+                                );
+                        }
 
                         // Stream the assistant response
                         await _chatService.StreamAssistantResponseAsync(
@@ -952,12 +929,15 @@ public class ChatController(
                         var completeEnvelope = SSEEventExtensions.CreateStreamCompleteEnvelope(
                             initResult.ChatId
                         );
-                        await _hubContext
-                            .Clients.Group($"chat_{initResult.ChatId}")
-                            .SendAsync(
-                                "ReceiveComplete",
-                                new { OperationId = operationId, Envelope = completeEnvelope }
-                            );
+                        if (_hubContext != null)
+                        {
+                            await _hubContext
+                                .Clients.Group($"chat_{initResult.ChatId}")
+                                .SendAsync(
+                                    "ReceiveComplete",
+                                    new { OperationId = operationId, Envelope = completeEnvelope }
+                                );
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -968,18 +948,24 @@ public class ChatController(
                         );
 
                         // Send error via SignalR
-                        await _hubContext
-                            .Clients.Group($"chat_{initResult.ChatId}")
-                            .SendAsync(
-                                "ReceiveError",
-                                new
-                                {
-                                    OperationId = operationId,
-                                    ChatId = initResult.ChatId,
-                                    Error = ex.Message,
-                                    Timestamp = DateTime.UtcNow,
-                                }
-                            );
+                        if (initResult?.ChatId != null)
+                        {
+                            if (_hubContext != null)
+                            {
+                                await _hubContext
+                                    .Clients.Group($"chat_{initResult.ChatId}")
+                                    .SendAsync(
+                                        "ReceiveError",
+                                    new
+                                    {
+                                        OperationId = operationId,
+                                        ChatId = initResult.ChatId,
+                                        Error = ex.Message,
+                                        Timestamp = DateTime.UtcNow,
+                                    }
+                                );
+                            }
+                        }
                     }
                 },
                 cancellationToken
@@ -1192,17 +1178,20 @@ public class ChatController(
         await Response.Body.FlushAsync();
 
         // Additionally, broadcast via IServerSentEventsService if any listeners are connected
-        var clients = _serverSentEventsService.GetClients();
+        var clients = _serverSentEventsService?.GetClients();
         var clientsList = clients?.ToList() ?? [];
         if (clientsList.Count > 0)
         {
-            var client = clientsList.First();
-            var sse = new ServerSentEvent { Type = eventType, Data = [json] };
-            if (!string.IsNullOrEmpty(id))
+            var client = clientsList[0];
+            if (client != null)
             {
-                sse.Id = id;
+                var sse = new ServerSentEvent { Type = eventType, Data = [json] };
+                if (!string.IsNullOrEmpty(id))
+                {
+                    sse.Id = id;
+                }
+                await client.SendEventAsync(sse);
             }
-            await client.SendEventAsync(sse);
         }
     }
 

@@ -488,23 +488,35 @@ public class SseRecoveryScenario : LoadTestScenarioBase
     {
         // Populate result with metrics
         if (metrics.TryGetValue("total_connections", out var totalConnections))
+        {
             result.TotalUsers = (int)totalConnections;
+        }
         if (metrics.TryGetValue("active_connections", out var activeConnections))
+        {
             result.SuccessfulConnections = (int)activeConnections;
+        }
 
         result.FailedConnections = result.TotalUsers - result.SuccessfulConnections;
 
         if (metrics.TryGetValue("total_messages", out var totalMessages))
+        {
             result.TotalMessages = (int)totalMessages;
+        }
         if (metrics.TryGetValue("data_consistent_connections", out var dataConsistentConnections))
+        {
             result.DeliveredMessages = (int)dataConsistentConnections;
+        }
 
         // Set latency statistics
         result.LatencyStats = new LatencyStatistics();
         if (metrics.TryGetValue("avg_reconnection_ms", out var avgReconnectionMs))
+        {
             result.LatencyStats.AverageMs = (double)avgReconnectionMs;
+        }
         if (metrics.TryGetValue("max_reconnection_ms", out var maxReconnectionMs))
+        {
             result.LatencyStats.MaxMs = (double)maxReconnectionMs;
+        }
     }
 
     public override async Task<List<string>> ValidateConfigurationAsync()
@@ -513,13 +525,21 @@ public class SseRecoveryScenario : LoadTestScenarioBase
         var config = _scenariosConfig.Value.SseRecovery;
 
         if (config.ConnectionCount <= 0)
+        {
             errors.Add("ConnectionCount must be greater than 0");
+        }
         if (config.DropConnectionEverySeconds <= 0)
+        {
             errors.Add("DropConnectionEverySeconds must be greater than 0");
+        }
         if (config.MaxReconnectAttempts < 0)
+        {
             errors.Add("MaxReconnectAttempts cannot be negative");
+        }
         if (config.ReconnectBackoffMs <= 0)
+        {
             errors.Add("ReconnectBackoffMs must be greater than 0");
+        }
 
         return await Task.FromResult(errors);
     }
@@ -528,7 +548,7 @@ public class SseRecoveryScenario : LoadTestScenarioBase
     /// <summary>
     /// Recovery metrics for individual connections.
     /// </summary>
-    private class RecoveryMetrics
+    private sealed class RecoveryMetrics
     {
         public string ConnectionId { get; set; } = string.Empty;
         public TimeSpan InitialConnectionTime { get; set; }

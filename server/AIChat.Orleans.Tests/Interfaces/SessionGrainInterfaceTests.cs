@@ -1,6 +1,5 @@
 using System.Reflection;
 using AIChat.Orleans.Contracts;
-using Orleans;
 using Orleans.Concurrency;
 using Xunit;
 

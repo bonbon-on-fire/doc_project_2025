@@ -88,7 +88,7 @@ public record OverflowResult
     /// Gets the list of messages that were removed from the buffer.
     /// Empty if no messages were removed.
     /// </summary>
-    public IReadOnlyList<SignalRMessage> RemovedMessages { get; init; } = Array.Empty<SignalRMessage>();
+    public IReadOnlyList<SignalRMessage> RemovedMessages { get; init; } = [];
 
     /// <summary>
     /// Gets the number of messages removed to handle the overflow.
@@ -115,7 +115,7 @@ public record OverflowResult
     /// Gets additional metadata about the overflow handling operation.
     /// Used for detailed analytics and troubleshooting.
     /// </summary>
-    public Dictionary<string, object> Metadata { get; init; } = new();
+    public Dictionary<string, object> Metadata { get; init; } = [];
 
     /// <summary>
     /// Creates a successful overflow result where the new message was accepted.
@@ -137,7 +137,7 @@ public record OverflowResult
             RemovedMessages = removedMessages,
             StrategyUsed = strategyUsed,
             ProcessingTime = processingTime,
-            Metadata = metadata ?? new()
+            Metadata = metadata ?? []
         };
 
     /// <summary>
@@ -155,10 +155,10 @@ public record OverflowResult
         {
             Success = true,
             NewMessageAccepted = false,
-            RemovedMessages = Array.Empty<SignalRMessage>(),
+            RemovedMessages = [],
             StrategyUsed = strategyUsed,
             ProcessingTime = processingTime,
-            Metadata = metadata ?? new()
+            Metadata = metadata ?? []
         };
 
     /// <summary>
@@ -178,10 +178,10 @@ public record OverflowResult
         {
             Success = false,
             NewMessageAccepted = false,
-            RemovedMessages = Array.Empty<SignalRMessage>(),
+            RemovedMessages = [],
             StrategyUsed = strategyUsed,
             ErrorMessage = errorMessage,
             ProcessingTime = processingTime,
-            Metadata = metadata ?? new()
+            Metadata = metadata ?? []
         };
 }

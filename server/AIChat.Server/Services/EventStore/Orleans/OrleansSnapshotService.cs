@@ -1,8 +1,5 @@
 using System.Reflection;
 using System.Text.Json;
-using Microsoft.Extensions.Logging;
-using Orleans;
-using Orleans.Runtime;
 
 namespace AIChat.Server.Services.EventStore.Orleans;
 
@@ -213,7 +210,7 @@ public class OrleansSnapshotService : IOrleansSnapshotService
                                      "(version: {Version}, age: {Age})",
                     typeof(TGrainState).Name, grainId, restoreResult.SnapshotVersion, snapshotAge);
 
-                return OrleansSnapshotRestoreResult<TGrainState>.CreateSuccess(
+                return OrleansSnapshotRestoreResult.CreateSuccess(
                     restoreResult.State,
                     restoreResult.SnapshotVersion,
                     snapshotAge,
@@ -224,7 +221,7 @@ public class OrleansSnapshotService : IOrleansSnapshotService
                 _logger.LogDebug("No snapshot available for Orleans grain {GrainType} {GrainId}",
                     typeof(TGrainState).Name, grainId);
 
-                return OrleansSnapshotRestoreResult<TGrainState>.CreateNotFound();
+                return OrleansSnapshotRestoreResult.CreateNotFound<TGrainState>();
             }
         }
         catch (Exception ex)
@@ -232,7 +229,7 @@ public class OrleansSnapshotService : IOrleansSnapshotService
             _logger.LogError(ex, "Error restoring snapshot for Orleans grain {GrainType} {GrainId}",
                 typeof(TGrainState).Name, grainId);
 
-            return OrleansSnapshotRestoreResult<TGrainState>.CreateFailure($"Error restoring snapshot: {ex.Message}");
+            return OrleansSnapshotRestoreResult.CreateFailure<TGrainState>($"Error restoring snapshot: {ex.Message}");
         }
     }
 
@@ -363,7 +360,7 @@ public class OrleansSnapshotService : IOrleansSnapshotService
 /// Orleans grains typically restore directly from snapshot state without event replay.
 /// </summary>
 /// <typeparam name="TState">The type of grain state</typeparam>
-internal class OrleansGrainProjection<TState> : IEventProjection<TState>
+internal sealed class OrleansGrainProjection<TState> : IEventProjection<TState>
     where TState : class, new()
 {
     /// <summary>
@@ -466,14 +463,22 @@ public record OrleansSnapshotRestoreResult<TGrainState>
     /// </summary>
     public string? Error { get; init; }
 
+}
+
+/// <summary>
+/// Factory methods for creating OrleansSnapshotRestoreResult instances.
+/// </summary>
+public static class OrleansSnapshotRestoreResult
+{
     /// <summary>
     /// Creates a successful restoration result.
     /// </summary>
-    public static OrleansSnapshotRestoreResult<TGrainState> CreateSuccess(
+    public static OrleansSnapshotRestoreResult<TGrainState> CreateSuccess<TGrainState>(
         TGrainState state,
         long snapshotVersion,
         TimeSpan snapshotAge,
         int eventsReplayed = 0)
+        where TGrainState : class
     {
         return new OrleansSnapshotRestoreResult<TGrainState>
         {
@@ -488,7 +493,8 @@ public record OrleansSnapshotRestoreResult<TGrainState>
     /// <summary>
     /// Creates a not found result.
     /// </summary>
-    public static OrleansSnapshotRestoreResult<TGrainState> CreateNotFound()
+    public static OrleansSnapshotRestoreResult<TGrainState> CreateNotFound<TGrainState>()
+        where TGrainState : class
     {
         return new OrleansSnapshotRestoreResult<TGrainState>
         {
@@ -500,7 +506,8 @@ public record OrleansSnapshotRestoreResult<TGrainState>
     /// <summary>
     /// Creates a failure result.
     /// </summary>
-    public static OrleansSnapshotRestoreResult<TGrainState> CreateFailure(string error)
+    public static OrleansSnapshotRestoreResult<TGrainState> CreateFailure<TGrainState>(string error)
+        where TGrainState : class
     {
         return new OrleansSnapshotRestoreResult<TGrainState>
         {

@@ -22,7 +22,7 @@ public class SseMixedLoadScenario : LoadTestScenarioBase
     private readonly IOptions<ScenariosConfiguration> _scenariosConfig;
     private readonly ConcurrentDictionary<string, ClientProfile> _clientProfiles = new();
     private readonly ConcurrentDictionary<string, ISseConnection> _connections = new();
-    private readonly ConcurrentBag<ClientMetrics> _clientMetrics = new();
+    private readonly ConcurrentBag<ClientMetrics> _clientMetrics = [];
     private volatile bool _isRunning;
 
     public override string Name => "SSE Mixed Load";
@@ -265,7 +265,7 @@ public class SseMixedLoadScenario : LoadTestScenarioBase
             _metricsCollector.RecordConnectionEstablished(profile.ConnectionId, sw.Elapsed.TotalMilliseconds);
 
             // Start client-specific message consumption
-            _ = Task.Run(async () => await ConsumeMessagesWithBehaviorAsync(connection, profile, cancellationToken).ConfigureAwait(false));
+            _ = Task.Run(async () => await ConsumeMessagesWithBehaviorAsync(connection, profile, cancellationToken).ConfigureAwait(false), cancellationToken);
 
             Logger.LogDebug("Connection {ConnectionId} ({Behavior}) established in {ElapsedMs}ms",
                 profile.ConnectionId, profile.Behavior, sw.Elapsed.TotalMilliseconds);
@@ -559,7 +559,7 @@ public class SseMixedLoadScenario : LoadTestScenarioBase
         }
 
         // Client metrics aggregation
-        if (_clientMetrics.Count > 0)
+        if (!_clientMetrics.IsEmpty)
         {
             metrics["total_messages"] = _clientMetrics.Sum(m => m.MessagesReceived);
             metrics["total_bytes"] = _clientMetrics.Sum(m => m.BytesReceived);
@@ -631,7 +631,10 @@ public class SseMixedLoadScenario : LoadTestScenarioBase
 
     private double GetPercentile(List<double> sortedValues, int percentile)
     {
-        if (sortedValues.Count == 0) return 0;
+        if (sortedValues.Count == 0)
+        {
+            return 0;
+        }
 
         var index = (int)Math.Ceiling((percentile / 100.0) * sortedValues.Count) - 1;
         index = Math.Max(0, Math.Min(index, sortedValues.Count - 1));
@@ -665,27 +668,43 @@ public class SseMixedLoadScenario : LoadTestScenarioBase
     {
         // Populate result with metrics
         if (metrics.TryGetValue("total_connections", out var totalConnections))
+        {
             result.TotalUsers = (int)totalConnections;
+        }
         if (metrics.TryGetValue("active_connections", out var activeConnections))
+        {
             result.SuccessfulConnections = (int)activeConnections;
+        }
 
         result.FailedConnections = result.TotalUsers - result.SuccessfulConnections;
 
         if (metrics.TryGetValue("total_messages", out var totalMessages))
+        {
             result.TotalMessages = (int)totalMessages;
+        }
         if (metrics.TryGetValue("total_errors", out var totalErrors))
+        {
             result.Errors.Add($"Total errors: {totalErrors}");
+        }
 
         // Set latency statistics
         result.LatencyStats = new LatencyStatistics();
         if (metrics.TryGetValue("latency_avg", out var latencyAvg))
+        {
             result.LatencyStats.AverageMs = (double)latencyAvg;
+        }
         if (metrics.TryGetValue("latency_p95", out var latencyP95))
+        {
             result.LatencyStats.P95Ms = (double)latencyP95;
+        }
         if (metrics.TryGetValue("latency_p99", out var latencyP99))
+        {
             result.LatencyStats.P99Ms = (double)latencyP99;
+        }
         if (metrics.TryGetValue("latency_max", out var latencyMax))
+        {
             result.LatencyStats.MaxMs = (double)latencyMax;
+        }
     }
 
     public override async Task<List<string>> ValidateConfigurationAsync()
@@ -694,15 +713,25 @@ public class SseMixedLoadScenario : LoadTestScenarioBase
         var config = _scenariosConfig.Value.SseMixedLoad;
 
         if (config.FastConsumers < 0 || config.NormalConsumers < 0 || config.SlowConsumers < 0)
+        {
             errors.Add("Consumer counts cannot be negative");
+        }
         if (config.FastConsumers + config.NormalConsumers + config.SlowConsumers <= 0)
+        {
             errors.Add("Total consumer count must be greater than 0");
+        }
         if (config.TestDurationSeconds <= 0)
+        {
             errors.Add("TestDurationSeconds must be greater than 0");
+        }
         if (config.ConnectionChurnRate < 0 || config.ConnectionChurnRate > 1)
+        {
             errors.Add("ConnectionChurnRate must be between 0 and 1");
+        }
         if (config.MaxBufferedChunks <= 0)
+        {
             errors.Add("MaxBufferedChunks must be greater than 0");
+        }
 
         return await Task.FromResult(errors);
     }
@@ -724,7 +753,7 @@ public class SseMixedLoadScenario : LoadTestScenarioBase
     /// <summary>
     /// Client profile defining behavior characteristics.
     /// </summary>
-    private class ClientProfile
+    private sealed class ClientProfile
     {
         public string ConnectionId { get; set; } = string.Empty;
         public ClientBehavior Behavior { get; set; }
@@ -741,7 +770,7 @@ public class SseMixedLoadScenario : LoadTestScenarioBase
     /// <summary>
     /// Metrics collected for individual clients.
     /// </summary>
-    private class ClientMetrics
+    private sealed class ClientMetrics
     {
         public string ConnectionId { get; set; } = string.Empty;
         public ClientBehavior Behavior { get; set; }
@@ -752,13 +781,13 @@ public class SseMixedLoadScenario : LoadTestScenarioBase
         public int DisconnectCount { get; set; }
         public int PauseCount { get; set; }
         public int ErrorCount { get; set; }
-        public List<double> LatencyMeasurements { get; set; } = new();
+        public List<double> LatencyMeasurements { get; set; } = [];
     }
 
     /// <summary>
     /// Stability check snapshot.
     /// </summary>
-    private class StabilityCheck
+    private sealed class StabilityCheck
     {
         public DateTime Timestamp { get; set; }
         public int ActiveConnections { get; set; }

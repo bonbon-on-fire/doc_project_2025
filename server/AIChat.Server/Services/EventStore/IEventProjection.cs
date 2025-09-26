@@ -166,7 +166,7 @@ public class DelegateEventProjection<T> : IEventProjection<T>
         Name = name ?? throw new ArgumentNullException(nameof(name));
         _initialStateFactory = initialStateFactory ?? throw new ArgumentNullException(nameof(initialStateFactory));
         Version = version;
-        _eventHandlers = new Dictionary<string, Func<T, IEvent, T>>();
+        _eventHandlers = [];
     }
 
     /// <summary>
@@ -343,7 +343,7 @@ public class ChatStateProjection : EventProjectionBase<ChatProjectionState>
         return new ChatProjectionState
         {
             ChatId = string.Empty,
-            Messages = new List<ChatMessageProjection>(),
+            Messages = [],
             ParticipantCount = 0,
             CreatedAt = DateTimeOffset.UtcNow,
             LastActivityAt = DateTimeOffset.UtcNow

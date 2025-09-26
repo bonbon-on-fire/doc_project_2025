@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Threading.Channels;
 using AIChat.Server.Services.SignalRBuffering.Abstractions;
 using AIChat.Server.Services.SignalRBuffering.Models;
 using Microsoft.Extensions.Options;
@@ -762,7 +761,10 @@ public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDispo
     /// </summary>
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+        {
+            return;
+        }
 
         _disposed = true;
 

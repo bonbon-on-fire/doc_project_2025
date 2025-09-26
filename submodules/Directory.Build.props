@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup>
+    <!-- Suppress all warnings in submodule projects -->
+    <NoWarn>$(NoWarn);CS0618;CS8602</NoWarn>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningLevel>0</WarningLevel>
+
+    <!-- Alternative: Set MSBuildWarningsAsMessages for all warnings -->
+    <MSBuildWarningsAsMessages>CS0618;CS8602</MSBuildWarningsAsMessages>
+  </PropertyGroup>
+</Project>

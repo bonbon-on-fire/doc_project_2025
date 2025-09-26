@@ -41,13 +41,13 @@ public class MetricsController : ControllerBase
 
             var response = new
             {
-                Status = healthInfo.Status,
-                IsHealthy = healthInfo.IsHealthy,
+                healthInfo.Status,
+                healthInfo.IsHealthy,
                 Timestamp = DateTime.UtcNow,
                 Service = "PrometheusMetricsEndpoint",
-                LastUpdateTime = healthInfo.LastUpdateTime,
-                TotalMetricsExported = healthInfo.TotalMetricsExported,
-                TrackedGrainTypes = healthInfo.TrackedGrainTypes,
+                healthInfo.LastUpdateTime,
+                healthInfo.TotalMetricsExported,
+                healthInfo.TrackedGrainTypes,
                 Message = healthInfo.IsHealthy
                     ? "Prometheus metrics endpoint is healthy and available at /metrics"
                     : "Metrics exporter is degraded - check recent updates"

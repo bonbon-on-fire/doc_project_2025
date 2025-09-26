@@ -134,17 +134,17 @@ public record CapabilityValidationResult
     /// <summary>
     /// Gets the capabilities that are missing or incompatible.
     /// </summary>
-    public List<string> MissingCapabilities { get; init; } = new();
+    public List<string> MissingCapabilities { get; init; } = [];
 
     /// <summary>
     /// Gets the capabilities that are incompatible (wrong type/value).
     /// </summary>
-    public Dictionary<string, string> IncompatibleCapabilities { get; init; } = new();
+    public Dictionary<string, string> IncompatibleCapabilities { get; init; } = [];
 
     /// <summary>
     /// Gets any additional validation messages.
     /// </summary>
-    public List<string> ValidationMessages { get; init; } = new();
+    public List<string> ValidationMessages { get; init; } = [];
 
     /// <summary>
     /// Creates a successful validation result.
@@ -170,9 +170,9 @@ public record CapabilityValidationResult
         return new CapabilityValidationResult
         {
             IsValid = false,
-            MissingCapabilities = missingCapabilities ?? new(),
-            IncompatibleCapabilities = incompatibleCapabilities ?? new(),
-            ValidationMessages = validationMessages ?? new()
+            MissingCapabilities = missingCapabilities ?? [],
+            IncompatibleCapabilities = incompatibleCapabilities ?? [],
+            ValidationMessages = validationMessages ?? []
         };
     }
 }
@@ -200,12 +200,12 @@ public record ProtocolNegotiationStatistics
     /// <summary>
     /// Gets the count of negotiations by protocol.
     /// </summary>
-    public Dictionary<string, long> NegotiationsByProtocol { get; init; } = new();
+    public Dictionary<string, long> NegotiationsByProtocol { get; init; } = [];
 
     /// <summary>
     /// Gets the most commonly requested protocols.
     /// </summary>
-    public Dictionary<string, long> RequestedProtocols { get; init; } = new();
+    public Dictionary<string, long> RequestedProtocols { get; init; } = [];
 
     /// <summary>
     /// Gets the average negotiation time in milliseconds.

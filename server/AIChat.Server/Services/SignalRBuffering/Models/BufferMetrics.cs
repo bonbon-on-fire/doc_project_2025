@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using Orleans;
 
 namespace AIChat.Server.Services.SignalRBuffering.Models;
 
@@ -116,19 +115,19 @@ public record BufferMetrics
     /// Gets the breakdown of delivery statuses.
     /// </summary>
     [Id(15)]
-    public Dictionary<DeliveryStatus, long> DeliveryStatusBreakdown { get; init; } = new();
+    public Dictionary<DeliveryStatus, long> DeliveryStatusBreakdown { get; init; } = [];
 
     /// <summary>
     /// Gets the breakdown of buffer operation results.
     /// </summary>
     [Id(16)]
-    public Dictionary<BufferOperationResult, long> OperationResultBreakdown { get; init; } = new();
+    public Dictionary<BufferOperationResult, long> OperationResultBreakdown { get; init; } = [];
 
     /// <summary>
     /// Gets additional custom metrics.
     /// </summary>
     [Id(17)]
-    public Dictionary<string, object> CustomMetrics { get; init; } = new();
+    public Dictionary<string, object> CustomMetrics { get; init; } = [];
 }
 
 /// <summary>
@@ -192,7 +191,7 @@ public record BufferHealth
     /// Gets additional health check details.
     /// </summary>
     [Id(8)]
-    public Dictionary<string, object> Details { get; init; } = new();
+    public Dictionary<string, object> Details { get; init; } = [];
 
     /// <summary>
     /// Creates a healthy buffer health status.
@@ -219,7 +218,7 @@ public record BufferHealth
             IsHealthy = true,
             Status = BufferHealthStatus.Degraded,
             Message = message,
-            Details = details ?? new()
+            Details = details ?? []
         };
 
     /// <summary>
@@ -234,7 +233,7 @@ public record BufferHealth
             IsHealthy = false,
             Status = BufferHealthStatus.Unhealthy,
             Message = message,
-            Details = details ?? new()
+            Details = details ?? []
         };
 }
 
@@ -334,7 +333,7 @@ public record DeliveryStats
     /// Gets the breakdown of failures by type.
     /// </summary>
     [Id(8)]
-    public Dictionary<DeliveryStatus, long> FailureBreakdown { get; init; } = new();
+    public Dictionary<DeliveryStatus, long> FailureBreakdown { get; init; } = [];
 
     /// <summary>
     /// Gets the timestamp when these statistics were calculated.

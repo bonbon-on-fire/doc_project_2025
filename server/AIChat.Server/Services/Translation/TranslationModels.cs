@@ -27,7 +27,7 @@ public sealed class TranslationContext
     /// <summary>
     /// Additional properties that may be needed for specific translations.
     /// </summary>
-    public Dictionary<string, object> Properties { get; set; } = new();
+    public Dictionary<string, object> Properties { get; set; } = [];
 
     /// <summary>
     /// Timestamp when the translation context was created.
@@ -152,7 +152,7 @@ public sealed class TranslationResult<T>
     /// <summary>
     /// Additional metadata about the translation operation.
     /// </summary>
-    public Dictionary<string, object> Metadata { get; set; } = new();
+    public Dictionary<string, object> Metadata { get; set; } = [];
 
     /// <summary>
     /// Source type that was translated from.
@@ -164,61 +164,6 @@ public sealed class TranslationResult<T>
     /// </summary>
     public Type? TargetType { get; set; }
 
-    /// <summary>
-    /// Creates a successful translation result with basic type information.
-    /// </summary>
-    /// <param name="data">The translated data</param>
-    /// <param name="duration">Time taken for translation</param>
-    /// <returns>Successful translation result</returns>
-    public static TranslationResult<T> CreateSuccess(T data, TimeSpan duration = default)
-    {
-        return new TranslationResult<T>
-        {
-            Success = true,
-            Data = data,
-            Duration = duration,
-            SourceType = typeof(T),
-            TargetType = typeof(T)
-        };
-    }
-
-    /// <summary>
-    /// Creates a failed translation result.
-    /// </summary>
-    /// <param name="errorMessage">Error description</param>
-    /// <param name="errorCode">Error code</param>
-    /// <param name="duration">Time taken for translation attempt</param>
-    /// <returns>Failed translation result</returns>
-    public static TranslationResult<T> Failure(string errorMessage, string? errorCode = null, TimeSpan duration = default)
-    {
-        return new TranslationResult<T>
-        {
-            Success = false,
-            ErrorMessage = errorMessage,
-            ErrorCode = errorCode,
-            Duration = duration
-        };
-    }
-
-    /// <summary>
-    /// Creates a typed successful translation result with source and target type information.
-    /// </summary>
-    /// <typeparam name="TSource">Source type</typeparam>
-    /// <typeparam name="TTarget">Target type</typeparam>
-    /// <param name="data">The translated data</param>
-    /// <param name="duration">Time taken for translation</param>
-    /// <returns>Successful translation result with type information</returns>
-    public static TranslationResult<TTarget> SuccessWithTypes<TSource, TTarget>(TTarget data, TimeSpan duration = default)
-    {
-        return new TranslationResult<TTarget>
-        {
-            Success = true,
-            Data = data,
-            Duration = duration,
-            SourceType = typeof(TSource),
-            TargetType = typeof(TTarget)
-        };
-    }
 }
 
 /// <summary>
@@ -264,12 +209,12 @@ public sealed class TranslationMetrics
     /// <summary>
     /// Breakdown of translations by source protocol.
     /// </summary>
-    public Dictionary<string, long> TranslationsBySourceProtocol { get; set; } = new();
+    public Dictionary<string, long> TranslationsBySourceProtocol { get; set; } = [];
 
     /// <summary>
     /// Breakdown of translations by target protocol.
     /// </summary>
-    public Dictionary<string, long> TranslationsByTargetProtocol { get; set; } = new();
+    public Dictionary<string, long> TranslationsByTargetProtocol { get; set; } = [];
 
     /// <summary>
     /// Last reset time for metrics.
@@ -411,4 +356,69 @@ public sealed class MessageResult
     /// </summary>
     public static MessageResult CreateFailure(string errorMessage, string? errorCode = null)
         => new() { Success = false, ErrorMessage = errorMessage, ErrorCode = errorCode };
+}
+
+/// <summary>
+/// Non-generic factory class for creating TranslationResult instances.
+/// This pattern eliminates CA1000 warnings about static members on generic types.
+/// </summary>
+public static class TranslationResult
+{
+    /// <summary>
+    /// Creates a successful translation result with basic type information.
+    /// </summary>
+    /// <typeparam name="T">The type of the translated data</typeparam>
+    /// <param name="data">The translated data</param>
+    /// <param name="duration">Time taken for translation</param>
+    /// <returns>Successful translation result</returns>
+    public static TranslationResult<T> CreateSuccess<T>(T data, TimeSpan duration = default)
+    {
+        return new TranslationResult<T>
+        {
+            Success = true,
+            Data = data,
+            Duration = duration,
+            SourceType = typeof(T),
+            TargetType = typeof(T)
+        };
+    }
+
+    /// <summary>
+    /// Creates a failed translation result.
+    /// </summary>
+    /// <typeparam name="T">The type of the translated data</typeparam>
+    /// <param name="errorMessage">Error description</param>
+    /// <param name="errorCode">Error code</param>
+    /// <param name="duration">Time taken for translation attempt</param>
+    /// <returns>Failed translation result</returns>
+    public static TranslationResult<T> Failure<T>(string errorMessage, string? errorCode = null, TimeSpan duration = default)
+    {
+        return new TranslationResult<T>
+        {
+            Success = false,
+            ErrorMessage = errorMessage,
+            ErrorCode = errorCode,
+            Duration = duration
+        };
+    }
+
+    /// <summary>
+    /// Creates a typed successful translation result with source and target type information.
+    /// </summary>
+    /// <typeparam name="TSource">Source type</typeparam>
+    /// <typeparam name="TTarget">Target type</typeparam>
+    /// <param name="data">The translated data</param>
+    /// <param name="duration">Time taken for translation</param>
+    /// <returns>Successful translation result with type information</returns>
+    public static TranslationResult<TTarget> SuccessWithTypes<TSource, TTarget>(TTarget data, TimeSpan duration = default)
+    {
+        return new TranslationResult<TTarget>
+        {
+            Success = true,
+            Data = data,
+            Duration = duration,
+            SourceType = typeof(TSource),
+            TargetType = typeof(TTarget)
+        };
+    }
 }

@@ -171,12 +171,12 @@ public record WebSocketSessionStatistics
     /// <summary>
     /// Gets the number of sessions by protocol.
     /// </summary>
-    public Dictionary<string, int> SessionsByProtocol { get; init; } = new();
+    public Dictionary<string, int> SessionsByProtocol { get; init; } = [];
 
     /// <summary>
     /// Gets the number of sessions by status.
     /// </summary>
-    public Dictionary<WebSocketConnectionStatus, int> SessionsByStatus { get; init; } = new();
+    public Dictionary<WebSocketConnectionStatus, int> SessionsByStatus { get; init; } = [];
 
     /// <summary>
     /// Gets the total number of sessions created since startup.

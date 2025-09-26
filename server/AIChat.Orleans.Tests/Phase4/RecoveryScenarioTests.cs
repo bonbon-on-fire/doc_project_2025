@@ -1,11 +1,7 @@
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using AIChat.Orleans.Tests.TestUtilities;
-using AIChat.Orleans.Tests.TestUtilities.Mocks;
-using AIChat.Server.Configuration;
-using AIChat.Server.Models;
 using AIChat.Server.Services;
-using AIChat.Server.Services.Streaming;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -139,7 +135,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
                     )
                     .Returns(
                         (IAsyncEnumerable<ChatStreamItem> items, CancellationToken ct) =>
-                            CreateTestAsyncEnumerable(items, ct, messagesProcessed, testState)
+                            CreateTestAsyncEnumerable(items, messagesProcessed, testState, ct)
                     );
 
                 return mockBridge.Object;
@@ -456,7 +452,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
                     )
                     .Returns(
                         (IAsyncEnumerable<ChatStreamItem> items, CancellationToken ct) =>
-                            CreateTestAsyncEnumerableWithDuplicateCheck(items, ct, processedMessages, testState)
+                            CreateTestAsyncEnumerableWithDuplicateCheck(items, processedMessages, testState, ct)
                     );
 
                 return mockBridge.Object;
@@ -580,7 +576,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
         }
     }
 
-    private class TestState
+    private sealed class TestState
     {
         public bool FailureOccurred { get; set; }
         public bool DuplicateDetected { get; set; }
@@ -589,9 +585,9 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
 
     private static async IAsyncEnumerable<string> CreateTestAsyncEnumerable(
         IAsyncEnumerable<ChatStreamItem> items,
-        [EnumeratorCancellation] CancellationToken ct,
         List<string> messagesProcessed,
-        TestState state)
+        TestState state,
+        [EnumeratorCancellation] CancellationToken ct = default)
     {
         var count = 0;
         await foreach (var item in items.WithCancellation(ct))
@@ -610,9 +606,9 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
 
     private static async IAsyncEnumerable<string> CreateTestAsyncEnumerableWithDuplicateCheck(
         IAsyncEnumerable<ChatStreamItem> items,
-        [EnumeratorCancellation] CancellationToken ct,
         HashSet<string> processedMessages,
-        TestState state)
+        TestState state,
+        [EnumeratorCancellation] CancellationToken ct = default)
     {
         var count = 0;
         await foreach (var item in items.WithCancellation(ct))

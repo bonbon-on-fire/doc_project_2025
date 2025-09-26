@@ -75,7 +75,9 @@ public static class SnapshotSchemaHelper
             var tableExists = (long)(await command.ExecuteScalarAsync(cancellationToken) ?? 0L) > 0;
 
             if (!tableExists)
+            {
                 return false; // No reset needed if table doesn't exist
+            }
 
             // Check if the table has the expected columns
             const string checkColumnsSql = @"

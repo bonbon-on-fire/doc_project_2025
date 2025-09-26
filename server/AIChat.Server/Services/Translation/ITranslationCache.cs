@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 
 namespace AIChat.Server.Services.Translation;
 
@@ -32,6 +33,7 @@ public class MemoryTranslationCache : ITranslationCache
     /// <inheritdoc />
     public async Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
     {
+        await Task.CompletedTask; // Suppress CS1998
         if (!_options.EnableCaching)
         {
             return default;
@@ -53,7 +55,7 @@ public class MemoryTranslationCache : ITranslationCache
 
                 try
                 {
-                    return (T)Convert.ChangeType(item.Value, typeof(T));
+                    return (T)Convert.ChangeType(item.Value, typeof(T), CultureInfo.InvariantCulture);
                 }
                 catch (Exception ex)
                 {
@@ -76,6 +78,7 @@ public class MemoryTranslationCache : ITranslationCache
     /// <inheritdoc />
     public async Task SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken cancellationToken = default)
     {
+        await Task.CompletedTask; // Suppress CS1998
         if (!_options.EnableCaching || value == null)
         {
             return;
@@ -98,6 +101,7 @@ public class MemoryTranslationCache : ITranslationCache
     /// <inheritdoc />
     public async Task InvalidateAsync(string pattern, CancellationToken cancellationToken = default)
     {
+        await Task.CompletedTask; // Suppress CS1998
         var keysToRemove = new List<string>();
 
         foreach (var key in _cache.Keys)
@@ -119,6 +123,7 @@ public class MemoryTranslationCache : ITranslationCache
     /// <inheritdoc />
     public async Task<CacheStatistics> GetStatisticsAsync()
     {
+        await Task.CompletedTask; // Suppress CS1998
         return new CacheStatistics
         {
             TotalRequests = _totalRequests,
@@ -173,7 +178,7 @@ public class MemoryTranslationCache : ITranslationCache
     private static bool IsPatternMatch(string text, string pattern)
     {
         // Simple wildcard matching (supports * at the end)
-        if (pattern.EndsWith("*"))
+        if (pattern.EndsWith('*'))
         {
             var prefix = pattern[..^1];
             return text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
@@ -200,6 +205,7 @@ public class MemoryTranslationCache : ITranslationCache
     {
         _cleanupTimer?.Dispose();
         _cache.Clear();
+        GC.SuppressFinalize(this);
     }
 
     private sealed class CacheItem
@@ -253,5 +259,6 @@ public class NullTranslationCache : ITranslationCache
     public void Dispose()
     {
         // No resources to dispose
+        GC.SuppressFinalize(this);
     }
 }

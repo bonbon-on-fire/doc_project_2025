@@ -30,13 +30,13 @@ public class WebSocketProtocolInfo
     /// Gets or sets the supported capabilities for this protocol.
     /// </summary>
     [JsonPropertyName("capabilities")]
-    public Dictionary<string, object> Capabilities { get; set; } = new();
+    public Dictionary<string, object> Capabilities { get; set; } = [];
 
     /// <summary>
     /// Gets or sets the configuration options for this protocol.
     /// </summary>
     [JsonPropertyName("configuration")]
-    public Dictionary<string, object> Configuration { get; set; } = new();
+    public Dictionary<string, object> Configuration { get; set; } = [];
 
     /// <summary>
     /// Gets or sets whether this protocol is currently enabled.
@@ -80,13 +80,13 @@ public class ProtocolNegotiationResult
     /// Gets or sets the list of protocols that were considered during negotiation.
     /// </summary>
     [JsonPropertyName("availableProtocols")]
-    public List<WebSocketProtocolInfo> AvailableProtocols { get; set; } = new();
+    public List<WebSocketProtocolInfo> AvailableProtocols { get; set; } = [];
 
     /// <summary>
     /// Gets or sets the negotiated capabilities for the selected protocol.
     /// </summary>
     [JsonPropertyName("negotiatedCapabilities")]
-    public Dictionary<string, object> NegotiatedCapabilities { get; set; } = new();
+    public Dictionary<string, object> NegotiatedCapabilities { get; set; } = [];
 
     /// <summary>
     /// Creates a successful negotiation result.
@@ -102,7 +102,7 @@ public class ProtocolNegotiationResult
         {
             Success = true,
             SelectedProtocol = selectedProtocol,
-            NegotiatedCapabilities = negotiatedCapabilities ?? new()
+            NegotiatedCapabilities = negotiatedCapabilities ?? []
         };
     }
 
@@ -120,7 +120,7 @@ public class ProtocolNegotiationResult
         {
             Success = false,
             ErrorMessage = errorMessage,
-            AvailableProtocols = availableProtocols ?? new()
+            AvailableProtocols = availableProtocols ?? []
         };
     }
 }
@@ -207,13 +207,13 @@ public static class StandardWebSocketProtocols
     /// <returns>List of all standard protocols</returns>
     public static List<WebSocketProtocolInfo> GetAllProtocols()
     {
-        return new List<WebSocketProtocolInfo>
-        {
+        return
+        [
             ChatV1,
             NotificationsV1,
             FileTransferV1,
             GenericV1
-        };
+        ];
     }
 
     /// <summary>

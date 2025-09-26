@@ -186,7 +186,7 @@ public record RecoverySimulationResult
     /// <summary>
     /// Potential issues or warnings identified during simulation.
     /// </summary>
-    public IReadOnlyList<string> Warnings { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> Warnings { get; init; } = [];
 
     /// <summary>
     /// Any error message if simulation failed.
@@ -267,22 +267,22 @@ public record RecoveryValidationResult
     /// <summary>
     /// Issues that would prevent recovery, if any.
     /// </summary>
-    public IReadOnlyList<string> BlockingIssues { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> BlockingIssues { get; init; } = [];
 
     /// <summary>
     /// Warnings about potential recovery issues.
     /// </summary>
-    public IReadOnlyList<string> Warnings { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> Warnings { get; init; } = [];
 
     /// <summary>
     /// Prerequisites that must be met for recovery to succeed.
     /// </summary>
-    public IReadOnlyList<string> Prerequisites { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> Prerequisites { get; init; } = [];
 
     /// <summary>
     /// Alternative strategies that might be possible if the requested one isn't.
     /// </summary>
-    public IReadOnlyList<RecoveryStrategy> AlternativeStrategies { get; init; } = Array.Empty<RecoveryStrategy>();
+    public IReadOnlyList<RecoveryStrategy> AlternativeStrategies { get; init; } = [];
 
     /// <summary>
     /// Creates a validation result indicating recovery is possible.
@@ -298,7 +298,7 @@ public record RecoveryValidationResult
         {
             IsRecoveryPossible = true,
             ValidatedStrategy = strategy,
-            Warnings = warnings ?? Array.Empty<string>()
+            Warnings = warnings ?? []
         };
     }
 
@@ -319,7 +319,7 @@ public record RecoveryValidationResult
             IsRecoveryPossible = false,
             ValidatedStrategy = strategy,
             BlockingIssues = blockingIssues,
-            AlternativeStrategies = alternatives ?? Array.Empty<RecoveryStrategy>()
+            AlternativeStrategies = alternatives ?? []
         };
     }
 }
@@ -444,7 +444,7 @@ public record RecoveryCancellationResult
     /// <summary>
     /// Any cleanup actions that were performed.
     /// </summary>
-    public IReadOnlyList<string> CleanupActions { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> CleanupActions { get; init; } = [];
 
     /// <summary>
     /// Any error that occurred during cancellation.
@@ -473,7 +473,7 @@ public record RecoveryCancellationResult
             Success = true,
             CorrelationId = correlationId,
             StatusWhenCancelled = statusWhenCancelled,
-            CleanupActions = cleanupActions ?? Array.Empty<string>()
+            CleanupActions = cleanupActions ?? []
         };
     }
 
@@ -534,12 +534,12 @@ public record RecoveryOrchestrationMetrics
     /// <summary>
     /// Distribution of recovery strategies used.
     /// </summary>
-    public Dictionary<RecoveryStrategy, long> StrategyUsageDistribution { get; init; } = new();
+    public Dictionary<RecoveryStrategy, long> StrategyUsageDistribution { get; init; } = [];
 
     /// <summary>
     /// Distribution of recovery types performed.
     /// </summary>
-    public Dictionary<RecoveryType, long> RecoveryTypeDistribution { get; init; } = new();
+    public Dictionary<RecoveryType, long> RecoveryTypeDistribution { get; init; } = [];
 
     /// <summary>
     /// Average number of events replayed per recovery.

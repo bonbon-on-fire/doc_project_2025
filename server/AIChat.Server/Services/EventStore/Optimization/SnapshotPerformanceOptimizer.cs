@@ -293,7 +293,7 @@ public sealed class SnapshotPerformanceOptimizer : IDisposable
             var age = DateTimeOffset.UtcNow - cached.CachedAt;
             if (age < _configuration.CacheExpirationTime && cached.Data is T typedData)
             {
-                result = SnapshotResult<T>.CreateSuccess(typedData, cached.Metadata);
+                result = SnapshotResult.CreateSuccess(typedData, cached.Metadata);
                 return true;
             }
 
@@ -307,7 +307,10 @@ public sealed class SnapshotPerformanceOptimizer : IDisposable
 
     private void CacheSnapshot<T>(string streamId, SnapshotResult<T> result, TimeSpan retrievalTime)
     {
-        if (result.Data == null || result.Metadata == null) return;
+        if (result.Data == null || result.Metadata == null)
+        {
+            return;
+        }
 
         var cachedSnapshot = new CachedSnapshot
         {
@@ -338,7 +341,10 @@ public sealed class SnapshotPerformanceOptimizer : IDisposable
 
     private void ProcessBatchedOperations(object? state)
     {
-        if (_disposed || _batchQueue.IsEmpty) return;
+        if (_disposed || _batchQueue.IsEmpty)
+        {
+            return;
+        }
 
         var batch = new List<BatchedOperation>();
         while (batch.Count < _configuration.MaxBatchSize && _batchQueue.TryDequeue(out var operation))
@@ -346,7 +352,10 @@ public sealed class SnapshotPerformanceOptimizer : IDisposable
             batch.Add(operation);
         }
 
-        if (batch.Count == 0) return;
+        if (batch.Count == 0)
+        {
+            return;
+        }
 
         _logger.LogDebug("Processing batch of {Count} snapshot operations", batch.Count);
 
@@ -466,7 +475,10 @@ public sealed class SnapshotPerformanceOptimizer : IDisposable
 
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+        {
+            return;
+        }
 
         _disposed = true;
         _batchProcessor?.Dispose();

@@ -12,41 +12,41 @@ public class PrometheusMetricsExporter : IPrometheusMetricsExporter
     private readonly Counter _grainActivations = Prometheus.Metrics.CreateCounter(
         "orleans_grain_activations_total",
         "Total number of grain activations",
-        new CounterConfiguration { LabelNames = new[] { "grain_type" } });
+        new CounterConfiguration { LabelNames = ["grain_type"] });
 
     private readonly Counter _grainDeactivations = Prometheus.Metrics.CreateCounter(
         "orleans_grain_deactivations_total",
         "Total number of grain deactivations",
-        new CounterConfiguration { LabelNames = new[] { "grain_type" } });
+        new CounterConfiguration { LabelNames = ["grain_type"] });
 
     private readonly Histogram _grainOperationDuration = Prometheus.Metrics.CreateHistogram(
         "orleans_grain_operation_duration_seconds",
         "Duration of grain operations in seconds",
         new HistogramConfiguration
         {
-            LabelNames = new[] { "grain_type", "operation", "status" },
+            LabelNames = ["grain_type", "operation", "status"],
             Buckets = Histogram.ExponentialBuckets(0.001, 2, 15)
         });
 
     private readonly Gauge _grainStateSize = Prometheus.Metrics.CreateGauge(
         "orleans_grain_state_size_bytes",
         "Size of grain state in bytes",
-        new GaugeConfiguration { LabelNames = new[] { "grain_type", "grain_category" } });
+        new GaugeConfiguration { LabelNames = ["grain_type", "grain_category"] });
 
     private readonly Gauge _grainActiveInstances = Prometheus.Metrics.CreateGauge(
         "orleans_grain_active_instances",
         "Number of active grain instances",
-        new GaugeConfiguration { LabelNames = new[] { "grain_type" } });
+        new GaugeConfiguration { LabelNames = ["grain_type"] });
 
     private readonly Gauge _grainConnectionCount = Prometheus.Metrics.CreateGauge(
         "orleans_grain_connection_count",
         "Number of active connections to grains",
-        new GaugeConfiguration { LabelNames = new[] { "grain_type" } });
+        new GaugeConfiguration { LabelNames = ["grain_type"] });
 
     private readonly ConcurrentDictionary<string, HashSet<string>> _trackedGrainIds = new();
     private const int MaxTrackedGrainsPerType = 100;
     private DateTime _lastHealthCheck = DateTime.UtcNow;
-    private long _totalMetricsExported = 0;
+    private long _totalMetricsExported;
 
     public PrometheusMetricsExporter(
         IOrleansMetricsCollector orleansMetricsCollector,
@@ -156,7 +156,7 @@ public class PrometheusMetricsExporter : IPrometheusMetricsExporter
 
     private string GetBoundedGrainCategory(string grainType)
     {
-        var grainSet = _trackedGrainIds.GetOrAdd(grainType, _ => new HashSet<string>());
+        var grainSet = _trackedGrainIds.GetOrAdd(grainType, _ => []);
 
         lock (grainSet)
         {

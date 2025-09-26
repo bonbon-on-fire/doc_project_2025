@@ -27,8 +27,8 @@ public class WebSocketProtocolNegotiator : IWebSocketProtocolNegotiator
     private long _totalNegotiations;
     private long _successfulNegotiations;
     private long _failedNegotiations;
-    private readonly Dictionary<string, long> _negotiationsByProtocol = new();
-    private readonly Dictionary<string, long> _requestedProtocols = new();
+    private readonly Dictionary<string, long> _negotiationsByProtocol = [];
+    private readonly Dictionary<string, long> _requestedProtocols = [];
     private readonly object _statisticsLock = new();
 
     /// <summary>
@@ -60,7 +60,7 @@ public class WebSocketProtocolNegotiator : IWebSocketProtocolNegotiator
             ArgumentException.ThrowIfNullOrWhiteSpace(userId);
 
             var protocolList = requestedProtocols.ToList();
-            clientCapabilities ??= new Dictionary<string, object>();
+            clientCapabilities ??= [];
 
             Interlocked.Increment(ref _totalNegotiations);
 
@@ -252,6 +252,7 @@ public class WebSocketProtocolNegotiator : IWebSocketProtocolNegotiator
         string protocolName,
         CancellationToken cancellationToken = default)
     {
+        await Task.CompletedTask; // Suppress CS1998
         ArgumentException.ThrowIfNullOrWhiteSpace(protocolName);
 
         try
@@ -289,7 +290,7 @@ public class WebSocketProtocolNegotiator : IWebSocketProtocolNegotiator
             if (protocolInfo == null)
             {
                 return CapabilityValidationResult.Failure(
-                    validationMessages: new List<string> { $"Protocol {protocolName} not found" });
+                    validationMessages: [$"Protocol {protocolName} not found"]);
             }
 
             var missingCapabilities = new List<string>();
@@ -331,7 +332,7 @@ public class WebSocketProtocolNegotiator : IWebSocketProtocolNegotiator
                 protocolName);
 
             return CapabilityValidationResult.Failure(
-                validationMessages: new List<string> { $"Validation error: {ex.Message}" });
+                validationMessages: [$"Validation error: {ex.Message}"]);
         }
     }
 
@@ -349,7 +350,7 @@ public class WebSocketProtocolNegotiator : IWebSocketProtocolNegotiator
             var protocolInfo = await GetProtocolInfoAsync(protocolName, cancellationToken);
             if (protocolInfo == null)
             {
-                return new Dictionary<string, object>();
+                return [];
             }
 
             var negotiatedCapabilities = new Dictionary<string, object>();
@@ -381,7 +382,7 @@ public class WebSocketProtocolNegotiator : IWebSocketProtocolNegotiator
             _logger.LogError(ex,
                 "Failed to negotiate capabilities for protocol {Protocol}",
                 protocolName);
-            return new Dictionary<string, object>();
+            return [];
         }
     }
 
@@ -419,6 +420,7 @@ public class WebSocketProtocolNegotiator : IWebSocketProtocolNegotiator
     public async Task<ProtocolNegotiationStatistics> GetStatisticsAsync(
         CancellationToken cancellationToken = default)
     {
+        await Task.CompletedTask; // Suppress CS1998
         lock (_statisticsLock)
         {
             var statistics = new ProtocolNegotiationStatistics

@@ -243,12 +243,12 @@ public sealed partial class SqliteSnapshotStore : ISnapshotStore
                     metadata.Id, streamId, metadata.Version);
 
                 _metrics.RecordReadSuccess();
-                return SnapshotResult<T>.CreateSuccess(data, metadata);
+                return SnapshotResult.CreateSuccess(data, metadata);
             }
 
             _logger.LogDebug("No snapshots found for stream {StreamId}", streamId);
             _metrics.RecordReadNotFound();
-            return SnapshotResult<T>.CreateNotFound();
+            return SnapshotResult.CreateNotFound<T>();
         }
         catch (Exception ex)
         {
@@ -269,7 +269,9 @@ public sealed partial class SqliteSnapshotStore : ISnapshotStore
     {
         ArgumentNullException.ThrowIfNull(streamId);
         if (maxVersion < 0)
+        {
             throw new ArgumentOutOfRangeException(nameof(maxVersion), "Version cannot be negative");
+        }
 
         using var activity = _metrics.StartReadActivity();
         try
@@ -304,12 +306,12 @@ public sealed partial class SqliteSnapshotStore : ISnapshotStore
                     metadata.Id, streamId, metadata.Version);
 
                 _metrics.RecordReadSuccess();
-                return SnapshotResult<T>.CreateSuccess(data, metadata);
+                return SnapshotResult.CreateSuccess(data, metadata);
             }
 
             _logger.LogDebug("No snapshots found for stream {StreamId} at or before version {MaxVersion}", streamId, maxVersion);
             _metrics.RecordReadNotFound();
-            return SnapshotResult<T>.CreateNotFound();
+            return SnapshotResult.CreateNotFound<T>();
         }
         catch (Exception ex)
         {
@@ -359,12 +361,12 @@ public sealed partial class SqliteSnapshotStore : ISnapshotStore
                 _logger.LogDebug("Successfully retrieved snapshot {SnapshotId}", snapshotId);
 
                 _metrics.RecordReadSuccess();
-                return SnapshotResult<T>.CreateSuccess(data, metadata);
+                return SnapshotResult.CreateSuccess(data, metadata);
             }
 
             _logger.LogDebug("Snapshot {SnapshotId} not found", snapshotId);
             _metrics.RecordReadNotFound();
-            return SnapshotResult<T>.CreateNotFound();
+            return SnapshotResult.CreateNotFound<T>();
         }
         catch (Exception ex)
         {

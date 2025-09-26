@@ -27,7 +27,9 @@ public sealed partial class SqliteSnapshotStore : ISnapshotWriter
         ArgumentNullException.ThrowIfNull(streamId);
         ArgumentNullException.ThrowIfNull(state);
         if (version < 0)
+        {
             throw new ArgumentOutOfRangeException(nameof(version), "Version cannot be negative");
+        }
 
         using var activity = _metrics.StartCreateActivity();
         try
@@ -140,11 +142,7 @@ public sealed partial class SqliteSnapshotStore : ISnapshotWriter
             try
             {
                 // Get snapshot metadata before deletion
-                var metadata = await GetSnapshotMetadataAsync(connection, (SqliteTransaction)transaction, snapshotId, cancellationToken);
-                if (metadata == null)
-                {
-                    throw SnapshotStoreException.SnapshotNotFound(snapshotId);
-                }
+                var metadata = await GetSnapshotMetadataAsync(connection, (SqliteTransaction)transaction, snapshotId, cancellationToken) ?? throw SnapshotStoreException.SnapshotNotFound(snapshotId);
 
                 // Delete the snapshot record
                 var deleteSnapshotCommand = connection.CreateCommand();
@@ -297,11 +295,7 @@ public sealed partial class SqliteSnapshotStore : ISnapshotWriter
                 existsCommand.CommandText = "SELECT 1 FROM Snapshots WHERE Id = @snapshotId";
                 existsCommand.Parameters.AddWithValue("@snapshotId", snapshotId);
 
-                var exists = await existsCommand.ExecuteScalarAsync(cancellationToken);
-                if (exists == null)
-                {
-                    throw SnapshotStoreException.SnapshotNotFound(snapshotId);
-                }
+                var exists = await existsCommand.ExecuteScalarAsync(cancellationToken) ?? throw SnapshotStoreException.SnapshotNotFound(snapshotId);
 
                 // Update metadata
                 var metadataJson = JsonSerializer.Serialize(metadata, _jsonOptions);

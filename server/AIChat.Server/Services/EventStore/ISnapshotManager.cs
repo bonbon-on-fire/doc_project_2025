@@ -138,6 +138,71 @@ public interface ISnapshotManager
 }
 
 /// <summary>
+/// Factory methods for creating snapshot restoration results.
+/// </summary>
+public static class SnapshotRestoreResult
+{
+    /// <summary>
+    /// Creates a successful restoration result.
+    /// </summary>
+    /// <typeparam name="T">The type of state that was restored</typeparam>
+    /// <param name="state">The restored state</param>
+    /// <param name="finalVersion">The final version</param>
+    /// <param name="snapshotVersion">The snapshot version used</param>
+    /// <param name="eventsReplayed">Number of events replayed</param>
+    /// <param name="restorationTime">Time taken for restoration</param>
+    /// <param name="timeSaved">Time saved by using snapshot</param>
+    /// <param name="snapshotMetadata">Metadata of the snapshot used</param>
+    /// <returns>A successful restoration result</returns>
+    public static SnapshotRestoreResult<T> CreateSuccess<T>(
+        T state,
+        long finalVersion,
+        long snapshotVersion,
+        int eventsReplayed,
+        TimeSpan restorationTime,
+        TimeSpan timeSaved,
+        SnapshotMetadata? snapshotMetadata = null)
+    {
+        return new SnapshotRestoreResult<T>
+        {
+            Success = true,
+            State = state,
+            FinalVersion = finalVersion,
+            SnapshotVersion = snapshotVersion,
+            EventsReplayed = eventsReplayed,
+            RestorationTime = restorationTime,
+            TimeSaved = timeSaved,
+            SnapshotMetadata = snapshotMetadata
+        };
+    }
+
+    /// <summary>
+    /// Creates a failed restoration result.
+    /// </summary>
+    /// <typeparam name="T">The type of state that was restored</typeparam>
+    /// <param name="error">The error message</param>
+    /// <param name="errorCode">The error code</param>
+    /// <param name="partialState">Partial state if available</param>
+    /// <param name="restorationTime">Time taken before failure</param>
+    /// <returns>A failed restoration result</returns>
+    public static SnapshotRestoreResult<T> CreateFailure<T>(
+        string error,
+        SnapshotErrorCode errorCode = SnapshotErrorCode.InternalError,
+        T? partialState = default,
+        TimeSpan restorationTime = default)
+    {
+        return new SnapshotRestoreResult<T>
+        {
+            Success = false,
+            Error = error,
+            ErrorCode = errorCode,
+            State = partialState,
+            RestorationTime = restorationTime
+        };
+    }
+}
+
+/// <summary>
 /// Represents the result of a snapshot restoration operation.
 /// </summary>
 /// <typeparam name="T">The type of state that was restored</typeparam>
@@ -197,63 +262,6 @@ public record SnapshotRestoreResult<T>
     /// Gets the timestamp when the restoration completed.
     /// </summary>
     public DateTimeOffset CompletedAt { get; init; } = DateTimeOffset.UtcNow;
-
-    /// <summary>
-    /// Creates a successful restoration result.
-    /// </summary>
-    /// <param name="state">The restored state</param>
-    /// <param name="finalVersion">The final version</param>
-    /// <param name="snapshotVersion">The snapshot version used</param>
-    /// <param name="eventsReplayed">Number of events replayed</param>
-    /// <param name="restorationTime">Time taken for restoration</param>
-    /// <param name="timeSaved">Time saved by using snapshot</param>
-    /// <param name="snapshotMetadata">Metadata of the snapshot used</param>
-    /// <returns>A successful restoration result</returns>
-    public static SnapshotRestoreResult<T> CreateSuccess(
-        T state,
-        long finalVersion,
-        long snapshotVersion,
-        int eventsReplayed,
-        TimeSpan restorationTime,
-        TimeSpan timeSaved,
-        SnapshotMetadata? snapshotMetadata = null)
-    {
-        return new SnapshotRestoreResult<T>
-        {
-            Success = true,
-            State = state,
-            FinalVersion = finalVersion,
-            SnapshotVersion = snapshotVersion,
-            EventsReplayed = eventsReplayed,
-            RestorationTime = restorationTime,
-            TimeSaved = timeSaved,
-            SnapshotMetadata = snapshotMetadata
-        };
-    }
-
-    /// <summary>
-    /// Creates a failed restoration result.
-    /// </summary>
-    /// <param name="error">The error message</param>
-    /// <param name="errorCode">The error code</param>
-    /// <param name="partialState">Partial state if available</param>
-    /// <param name="restorationTime">Time taken before failure</param>
-    /// <returns>A failed restoration result</returns>
-    public static SnapshotRestoreResult<T> CreateFailure(
-        string error,
-        SnapshotErrorCode errorCode = SnapshotErrorCode.InternalError,
-        T? partialState = default,
-        TimeSpan restorationTime = default)
-    {
-        return new SnapshotRestoreResult<T>
-        {
-            Success = false,
-            Error = error,
-            ErrorCode = errorCode,
-            State = partialState,
-            RestorationTime = restorationTime
-        };
-    }
 }
 
 /// <summary>
@@ -269,7 +277,7 @@ public record SnapshotValidationResult
     /// <summary>
     /// Gets the issues found during validation.
     /// </summary>
-    public IReadOnlyList<string> Issues { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> Issues { get; init; } = [];
 
     /// <summary>
     /// Gets the snapshot metadata that was validated.
@@ -364,7 +372,7 @@ public record SnapshotCleanupResult
     /// <summary>
     /// Gets the details of what was cleaned up.
     /// </summary>
-    public IReadOnlyList<SnapshotCleanupDetail> CleanupDetails { get; init; } = Array.Empty<SnapshotCleanupDetail>();
+    public IReadOnlyList<SnapshotCleanupDetail> CleanupDetails { get; init; } = [];
 
     /// <summary>
     /// Gets any error message if the cleanup failed.
@@ -659,12 +667,12 @@ public record SnapshotCreationPolicy
     /// <summary>
     /// Gets whether to create snapshots during specific grain lifecycle events.
     /// </summary>
-    public bool CreateOnDeactivation { get; init; } = false;
+    public bool CreateOnDeactivation { get; init; }
 
     /// <summary>
     /// Gets whether to create snapshots before significant state changes.
     /// </summary>
-    public bool CreateBeforeSignificantChanges { get; init; } = false;
+    public bool CreateBeforeSignificantChanges { get; init; }
 
     /// <summary>
     /// Gets custom conditions for snapshot creation.

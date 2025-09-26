@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
-using AIChat.Orleans.Contracts;
 using AIChat.Server.Services;
 using AIChat.Server.Services.Routing;
 using Microsoft.AspNetCore.Mvc;
@@ -39,6 +38,7 @@ public class ModeController : ControllerBase
     /// Get all available modes for a user, including system modes and user's custom modes.
     /// </summary>
     /// <param name="userId">User ID to get modes for</param>
+    /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of all available modes</returns>
     [HttpGet]
     public async Task<ActionResult<ModesResponse>> GetModes([FromQuery] string userId, CancellationToken cancellationToken = default)
@@ -91,6 +91,7 @@ public class ModeController : ControllerBase
     /// </summary>
     /// <param name="id">Mode ID</param>
     /// <param name="userId">User ID for permission checking on custom modes</param>
+    /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Mode details</returns>
     [HttpGet("{id}")]
     public async Task<ActionResult<ModeDto>> GetMode(string id, [FromQuery] string userId, CancellationToken cancellationToken = default)
@@ -159,7 +160,7 @@ public class ModeController : ControllerBase
         {
             if (result.Error?.Contains("already exists") == true)
             {
-                return Conflict(new { Error = result.Error });
+                return Conflict(new { result.Error });
             }
 
             _logger.LogError(
@@ -337,6 +338,7 @@ public class ModeController : ControllerBase
     /// </summary>
     /// <param name="id">Mode ID to delete</param>
     /// <param name="userId">User ID for ownership verification</param>
+    /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>No content on success</returns>
     [HttpDelete("{id}")]
     public async Task<ActionResult> DeleteMode(string id, [FromQuery] string userId, CancellationToken cancellationToken = default)

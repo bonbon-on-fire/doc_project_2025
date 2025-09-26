@@ -1,5 +1,4 @@
 using AIChat.Server.Services.EventStore;
-using Microsoft.Extensions.Logging;
 
 namespace AIChat.Server.Services.Recovery.Implementations;
 
@@ -77,7 +76,7 @@ public sealed class AutomaticRecoveryService : IAutomaticRecoveryService
             if (recoveryNeed == StateRecoveryNeed.None)
             {
                 _logger.LogDebug("No recovery needed for grain {GrainId}", grainId);
-                return AutomaticRecoveryResult<T>.CreateNoRecoveryNeeded(
+                return AutomaticRecoveryResult.CreateNoRecoveryNeeded(
                     currentState,
                     stopwatch.Elapsed,
                     correlationId);
@@ -97,7 +96,7 @@ public sealed class AutomaticRecoveryService : IAutomaticRecoveryService
                     "Recovery needed for grain {GrainId} but skipped due to policy constraints. Need: {RecoveryNeed}",
                     grainId, recoveryNeed);
 
-                return AutomaticRecoveryResult<T>.CreateRecoverySkipped(
+                return AutomaticRecoveryResult.CreateRecoverySkipped(
                     currentState,
                     recoveryNeed,
                     costEstimate,
@@ -127,7 +126,7 @@ public sealed class AutomaticRecoveryService : IAutomaticRecoveryService
                     "Recovery failed for grain {GrainId}: {Error}",
                     grainId, recoveryResult.Error);
 
-                return AutomaticRecoveryResult<T>.CreateRecoveryFailed(
+                return AutomaticRecoveryResult.CreateRecoveryFailed(
                     currentState,
                     recoveryNeed,
                     recoveryResult.Error ?? "Unknown recovery error",
@@ -139,7 +138,7 @@ public sealed class AutomaticRecoveryService : IAutomaticRecoveryService
                 "Automatic recovery completed successfully for grain {GrainId} in {ElapsedMs}ms [CorrelationId: {CorrelationId}]",
                 grainId, stopwatch.ElapsedMilliseconds, correlationId);
 
-            return AutomaticRecoveryResult<T>.CreateRecoverySucceeded(
+            return AutomaticRecoveryResult.CreateRecoverySucceeded(
                 recoveryResult.State!,
                 recoveryNeed,
                 recoveryResult.Strategy,
@@ -156,7 +155,7 @@ public sealed class AutomaticRecoveryService : IAutomaticRecoveryService
                 "Error during automatic recovery evaluation for grain {GrainId} [CorrelationId: {CorrelationId}]",
                 grainId, correlationId);
 
-            return AutomaticRecoveryResult<T>.CreateRecoveryFailed(
+            return AutomaticRecoveryResult.CreateRecoveryFailed(
                 currentState,
                 StateRecoveryNeed.Unknown,
                 $"Recovery evaluation failed: {ex.Message}",
@@ -195,7 +194,7 @@ public sealed class AutomaticRecoveryService : IAutomaticRecoveryService
 
                 if (!validationResult.IsPossible)
                 {
-                    return StateRecoveryResult<T>.CreateFailure(
+                    return StateRecoveryResult.CreateFailure<T>(
                         $"Requested strategy {request.PreferredStrategy} is not possible: {string.Join(", ", validationResult.BlockingIssues)}",
                         request.PreferredStrategy.Value,
                         TimeSpan.Zero,
@@ -218,7 +217,7 @@ public sealed class AutomaticRecoveryService : IAutomaticRecoveryService
                 "Error during manual recovery for grain {GrainId} [CorrelationId: {CorrelationId}]",
                 request.GrainId, request.CorrelationId);
 
-            return StateRecoveryResult<T>.CreateFailure(
+            return StateRecoveryResult.CreateFailure<T>(
                 $"Manual recovery failed: {ex.Message}",
                 request.PreferredStrategy ?? RecoveryStrategy.HybridRecovery,
                 TimeSpan.Zero,
@@ -462,9 +461,9 @@ public sealed class AutomaticRecoveryService : IAutomaticRecoveryService
     /// <summary>
     /// Provides event notifications for recovery operations.
     /// </summary>
-    #pragma warning disable CS0414 // Field is assigned but its value is never used
+#pragma warning disable CS0414
     public event EventHandler<RecoveryEventArgs>? RecoveryEvent;
-    #pragma warning restore CS0414
+#pragma warning restore CS0414
 
     /// <summary>
     /// Disposes the automatic recovery service and releases resources.

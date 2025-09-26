@@ -58,12 +58,12 @@ public abstract class MessageTranslatorBase<TSource, TTarget> : IMessageTranslat
     /// <summary>
     /// Logger instance for this translator.
     /// </summary>
-    protected readonly ILogger Logger;
+    protected ILogger Logger { get; private set; }
 
     /// <summary>
     /// Metrics collection for translation operations.
     /// </summary>
-    protected readonly TranslationMetrics Metrics = new();
+    protected TranslationMetrics Metrics { get; } = new();
 
     /// <summary>
     /// Initializes a new instance of the MessageTranslatorBase.
@@ -108,12 +108,12 @@ public abstract class MessageTranslatorBase<TSource, TTarget> : IMessageTranslat
     {
         if (source == null)
         {
-            return TranslationResult<TTarget>.Failure("Source message cannot be null", "NULL_SOURCE");
+            return TranslationResult.Failure<TTarget>("Source message cannot be null", "NULL_SOURCE");
         }
 
         if (context == null)
         {
-            return TranslationResult<TTarget>.Failure("Translation context cannot be null", "NULL_CONTEXT");
+            return TranslationResult.Failure<TTarget>("Translation context cannot be null", "NULL_CONTEXT");
         }
 
         return null; // No validation errors
@@ -129,7 +129,7 @@ public abstract class MessageTranslatorBase<TSource, TTarget> : IMessageTranslat
     {
         if (target == null)
         {
-            return TranslationResult<TTarget>.Failure("Translation produced null result", "NULL_TARGET");
+            return TranslationResult.Failure<TTarget>("Translation produced null result", "NULL_TARGET");
         }
 
         return null; // No validation errors

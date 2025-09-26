@@ -442,7 +442,7 @@ public class SnapshotResultTests
         var timeSaved = TimeSpan.FromSeconds(2);
 
         // Act
-        var result = SnapshotRestoreResult<object>.CreateSuccess(
+        var result = SnapshotRestoreResult.CreateSuccess(
             state,
             finalVersion,
             snapshotVersion,
@@ -470,7 +470,7 @@ public class SnapshotResultTests
         var restorationTime = TimeSpan.FromMilliseconds(100);
 
         // Act
-        var result = SnapshotRestoreResult<object>.CreateFailure(
+        var result = SnapshotRestoreResult.CreateFailure<object>(
             error,
             errorCode,
             restorationTime: restorationTime);

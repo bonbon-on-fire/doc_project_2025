@@ -17,9 +17,9 @@ public class RecoveryNotificationService : IRecoveryNotificationService
     // Metrics tracking
     private readonly ConcurrentDictionary<string, DateTimeOffset> _activeConnections = new();
     private readonly ConcurrentDictionary<string, HashSet<string>> _groupMemberships = new();
-    private long _totalNotificationsSent = 0;
-    private long _failedDeliveries = 0;
-    private readonly List<TimeSpan> _deliveryTimes = new();
+    private long _totalNotificationsSent;
+    private long _failedDeliveries;
+    private readonly List<TimeSpan> _deliveryTimes = [];
     private static readonly ActivitySource ActivitySource = new("AIChat.Server.RecoveryNotificationService");
 
     /// <summary>
@@ -250,7 +250,7 @@ public class RecoveryNotificationService : IRecoveryNotificationService
             // Track group membership for metrics
             _groupMemberships.AddOrUpdate(
                 groupName,
-                _ => new HashSet<string> { connectionId },
+                _ => [connectionId],
                 (_, members) =>
                 {
                     members.Add(connectionId);

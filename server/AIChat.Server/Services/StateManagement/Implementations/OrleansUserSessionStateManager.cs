@@ -1,7 +1,7 @@
 using System.Diagnostics;
+using System.Globalization;
 using AIChat.Orleans.Contracts;
 using AIChat.Server.Services.StateManagement.Validation;
-using Orleans;
 
 namespace AIChat.Server.Services.StateManagement.Implementations;
 
@@ -42,7 +42,9 @@ public class OrleansUserSessionStateManager : OrleansStateManagerBase<UserSessio
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(userId))
+        {
             throw new ArgumentNullException(nameof(userId));
+        }
 
         var stopwatch = Stopwatch.StartNew();
 
@@ -87,7 +89,9 @@ public class OrleansUserSessionStateManager : OrleansStateManagerBase<UserSessio
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(userId))
+        {
             throw new ArgumentNullException(nameof(userId));
+        }
 
         var stopwatch = Stopwatch.StartNew();
 
@@ -142,9 +146,14 @@ public class OrleansUserSessionStateManager : OrleansStateManagerBase<UserSessio
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(userId))
+        {
             throw new ArgumentNullException(nameof(userId));
+        }
+
         if (string.IsNullOrWhiteSpace(streamId))
+        {
             throw new ArgumentNullException(nameof(streamId));
+        }
 
         var stopwatch = Stopwatch.StartNew();
 
@@ -206,9 +215,14 @@ public class OrleansUserSessionStateManager : OrleansStateManagerBase<UserSessio
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(userId))
+        {
             throw new ArgumentNullException(nameof(userId));
+        }
+
         if (string.IsNullOrWhiteSpace(sessionId))
+        {
             throw new ArgumentNullException(nameof(sessionId));
+        }
 
         var stopwatch = Stopwatch.StartNew();
 
@@ -246,9 +260,14 @@ public class OrleansUserSessionStateManager : OrleansStateManagerBase<UserSessio
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(userId))
+        {
             throw new ArgumentNullException(nameof(userId));
+        }
+
         if (string.IsNullOrWhiteSpace(sessionId))
+        {
             throw new ArgumentNullException(nameof(sessionId));
+        }
 
         var stopwatch = Stopwatch.StartNew();
 
@@ -285,9 +304,14 @@ public class OrleansUserSessionStateManager : OrleansStateManagerBase<UserSessio
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(userId))
+        {
             throw new ArgumentNullException(nameof(userId));
+        }
+
         if (string.IsNullOrWhiteSpace(sessionId))
+        {
             throw new ArgumentNullException(nameof(sessionId));
+        }
 
         var stopwatch = Stopwatch.StartNew();
 
@@ -325,9 +349,14 @@ public class OrleansUserSessionStateManager : OrleansStateManagerBase<UserSessio
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(userId))
+        {
             throw new ArgumentNullException(nameof(userId));
+        }
+
         if (string.IsNullOrWhiteSpace(sessionId))
+        {
             throw new ArgumentNullException(nameof(sessionId));
+        }
 
         var stopwatch = Stopwatch.StartNew();
 
@@ -365,9 +394,14 @@ public class OrleansUserSessionStateManager : OrleansStateManagerBase<UserSessio
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(userId))
+        {
             throw new ArgumentNullException(nameof(userId));
+        }
+
         if (string.IsNullOrWhiteSpace(sessionId))
+        {
             throw new ArgumentNullException(nameof(sessionId));
+        }
 
         var stopwatch = Stopwatch.StartNew();
 
@@ -404,9 +438,14 @@ public class OrleansUserSessionStateManager : OrleansStateManagerBase<UserSessio
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(userId))
+        {
             throw new ArgumentNullException(nameof(userId));
+        }
+
         if (string.IsNullOrWhiteSpace(sessionId))
+        {
             throw new ArgumentNullException(nameof(sessionId));
+        }
 
         var stopwatch = Stopwatch.StartNew();
 
@@ -443,9 +482,15 @@ public class OrleansUserSessionStateManager : OrleansStateManagerBase<UserSessio
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(userId))
+        {
             throw new ArgumentNullException(nameof(userId));
+        }
+
         if (string.IsNullOrWhiteSpace(sessionId))
+        {
             throw new ArgumentNullException(nameof(sessionId));
+        }
+
         ArgumentNullException.ThrowIfNull(metrics);
 
         var stopwatch = Stopwatch.StartNew();
@@ -483,9 +528,15 @@ public class OrleansUserSessionStateManager : OrleansStateManagerBase<UserSessio
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(userId))
+        {
             throw new ArgumentNullException(nameof(userId));
+        }
+
         if (string.IsNullOrWhiteSpace(streamId))
+        {
             throw new ArgumentNullException(nameof(streamId));
+        }
+
         ArgumentNullException.ThrowIfNull(connectionStateData);
 
         var stopwatch = Stopwatch.StartNew();
@@ -529,7 +580,7 @@ public class OrleansUserSessionStateManager : OrleansStateManagerBase<UserSessio
                 {
                     ["userId"] = userId,
                     ["migratedFrom"] = "ConnectionStateTracker",
-                    ["migrationTimestamp"] = DateTime.UtcNow.ToString(),
+                    ["migrationTimestamp"] = DateTime.UtcNow.ToString(CultureInfo.InvariantCulture),
                     ["originalStreamId"] = streamId
                 }
             };
@@ -617,7 +668,9 @@ public class OrleansUserSessionStateManager : OrleansStateManagerBase<UserSessio
     {
         var totalTime = session.TotalConnectionTime + session.TotalDisconnectionTime;
         if (totalTime == TimeSpan.Zero)
+        {
             return 100.0;
+        }
 
         return (session.TotalConnectionTime.TotalMilliseconds / totalTime.TotalMilliseconds) * 100.0;
     }
@@ -765,12 +818,12 @@ public class OrleansUserSessionStateManager : OrleansStateManagerBase<UserSessio
         CancellationToken cancellationToken)
     {
         // For session paging, we need to specify a user ID in the query filters
-        if (!query.Filters?.ContainsKey("userId") == true)
+        if (query.Filters?.ContainsKey("userId") != true)
         {
             return StateResult<PagedResult<UserSessionState>>.FromError("User ID filter is required for paged session queries");
         }
 
-        var userId = query.Filters["userId"]?.ToString();
+        var userId = query.Filters!["userId"]?.ToString();
         if (string.IsNullOrEmpty(userId))
         {
             return StateResult<PagedResult<UserSessionState>>.FromError("Invalid user ID provided");

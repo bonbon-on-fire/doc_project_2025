@@ -1,6 +1,4 @@
 using System.Globalization;
-using System.Text;
-using System.Text.Json;
 using Microsoft.Data.Sqlite;
 
 namespace AIChat.Server.Services.EventStore.Implementations;
@@ -104,7 +102,9 @@ public sealed partial class SqliteSnapshotStore : ISnapshotQuery
         CancellationToken cancellationToken = default)
     {
         if (fromTimestamp > toTimestamp)
+        {
             throw new ArgumentException("fromTimestamp cannot be greater than toTimestamp");
+        }
 
         var query = SnapshotQuery.ForTimeRange(fromTimestamp, toTimestamp, pageSize: 1000);
         return await QuerySnapshotsAsync(query, cancellationToken);
@@ -238,7 +238,7 @@ public sealed partial class SqliteSnapshotStore : ISnapshotQuery
                 var metadata = ReadSnapshotMetadata(reader);
                 if (!result.TryGetValue(metadata.ContentHash, out var value))
                 {
-                    value = new List<SnapshotMetadata>();
+                    value = [];
                     result[metadata.ContentHash] = value;
                 }
 

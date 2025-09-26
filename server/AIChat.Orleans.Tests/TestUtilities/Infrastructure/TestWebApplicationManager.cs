@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
-using Orleans;
 
 namespace AIChat.Orleans.Tests.TestUtilities.Infrastructure;
 

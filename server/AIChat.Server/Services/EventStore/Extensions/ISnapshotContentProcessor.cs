@@ -83,7 +83,7 @@ public record ProcessedContent
     /// <summary>
     /// Gets metadata about the processing operation.
     /// </summary>
-    public Dictionary<string, object> Metadata { get; init; } = new();
+    public Dictionary<string, object> Metadata { get; init; } = [];
 
     /// <summary>
     /// Gets the processing time taken.
@@ -104,7 +104,7 @@ public record ContentValidationResult
     /// <summary>
     /// Gets any validation issues found.
     /// </summary>
-    public IReadOnlyList<string> Issues { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> Issues { get; init; } = [];
 
     /// <summary>
     /// Gets the content hash if validation succeeded.
@@ -114,7 +114,7 @@ public record ContentValidationResult
     /// <summary>
     /// Gets additional validation metadata.
     /// </summary>
-    public Dictionary<string, object> Metadata { get; init; } = new();
+    public Dictionary<string, object> Metadata { get; init; } = [];
 
     /// <summary>
     /// Creates a successful validation result.
@@ -128,7 +128,7 @@ public record ContentValidationResult
         {
             IsValid = true,
             ContentHash = contentHash,
-            Metadata = metadata ?? new Dictionary<string, object>()
+            Metadata = metadata ?? []
         };
     }
 
@@ -144,7 +144,7 @@ public record ContentValidationResult
         {
             IsValid = false,
             Issues = issues,
-            Metadata = metadata ?? new Dictionary<string, object>()
+            Metadata = metadata ?? []
         };
     }
 }

@@ -118,7 +118,7 @@ public class ProtocolStatistics
     /// <summary>
     /// Gets or sets the count of each event type received.
     /// </summary>
-    public Dictionary<string, long> EventTypeCounts { get; set; } = new();
+    public Dictionary<string, long> EventTypeCounts { get; set; } = [];
 
     /// <summary>
     /// Gets or sets the average event size in bytes.

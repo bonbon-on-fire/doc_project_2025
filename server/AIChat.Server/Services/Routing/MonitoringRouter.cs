@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using AIChat.Orleans.Contracts;
 using Microsoft.Extensions.Options;
@@ -510,6 +509,7 @@ public class MonitoringRouter : IMonitoringRouter, IDisposable
 
     private async Task<bool> CheckDirectServiceHealthAsync(CancellationToken cancellationToken)
     {
+        await Task.CompletedTask; // Suppress CS1998
         try
         {
             // Test direct service with a simple operation

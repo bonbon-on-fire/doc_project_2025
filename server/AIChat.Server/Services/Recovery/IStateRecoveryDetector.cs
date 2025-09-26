@@ -1,5 +1,3 @@
-using AIChat.Server.Services.EventStore;
-
 namespace AIChat.Server.Services.Recovery;
 
 /// <summary>
@@ -311,12 +309,12 @@ public record RecoveryDetectionMetrics
     /// <summary>
     /// Distribution of recovery needs detected.
     /// </summary>
-    public Dictionary<StateRecoveryNeed, long> RecoveryNeedDistribution { get; init; } = new();
+    public Dictionary<StateRecoveryNeed, long> RecoveryNeedDistribution { get; init; } = [];
 
     /// <summary>
     /// Distribution of recovery complexities estimated.
     /// </summary>
-    public Dictionary<RecoveryComplexity, long> ComplexityDistribution { get; init; } = new();
+    public Dictionary<RecoveryComplexity, long> ComplexityDistribution { get; init; } = [];
 
     /// <summary>
     /// Timestamp when metrics were collected.

@@ -199,7 +199,7 @@ public record EventQueryResult
     {
         return new EventQueryResult
         {
-            Events = Array.Empty<IEvent>(),
+            Events = [],
             TotalCount = 0,
             Page = 1,
             PageSize = 100
@@ -416,19 +416,29 @@ public record EventQuery
     public (bool IsValid, string? Error) Validate()
     {
         if (PageSize <= 0)
+        {
             return (false, "PageSize must be greater than 0");
+        }
 
         if (Page <= 0)
+        {
             return (false, "Page must be greater than 0");
+        }
 
         if (FromTimestamp.HasValue && ToTimestamp.HasValue && FromTimestamp > ToTimestamp)
+        {
             return (false, "FromTimestamp cannot be greater than ToTimestamp");
+        }
 
         if (FromVersion.HasValue && ToVersion.HasValue && FromVersion > ToVersion)
+        {
             return (false, "FromVersion cannot be greater than ToVersion");
+        }
 
         if ((FromVersion.HasValue || ToVersion.HasValue) && string.IsNullOrEmpty(StreamId))
+        {
             return (false, "Version filters require a specific StreamId");
+        }
 
         return (true, null);
     }
