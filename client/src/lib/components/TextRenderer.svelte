@@ -107,7 +107,7 @@
 								d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
 							></path>
 						</svg>
-						<span class="text-xs font-medium tracking-wide uppercase">System</span>
+						<span class="text-xs font-medium uppercase tracking-wide">System</span>
 					</div>
 				{/if}
 
@@ -128,7 +128,7 @@
 									theme={message.role === 'user' ? 'user' : 'auto'}
 								/>
 							{:else}
-								<span class="break-words whitespace-pre-wrap">{streamingText}</span>
+								<span class="whitespace-pre-wrap break-words">{streamingText}</span>
 							{/if}
 						{:else}
 							<!-- Thinking indicator while first tokens arrive -->
@@ -161,11 +161,11 @@
 								theme={message.role === 'user' ? 'user' : 'auto'}
 							/>
 						{:else}
-							<span class="break-words whitespace-pre-wrap">{messageText}</span>
+							<span class="whitespace-pre-wrap break-words">{messageText}</span>
 						{/if}
 					{:else}
 						<span
-							class="text-[0.8rem] text-gray-400 italic dark:text-gray-500"
+							class="text-[0.8rem] italic text-gray-400 dark:text-gray-500"
 							aria-label="Empty message">No content</span
 						>
 					{/if}

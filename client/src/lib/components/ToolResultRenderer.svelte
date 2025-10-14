@@ -235,7 +235,7 @@
 						class="rounded bg-gray-50 p-3 text-sm dark:bg-gray-800"
 						data-testid="tool-result-content"
 					>
-						<pre class="font-mono whitespace-pre-wrap">{@html formatResult(toolResult.result)}</pre>
+						<pre class="whitespace-pre-wrap font-mono">{@html formatResult(toolResult.result)}</pre>
 					</div>
 				</div>
 

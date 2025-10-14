@@ -95,7 +95,7 @@
 								d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
 							></path>
 						</svg>
-						<span class="text-xs font-medium tracking-wide uppercase">System</span>
+						<span class="text-xs font-medium uppercase tracking-wide">System</span>
 					</div>
 				{/if}
 
@@ -121,7 +121,7 @@
 										theme={message.role === 'user' ? 'user' : 'auto'}
 									/>
 								{:else}
-									<span class="break-words whitespace-pre-wrap">{reasoningDelta}</span>
+									<span class="whitespace-pre-wrap break-words">{reasoningDelta}</span>
 								{/if}
 							</div>
 						{/if}
@@ -133,7 +133,7 @@
 									theme={message.role === 'user' ? 'user' : 'auto'}
 								/>
 							{:else}
-								<span class="break-words whitespace-pre-wrap">{textDelta}</span>
+								<span class="whitespace-pre-wrap break-words">{textDelta}</span>
 							{/if}
 						</div>
 						<span class="animate-pulse">▋</span>
@@ -150,7 +150,7 @@
 									theme={message.role === 'user' ? 'user' : 'auto'}
 								/>
 							{:else}
-								<span class="break-words whitespace-pre-wrap">{messageText}</span>
+								<span class="whitespace-pre-wrap break-words">{messageText}</span>
 							{/if}
 						</div>
 					{/if}

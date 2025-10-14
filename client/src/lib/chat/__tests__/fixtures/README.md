@@ -29,29 +29,29 @@ This directory contains a fixture-based testing framework for SSE (Server-Sent E
 
 ```typescript
 export const MY_NEW_FIXTURE: SSETestFixture = {
-  id: 'my-test-scenario',
-  description: 'What this test validates',
-  tags: ['feature', 'regression'],
-  streamContent: `...SSE event stream...`,
-  expectations: {
-    0: {
-      eventType: 'init',
-      description: 'Initial state',
-      validate: (state) => {
-        expect(state.chat).toBeTruthy();
-      }
-    },
-    1: {
-      eventType: 'messageupdate',
-      description: 'Message streaming',
-      validate: (state) => {
-        // Your validations here
-      },
-      debug: (state) => {
-        // Optional debug logging
-      }
-    }
-  }
+	id: 'my-test-scenario',
+	description: 'What this test validates',
+	tags: ['feature', 'regression'],
+	streamContent: `...SSE event stream...`,
+	expectations: {
+		0: {
+			eventType: 'init',
+			description: 'Initial state',
+			validate: (state) => {
+				expect(state.chat).toBeTruthy();
+			}
+		},
+		1: {
+			eventType: 'messageupdate',
+			description: 'Message streaming',
+			validate: (state) => {
+				// Your validations here
+			},
+			debug: (state) => {
+				// Optional debug logging
+			}
+		}
+	}
 };
 ```
 
@@ -62,13 +62,13 @@ import { createFixtureTest } from './fixtures/fixtureTestUtils';
 import { SSE_FIXTURES } from './fixtures/sseStreamFixtures';
 
 describe('My Feature Tests', () => {
-  test(
-    'should handle my scenario',
-    createFixtureTest(SSE_FIXTURES.MY_FIXTURE, {
-      verbose: true,    // Enable detailed logging
-      failFast: false   // Continue on failures
-    })
-  );
+	test(
+		'should handle my scenario',
+		createFixtureTest(SSE_FIXTURES.MY_FIXTURE, {
+			verbose: true, // Enable detailed logging
+			failFast: false // Continue on failures
+		})
+	);
 });
 ```
 
@@ -80,11 +80,8 @@ Run multiple fixtures as a suite:
 import { createBatchFixtureTest, getFixturesByTag } from './fixtures';
 
 test(
-  'all regression tests should pass',
-  createBatchFixtureTest(
-    getFixturesByTag('regression'),
-    { failFast: false }
-  )
+	'all regression tests should pass',
+	createBatchFixtureTest(getFixturesByTag('regression'), { failFast: false })
 );
 ```
 
@@ -133,6 +130,7 @@ DEBUG_HELPERS.warnIf(condition, 'Warning message')(state);
 ### 3. Tag Fixtures Appropriately
 
 Use consistent tags for easy filtering:
+
 - `bug`: Known bug reproductions
 - `regression`: Regression tests
 - `feature`: Feature validation
@@ -164,12 +162,12 @@ In `sseStreamFixtures.ts`:
 
 ```typescript
 export const BASE_EXPECTATIONS = {
-  // ... existing expectations
-  
-  myNewExpectation: (param: string) => (state: TestSnapshot) => {
-    // Your reusable validation logic
-    expect(state.something).toBe(param);
-  }
+	// ... existing expectations
+
+	myNewExpectation: (param: string) => (state: TestSnapshot) => {
+		// Your reusable validation logic
+		expect(state.something).toBe(param);
+	}
 };
 ```
 
@@ -177,13 +175,13 @@ export const BASE_EXPECTATIONS = {
 
 ```typescript
 export const DEBUG_HELPERS = {
-  // ... existing helpers
-  
-  logCustomState: (state: TestSnapshot) => {
-    console.log('Custom State:', {
-      // Your custom logging
-    });
-  }
+	// ... existing helpers
+
+	logCustomState: (state: TestSnapshot) => {
+		console.log('Custom State:', {
+			// Your custom logging
+		});
+	}
 };
 ```
 
@@ -191,21 +189,18 @@ export const DEBUG_HELPERS = {
 
 ```typescript
 const createScenarioFixture = (messageCount: number) => ({
-  id: `scenario-${messageCount}`,
-  description: `Test with ${messageCount} messages`,
-  streamContent: generateStream(messageCount),
-  expectations: generateExpectations(messageCount)
+	id: `scenario-${messageCount}`,
+	description: `Test with ${messageCount} messages`,
+	streamContent: generateStream(messageCount),
+	expectations: generateExpectations(messageCount)
 });
 
-const scenarios = [1, 5, 10].map(count => ({
-  name: `${count} messages`,
-  params: count
+const scenarios = [1, 5, 10].map((count) => ({
+	name: `${count} messages`,
+	params: count
 }));
 
-const tests = createParameterizedFixtureTest(
-  createScenarioFixture,
-  scenarios
-);
+const tests = createParameterizedFixtureTest(createScenarioFixture, scenarios);
 ```
 
 ## Debugging Tips
@@ -219,16 +214,19 @@ const tests = createParameterizedFixtureTest(
 ## Common Issues
 
 ### Issue: Text content lost during streaming
+
 - Ensure message IDs match expected patterns
 - Verify handlers preserve existing message properties
 - Check streaming snapshot management
 
 ### Issue: Message ordering problems
+
 - Validate sequence numbers in expectations
 - Check timestamp ordering
 - Verify handler message insertion logic
 
 ### Issue: Failed validations
+
 - Enable verbose logging to see actual state
 - Use debug helpers to log message structure
 - Check for timing-related issues in async operations

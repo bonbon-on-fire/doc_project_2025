@@ -124,7 +124,7 @@
 				<div class="rounded-md bg-gray-50 p-3 dark:bg-gray-800">
 					<div class="mb-1 font-mono text-xs text-gray-600 dark:text-gray-400">Parameters:</div>
 					<pre
-						class="font-mono text-xs whitespace-pre-wrap text-gray-700 dark:text-gray-300">{formatParameters()}</pre>
+						class="whitespace-pre-wrap font-mono text-xs text-gray-700 dark:text-gray-300">{formatParameters()}</pre>
 				</div>
 			{/if}
 		</div>
@@ -146,7 +146,7 @@
 			<div class="border-t pt-3">
 				<div class="mb-1 font-mono text-xs text-gray-600 dark:text-gray-400">Result:</div>
 				<pre
-					class="rounded-md bg-gray-50 p-3 font-mono text-xs whitespace-pre-wrap text-gray-700 dark:bg-gray-800 dark:text-gray-300">{message
+					class="whitespace-pre-wrap rounded-md bg-gray-50 p-3 font-mono text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-300">{message
 						.content.toolResults[0].output || '(empty)'}</pre>
 			</div>
 		{/if}

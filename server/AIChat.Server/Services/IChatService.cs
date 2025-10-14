@@ -361,7 +361,7 @@ public static class MessageSerializationOptions
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         TypeInfoResolver = new DefaultJsonTypeInfoResolver(),
         // Enable polymorphic serialization with type discriminator
-        WriteIndented = false,
+        WriteIndented = true,  // Changed to true for better readability
         IncludeFields = false,
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };

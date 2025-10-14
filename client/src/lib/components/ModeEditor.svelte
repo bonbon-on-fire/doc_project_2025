@@ -579,7 +579,7 @@
 				on:click={handleCancel}
 				disabled={isSaving}
 				class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700
-					shadow-sm hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none
+					shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
 					disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300
 					dark:hover:bg-gray-600"
 			>
@@ -589,8 +589,8 @@
 				type="submit"
 				disabled={isSaving}
 				class="inline-flex items-center rounded-md border border-transparent bg-blue-600 px-4 py-2
-					text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:ring-2 focus:ring-blue-500
-					focus:ring-offset-2 focus:outline-none disabled:opacity-50 dark:bg-blue-500
+					text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2
+					focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 dark:bg-blue-500
 					dark:hover:bg-blue-600"
 			>
 				{#if isSaving}

@@ -87,6 +87,8 @@ builder
                 System.Text.Json.JsonNamingPolicy.CamelCase
             )
         );
+        // Enable formatted/indented JSON output for better readability
+        options.JsonSerializerOptions.WriteIndented = true;
     });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

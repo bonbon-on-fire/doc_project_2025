@@ -91,7 +91,7 @@
 					<button
 						on:click={() => toastActions.dismiss(toast.id)}
 						class="ml-4 inline-flex rounded text-white hover:text-gray-200
-							focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-current focus:outline-none"
+							focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-current"
 						aria-label="Dismiss notification"
 					>
 						<span class="sr-only">Close</span>
