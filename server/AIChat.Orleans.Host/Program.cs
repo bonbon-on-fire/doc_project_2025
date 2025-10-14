@@ -113,6 +113,10 @@ public class Program
                             async context =>
                                 await context.Response.WriteAsync("Orleans Host is running")
                         );
+
+                        // Map health checks for Aspire observability
+                        _ = endpoints.MapHealthChecks("/alive");
+                        _ = endpoints.MapHealthChecks("/ready");
                     });
                 })
             )
@@ -154,6 +158,16 @@ public class Program
             .ConfigureServices(
                 (context, services) =>
                 {
+                    // Add Aspire service discovery
+                    _ = services.AddServiceDiscovery();
+
+                    // Configure HTTP client defaults with resilience
+                    _ = services.ConfigureHttpClientDefaults(http =>
+                    {
+                        _ = http.AddStandardResilienceHandler();
+                        _ = http.AddServiceDiscovery();
+                    });
+
                     // Add controller services for API endpoints
                     _ = services.AddControllers()
                         .AddJsonOptions(options =>
@@ -367,6 +381,7 @@ public class OrleansStartupTask : IStartupTask
             _logger.LogInformation(
                 "Orleans startup validation successful. Silo is ready to accept requests"
             );
+
             return Task.CompletedTask;
         }
         catch (Exception ex)
