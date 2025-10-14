@@ -1,3 +1,4 @@
+using AIChat.Orleans.Contracts;
 using AIChat.Orleans.Placement;
 using Microsoft.AspNetCore.Mvc;
 
@@ -6,25 +7,31 @@ namespace AIChat.Orleans.Host.Controllers;
 /// <summary>
 /// Controller for managing Orleans grain placement metrics and monitoring.
 /// Provides API endpoints for placement effectiveness data and management operations.
+/// Uses the Grain Facade pattern to access metrics through grain interfaces.
 /// </summary>
+/// <remarks>
+/// This controller demonstrates the architectural separation between WebHost and Orleans Silo.
+/// Instead of directly injecting internal services (IPlacementMetricsCollector), it uses
+/// IGrainFactory to call IPlacementMetricsGrain, maintaining a clean client-server boundary.
+/// </remarks>
 [ApiController]
 [Route("api/orleans/placement")]
 [Produces("application/json")]
 public class PlacementController : ControllerBase
 {
-    private readonly IPlacementMetricsCollector _placementMetrics;
+    private readonly IGrainFactory _grainFactory;
     private readonly ILogger<PlacementController> _logger;
 
     /// <summary>
     /// Initializes a new instance of the PlacementController.
     /// </summary>
-    /// <param name="placementMetrics">Placement metrics collector service</param>
+    /// <param name="grainFactory">Orleans grain factory for accessing monitoring grains</param>
     /// <param name="logger">Logger instance</param>
     public PlacementController(
-        IPlacementMetricsCollector placementMetrics,
+        IGrainFactory grainFactory,
         ILogger<PlacementController> logger)
     {
-        _placementMetrics = placementMetrics ?? throw new ArgumentNullException(nameof(placementMetrics));
+        _grainFactory = grainFactory ?? throw new ArgumentNullException(nameof(grainFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -41,8 +48,11 @@ public class PlacementController : ControllerBase
     {
         try
         {
-            _logger.LogDebug("Retrieving placement metrics summary");
-            var summary = await _placementMetrics.GetMetricsSummaryAsync();
+            _logger.LogDebug("Retrieving placement metrics summary via PlacementMetricsGrain");
+
+            // Use grain facade pattern - call monitoring grain instead of direct service injection
+            var placementGrain = _grainFactory.GetGrain<IPlacementMetricsGrain>(0);
+            var summary = await placementGrain.GetMetricsSummaryAsync();
 
             _logger.LogDebug(
                 "Successfully retrieved placement metrics: {TotalPlacements} total placements, {Strategies} strategies",
@@ -73,12 +83,15 @@ public class PlacementController : ControllerBase
     [HttpPost("metrics/reset")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
-    public ActionResult ResetMetrics()
+    public async Task<ActionResult> ResetMetrics()
     {
         try
         {
             _logger.LogInformation("Resetting placement metrics as requested");
-            _placementMetrics.ResetMetrics();
+
+            // Use grain facade pattern - call monitoring grain instead of direct service injection
+            var placementGrain = _grainFactory.GetGrain<IPlacementMetricsGrain>(0);
+            await placementGrain.ResetMetricsAsync();
 
             var result = new { Message = "Placement metrics reset successfully", Timestamp = DateTime.UtcNow };
             _logger.LogInformation("Placement metrics reset completed successfully");
@@ -109,17 +122,9 @@ public class PlacementController : ControllerBase
     {
         try
         {
-            var summary = await _placementMetrics.GetMetricsSummaryAsync();
-            var strategies = new Dictionary<string, string>();
-
-            foreach (var kvp in summary.PlacementStrategyCounts)
-            {
-                var parts = kvp.Key.Split(':');
-                if (parts.Length == 2)
-                {
-                    strategies[parts[0]] = parts[1]; // GrainType -> PlacementStrategy
-                }
-            }
+            // Use grain facade pattern - call monitoring grain instead of direct service injection
+            var placementGrain = _grainFactory.GetGrain<IPlacementMetricsGrain>(0);
+            var strategies = await placementGrain.GetPlacementStrategiesAsync();
 
             return Ok(strategies);
         }
@@ -141,8 +146,11 @@ public class PlacementController : ControllerBase
     {
         try
         {
-            var summary = await _placementMetrics.GetMetricsSummaryAsync();
-            return Ok(summary.SiloLoadDistribution);
+            // Use grain facade pattern - call monitoring grain instead of direct service injection
+            var placementGrain = _grainFactory.GetGrain<IPlacementMetricsGrain>(0);
+            var distribution = await placementGrain.GetSiloLoadDistributionAsync();
+
+            return Ok(distribution);
         }
         catch (Exception ex)
         {

@@ -14,14 +14,31 @@ namespace AIChat.Orleans.Host;
 /// Orleans silo host program for the AIChat application.
 /// Provides dedicated hosting for Orleans grains with proper configuration.
 /// </summary>
+/// <remarks>
+/// ARCHITECTURE: Hybrid Co-hosting with Grain Facade Pattern
+///
+/// This application hosts two logically separated components in a single process:
+///
+/// 1. Orleans Silo - Independent grain hosting
+///    - Business grains (UserGrain, ChatGrain, ModeGrain)
+///    - Monitoring grains (ClusterMetricsGrain, PlacementMetricsGrain, ClusterHealthGrain)
+///    - Internal services (IOrleansMetricsCollector, IPlacementMetricsCollector)
+///
+/// 2. ASP.NET WebHost - Health/Monitoring API (Orleans Client Pattern)
+///    - Controllers access Orleans ONLY through grain interfaces (IGrainFactory)
+///    - No direct injection of silo-internal services
+///    - Acts as an Orleans client through the Grain Facade pattern
+///    - Maintains clean architectural boundary while co-hosting for simplicity
+///
+/// Benefits:
+/// - Clean separation: WebHost cannot access silo internals directly
+/// - Independent hosting: Silo can run standalone, WebHost is optional
+/// - Operational simplicity: Single process, single deployment
+/// - Future-proof: Easy to separate into different processes later
+/// - Low overhead: In-process grain calls (no network serialization)
+/// </remarks>
 public class Program
 {
-    private static readonly System.Text.Json.JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
-        WriteIndented = true,
-    };
-
     /// <summary>
     /// Entry point for the Orleans silo host application.
     /// </summary>
@@ -62,71 +79,40 @@ public class Program
     /// <returns>Configured host builder</returns>
     public static IHostBuilder CreateHostBuilder(string[] args)
     {
-        return Microsoft
-            .Extensions.Hosting.Host.CreateDefaultBuilder(args)
-            .ConfigureWebHostDefaults(webBuilder =>
+        var builder = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder(args);
+
+        _ = builder.ConfigureWebHostDefaults(webBuilder =>
                 _ = webBuilder.Configure(app =>
                 {
-                    // Web host with controller support for proper API endpoints
+                    // ========================================================================
+                    // ASP.NET WebHost Configuration - Acts as Orleans Client
+                    // ========================================================================
+                    // This WebHost provides health/monitoring APIs by calling Orleans grains
+                    // through IGrainFactory (Grain Facade Pattern). Controllers do NOT inject
+                    // internal silo services directly, maintaining clean architectural separation.
+                    //
+                    // Monitoring Endpoints:
+                    // - /api/orleans/health/*      -> HealthController -> IClusterHealthGrain
+                    // - /api/orleans/metrics/*     -> MetricsController -> IClusterMetricsGrain
+                    // - /api/orleans/placement/*   -> PlacementController -> IPlacementMetricsGrain
+                    //
+                    // All controllers use IGrainFactory to call stateless worker monitoring grains.
+                    // ========================================================================
+
                     _ = app.UseRouting();
                     _ = app.UseEndpoints(endpoints =>
                     {
-                        // Add controller routing for structured API endpoints
+                        // Map all controllers (HealthController, MetricsController, PlacementController)
+                        // These controllers use the Grain Facade pattern to access Orleans data
                         _ = endpoints.MapControllers();
 
-                        // Keep basic health check as minimal API
+                        // Basic liveness check - minimal API for simple health probe
+                        // For detailed health info, use /api/orleans/health/status
                         _ = endpoints.MapGet(
                             "/health",
                             async context =>
                                 await context.Response.WriteAsync("Orleans Host is running")
                         );
-
-                        // Phase 4: Orleans Metrics API endpoint (minimal API for backward compatibility)
-                        _ = endpoints.MapGet(
-                            "/api/orleans/metrics",
-                            async context =>
-                            {
-                                var metricsCollector =
-                                    context.RequestServices.GetRequiredService<IOrleansMetricsCollector>();
-                                var summary = await metricsCollector.GetMetricsSummaryAsync();
-
-                                context.Response.ContentType = "application/json";
-                                await context.Response.WriteAsync(
-                                    System.Text.Json.JsonSerializer.Serialize(summary, JsonOptions)
-                                );
-                            }
-                        );
-
-                        _ = endpoints.MapGet(
-                            "/api/orleans/metrics/{grainType}",
-                            async (
-                                string grainType,
-                                HttpContext context,
-                                IOrleansMetricsCollector metricsCollector
-                            ) =>
-                            {
-                                if (string.IsNullOrEmpty(grainType))
-                                {
-                                    context.Response.StatusCode = 400;
-                                    await context.Response.WriteAsync("Grain type is required");
-                                    return;
-                                }
-
-                                var grainMetrics = await metricsCollector.GetGrainTypeMetricsAsync(
-                                    grainType
-                                );
-
-                                context.Response.ContentType = "application/json";
-                                await context.Response.WriteAsync(
-                                    System.Text.Json.JsonSerializer.Serialize(
-                                        grainMetrics,
-                                        JsonOptions
-                                    )
-                                );
-                            }
-                        );
-
-                        // Note: Placement metrics endpoints moved to PlacementController for better architecture
                     });
                 })
             )
@@ -213,7 +199,7 @@ public class Program
                     // Add ChatServiceProxy for grain LLM processing
                     // Production implementation that calls real Server API endpoints
                     _ = services.AddSingleton<
-                        AIChat.Orleans.Services.IChatServiceProxy,
+                        Orleans.Services.IChatServiceProxy,
                         HttpChatServiceProxy
                     >();
 
@@ -221,6 +207,8 @@ public class Program
                     _ = services.AddHealthChecks();
                 }
             );
+
+        return builder;
     }
 
     /// <summary>

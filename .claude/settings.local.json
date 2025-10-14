@@ -124,7 +124,8 @@
       "Read(/B:\\sources\\DOC_Project_2025\\server/**)",
       "Read(/B:\\sources\\DOC_Project_2025\\docs\\features\\orleans-grain-integration/**)",
       "Read(/B:\\sources\\DOC_Project_2025\\docs\\features\\orleans-grain-integration/**)",
-      "Read(/B:\\sources\\DOC_Project_2025\\AIChat.Orleans/**)"
+      "Read(/B:\\sources\\DOC_Project_2025\\AIChat.Orleans/**)",
+      "Bash(dotnet list:*)"
     ],
     "deny": [],
     "ask": [],

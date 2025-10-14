@@ -13,7 +13,7 @@ public static class PlacementExtensions
     /// </summary>
     /// <param name="siloBuilder">Orleans silo builder</param>
     /// <returns>Silo builder for chaining</returns>
-    public static global::Orleans.Hosting.ISiloBuilder UseOrleansPlacementMetrics(this global::Orleans.Hosting.ISiloBuilder siloBuilder)
+    public static ISiloBuilder UseOrleansPlacementMetrics(this ISiloBuilder siloBuilder)
     {
         // Add grain filters to intercept grain calls and collect metrics
         _ = siloBuilder.AddIncomingGrainCallFilter<PlacementMetricsFilter>();
