@@ -63,7 +63,7 @@ public class StreamingBridgeFactoryTests
     public void CreateBridgeWithCustomConfigurationAppliesCustomValues()
     {
         // Arrange
-        var customBufferSize = 200;
+        const int customBufferSize = 200;
 
         // Act
         var bridge = _factory.CreateBridge(config => config.BufferSize = customBufferSize);

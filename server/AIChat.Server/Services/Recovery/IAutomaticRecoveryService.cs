@@ -681,35 +681,35 @@ public enum RecoveryEventType
     /// <summary>
     /// Recovery operation started.
     /// </summary>
-    RecoveryStarted,
+    RecoveryStarted = 0,
 
     /// <summary>
     /// Recovery operation completed successfully.
     /// </summary>
-    RecoveryCompleted,
+    RecoveryCompleted = 1,
 
     /// <summary>
     /// Recovery operation failed.
     /// </summary>
-    RecoveryFailed,
+    RecoveryFailed = 2,
 
     /// <summary>
     /// Recovery operation was cancelled.
     /// </summary>
-    RecoveryCancelled,
+    RecoveryCancelled = 3,
 
     /// <summary>
     /// State corruption detected.
     /// </summary>
-    CorruptionDetected,
+    CorruptionDetected = 4,
 
     /// <summary>
     /// Integrity check completed.
     /// </summary>
-    IntegrityCheckCompleted,
+    IntegrityCheckCompleted = 5,
 
     /// <summary>
     /// Recovery policy updated.
     /// </summary>
-    PolicyUpdated
+    PolicyUpdated = 6
 }

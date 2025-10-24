@@ -75,18 +75,20 @@ public class ModeServiceTests : IDisposable
             : "";
 
         var agentCardContent =
-            $@"---
-agent: ""{agentId}""
-name: ""{name}""
-version: ""1.0.0""
-category: ""{category}""{modelLine}
+            $"""
+---
+agent: "{agentId}"
+name: "{name}"
+version: "1.0.0"
+category: "{category}"{modelLine}
 capabilities:
   tools: [{toolsList}]
 ---
 
 # ROLE
 {prompt}
-";
+
+""";
 
         var agentsPath = Path.Combine(basePath, "agents");
         if (!Directory.Exists(agentsPath))
@@ -146,7 +148,7 @@ capabilities:
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId();
-        var modeId = "test-system";
+        const string modeId = "test-system";
 
         // Act
         var (Success, Error, Mode) = await _service.GetModeByIdAsync(modeId, userId);
@@ -164,7 +166,7 @@ capabilities:
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId();
-        var modeId = "custom-1";
+        const string modeId = "custom-1";
         var customMode = new ModeRecord
         {
             Id = modeId,
@@ -252,7 +254,7 @@ capabilities:
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId();
-        var modeId = "custom-mode-1";
+        const string modeId = "custom-mode-1";
         var updateRequest = new UpdateModeRequest
         {
             Name = "Updated Mode Name",
@@ -318,7 +320,7 @@ capabilities:
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId();
-        var modeId = "custom-mode-1";
+        const string modeId = "custom-mode-1";
 
         _ = _modeStorageMock
             .Setup(x => x.DeleteModeAsync(modeId, userId, It.IsAny<CancellationToken>()))
@@ -341,7 +343,7 @@ capabilities:
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId();
-        var modeId = "test-system"; // This is a system mode
+        const string modeId = "test-system"; // This is a system mode
 
         // Act
         var (Success, Error) = await _service.DeleteCustomModeAsync(modeId, userId);
@@ -366,7 +368,7 @@ capabilities:
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId();
-        var modeId = "test-system";
+        const string modeId = "test-system";
         var availableTools = new[] { "tool1", "tool2", "tool3", "tool4" };
 
         // Act (system mode has tool1, tool2)
@@ -416,7 +418,7 @@ capabilities:
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId();
-        var modeId = "test-system";
+        const string modeId = "test-system";
 
         // Act
         var (Success, Error, SystemPrompt) = await _service.GetModeSystemPromptAsync(
@@ -434,7 +436,7 @@ capabilities:
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId();
-        var modeId = "custom-1";
+        const string modeId = "custom-1";
         var customMode = new ModeRecord
         {
             Id = modeId,
@@ -545,7 +547,7 @@ capabilities:
         Directory.Delete(emptyDir, true);
     }
 
-    #endregion
+    #endregion Caching Behavior Tests
 
     #region File System Error Tests
 
@@ -624,14 +626,16 @@ Test"
         _ = Directory.CreateDirectory(Path.Combine(incompleteDir, "agents"));
 
         // Write Agent Card missing required agent field
-        var incompleteAgentCard =
-            @"---
-name: ""Incomplete Mode""
-category: ""test""
+        const string incompleteAgentCard =
+            """
+---
+name: "Incomplete Mode"
+category: "test"
 ---
 
 # Role
-Incomplete";
+Incomplete
+""";
         File.WriteAllText(
             Path.Combine(incompleteDir, "agents", "incomplete.agent.md"),
             incompleteAgentCard
@@ -662,7 +666,7 @@ Incomplete";
         Directory.Delete(incompleteDir, true);
     }
 
-    #endregion
+    #endregion File System Error Tests
 
     #region Concurrent Access Tests
 
@@ -696,7 +700,7 @@ Incomplete";
         }
 
         // Act - Concurrent calls
-        var tasks = userIds.Select(userId => _service.GetAllModesAsync(userId)).ToList();
+        var tasks = userIds.ConvertAll(userId => _service.GetAllModesAsync(userId));
         var results = await Task.WhenAll(tasks);
 
         // Assert
@@ -719,7 +723,7 @@ Incomplete";
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId("crud-sequence");
-        var modeId = "mode-concurrent";
+        const string modeId = "mode-concurrent";
 
         var createRequest = new CreateModeRequest
         {
@@ -797,7 +801,7 @@ Incomplete";
         _ = results[1].Success.Should().BeTrue();
     }
 
-    #endregion
+    #endregion Concurrent Access Tests
 
     #region Edge Case Tests
 
@@ -806,7 +810,7 @@ Incomplete";
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId("edge-case-1");
-        var systemModeId = "test-system";
+        const string systemModeId = "test-system";
         var updateRequest = new UpdateModeRequest
         {
             Name = "Hacked System Mode",
@@ -846,7 +850,7 @@ Incomplete";
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId("edge-case-2");
-        var nonExistentModeId = "non-existent-mode";
+        const string nonExistentModeId = "non-existent-mode";
         var availableTools = new[] { "tool1", "tool2", "tool3" };
 
         _ = _modeStorageMock
@@ -872,7 +876,7 @@ Incomplete";
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId("edge-case-3");
-        var modeId = "test-system";
+        const string modeId = "test-system";
         var emptyTools = Array.Empty<string>();
 
         // Act
@@ -892,7 +896,7 @@ Incomplete";
     {
         // Arrange
         var userId = TestHelpers.GenerateUniqueUserId("edge-case-4");
-        var nonExistentModeId = "non-existent-mode";
+        const string nonExistentModeId = "non-existent-mode";
 
         _ = _modeStorageMock
             .Setup(x =>
@@ -911,7 +915,7 @@ Incomplete";
         _ = SystemPrompt.Should().BeNull();
     }
 
-    #endregion
+    #endregion Edge Case Tests
 
     public void Dispose()
     {

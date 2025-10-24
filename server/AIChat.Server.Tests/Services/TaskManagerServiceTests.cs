@@ -31,7 +31,7 @@ public class TaskManagerServiceTests : IDisposable
     public async Task GetTaskManagerAsyncCreatesNewInstanceWhenNoneExists()
     {
         // Arrange
-        var chatId = "test-chat-1";
+        const string chatId = "test-chat-1";
         _ = _mockTaskStorage
             .Setup(x => x.GetTasksAsync(chatId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ChatTaskState?)null);
@@ -50,7 +50,7 @@ public class TaskManagerServiceTests : IDisposable
     public async Task GetTaskManagerAsyncLoadsExistingStateWhenExists()
     {
         // Arrange
-        var chatId = "test-chat-2";
+        const string chatId = "test-chat-2";
         // Create a TaskManager with a test task
         var savedTaskManager = new TaskManager();
         _ = savedTaskManager.AddTask("Test Task");
@@ -82,7 +82,7 @@ public class TaskManagerServiceTests : IDisposable
     public async Task SaveTaskManagerStateAsyncPersistsStateSuccessfully()
     {
         // Arrange
-        var chatId = "test-chat-3";
+        const string chatId = "test-chat-3";
         var taskManager = await _service.GetTaskManagerAsync(chatId);
 
         var newState = new ChatTaskState
@@ -124,7 +124,7 @@ public class TaskManagerServiceTests : IDisposable
     public async Task ClearTaskManagerAsyncRemovesFromCacheAndStorage()
     {
         // Arrange
-        var chatId = "test-chat-4";
+        const string chatId = "test-chat-4";
         var taskManager = await _service.GetTaskManagerAsync(chatId);
 
         // Act
@@ -145,7 +145,7 @@ public class TaskManagerServiceTests : IDisposable
     public async Task GetTaskStateAsyncReturnsProperJsonStructure()
     {
         // Arrange
-        var chatId = "test-chat-5";
+        const string chatId = "test-chat-5";
         _ = await _service.GetTaskManagerAsync(chatId);
 
         // Act
@@ -162,8 +162,8 @@ public class TaskManagerServiceTests : IDisposable
     public async Task MultipleChatsMaintainSeparateTaskManagers()
     {
         // Arrange
-        var chatId1 = "test-chat-6";
-        var chatId2 = "test-chat-7";
+        const string chatId1 = "test-chat-6";
+        const string chatId2 = "test-chat-7";
 
         // Act
         var taskManager1 = await _service.GetTaskManagerAsync(chatId1);

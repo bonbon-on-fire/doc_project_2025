@@ -11,7 +11,9 @@ public sealed class StateConsistencyVerifier : IStateConsistencyVerifier
     private readonly IEventStore _eventStore;
     private readonly ILogger<StateConsistencyVerifier> _logger;
 
-    // Cached JSON serializer options for performance
+    /// <summary>
+    /// Cached JSON serializer options for performance
+    /// </summary>
     private static readonly System.Text.Json.JsonSerializerOptions CachedJsonOptions = new()
     {
         ReferenceHandler = null // No circular reference handling
@@ -188,7 +190,7 @@ public sealed class StateConsistencyVerifier : IStateConsistencyVerifier
             var violations = new List<string>();
             var warnings = new List<string>();
 
-            if (state == null)
+            if (EqualityComparer<T?>.Default.Equals(state, default(T?)))
             {
                 violations.Add("State cannot be null");
                 return Task.FromResult(BusinessRuleValidationResult.Invalid(violations, ValidationSeverity.Critical));
@@ -198,8 +200,7 @@ public sealed class StateConsistencyVerifier : IStateConsistencyVerifier
             var stateType = typeof(T);
 
             // Check for required properties using reflection
-            var properties = stateType.GetProperties();
-            foreach (var property in properties)
+            foreach (var property in stateType.GetProperties())
             {
                 // Check for null required reference properties
                 if (!property.PropertyType.IsValueType &&
@@ -295,7 +296,7 @@ public sealed class StateConsistencyVerifier : IStateConsistencyVerifier
             var issues = new List<string>();
             var warnings = new List<string>();
 
-            if (state == null)
+            if (EqualityComparer<T?>.Default.Equals(state, default(T?)))
             {
                 issues.Add("State is null");
                 return Task.FromResult(DataIntegrityVerificationResult.CreateInvalid(issues));
@@ -308,7 +309,7 @@ public sealed class StateConsistencyVerifier : IStateConsistencyVerifier
                 json = System.Text.Json.JsonSerializer.Serialize(state);
                 var deserializedState = System.Text.Json.JsonSerializer.Deserialize<T>(json);
 
-                if (deserializedState == null)
+                if (EqualityComparer<T?>.Default.Equals(deserializedState, default(T?)))
                 {
                     issues.Add("State deserialization resulted in null object");
                 }
@@ -438,7 +439,7 @@ public sealed class StateConsistencyVerifier : IStateConsistencyVerifier
             // Check if event stream exists
             if (!await _eventStore.StreamExistsAsync(streamId, cancellationToken))
             {
-                if (state != null)
+                if (!EqualityComparer<T?>.Default.Equals(state, default(T?)))
                 {
                     warnings.Add("State exists but no corresponding event stream found");
                 }
@@ -452,7 +453,7 @@ public sealed class StateConsistencyVerifier : IStateConsistencyVerifier
             var targetVersion = expectedVersion ?? streamVersion;
 
             // Version alignment check
-            if (state == null)
+            if (EqualityComparer<T?>.Default.Equals(state, default(T?)))
             {
                 if (targetVersion >= 0)
                 {
@@ -475,13 +476,9 @@ public sealed class StateConsistencyVerifier : IStateConsistencyVerifier
             }
 
             if (stateVersion < targetVersion)
-            {
                 issues.Add($"State version {stateVersion} is behind expected version {targetVersion}");
-            }
             else if (stateVersion > targetVersion)
-            {
                 issues.Add($"State version {stateVersion} is ahead of expected version {targetVersion}");
-            }
 
             var isAligned = issues.Count == 0;
 
@@ -642,7 +639,7 @@ public sealed class StateConsistencyVerifier : IStateConsistencyVerifier
     /// <returns>The version number, or -1 if not found</returns>
     private static long GetStateVersion<T>(T state)
     {
-        if (state == null)
+        if (EqualityComparer<T?>.Default.Equals(state, default(T?)))
         {
             return -1;
         }
@@ -674,7 +671,7 @@ public sealed class StateConsistencyVerifier : IStateConsistencyVerifier
     /// <returns>True if circular references are detected</returns>
     private static bool HasCircularReferences<T>(T state)
     {
-        if (state == null)
+        if (EqualityComparer<T?>.Default.Equals(state, default(T?)))
         {
             return false;
         }
@@ -780,33 +777,21 @@ public sealed class StateConsistencyVerifier : IStateConsistencyVerifier
 
         // Reduce score for data integrity issues
         if (!dataIntegrityResult.IsValid)
-        {
             score -= 0.4; // Major reduction for data integrity issues
-        }
         else if (dataIntegrityResult.Warnings.Any())
-        {
             score -= 0.1; // Minor reduction for warnings
-        }
 
         // Reduce score for business rule violations
         if (!businessRulesResult.IsValid)
-        {
             score -= 0.3; // Significant reduction for business rule violations
-        }
         else if (businessRulesResult.Warnings.Any())
-        {
             score -= 0.1; // Minor reduction for warnings
-        }
 
         // Reduce score for event stream alignment issues
         if (!alignmentResult.IsAligned)
-        {
             score -= 0.3; // Significant reduction for alignment issues
-        }
         else if (alignmentResult.Warnings.Any())
-        {
             score -= 0.05; // Very minor reduction for warnings
-        }
 
         return Math.Max(0.0, score);
     }
@@ -916,5 +901,5 @@ public sealed class StateConsistencyVerifier : IStateConsistencyVerifier
         return Convert.ToHexString(hashBytes);
     }
 
-    #endregion
+    #endregion Private Helper Methods
 }

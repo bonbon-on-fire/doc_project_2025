@@ -56,7 +56,7 @@ public sealed class ScalingRecommendation
 /// </summary>
 public enum ScalingAction
 {
-    None,
-    ScaleUp,
-    ScaleDown
+    None = 0,
+    ScaleUp = 1,
+    ScaleDown = 2
 }

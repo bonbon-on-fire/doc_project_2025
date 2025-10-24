@@ -67,8 +67,7 @@ public class ChatControllerDualModeTests
 
         // Setup HTTP context
         _httpContext = new DefaultHttpContext();
-        var responseBody = new MemoryStream();
-        _httpContext.Response.Body = responseBody;
+        _httpContext.Response.Body = new MemoryStream();
         _controller.ControllerContext = new ControllerContext { HttpContext = _httpContext };
     }
 

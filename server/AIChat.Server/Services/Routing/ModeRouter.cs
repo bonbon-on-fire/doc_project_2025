@@ -19,10 +19,14 @@ public class ModeRouter : IModeRouter, IDisposable
     private readonly SemaphoreSlim _healthCheckSemaphore;
     private readonly DualModeRouterOptions _options;
 
-    // Feature flag name for Orleans routing
+    /// <summary>
+    /// Feature flag name for Orleans routing
+    /// </summary>
     private const string OrleansFeatureFlag = "Orleans";
 
-    // Circuit breaker state tracking
+    /// <summary>
+    /// Circuit breaker state tracking
+    /// </summary>
     private volatile bool _orleansCircuitOpen;
     private DateTime _lastOrleansFailureTime = DateTime.MinValue;
     private readonly object _circuitBreakerLock = new();
@@ -547,7 +551,7 @@ public class ModeRouter : IModeRouter, IDisposable
         return RouterMode.Degraded;
     }
 
-    #endregion
+    #endregion Private Helper Methods
 
     /// <summary>
     /// Dispose of resources used by the router.

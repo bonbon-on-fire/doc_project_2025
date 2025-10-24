@@ -57,7 +57,7 @@ public record SignalRMessage
     /// </summary>
     [Id(5)]
     [Range(0, int.MaxValue)]
-    public int RetryCount { get; set; } = 0;
+    public int RetryCount { get; set; }
 
     /// <summary>
     /// Gets the maximum time to wait for delivery before considering it failed.

@@ -37,19 +37,27 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
     private readonly ILogger<BackgroundChatService> _logger;
     private readonly BackgroundServiceOptions _options;
 
-    // Queue management
+    /// <summary>
+    /// Queue management
+    /// </summary>
     private readonly Channel<ChatOperation> _operationQueue;
     private readonly ChannelWriter<ChatOperation> _queueWriter;
     private readonly ChannelReader<ChatOperation> _queueReader;
 
-    // Concurrency control - max 10 concurrent operations as per design
+    /// <summary>
+    /// Concurrency control - max 10 concurrent operations as per design
+    /// </summary>
     private readonly SemaphoreSlim _workerSemaphore;
 
-    // Operation tracking
+    /// <summary>
+    /// Operation tracking
+    /// </summary>
     private readonly ConcurrentDictionary<string, OperationState> _activeOperations;
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _operationCancellations;
 
-    // Statistics tracking
+    /// <summary>
+    /// Statistics tracking
+    /// </summary>
     private readonly ConcurrentDictionary<string, DateTime> _completedOperations;
     private readonly ConcurrentDictionary<
         string,
@@ -127,15 +135,15 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
             operation.QueuedAt = DateTime.UtcNow;
 
             // Create operation state
-            var operationState = new OperationState
+            
+
+            // Track the operation
+            _activeOperations[operation.Id] = new OperationState
             {
                 Operation = operation,
                 Status = ServerOperationStatus.Queued,
                 QueuedAt = operation.QueuedAt,
             };
-
-            // Track the operation
-            _activeOperations[operation.Id] = operationState;
 
             try
             {
@@ -967,7 +975,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
         state.Progress = 0.9;
     }
 
-    #endregion
+    #endregion RegenerateResponse and EditMessage Operations
 
     #region UserGrain Integration
 
@@ -1109,7 +1117,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
         }
     }
 
-    #endregion
+    #endregion UserGrain Integration
 
     #region Event Conversion Utilities
 
@@ -1191,7 +1199,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
             };
     }
 
-    #endregion
+    #endregion Event Conversion Utilities
 
     #region Payload Extraction Utilities
 
@@ -1278,7 +1286,7 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
             );
     }
 
-    #endregion
+    #endregion Payload Extraction Utilities
 }
 
 /// <summary>
@@ -1294,7 +1302,10 @@ internal sealed class OperationState
     public string? Error { get; set; }
     public double Progress { get; set; }
     public string? ProgressDescription { get; set; }
-    public int ChunkIndex { get; set; } // Track chunk sequence for streaming
+    /// <summary>
+    /// Track chunk sequence for streaming
+    /// </summary>
+    public int ChunkIndex { get; set; }
 }
 
 /// <summary>

@@ -44,11 +44,10 @@ public class SseHandlerTests
             messages = new object[] { new { role = "user", content = userMessage } },
         };
         var json = JsonSerializer.Serialize(payload, JsonOptions);
-        var req = new HttpRequestMessage(HttpMethod.Post, "http://localhost/v1/chat/completions")
+        return new HttpRequestMessage(HttpMethod.Post, "http://localhost/v1/chat/completions")
         {
             Content = new StringContent(json, Encoding.UTF8, "application/json"),
         };
-        return req;
     }
 
     [Fact]
@@ -128,7 +127,7 @@ public class SseHandlerTests
             .ToList();
 
         _ = contents.Count.Should().BeGreaterThan(0);
-        var echo = "test-echo";
+        const string echo = "test-echo";
         var nonEchoWords = string.Join(" ", contents.Where(c => c != echo))
             .Split(' ', StringSplitOptions.RemoveEmptyEntries);
         _ = nonEchoWords.Length.Should().BeGreaterThanOrEqualTo(5).And.BeLessThanOrEqualTo(500);
@@ -262,7 +261,7 @@ public class SseHandlerTests
         // Arrange
         var handler = new TestSseMessageHandler { ChunkDelayMs = 0, WordsPerChunk = 5 };
         using var invoker = new HttpMessageInvoker(handler);
-        var message = "Hello there\nReason: please think first";
+        const string message = "Hello there\nReason: please think first";
         var req = BuildRequest(message, stream: true);
 
         // Act
@@ -459,7 +458,7 @@ public class SseHandlerTests
         var handler = new TestSseMessageHandler { ChunkDelayMs = 0 };
         using var invoker = new HttpMessageInvoker(handler);
 
-        var invalid = "<|instruction_start|>{ not json }<|instruction_end|>";
+        const string invalid = "<|instruction_start|>{ not json }<|instruction_end|>";
         var res = await invoker.SendAsync(BuildRequest(invalid, stream: true), default);
         var text = await res.Content.ReadAsStringAsync();
 

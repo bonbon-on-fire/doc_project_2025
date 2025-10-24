@@ -31,7 +31,7 @@ public class ImprovedTaskManagerServiceTests : IDisposable
     public async Task GetTaskManagerAsyncWhenNoExistingTasksCreatesNewTaskManager()
     {
         // Arrange
-        var chatId = "test-chat-1";
+        const string chatId = "test-chat-1";
         _ = _taskStorageMock
             .Setup(x => x.GetTasksAsync(chatId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ChatTaskState?)null);
@@ -50,7 +50,7 @@ public class ImprovedTaskManagerServiceTests : IDisposable
     public async Task SaveTaskManagerStateAsyncSavesTasksToStorage()
     {
         // Arrange
-        var chatId = "test-chat-2";
+        const string chatId = "test-chat-2";
         _ = _taskStorageMock
             .Setup(x => x.GetTasksAsync(chatId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ChatTaskState?)null);
@@ -89,7 +89,7 @@ public class ImprovedTaskManagerServiceTests : IDisposable
     public async Task GetTaskManagerAsyncWithExistingTasksRestoresTasksCorrectly()
     {
         // Arrange
-        var chatId = "test-chat-3";
+        const string chatId = "test-chat-3";
 
         // Create a TaskManager with existing tasks
         var existingTaskManager = new TaskManager();
@@ -138,7 +138,7 @@ public class ImprovedTaskManagerServiceTests : IDisposable
     public async Task ClearTaskManagerAsyncRemovesFromCacheAndStorage()
     {
         // Arrange
-        var chatId = "test-chat-4";
+        const string chatId = "test-chat-4";
         _ = _taskStorageMock
             .Setup(x => x.GetTasksAsync(chatId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ChatTaskState?)null);
@@ -160,7 +160,7 @@ public class ImprovedTaskManagerServiceTests : IDisposable
     public async Task GetTaskStateAsyncReturnsCorrectTaskState()
     {
         // Arrange
-        var chatId = "test-chat-5";
+        const string chatId = "test-chat-5";
         _ = _taskStorageMock
             .Setup(x => x.GetTasksAsync(chatId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ChatTaskState?)null);
@@ -184,8 +184,8 @@ public class ImprovedTaskManagerServiceTests : IDisposable
     public async Task TaskManagersAreIsolatedPerChat()
     {
         // Arrange
-        var chatId1 = "test-chat-6";
-        var chatId2 = "test-chat-7";
+        const string chatId1 = "test-chat-6";
+        const string chatId2 = "test-chat-7";
 
         _ = _taskStorageMock
             .Setup(x => x.GetTasksAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -213,7 +213,7 @@ public class ImprovedTaskManagerServiceTests : IDisposable
     public async Task ParseTasksFromMarkdownHandlesInProgressTasksCorrectly()
     {
         // Arrange
-        var chatId = "test-chat-inprogress";
+        const string chatId = "test-chat-inprogress";
         _ = _taskStorageMock
             .Setup(x => x.GetTasksAsync(chatId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ChatTaskState?)null);

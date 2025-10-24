@@ -105,7 +105,12 @@ public sealed class SseStreamHttpContent : HttpContent
         return false;
     }
 
-    // Back-compat override signature
+    /// <summary>
+    /// Back-compat override signature
+    /// </summary>
+    /// <param name="stream"></param>
+    /// <param name="context"></param>
+    /// <returns></returns>
     protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context)
     {
         return SerializeCoreAsync(stream, CancellationToken.None);

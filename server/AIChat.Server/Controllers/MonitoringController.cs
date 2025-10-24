@@ -239,10 +239,19 @@ public class MonitoringController : ControllerBase
                 .Where(a => a.Value.IsActive && !criticalAlerts.Any(c => c.Key == a.Key))
                 .ToList();
 
-            var healthStatus =
-                criticalAlerts.Count != 0 ? "Critical"
-                : warningAlerts.Count != 0 ? "Warning"
-                : "Healthy";
+            string healthStatus;
+            if (criticalAlerts.Count != 0)
+            {
+                healthStatus = "Critical";
+            }
+            else if (warningAlerts.Count != 0)
+            {
+                healthStatus = "Warning";
+            }
+            else
+            {
+                healthStatus = "Healthy";
+            }
 
             var response = new
             {
@@ -614,10 +623,19 @@ public class MonitoringController : ControllerBase
         var older = values.Take(values.Count / 3).Average();
 
         var change = recent - older;
-        var direction =
-            Math.Abs(change) < 0.1 ? "stable"
-            : change > 0 ? "increasing"
-            : "decreasing";
+        string direction;
+        if (Math.Abs(change) < 0.1)
+        {
+            direction = "stable";
+        }
+        else if (change > 0)
+        {
+            direction = "increasing";
+        }
+        else
+        {
+            direction = "decreasing";
+        }
 
         return new
         {
@@ -691,5 +709,5 @@ public class MonitoringController : ControllerBase
         return string.Join("\n", prometheusMetrics);
     }
 
-    #endregion
+    #endregion Private Helper Methods
 }

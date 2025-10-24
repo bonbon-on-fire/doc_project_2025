@@ -59,7 +59,7 @@ public class MemoryStateCacheConfiguration
     /// Default: 0 (automatic).
     /// </summary>
     [Range(0, 64, ErrorMessage = "MaxDegreeOfParallelism must be between 0 and 64")]
-    public int MaxDegreeOfParallelism { get; set; } = 0;
+    public int MaxDegreeOfParallelism { get; set; }
 
     /// <summary>
     /// Enable comprehensive logging for cache operations.

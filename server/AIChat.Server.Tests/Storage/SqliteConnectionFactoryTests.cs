@@ -26,7 +26,7 @@ public class SqliteConnectionFactoryTests
             keepRootOpen: true
         );
         var conn = await factory.CreateOpenConnectionAsync();
-        using var cmd = conn.CreateCommand();
+        await using var cmd = conn.CreateCommand();
         cmd.CommandText = "PRAGMA foreign_keys";
         var val = (long)(await cmd.ExecuteScalarAsync() ?? 0L);
         _ = val.Should().Be(1);

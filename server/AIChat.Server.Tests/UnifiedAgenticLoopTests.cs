@@ -148,7 +148,7 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
         if (textUpdates.Count != 0)
         {
             // Aggregate multiple TextUpdateMessages into single TextMessage
-            var aggregatedText = string.Join("", textUpdates.Select(u => u.Text));
+            var aggregatedText = string.Concat(textUpdates.Select(u => u.Text));
             finalMessages.Add(
                 new TextMessage
                 {
@@ -164,7 +164,7 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
         if (reasoningUpdates.Count != 0)
         {
             // Aggregate multiple ReasoningUpdateMessages into single ReasoningMessage
-            var aggregatedReasoning = string.Join("", reasoningUpdates.Select(u => u.Reasoning));
+            var aggregatedReasoning = string.Concat(reasoningUpdates.Select(u => u.Reasoning));
             finalMessages.Add(
                 new ReasoningMessage
                 {
@@ -238,7 +238,7 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
         }
     }
 
-    #endregion
+    #endregion Test Helpers
 
     #region Basic Instruction Chain Tests (from AgenticLoopMockingTests)
 
@@ -253,7 +253,7 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
         using var invoker = new HttpMessageInvoker(handler);
 
-        var chainJson = /*lang=json,strict*/
+        const string chainJson = /*lang=json,strict*/
             """
             {
               "instruction_chain": [
@@ -299,7 +299,7 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
         using var invoker = new HttpMessageInvoker(handler);
 
-        var chainJson = /*lang=json,strict*/
+        const string chainJson = /*lang=json,strict*/
             """
             {
               "instruction_chain": [
@@ -340,7 +340,7 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
         using var invoker = new HttpMessageInvoker(handler);
 
-        var chainJson = /*lang=json,strict*/
+        const string chainJson = /*lang=json,strict*/
             """
             {
               "instruction_chain": [
@@ -377,7 +377,7 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
         using var invoker = new HttpMessageInvoker(handler);
 
-        var chainJson = /*lang=json,strict*/
+        const string chainJson = /*lang=json,strict*/
             """
             {
               "instruction_chain": [
@@ -418,7 +418,7 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
         using var invoker = new HttpMessageInvoker(handler);
 
         // Old single instruction format (no instruction_chain array)
-        var singleInstruction = /*lang=json,strict*/
+        const string singleInstruction = /*lang=json,strict*/
             """
             {
               "id_message": "SINGLE",
@@ -440,7 +440,7 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
         _ = text.Should().Contain("[DONE]");
     }
 
-    #endregion
+    #endregion Basic Instruction Chain Tests (from AgenticLoopMockingTests)
 
     #region Integration Tests Through Full Stack (from TestModeIntegrationTests)
 
@@ -456,19 +456,20 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
         var agent = CreateTestAgent(handler);
 
         // Create test message with tool call instruction
-        var userMessage =
-            @"
+        const string userMessage =
+            """
+
 <|instruction_start|>
 {
-  ""id_message"": ""test-weather"",
-  ""messages"": [
+  "id_message": "test-weather",
+  "messages": [
     {
-      ""tool_call"": [
+      "tool_call": [
         {
-          ""name"": ""get_weather"",
-          ""args"": {
-            ""location"": ""San Francisco"",
-            ""units"": ""celsius""
+          "name": "get_weather",
+          "args": {
+            "location": "San Francisco",
+            "units": "celsius"
           }
         }
       ]
@@ -476,7 +477,8 @@ public class UnifiedAgenticLoopTests(ITestOutputHelper output)
   ]
 }
 <|instruction_end|>
-Get the weather for San Francisco";
+Get the weather for San Francisco
+""";
 
         var messages = new List<IMessage>
         {
@@ -504,7 +506,7 @@ Get the weather for San Francisco";
         _ = firstUpdate.Should().NotBeNull();
         _ = firstUpdate!.FunctionName.Should().Be("get_weather");
 
-        var allArgChunks = string.Join("", allUpdates.Select(u => u.FunctionArgs ?? ""));
+        var allArgChunks = string.Concat(allUpdates.Select(u => u.FunctionArgs ?? ""));
         _ = allArgChunks.Should().Contain("location");
         _ = allArgChunks.Should().Contain("San Francisco");
         _ = allArgChunks.Should().Contain("celsius");
@@ -522,42 +524,44 @@ Get the weather for San Francisco";
         var agent = CreateTestAgent(handler);
 
         // Create instruction chain with 3 steps (text, tool, text)
-        var chainMessage =
-            @"Test instruction chain
+        const string chainMessage =
+            """
+Test instruction chain
 <|instruction_start|>
 {
-  ""instruction_chain"": [
+  "instruction_chain": [
     {
-      ""id"": ""step1"",
-      ""id_message"": ""first-step"",
-      ""messages"": [
-        { ""text_message"": { ""length"": 5 } }
+      "id": "step1",
+      "id_message": "first-step",
+      "messages": [
+        { "text_message": { "length": 5 } }
       ]
     },
     {
-      ""id"": ""step2"",
-      ""id_message"": ""second-step"",
-      ""messages"": [
+      "id": "step2",
+      "id_message": "second-step",
+      "messages": [
         {
-          ""tool_call"": [
+          "tool_call": [
             {
-              ""name"": ""calculator"",
-              ""args"": { ""operation"": ""add"", ""a"": 5, ""b"": 3 }
+              "name": "calculator",
+              "args": { "operation": "add", "a": 5, "b": 3 }
             }
           ]
         }
       ]
     },
     {
-      ""id"": ""step3"",
-      ""id_message"": ""third-step"",
-      ""messages"": [
-        { ""text_message"": { ""length"": 7 } }
+      "id": "step3",
+      "id_message": "third-step",
+      "messages": [
+        { "text_message": { "length": 7 } }
       ]
     }
   ]
 }
-<|instruction_end|>";
+<|instruction_end|>
+""";
 
         var messages = new List<IMessage>
         {
@@ -576,9 +580,8 @@ Get the weather for San Francisco";
         }
 
         // Add assistant response to conversation
-        var step1Text = string.Join(
-            "",
-            step1Messages.OfType<TextUpdateMessage>().Select(m => m.Text)
+        var step1Text = string.Concat(
+                        step1Messages.OfType<TextUpdateMessage>().Select(m => m.Text)
         );
         messages.Add(new TextMessage { Role = Role.Assistant, Text = step1Text });
 
@@ -639,28 +642,30 @@ Get the weather for San Francisco";
         var agent = CreateTestAgent(handler);
 
         // Create a 2-step chain
-        var chainMessage =
-            @"Test chain exhaustion
+        const string chainMessage =
+            """
+Test chain exhaustion
 <|instruction_start|>
 {
-  ""instruction_chain"": [
+  "instruction_chain": [
     {
-      ""id"": ""step1"",
-      ""id_message"": ""first"",
-      ""messages"": [
-        { ""text_message"": { ""length"": 5 } }
+      "id": "step1",
+      "id_message": "first",
+      "messages": [
+        { "text_message": { "length": 5 } }
       ]
     },
     {
-      ""id"": ""step2"",
-      ""id_message"": ""second"",
-      ""messages"": [
-        { ""text_message"": { ""length"": 5 } }
+      "id": "step2",
+      "id_message": "second",
+      "messages": [
+        { "text_message": { "length": 5 } }
       ]
     }
   ]
 }
-<|instruction_end|>";
+<|instruction_end|>
+""";
 
         var messages = new List<IMessage>
         {
@@ -708,9 +713,8 @@ Get the weather for San Francisco";
         // Assert
         _ = step3Messages.Should().NotBeEmpty("Should generate completion fallback");
 
-        var completionText = string.Join(
-            "",
-            step3Messages.OfType<TextUpdateMessage>().Select(m => m.Text)
+        var completionText = string.Concat(
+                        step3Messages.OfType<TextUpdateMessage>().Select(m => m.Text)
         );
         _ = completionText.Should().NotBeNullOrWhiteSpace("Should have completion text");
 
@@ -729,21 +733,23 @@ Get the weather for San Francisco";
         var agent = CreateTestAgent(handler);
 
         // Old format single instruction (without instruction_chain array)
-        var userMessage =
-            @"Test backward compatibility
+        const string userMessage =
+            """
+Test backward compatibility
 <|instruction_start|>
 {
-  ""id_message"": ""legacy-format"",
-  ""reasoning"": { ""length"": 3 },
-  ""messages"": [
+  "id_message": "legacy-format",
+  "reasoning": { "length": 3 },
+  "messages": [
     {
-      ""text_message"": {
-        ""length"": 8
+      "text_message": {
+        "length": 8
       }
     }
   ]
 }
-<|instruction_end|>";
+<|instruction_end|>
+""";
 
         var messages = new List<IMessage>
         {
@@ -771,14 +777,14 @@ Get the weather for San Francisco";
         var textUpdates = collectedMessages.OfType<TextUpdateMessage>().ToList();
         _ = textUpdates.Should().NotBeEmpty("Should have text messages");
 
-        var fullText = string.Join("", textUpdates.Select(u => u.Text));
+        var fullText = string.Concat(textUpdates.Select(u => u.Text));
         var wordCount = fullText.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
         _ = wordCount.Should().BeInRange(6, 10, "Should generate approximately 8 words");
 
         output.WriteLine($"Legacy format processed successfully with {wordCount} words");
     }
 
-    #endregion
+    #endregion Integration Tests Through Full Stack (from TestModeIntegrationTests)
 
     #region CompositeMessage Tests (New Focus Area)
 
@@ -796,29 +802,31 @@ Get the weather for San Francisco";
 
         // Create an instruction that generates reasoning, text, and tool call
         // This should result in multiple message types streamed in sequence
-        var complexInstruction =
-            @"Test composite message generation
+        const string complexInstruction =
+            """
+Test composite message generation
 <|instruction_start|>
 {
-  ""id_message"": ""composite-test"",
-  ""reasoning"": { ""length"": 5 },
-  ""messages"": [
+  "id_message": "composite-test",
+  "reasoning": { "length": 5 },
+  "messages": [
     {
-      ""text_message"": {
-        ""length"": 8
+      "text_message": {
+        "length": 8
       }
     },
     {
-      ""tool_call"": [
+      "tool_call": [
         {
-          ""name"": ""get_time"",
-          ""args"": { ""timezone"": ""UTC"" }
+          "name": "get_time",
+          "args": { "timezone": "UTC" }
         }
       ]
     }
   ]
 }
-<|instruction_end|>";
+<|instruction_end|>
+""";
 
         var messages = new List<IMessage>
         {
@@ -862,9 +870,8 @@ Get the weather for San Francisco";
         {
             aggregatedMessage = replyMessages[0];
             messages.Add(aggregatedMessage);
-            output.WriteLine($"Single message, no CompositeMessage needed");
+            output.WriteLine("Single message, no CompositeMessage needed");
         }
-        else { }
 
         // Assert - Verify CompositeMessage was created and contains expected messages
         _ = replyMessages.Should().NotBeEmpty("Should have collected reply messages");
@@ -919,44 +926,46 @@ Get the weather for San Francisco";
         var agent = CreateTestAgent(handler);
 
         // Create a chain where step 2 produces multiple message types (composite)
-        var chainWithComposite =
-            @"Test chain with composite messages
+        const string chainWithComposite =
+            """
+Test chain with composite messages
 <|instruction_start|>
 {
-  ""instruction_chain"": [
+  "instruction_chain": [
     {
-      ""id"": ""step1"",
-      ""id_message"": ""text-only"",
-      ""messages"": [
-        { ""text_message"": { ""length"": 5 } }
+      "id": "step1",
+      "id_message": "text-only",
+      "messages": [
+        { "text_message": { "length": 5 } }
       ]
     },
     {
-      ""id"": ""step2"",
-      ""id_message"": ""composite-step"",
-      ""reasoning"": { ""length"": 3 },
-      ""messages"": [
-        { ""text_message"": { ""length"": 6 } },
+      "id": "step2",
+      "id_message": "composite-step",
+      "reasoning": { "length": 3 },
+      "messages": [
+        { "text_message": { "length": 6 } },
         {
-          ""tool_call"": [
+          "tool_call": [
             {
-              ""name"": ""save_memory"",
-              ""args"": { ""key"": ""test"", ""value"": ""data"" }
+              "name": "save_memory",
+              "args": { "key": "test", "value": "data" }
             }
           ]
         }
       ]
     },
     {
-      ""id"": ""step3"",
-      ""id_message"": ""final-text"",
-      ""messages"": [
-        { ""text_message"": { ""length"": 4 } }
+      "id": "step3",
+      "id_message": "final-text",
+      "messages": [
+        { "text_message": { "length": 4 } }
       ]
     }
   ]
 }
-<|instruction_end|>";
+<|instruction_end|>
+""";
 
         var messages = new List<IMessage>
         {
@@ -1120,7 +1129,7 @@ Get the weather for San Francisco";
             output.WriteLine("Step 2 included tool calls as expected");
         }
 
-        output.WriteLine($"Chain progression with CompositeMessage successful!");
+        output.WriteLine("Chain progression with CompositeMessage successful!");
         output.WriteLine(
             $"Conversation has {messages.Count} messages, with CompositeMessage counted as single response"
         );
@@ -1139,17 +1148,19 @@ Get the weather for San Francisco";
         var agent = CreateTestAgent(handler);
 
         // Create instruction chain for testing
-        var chainMessage =
-            @"Test with pre-existing composite
+        const string chainMessage =
+            """
+Test with pre-existing composite
 <|instruction_start|>
 {
-  ""instruction_chain"": [
-    { ""id"": ""step1"", ""id_message"": ""STEP-1"", ""messages"": [{ ""text_message"": { ""length"": 3 } }] },
-    { ""id"": ""step2"", ""id_message"": ""STEP-2"", ""messages"": [{ ""text_message"": { ""length"": 3 } }] },
-    { ""id"": ""step3"", ""id_message"": ""STEP-3"", ""messages"": [{ ""text_message"": { ""length"": 3 } }] }
+  "instruction_chain": [
+    { "id": "step1", "id_message": "STEP-1", "messages": [{ "text_message": { "length": 3 } }] },
+    { "id": "step2", "id_message": "STEP-2", "messages": [{ "text_message": { "length": 3 } }] },
+    { "id": "step3", "id_message": "STEP-3", "messages": [{ "text_message": { "length": 3 } }] }
   ]
 }
-<|instruction_end|>";
+<|instruction_end|>
+""";
 
         // Build conversation history with CompositeMessage
         var messages = new List<IMessage>
@@ -1234,12 +1245,12 @@ Get the weather for San Francisco";
         _ = toolMessage!.ToolCalls.Should().HaveCount(1);
         _ = toolMessage.ToolCalls[0].FunctionName.Should().Be("analyze_data");
 
-        output.WriteLine($"CompositeMessage structure validation successful!");
+        output.WriteLine("CompositeMessage structure validation successful!");
         output.WriteLine(
             $"CompositeMessage correctly wraps {historyComposite.Messages.Count} inner messages"
         );
         output.WriteLine(
-            $"In a real agent loop, this would count as ONE assistant response for chain progression"
+            "In a real agent loop, this would count as ONE assistant response for chain progression"
         );
     }
 
@@ -1256,22 +1267,24 @@ Get the weather for San Francisco";
         var agent = CreateTestAgent(handler);
 
         // Create instruction that generates multiple message types and tool calls
-        var loopInstruction =
-            @"Agent loop demonstration
+        const string loopInstruction =
+            """
+Agent loop demonstration
 <|instruction_start|>
 {
-  ""id_message"": ""agent-loop-test"",
-  ""reasoning"": { ""length"": 4 },
-  ""messages"": [
-    { ""text_message"": { ""length"": 6 } },
+  "id_message": "agent-loop-test",
+  "reasoning": { "length": 4 },
+  "messages": [
+    { "text_message": { "length": 6 } },
     {
-      ""tool_call"": [
-        { ""name"": ""continue_task"", ""args"": { ""next_step"": ""process"" } }
+      "tool_call": [
+        { "name": "continue_task", "args": { "next_step": "process" } }
       ]
     }
   ]
 }
-<|instruction_end|>";
+<|instruction_end|>
+""";
 
         var conversation = new List<IMessage>
         {
@@ -1375,24 +1388,26 @@ Get the weather for San Francisco";
         var agent = CreateTestAgent(handler);
 
         // Complex instruction with all message types
-        var complexInstruction =
-            @"Test streaming for client aggregation
+        const string complexInstruction =
+            """
+Test streaming for client aggregation
 <|instruction_start|>
 {
-  ""id_message"": ""multi-type"",
-  ""reasoning"": { ""length"": 4 },
-  ""messages"": [
-    { ""text_message"": { ""length"": 6 } },
+  "id_message": "multi-type",
+  "reasoning": { "length": 4 },
+  "messages": [
+    { "text_message": { "length": 6 } },
     {
-      ""tool_call"": [
-        { ""name"": ""search"", ""args"": { ""query"": ""test"" } },
-        { ""name"": ""save"", ""args"": { ""data"": ""result"" } }
+      "tool_call": [
+        { "name": "search", "args": { "query": "test" } },
+        { "name": "save", "args": { "data": "result" } }
       ]
     },
-    { ""text_message"": { ""length"": 3 } }
+    { "text_message": { "length": 3 } }
   ]
 }
-<|instruction_end|>";
+<|instruction_end|>
+""";
 
         var messages = new List<IMessage>
         {
@@ -1451,7 +1466,7 @@ Get the weather for San Francisco";
         output.WriteLine("\nClient can aggregate these into a CompositeMessage");
     }
 
-    #endregion
+    #endregion CompositeMessage Tests (New Focus Area)
 
     #region Edge Cases and Error Handling
 
@@ -1467,7 +1482,7 @@ Get the weather for San Francisco";
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
         using var invoker = new HttpMessageInvoker(handler);
 
-        var malformedJson = """
+        const string malformedJson = """
             {
               "instruction_chain": [
                 { this is not valid json }
@@ -1497,7 +1512,7 @@ Get the weather for San Francisco";
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
         using var invoker = new HttpMessageInvoker(handler);
 
-        var emptyChain = /*lang=json,strict*/
+        const string emptyChain = /*lang=json,strict*/
             """
             {
               "instruction_chain": []
@@ -1529,7 +1544,7 @@ Get the weather for San Francisco";
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
         using var invoker = new HttpMessageInvoker(handler);
 
-        var chain1 = /*lang=json,strict*/
+        const string chain1 = /*lang=json,strict*/
             """
             {
               "instruction_chain": [
@@ -1539,7 +1554,7 @@ Get the weather for San Francisco";
             }
             """;
 
-        var chain2 = /*lang=json,strict*/
+        const string chain2 = /*lang=json,strict*/
             """
             {
               "instruction_chain": [
@@ -1599,7 +1614,7 @@ Get the weather for San Francisco";
         var handler = new TestSseMessageHandler(_logger) { ChunkDelayMs = 0, WordsPerChunk = 5 };
         using var invoker = new HttpMessageInvoker(handler);
 
-        var chainJson = /*lang=json,strict*/
+        const string chainJson = /*lang=json,strict*/
             """
             {
               "instruction_chain": [
@@ -1661,10 +1676,13 @@ Get the weather for San Francisco";
         _ = text4.Should().Contain("completion"); // Should use fallback
     }
 
-    #endregion
+    #endregion Edge Cases and Error Handling
 }
 
-// Helper class for xUnit logging
+/// <summary>
+/// Helper class for xUnit logging
+/// </summary>
+/// <typeparam name="T"></typeparam>
 public class XunitLogger<T>(ITestOutputHelper output) : ILogger<T>
 {
     public IDisposable BeginScope<TState>(TState state)

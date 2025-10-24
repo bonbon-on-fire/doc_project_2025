@@ -143,22 +143,22 @@ public enum RecoveryType
     /// <summary>
     /// Message replay recovery.
     /// </summary>
-    MessageReplay,
+    MessageReplay = 0,
 
     /// <summary>
     /// Partial message recovery.
     /// </summary>
-    PartialMessage,
+    PartialMessage = 1,
 
     /// <summary>
     /// Full stream recovery.
     /// </summary>
-    FullStream,
+    FullStream = 2,
 
     /// <summary>
     /// Circuit breaker reset.
     /// </summary>
-    CircuitReset,
+    CircuitReset = 3,
 }
 
 /// <summary>
@@ -245,20 +245,20 @@ public enum MetricsExportFormat
     /// <summary>
     /// JSON format.
     /// </summary>
-    Json,
+    Json = 0,
 
     /// <summary>
     /// Prometheus format.
     /// </summary>
-    Prometheus,
+    Prometheus = 1,
 
     /// <summary>
     /// CSV format.
     /// </summary>
-    Csv,
+    Csv = 2,
 
     /// <summary>
     /// Plain text format.
     /// </summary>
-    PlainText,
+    PlainText = 3,
 }

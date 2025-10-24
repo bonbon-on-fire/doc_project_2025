@@ -40,10 +40,19 @@ public class ConnectionStateTracker : IConnectionStateTracker, IDisposable
     /// <inheritdoc />
     public async Task<ConnectionState?> GetConnectionStateAsync(string streamId)
     {
-        return string.IsNullOrEmpty(streamId) ? throw new ArgumentNullException(nameof(streamId))
-            : _connectionStates.TryGetValue(streamId, out var data)
-                ? await Task.FromResult(data.ToConnectionState())
-            : null;
+        if (string.IsNullOrEmpty(streamId))
+        {
+            throw new ArgumentNullException(nameof(streamId));
+        }
+
+        if (_connectionStates.TryGetValue(streamId, out var data))
+        {
+            return await Task.FromResult(data.ToConnectionState());
+        }
+        else
+        {
+            return null;
+        }
     }
 
     /// <inheritdoc />
@@ -398,13 +407,9 @@ public class ConnectionStateTracker : IConnectionStateTracker, IDisposable
             {
                 case ConnectionStatus.Connected:
                     if (timeSinceLastActivity < _inactivityThreshold)
-                    {
                         healthyCount++;
-                    }
                     else
-                    {
                         unstableCount++;
-                    }
 
                     break;
                 case ConnectionStatus.Unstable:
@@ -490,7 +495,9 @@ public class ConnectionStateTracker : IConnectionStateTracker, IDisposable
         public int DisconnectionCount { get; set; }
         public int RecentFailureCount { get; set; }
 
-        // Time tracking
+        /// <summary>
+        /// Time tracking
+        /// </summary>
         public DateTime ConnectionStartTime { get; set; }
         public DateTime? DisconnectionStartTime { get; set; }
         public TimeSpan TotalConnectionTime { get; set; } = TimeSpan.Zero;

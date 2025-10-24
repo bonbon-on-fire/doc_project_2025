@@ -14,7 +14,9 @@ public class RecoveryNotificationService : IRecoveryNotificationService
     private readonly IHubContext<ChatHub> _hubContext;
     private readonly ILogger<RecoveryNotificationService> _logger;
 
-    // Metrics tracking
+    /// <summary>
+    /// Metrics tracking
+    /// </summary>
     private readonly ConcurrentDictionary<string, DateTimeOffset> _activeConnections = new();
     private readonly ConcurrentDictionary<string, HashSet<string>> _groupMemberships = new();
     private long _totalNotificationsSent;

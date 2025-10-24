@@ -196,9 +196,9 @@ internal sealed class BatchedOperation
 /// </summary>
 internal enum BatchOperationType
 {
-    Create,
-    Delete,
-    Update
+    Create = 0,
+    Delete = 1,
+    Update = 2
 }
 
 /// <summary>

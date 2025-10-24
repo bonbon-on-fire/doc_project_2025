@@ -18,9 +18,9 @@ public class ResilientMetricsCollectorDecorator : IOrleansMetricsCollector
 
     private enum CircuitState
     {
-        Closed,
-        Open,
-        HalfOpen
+        Closed = 0,
+        Open = 1,
+        HalfOpen = 2
     }
 
     public ResilientMetricsCollectorDecorator(

@@ -66,7 +66,7 @@ public class ChatOperation
     /// Default is 0 (normal priority).
     /// </summary>
     [JsonPropertyName("priority")]
-    public int Priority { get; set; } = 0;
+    public int Priority { get; set; }
 
     /// <summary>
     /// Maximum time to wait before timing out this operation.
@@ -84,32 +84,32 @@ public enum OperationStatus
     /// <summary>
     /// Operation is waiting in the queue to be processed.
     /// </summary>
-    Queued,
+    Queued = 0,
 
     /// <summary>
     /// Operation is currently being processed.
     /// </summary>
-    InProgress,
+    InProgress = 1,
 
     /// <summary>
     /// Operation completed successfully.
     /// </summary>
-    Completed,
+    Completed = 2,
 
     /// <summary>
     /// Operation failed with an error.
     /// </summary>
-    Failed,
+    Failed = 3,
 
     /// <summary>
     /// Operation was cancelled before completion.
     /// </summary>
-    Cancelled,
+    Cancelled = 4,
 
     /// <summary>
     /// Operation timed out.
     /// </summary>
-    TimedOut,
+    TimedOut = 5,
 }
 
 /// <summary>
@@ -157,7 +157,7 @@ public class OperationStatusInfo
     /// Progress information (0.0 to 1.0).
     /// </summary>
     [JsonPropertyName("progress")]
-    public double Progress { get; set; } = 0.0;
+    public double Progress { get; set; }
 
     /// <summary>
     /// Human-readable progress description.

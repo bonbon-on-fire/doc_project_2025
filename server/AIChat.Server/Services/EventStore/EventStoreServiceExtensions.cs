@@ -302,12 +302,10 @@ public class EventStoreHealthCheck : Microsoft.Extensions.Diagnostics.HealthChec
                     "Event Store is healthy",
                     healthStatus.Details);
             }
-            else
-            {
-                return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Unhealthy(
-                    $"Event Store is unhealthy: {healthStatus.Message}",
-                    data: healthStatus.Details);
-            }
+
+            return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Unhealthy(
+                $"Event Store is unhealthy: {healthStatus.Message}",
+                data: healthStatus.Details);
         }
         catch (Exception ex)
         {

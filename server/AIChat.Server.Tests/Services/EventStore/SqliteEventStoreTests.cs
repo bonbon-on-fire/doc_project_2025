@@ -1,4 +1,3 @@
-#pragma warning disable IDE0055 // Fix formatting
 using AIChat.Server.Services.EventStore;
 using AIChat.Server.Services.EventStore.Implementations;
 using Microsoft.Extensions.Logging;
@@ -157,7 +156,7 @@ public class SqliteEventStoreTests : IDisposable
     public async Task AppendAsync_WithDuplicateEventId_ShouldThrowDuplicateEventException()
     {
         // Arrange
-        var eventId = "duplicate-event-id";
+        const string eventId = "duplicate-event-id";
         var event1 = ChatMessageSentEvent.Create(
             "chat-123",
             0,
@@ -206,7 +205,7 @@ public class SqliteEventStoreTests : IDisposable
             _eventStore.AppendAsync([]));
     }
 
-    #endregion
+    #endregion Basic Append Tests
 
     #region Version Control Tests
 
@@ -279,7 +278,7 @@ public class SqliteEventStoreTests : IDisposable
             _eventStore.AppendToStreamAsync(streamId, -1, [secondEvent]));
     }
 
-    #endregion
+    #endregion Version Control Tests
 
     #region Read Tests
 
@@ -451,7 +450,7 @@ public class SqliteEventStoreTests : IDisposable
         Assert.False(exists);
     }
 
-    #endregion
+    #endregion Read Tests
 
     #region Query Tests
 
@@ -498,7 +497,7 @@ public class SqliteEventStoreTests : IDisposable
     public async Task GetEventsByCorrelationIdAsync_WithMatchingEvents_ShouldReturnEvents()
     {
         // Arrange
-        var correlationId = "test-correlation-123";
+        const string correlationId = "test-correlation-123";
 
         var event1 = ChatMessageSentEvent.Create(
             "stream-1",
@@ -605,7 +604,7 @@ public class SqliteEventStoreTests : IDisposable
                        e.Timestamp <= baseTime.AddHours(1)));
     }
 
-    #endregion
+    #endregion Query Tests
 
     #region Replay Tests
 
@@ -700,8 +699,8 @@ public class SqliteEventStoreTests : IDisposable
     public async Task ReplayAsync_MultipleStreams_ShouldCombineEvents()
     {
         // Arrange
-        var stream1 = "stream-1";
-        var stream2 = "stream-2";
+        const string stream1 = "stream-1";
+        const string stream2 = "stream-2";
 
         var events1 = new[]
         {
@@ -748,7 +747,7 @@ public class SqliteEventStoreTests : IDisposable
         Assert.Equal(2, result.State); // Should count both messages
     }
 
-    #endregion
+    #endregion Replay Tests
 
     #region Health and Metrics Tests
 
@@ -804,7 +803,7 @@ public class SqliteEventStoreTests : IDisposable
         // Should complete without throwing an exception
     }
 
-    #endregion
+    #endregion Health and Metrics Tests
 
     #region Error Handling Tests
 
@@ -846,5 +845,5 @@ public class SqliteEventStoreTests : IDisposable
             _eventStore.ReplayAsync<ChatProjectionState>("stream-1", null!));
     }
 
-    #endregion
+    #endregion Error Handling Tests
 }

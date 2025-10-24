@@ -217,7 +217,7 @@ public sealed class SnapshotManager : ISnapshotManager
                 ? await _snapshotStore.GetSnapshotAtVersionAsync<T>(streamId, targetVersion.Value, cancellationToken)
                 : await _snapshotStore.GetLatestSnapshotAsync<T>(streamId, cancellationToken);
 
-            if (!snapshotResult.Success || snapshotResult.Data == null || snapshotResult.Metadata == null)
+            if (!snapshotResult.Success || EqualityComparer<T?>.Default.Equals(snapshotResult.Data, default(T?)) || snapshotResult.Metadata == null)
             {
                 // No snapshot available, fall back to full event replay
                 _logger.LogDebug("No suitable snapshot found for stream {StreamId}, falling back to full event replay", streamId);
@@ -364,17 +364,15 @@ public sealed class SnapshotManager : ISnapshotManager
                 _logger.LogDebug("Snapshot {SnapshotId} passed integrity validation", snapshotId);
                 return SnapshotValidationResult.CreateValid(metadata);
             }
-            else
-            {
-                _logger.LogWarning("Snapshot {SnapshotId} failed integrity validation: {Issues}",
-                    snapshotId, string.Join(", ", issues));
-                return SnapshotValidationResult.CreateInvalid(
-                    issues,
-                    metadata,
-                    contentHashValid: !issues.Any(i => i.Contains("hash")),
-                    compressionValid: !issues.Any(i => i.Contains("size")),
-                    serializationValid: true);
-            }
+            _logger.LogWarning("Snapshot {SnapshotId} failed integrity validation: {Issues}",
+                snapshotId, string.Join(", ", issues));
+
+            return SnapshotValidationResult.CreateInvalid(
+                issues,
+                metadata,
+                contentHashValid: !issues.Any(i => i.Contains("hash")),
+                compressionValid: !issues.Any(i => i.Contains("size")),
+                serializationValid: true);
         }
         catch (Exception ex)
         {

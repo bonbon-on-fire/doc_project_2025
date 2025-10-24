@@ -78,9 +78,7 @@ public class BufferReplayService : IBufferReplayService
 
             for (var i = 0; i < sortedMessages.Count; i += batchSize)
             {
-                var batch = sortedMessages.Skip(i).Take(batchSize).ToList();
-
-                foreach (var message in batch)
+                foreach (var message in sortedMessages.Skip(i).Take(batchSize).ToList())
                 {
                     // Check for duplicates unless skipped
                     if (
@@ -336,11 +334,8 @@ public class BufferReplayService : IBufferReplayService
             // Include replay metadata in SSE comment
             return $": replay sequence={message.SequenceNumber} replayed={message.IsReplayed} attempts={message.ReplayAttempts}\ndata: {message.Data}\n\n";
         }
-        else
-        {
-            // Standard SSE format
-            return $"data: {message.Data}\n\n";
-        }
+        // Standard SSE format
+        return $"data: {message.Data}\n\n";
     }
 
     /// <summary>

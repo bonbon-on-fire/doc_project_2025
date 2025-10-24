@@ -123,16 +123,12 @@ public sealed class InstructionChainParser(ILogger<InstructionChainParser> logge
         if (
             instructionElement.TryGetProperty("reasoning", out var reasonEl)
             && reasonEl.ValueKind == JsonValueKind.Object
-        )
-        {
-            if (
-                reasonEl.TryGetProperty("length", out var lenEl)
+&& reasonEl.TryGetProperty("length", out var lenEl)
                 && lenEl.ValueKind == JsonValueKind.Number
                 && lenEl.TryGetInt32(out var len)
-            )
-            {
-                reasoningLen = Math.Max(0, len);
-            }
+        )
+        {
+            reasoningLen = Math.Max(0, len);
         }
 
         // Extract messages array
@@ -177,17 +173,13 @@ public sealed class InstructionChainParser(ILogger<InstructionChainParser> logge
             if (
                 item.TryGetProperty("text_message", out var textEl)
                 && textEl.ValueKind == JsonValueKind.Object
-            )
-            {
-                if (
-                    textEl.TryGetProperty("length", out var lEl)
+&& textEl.TryGetProperty("length", out var lEl)
                     && lEl.ValueKind == JsonValueKind.Number
                     && lEl.TryGetInt32(out var tlen)
-                )
-                {
-                    messages.Add(InstructionMessage.ForText(Math.Max(0, tlen)));
-                    continue;
-                }
+            )
+            {
+                messages.Add(InstructionMessage.ForText(Math.Max(0, tlen)));
+                continue;
             }
 
             // Check for tool calls

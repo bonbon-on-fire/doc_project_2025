@@ -14,10 +14,14 @@ public class RecoveryAuditService : IRecoveryAuditService
 {
     private readonly ILogger<RecoveryAuditService> _logger;
 
-    // In-memory audit storage (in production, this would be a persistent store like database or event store)
+    /// <summary>
+    /// In-memory audit storage (in production, this would be a persistent store like database or event store)
+    /// </summary>
     private readonly ConcurrentDictionary<string, RecoveryAuditEntry> _auditEntries = new();
 
-    // Cached JSON serializer options for performance
+    /// <summary>
+    /// Cached JSON serializer options for performance
+    /// </summary>
     private static readonly JsonSerializerOptions CachedJsonOptions = new()
     {
         WriteIndented = true,
@@ -45,7 +49,7 @@ public class RecoveryAuditService : IRecoveryAuditService
 
         var auditId = Guid.NewGuid().ToString();
 
-        var auditEntry = new RecoveryAuditEntry
+        _auditEntries[auditId] = new RecoveryAuditEntry
         {
             AuditId = auditId,
             OperationId = request.OperationId,
@@ -64,8 +68,6 @@ public class RecoveryAuditService : IRecoveryAuditService
             CorrelationId = request.CorrelationId,
             Metadata = request.Metadata
         };
-
-        _auditEntries[auditId] = auditEntry;
         _operationToAuditMap[request.OperationId] = auditId;
 
         _logger.LogInformation(
@@ -93,12 +95,10 @@ public class RecoveryAuditService : IRecoveryAuditService
         _progressUpdates[auditId] = progress;
 
         // Update the audit entry with current status
-        var updatedEntry = auditEntry with
+        _auditEntries[auditId] = (auditEntry with
         {
             FinalStatus = progress.Status
-        };
-
-        _auditEntries[auditId] = updatedEntry;
+        });
 
         _logger.LogDebug(
             "Updated recovery progress. AuditId: {AuditId}, Status: {Status}, Progress: {Progress}%",
@@ -122,7 +122,7 @@ public class RecoveryAuditService : IRecoveryAuditService
         }
 
         // Update the audit entry with final results
-        var completedEntry = auditEntry with
+        _auditEntries[auditId] = (auditEntry with
         {
             CompletedAt = result.CompletedAt,
             ActualTimestamp = result.ActualTimestamp,
@@ -140,9 +140,7 @@ public class RecoveryAuditService : IRecoveryAuditService
             DataProcessedBytes = result.DataProcessedBytes,
             PerformanceMetrics = result.PerformanceMetrics,
             Metadata = MergeMetadata(auditEntry.Metadata, result.Metadata)
-        };
-
-        _auditEntries[auditId] = completedEntry;
+        });
 
         _logger.LogInformation(
             "Completed recovery audit tracking. AuditId: {AuditId}, OperationId: {OperationId}, Success: {Success}, Duration: {Duration}ms",
@@ -453,17 +451,11 @@ public class RecoveryAuditService : IRecoveryAuditService
 
                 // Check age-based retention
                 if (entry.Success && entry.StartedAt < cutoffTime)
-                {
                     shouldRemove = true;
-                }
                 else if (!entry.Success && retentionPolicy.RetainFailedRecoveries && entry.StartedAt < failedRecoveryCutoffTime)
-                {
                     shouldRemove = true;
-                }
                 else if (!entry.Success && !retentionPolicy.RetainFailedRecoveries && entry.StartedAt < cutoffTime)
-                {
                     shouldRemove = true;
-                }
 
                 if (shouldRemove)
                 {
@@ -625,29 +617,29 @@ public class RecoveryAuditService : IRecoveryAuditService
     private static byte[] ExportToXml(IReadOnlyList<RecoveryAuditEntry> entries)
     {
         var xml = new StringBuilder();
-        xml.AppendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
-        xml.AppendLine("<RecoveryAuditEntries>");
+        xml.AppendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
+            .AppendLine("<RecoveryAuditEntries>");
 
         foreach (var entry in entries)
         {
-            xml.AppendLine("  <Entry>");
-            xml.AppendLine(CultureInfo.InvariantCulture, $"    <AuditId>{System.Security.SecurityElement.Escape(entry.AuditId)}</AuditId>");
-            xml.AppendLine(CultureInfo.InvariantCulture, $"    <OperationId>{System.Security.SecurityElement.Escape(entry.OperationId)}</OperationId>");
-            xml.AppendLine(CultureInfo.InvariantCulture, $"    <GrainId>{System.Security.SecurityElement.Escape(entry.GrainId)}</GrainId>");
-            xml.AppendLine(CultureInfo.InvariantCulture, $"    <GrainType>{System.Security.SecurityElement.Escape(entry.GrainType)}</GrainType>");
-            xml.AppendLine(CultureInfo.InvariantCulture, $"    <InitiatedBy>{System.Security.SecurityElement.Escape(entry.InitiatedBy)}</InitiatedBy>");
-            xml.AppendLine(CultureInfo.InvariantCulture, $"    <StartedAt>{entry.StartedAt:O}</StartedAt>");
+            xml.AppendLine("  <Entry>")
+                .AppendLine(CultureInfo.InvariantCulture, $"    <AuditId>{System.Security.SecurityElement.Escape(entry.AuditId)}</AuditId>")
+                .AppendLine(CultureInfo.InvariantCulture, $"    <OperationId>{System.Security.SecurityElement.Escape(entry.OperationId)}</OperationId>")
+                .AppendLine(CultureInfo.InvariantCulture, $"    <GrainId>{System.Security.SecurityElement.Escape(entry.GrainId)}</GrainId>")
+                .AppendLine(CultureInfo.InvariantCulture, $"    <GrainType>{System.Security.SecurityElement.Escape(entry.GrainType)}</GrainType>")
+                .AppendLine(CultureInfo.InvariantCulture, $"    <InitiatedBy>{System.Security.SecurityElement.Escape(entry.InitiatedBy)}</InitiatedBy>")
+                .AppendLine(CultureInfo.InvariantCulture, $"    <StartedAt>{entry.StartedAt:O}</StartedAt>");
             if (entry.CompletedAt.HasValue)
             {
                 xml.AppendLine(CultureInfo.InvariantCulture, $"    <CompletedAt>{entry.CompletedAt:O}</CompletedAt>");
             }
 
-            xml.AppendLine(CultureInfo.InvariantCulture, $"    <Success>{entry.Success}</Success>");
-            xml.AppendLine(CultureInfo.InvariantCulture, $"    <StrategyUsed>{entry.StrategyUsed}</StrategyUsed>");
-            xml.AppendLine(CultureInfo.InvariantCulture, $"    <EventsReplayed>{entry.EventsReplayed}</EventsReplayed>");
-            xml.AppendLine(CultureInfo.InvariantCulture, $"    <RecoveryDuration>{entry.RecoveryDuration}</RecoveryDuration>");
-            xml.AppendLine(CultureInfo.InvariantCulture, $"    <CorrelationId>{System.Security.SecurityElement.Escape(entry.CorrelationId)}</CorrelationId>");
-            xml.AppendLine("  </Entry>");
+            xml.AppendLine(CultureInfo.InvariantCulture, $"    <Success>{entry.Success}</Success>")
+                .AppendLine(CultureInfo.InvariantCulture, $"    <StrategyUsed>{entry.StrategyUsed}</StrategyUsed>")
+                .AppendLine(CultureInfo.InvariantCulture, $"    <EventsReplayed>{entry.EventsReplayed}</EventsReplayed>")
+                .AppendLine(CultureInfo.InvariantCulture, $"    <RecoveryDuration>{entry.RecoveryDuration}</RecoveryDuration>")
+                .AppendLine(CultureInfo.InvariantCulture, $"    <CorrelationId>{System.Security.SecurityElement.Escape(entry.CorrelationId)}</CorrelationId>")
+                .AppendLine("  </Entry>");
         }
 
         xml.AppendLine("</RecoveryAuditEntries>");

@@ -26,7 +26,9 @@ public class OrleansEventRelay : IOrleansEventRelay
     private readonly ILogger<OrleansEventRelay> _logger;
     private static readonly ActivitySource ActivitySource = new("AIChat.Server.OrleansEventRelay");
 
-    // Track active subscriptions for health monitoring with timestamps
+    /// <summary>
+    /// Track active subscriptions for health monitoring with timestamps
+    /// </summary>
     private readonly Dictionary<string, EventSubscription> _activeSubscriptions = [];
     private readonly object _subscriptionLock = new();
     private readonly DateTime _serviceStartTime = DateTime.UtcNow;
@@ -162,22 +164,17 @@ public class OrleansEventRelay : IOrleansEventRelay
                     activity?.SetTag("subscription.duplicate", true);
                     return;
                 }
-                else
+                wasAlreadySubscribed = false;
+
+                // Create subscription record
+                _activeSubscriptions[chatId] = new EventSubscription
                 {
-                    wasAlreadySubscribed = false;
-
-                    // Create subscription record
-                    var subscription = new EventSubscription
-                    {
-                        ChatId = chatId,
-                        OnMessageCreated = onMessageCreated,
-                        OnStreamChunk = onStreamChunk,
-                        OnMessageReceived = onMessageReceived,
-                        SubscribedAt = DateTime.UtcNow
-                    };
-
-                    _activeSubscriptions[chatId] = subscription;
-                }
+                    ChatId = chatId,
+                    OnMessageCreated = onMessageCreated,
+                    OnStreamChunk = onStreamChunk,
+                    OnMessageReceived = onMessageReceived,
+                    SubscribedAt = DateTime.UtcNow
+                };
             }
 
             // TODO: Implement Orleans stream subscription when grain streaming is available
@@ -254,10 +251,8 @@ public class OrleansEventRelay : IOrleansEventRelay
                     activity?.SetTag("subscription.found", false);
                     return;
                 }
-                else
-                {
-                    _activeSubscriptions.Remove(chatId);
-                }
+
+                _activeSubscriptions.Remove(chatId);
             }
 
             // TODO: Implement Orleans stream unsubscription when grain streaming is available
@@ -442,13 +437,9 @@ public class OrleansEventRelay : IOrleansEventRelay
         var diagnostics = $" | Uptime: {uptime.TotalHours:F1}h, Success Rate: {successRate:F1}%";
 
         if (subscriptionDetails.Count > 0 && subscriptionDetails.Count <= 5)
-        {
             diagnostics += $", Subscriptions: [{string.Join(", ", subscriptionDetails)}]";
-        }
         else if (subscriptionDetails.Count > 5)
-        {
             diagnostics += $", Subscriptions: {subscriptionDetails.Count} active (oldest: {subscriptionDetails[0]})";
-        }
 
         return baseMessage + diagnostics;
     }

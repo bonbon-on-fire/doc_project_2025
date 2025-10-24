@@ -160,7 +160,7 @@ public class StateQueryTests
         Assert.Equal(50, query3.Offset);
     }
 
-    #endregion
+    #endregion StateQuery Tests
 
     #region PagedResult Tests
 
@@ -169,7 +169,7 @@ public class StateQueryTests
     {
         // Arrange
         var items = new List<string> { "item1", "item2", "item3" };
-        var totalCount = 100;
+        const int totalCount = 100;
         var query = StateQuery.Create(2, 10);
 
         // Act
@@ -278,7 +278,7 @@ public class StateQueryTests
         Assert.Equal(0, result4.LastItemIndex);
     }
 
-    #endregion
+    #endregion PagedResult Tests
 
     #region SortDirection Tests
 
@@ -290,5 +290,5 @@ public class StateQueryTests
         Assert.True(Enum.IsDefined(direction));
     }
 
-    #endregion
+    #endregion SortDirection Tests
 }

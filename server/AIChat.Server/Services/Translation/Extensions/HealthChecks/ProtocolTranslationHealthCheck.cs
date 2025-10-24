@@ -149,12 +149,9 @@ public class ProtocolTranslationHealthCheck : IHealthCheck
         }
 
         // Check if we have registered translators
-        if (data.TryGetValue("registeredTranslators", out var translatorsObj) && translatorsObj is List<string> translators)
+        if (data.TryGetValue("registeredTranslators", out var translatorsObj) && translatorsObj is List<string> translators && translators.Count == 0)
         {
-            if (translators.Count == 0)
-            {
-                return Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy;
-            }
+            return Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy;
         }
 
         // If service reports degraded, we're degraded

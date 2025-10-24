@@ -21,7 +21,9 @@ public sealed partial class SqliteSnapshotStore : ISnapshotStore
     private readonly SnapshotMetricsCollector _metrics;
     private readonly JsonSerializerOptions _jsonOptions;
 
-    // Content deduplication and compression settings
+    /// <summary>
+    /// Content deduplication and compression settings
+    /// </summary>
     private const string DefaultCompressionType = "gzip";
     private const CompressionLevel DefaultCompressionLevel = CompressionLevel.Optimal;
 
@@ -200,7 +202,7 @@ public sealed partial class SqliteSnapshotStore : ISnapshotStore
         }
     }
 
-    #endregion
+    #endregion Health and Metrics
 
     #region ISnapshotReader Implementation
 
@@ -438,7 +440,7 @@ public sealed partial class SqliteSnapshotStore : ISnapshotStore
         }
     }
 
-    #endregion
+    #endregion ISnapshotReader Implementation
 
     #region Helper Methods
 
@@ -568,5 +570,5 @@ public sealed partial class SqliteSnapshotStore : ISnapshotStore
         }
     }
 
-    #endregion
+    #endregion Helper Methods
 }

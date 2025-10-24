@@ -224,7 +224,6 @@ public class ChatControllerOrleansTests
             .Setup(r => r.IsOrleansEnabledAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-
         // Setup grain factory to return the mock user grain
         // Grain access now handled by router
 
@@ -292,7 +291,6 @@ public class ChatControllerOrleansTests
 
         // Disable ResilientStreaming to use standard StreamingBridge
         // ResilientStreaming logic now handled by router
-
 
         // Setup grain factory to return the mock user grain
         // Grain access now handled by router

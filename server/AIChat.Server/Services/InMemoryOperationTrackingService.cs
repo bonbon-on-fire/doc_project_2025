@@ -31,7 +31,7 @@ public class InMemoryOperationTrackingService : IOperationTrackingService
     {
         try
         {
-            var context = new OperationUserContext
+            _operations[operationId] = new OperationUserContext
             {
                 OperationId = operationId,
                 UserId = userId,
@@ -39,8 +39,6 @@ public class InMemoryOperationTrackingService : IOperationTrackingService
                 OperationType = operationType,
                 RegisteredAt = DateTime.UtcNow,
             };
-
-            _operations[operationId] = context;
 
             _logger.LogDebug(
                 "Registered operation {OperationId} for user {UserId} in chat {ChatId} of type {OperationType}",

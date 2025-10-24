@@ -219,7 +219,7 @@ public class EventProjectionTests
             projection.Apply(state, null!));
     }
 
-    #endregion
+    #endregion ChatStateProjection Tests
 
     #region DelegateEventProjection Tests
 
@@ -399,7 +399,7 @@ public class EventProjectionTests
         Assert.Equal(5, result); // Should return unchanged state
     }
 
-    #endregion
+    #endregion DelegateEventProjection Tests
 
     #region Error Handling Tests
 
@@ -407,11 +407,11 @@ public class EventProjectionTests
     public void EventProjectionException_Constructor_ShouldSetProperties()
     {
         // Arrange
-        var message = "Test error message";
-        var projectionName = "TestProjection";
-        var eventType = "TestEvent";
-        var eventId = "event-123";
-        var correlationId = "corr-456";
+        const string message = "Test error message";
+        const string projectionName = "TestProjection";
+        const string eventType = "TestEvent";
+        const string eventId = "event-123";
+        const string correlationId = "corr-456";
         var innerException = new InvalidOperationException("Inner error");
 
         // Act
@@ -433,7 +433,7 @@ public class EventProjectionTests
         Assert.Equal(EventStoreErrorCode.InternalError, exception.ErrorCode);
     }
 
-    #endregion
+    #endregion Error Handling Tests
 
     #region Integration Tests
 
@@ -506,5 +506,5 @@ public class EventProjectionTests
         Assert.Equal(events.Last().Timestamp, state.LastActivityAt);
     }
 
-    #endregion
+    #endregion Integration Tests
 }

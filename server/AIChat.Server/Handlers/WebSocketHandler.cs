@@ -134,12 +134,19 @@ public class WebSocketHandler : IWebSocketHandler
     private readonly ILogger<WebSocketHandler> _logger;
     private static readonly ActivitySource ActivitySource = new("AIChat.Server.WebSocketHandler");
 
-    // Configuration constants
+    /// <summary>
+    /// Configuration constants
+    /// </summary>
     private const int BufferSize = 4096;
-    private const int MaxMessageSize = 1024 * 1024; // 1MB
+    /// <summary>
+    /// 1MB
+    /// </summary>
+    private const int MaxMessageSize = 1024 * 1024;
     private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(30);
 
-    // Cached JsonSerializerOptions for efficient serialization
+    /// <summary>
+    /// Cached JsonSerializerOptions for efficient serialization
+    /// </summary>
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
@@ -523,7 +530,7 @@ public class WebSocketHandler : IWebSocketHandler
             var sessionStats = await _sessionManager.GetStatisticsAsync(cancellationToken);
             var routerHealth = await _messageRouter.GetHealthStatusAsync(cancellationToken);
 
-            var healthStatus = new WebSocketHandlerHealthStatus
+            return new WebSocketHandlerHealthStatus
             {
                 IsHealthy = routerHealth.IsHealthy,
                 ActiveConnections = sessionStats.TotalActiveSessions,
@@ -537,8 +544,6 @@ public class WebSocketHandler : IWebSocketHandler
                     ["totalMessages"] = sessionStats.AggregateMetrics.TotalMessagesReceived + sessionStats.AggregateMetrics.TotalMessagesSent
                 }
             };
-
-            return healthStatus;
         }
         catch (Exception ex)
         {
@@ -695,12 +700,10 @@ public class WebSocketHandler : IWebSocketHandler
     private static string GetUserIdFromContext(HttpContext context)
     {
         // Try to get user ID from various sources
-        var userId = context.User?.Identity?.Name ??
+        return context.User?.Identity?.Name ??
                     context.Request.Query["userId"].FirstOrDefault() ??
                     context.Request.Headers["X-User-Id"].FirstOrDefault() ??
                     "anonymous";
-
-        return userId;
     }
 
     private static IEnumerable<string> GetRequestedProtocols(HttpContext context)
@@ -804,5 +807,5 @@ public class WebSocketHandler : IWebSocketHandler
         }
     }
 
-    #endregion
+    #endregion Private Helper Methods
 }

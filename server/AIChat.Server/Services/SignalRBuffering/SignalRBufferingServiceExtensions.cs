@@ -381,9 +381,19 @@ public class SignalRBufferingHealthCheck : IHealthCheck
 
             // Determine overall health
             var isHealthy = bufferHealth.IsHealthy && deliveryServiceAvailable;
-            var status = isHealthy ? HealthStatus.Healthy :
-                         bufferHealth.Status == BufferHealthStatus.Degraded ? HealthStatus.Degraded :
-                         HealthStatus.Unhealthy;
+            Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus status;
+            if (isHealthy)
+            {
+                status = HealthStatus.Healthy;
+            }
+            else if (bufferHealth.Status == BufferHealthStatus.Degraded)
+            {
+                status = HealthStatus.Degraded;
+            }
+            else
+            {
+                status = HealthStatus.Unhealthy;
+            }
 
             var data = new Dictionary<string, object>
             {

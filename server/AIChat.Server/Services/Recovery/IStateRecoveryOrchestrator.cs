@@ -393,32 +393,32 @@ public enum RecoveryOperationStatus
     /// <summary>
     /// Recovery operation is queued but not yet started.
     /// </summary>
-    Queued,
+    Queued = 0,
 
     /// <summary>
     /// Recovery operation is currently running.
     /// </summary>
-    Running,
+    Running = 1,
 
     /// <summary>
     /// Recovery operation completed successfully.
     /// </summary>
-    Completed,
+    Completed = 2,
 
     /// <summary>
     /// Recovery operation failed with errors.
     /// </summary>
-    Failed,
+    Failed = 3,
 
     /// <summary>
     /// Recovery operation was cancelled.
     /// </summary>
-    Cancelled,
+    Cancelled = 4,
 
     /// <summary>
     /// Recovery operation is paused.
     /// </summary>
-    Paused
+    Paused = 5
 }
 
 /// <summary>

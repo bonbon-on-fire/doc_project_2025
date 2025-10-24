@@ -76,7 +76,7 @@ public class McpConfigurationTests : BaseApiTest
         Assert.True(deserialized.ProviderConfigs.ContainsKey("MCP_github"));
     }
 
-    #endregion
+    #endregion FunctionFilterConfig Tests
 
     #region ProviderFilterConfig Tests
 
@@ -117,7 +117,7 @@ public class McpConfigurationTests : BaseApiTest
         Assert.Equal("test_", deserialized.CustomPrefix);
     }
 
-    #endregion
+    #endregion ProviderFilterConfig Tests
 
     #region McpConfiguration Integration Tests
 
@@ -208,7 +208,7 @@ public class McpConfigurationTests : BaseApiTest
         Assert.False(config.ToolFiltering.EnableFiltering);
     }
 
-    #endregion
+    #endregion McpConfiguration Integration Tests
 
     #region McpServerConfig Tests
 
@@ -236,5 +236,5 @@ public class McpConfigurationTests : BaseApiTest
         _ = Assert.Single(deserialized.BlockedTools);
     }
 
-    #endregion
+    #endregion McpServerConfig Tests
 }

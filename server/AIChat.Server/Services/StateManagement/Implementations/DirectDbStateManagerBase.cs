@@ -206,8 +206,7 @@ public abstract class DirectDbStateManagerBase<T> : IStateManager<T> where T : c
             }
 
             // Check database
-            var result = await ExistsInDatabaseAsync(id, cancellationToken);
-            return result;
+            return await ExistsInDatabaseAsync(id, cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -236,8 +235,7 @@ public abstract class DirectDbStateManagerBase<T> : IStateManager<T> where T : c
             Logger.LogDebug("Counting {EntityType} entities in direct DB (CorrelationId: {CorrelationId})",
                 typeof(T).Name, correlationId);
 
-            var result = await CountInDatabaseAsync(query, cancellationToken);
-            return result;
+            return await CountInDatabaseAsync(query, cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -254,7 +252,7 @@ public abstract class DirectDbStateManagerBase<T> : IStateManager<T> where T : c
         }
     }
 
-    #endregion
+    #endregion IStateReader<T> Implementation
 
     #region IStateWriter<T> Implementation
 
@@ -443,7 +441,12 @@ public abstract class DirectDbStateManagerBase<T> : IStateManager<T> where T : c
         }
     }
 
-    // Note: Batch operations follow similar patterns
+    /// <summary>
+    /// Note: Batch operations follow similar patterns
+    /// </summary>
+    /// <param name="entities"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
     public virtual Task<StateResult<IReadOnlyList<T>>> CreateMultipleAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException("Batch create not implemented in base class");
@@ -459,7 +462,7 @@ public abstract class DirectDbStateManagerBase<T> : IStateManager<T> where T : c
         throw new NotImplementedException("Batch delete not implemented in base class");
     }
 
-    #endregion
+    #endregion IStateWriter<T> Implementation
 
     #region IStateCacheManager<T> Implementation
 
@@ -487,7 +490,7 @@ public abstract class DirectDbStateManagerBase<T> : IStateManager<T> where T : c
     public Task<CacheStatistics> GetCacheStatisticsAsync(CancellationToken cancellationToken = default)
         => CacheManager.GetCacheStatisticsAsync(cancellationToken);
 
-    #endregion
+    #endregion IStateCacheManager<T> Implementation
 
     #region IStateManager<T> Implementation
 
@@ -533,7 +536,7 @@ public abstract class DirectDbStateManagerBase<T> : IStateManager<T> where T : c
         return Task.CompletedTask;
     }
 
-    #endregion
+    #endregion IStateManager<T> Implementation
 
     #region Validation Implementation
 
@@ -646,7 +649,7 @@ public abstract class DirectDbStateManagerBase<T> : IStateManager<T> where T : c
         return new NullStateErrorRecovery<T>();
     }
 
-    #endregion
+    #endregion Validation Implementation
 
     #region Protected Abstract Methods - To be implemented by derived classes
 
@@ -705,5 +708,5 @@ public abstract class DirectDbStateManagerBase<T> : IStateManager<T> where T : c
     /// </summary>
     protected abstract Task CheckDatabaseHealthAsync(CancellationToken cancellationToken);
 
-    #endregion
+    #endregion Protected Abstract Methods - To be implemented by derived classes
 }

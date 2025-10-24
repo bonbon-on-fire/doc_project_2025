@@ -78,19 +78,29 @@ public sealed class TranslatorRegistry : ITranslatorRegistry
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<TranslatorRegistry> _logger;
 
-    // Cached translator instances (thread-safe)
+    /// <summary>
+    /// Cached translator instances (thread-safe)
+    /// </summary>
     private readonly ConcurrentDictionary<(Type, Type), object?> _translatorCache = new();
 
-    // Cached supported translations (initialized once)
+    /// <summary>
+    /// Cached supported translations (initialized once)
+    /// </summary>
     private readonly Lazy<ReadOnlyCollection<(Type SourceType, Type TargetType)>> _supportedTranslations;
 
-    // Cached translator names (initialized once)
+    /// <summary>
+    /// Cached translator names (initialized once)
+    /// </summary>
     private readonly Lazy<ReadOnlyCollection<string>> _translatorNames;
 
-    // Cached translator lookup by name (initialized once)
+    /// <summary>
+    /// Cached translator lookup by name (initialized once)
+    /// </summary>
     private readonly Lazy<System.Collections.ObjectModel.ReadOnlyDictionary<string, object>> _translatorsByName;
 
-    // Statistics tracking
+    /// <summary>
+    /// Statistics tracking
+    /// </summary>
     private long _cacheHits;
     private long _cacheMisses;
     private readonly DateTime _createdAt = DateTime.UtcNow;

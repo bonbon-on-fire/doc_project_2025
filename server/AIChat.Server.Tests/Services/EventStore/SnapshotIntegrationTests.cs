@@ -47,8 +47,8 @@ public class SnapshotIntegrationTests : IDisposable
     public async Task CreateSnapshot_ValidData_ShouldSucceed()
     {
         // Arrange
-        var streamId = "test-stream";
-        var version = 1L;
+        const string streamId = "test-stream";
+        const long version = 1L;
         var testState = new TestState { Name = "Test", Value = 42 };
         var metadata = new Dictionary<string, object> { ["test"] = "metadata" };
 
@@ -66,8 +66,8 @@ public class SnapshotIntegrationTests : IDisposable
     public async Task GetLatestSnapshot_ExistingSnapshot_ShouldReturnData()
     {
         // Arrange
-        var streamId = "restore-stream";
-        var version = 5L;
+        const string streamId = "restore-stream";
+        const long version = 5L;
         var originalState = new TestState { Name = "Original", Value = 100 };
 
         // Create snapshot first

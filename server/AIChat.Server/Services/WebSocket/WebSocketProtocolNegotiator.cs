@@ -26,7 +26,9 @@ public class WebSocketProtocolNegotiator : IWebSocketProtocolNegotiator
     private readonly ILogger<WebSocketProtocolNegotiator> _logger;
     private static readonly ActivitySource ActivitySource = new("AIChat.Server.WebSocketProtocolNegotiator");
 
-    // Statistics tracking
+    /// <summary>
+    /// Statistics tracking
+    /// </summary>
     private long _totalNegotiations;
     private long _successfulNegotiations;
     private long _failedNegotiations;
@@ -364,8 +366,7 @@ public class WebSocketProtocolNegotiator : IWebSocketProtocolNegotiator
                 if (clientCapabilities.TryGetValue(serverCapability.Key, out var clientValue))
                 {
                     // Use the more conservative/compatible value
-                    var negotiatedValue = NegotiateCapabilityValue(serverCapability.Value, clientValue);
-                    negotiatedCapabilities[serverCapability.Key] = negotiatedValue;
+                    negotiatedCapabilities[serverCapability.Key] = NegotiateCapabilityValue(serverCapability.Value, clientValue);
                 }
                 else
                 {
@@ -426,7 +427,7 @@ public class WebSocketProtocolNegotiator : IWebSocketProtocolNegotiator
         await Task.CompletedTask; // Suppress CS1998
         lock (_statisticsLock)
         {
-            var statistics = new ProtocolNegotiationStatistics
+            return new ProtocolNegotiationStatistics
             {
                 TotalNegotiations = Interlocked.Read(ref _totalNegotiations),
                 SuccessfulNegotiations = Interlocked.Read(ref _successfulNegotiations),
@@ -435,8 +436,6 @@ public class WebSocketProtocolNegotiator : IWebSocketProtocolNegotiator
                 RequestedProtocols = new Dictionary<string, long>(_requestedProtocols),
                 AverageNegotiationTimeMs = 0 // TODO: Implement timing tracking
             };
-
-            return statistics;
         }
     }
 
@@ -552,5 +551,5 @@ public class WebSocketProtocolNegotiator : IWebSocketProtocolNegotiator
         return serverValue; // Use server value as default
     }
 
-    #endregion
+    #endregion Private Helper Methods
 }

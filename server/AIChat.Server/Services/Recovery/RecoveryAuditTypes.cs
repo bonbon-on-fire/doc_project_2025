@@ -768,43 +768,43 @@ public enum AuditSortOrder
     /// Sort by started time, newest first.
     /// </summary>
     [Id(0)]
-    StartedAtDescending,
+    StartedAtDescending = 0,
 
     /// <summary>
     /// Sort by started time, oldest first.
     /// </summary>
     [Id(1)]
-    StartedAtAscending,
+    StartedAtAscending = 1,
 
     /// <summary>
     /// Sort by completed time, newest first.
     /// </summary>
     [Id(2)]
-    CompletedAtDescending,
+    CompletedAtDescending = 2,
 
     /// <summary>
     /// Sort by completed time, oldest first.
     /// </summary>
     [Id(3)]
-    CompletedAtAscending,
+    CompletedAtAscending = 3,
 
     /// <summary>
     /// Sort by recovery duration, longest first.
     /// </summary>
     [Id(4)]
-    DurationDescending,
+    DurationDescending = 4,
 
     /// <summary>
     /// Sort by recovery duration, shortest first.
     /// </summary>
     [Id(5)]
-    DurationAscending,
+    DurationAscending = 5,
 
     /// <summary>
     /// Sort by grain ID alphabetically.
     /// </summary>
     [Id(6)]
-    GrainIdAscending
+    GrainIdAscending = 6
 }
 
 /// <summary>

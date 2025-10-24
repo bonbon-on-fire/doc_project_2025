@@ -177,31 +177,31 @@ public enum CacheOperationType
     /// Frequently accessed read operations (5 minutes TTL).
     /// Used for user preferences, mode configurations, and similar data.
     /// </summary>
-    ReadFrequent,
+    ReadFrequent = 0,
 
     /// <summary>
     /// Moderately accessed read operations (15 minutes TTL).
     /// Used for chat history, monitoring data, and similar content.
     /// </summary>
-    ReadModerate,
+    ReadModerate = 1,
 
     /// <summary>
     /// Infrequently accessed read operations (1 hour TTL).
     /// Used for system logs, archived data, and historical information.
     /// </summary>
-    ReadInfrequent,
+    ReadInfrequent = 2,
 
     /// <summary>
     /// Real-time read operations (30 seconds TTL).
     /// Used for live metrics, active sessions, and real-time data.
     /// </summary>
-    ReadRealTime,
+    ReadRealTime = 3,
 
     /// <summary>
     /// Write-through operations (no caching).
     /// Used for create, update, and delete operations that should not be cached.
     /// </summary>
-    WriteThrough
+    WriteThrough = 4
 }
 
 /// <summary>
@@ -212,27 +212,27 @@ public enum CachePriority
     /// <summary>
     /// No caching priority - entries with this priority are not cached.
     /// </summary>
-    None,
+    None = 0,
 
     /// <summary>
     /// Low priority - first to be evicted under memory pressure.
     /// </summary>
-    Low,
+    Low = 1,
 
     /// <summary>
     /// Normal priority - default caching priority level.
     /// </summary>
-    Normal,
+    Normal = 2,
 
     /// <summary>
     /// High priority - last to be evicted under memory pressure.
     /// </summary>
-    High,
+    High = 3,
 
     /// <summary>
     /// Critical priority - never evicted under memory pressure.
     /// </summary>
-    Critical
+    Critical = 4
 }
 
 /// <summary>

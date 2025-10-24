@@ -14,15 +14,21 @@ public sealed class SnapshotPerformanceOptimizer : IDisposable
     private readonly ILogger<SnapshotPerformanceOptimizer> _logger;
     private readonly SnapshotOptimizationConfiguration _configuration;
 
-    // Performance caching
+    /// <summary>
+    /// Performance caching
+    /// </summary>
     private readonly ConcurrentDictionary<string, CachedSnapshot> _snapshotCache = new();
     private readonly ConcurrentDictionary<string, CachedMetadata> _metadataCache = new();
 
-    // Batch operations
+    /// <summary>
+    /// Batch operations
+    /// </summary>
     private readonly ConcurrentQueue<BatchedOperation> _batchQueue = new();
     private readonly Timer _batchProcessor;
 
-    // Performance metrics
+    /// <summary>
+    /// Performance metrics
+    /// </summary>
     private readonly ConcurrentDictionary<string, PerformanceMetrics> _performanceMetrics = new();
 
     private volatile bool _disposed;
@@ -250,26 +256,20 @@ public sealed class SnapshotPerformanceOptimizer : IDisposable
         // Remove expired snapshots
         foreach (var kvp in _snapshotCache.ToArray())
         {
-            if (kvp.Value.CachedAt < cutoffTime)
+            if (kvp.Value.CachedAt < cutoffTime && _snapshotCache.TryRemove(kvp.Key, out var removed))
             {
-                if (_snapshotCache.TryRemove(kvp.Key, out var removed))
-                {
-                    expiredEntries++;
-                    reclaimedMemory += removed.EstimatedSize;
-                }
+                expiredEntries++;
+                reclaimedMemory += removed.EstimatedSize;
             }
         }
 
         // Remove expired metadata
         foreach (var kvp in _metadataCache.ToArray())
         {
-            if (kvp.Value.CachedAt < cutoffTime)
+            if (kvp.Value.CachedAt < cutoffTime && _metadataCache.TryRemove(kvp.Key, out _))
             {
-                if (_metadataCache.TryRemove(kvp.Key, out _))
-                {
-                    expiredEntries++;
-                    reclaimedMemory += 1024; // Estimate metadata size
-                }
+                expiredEntries++;
+                reclaimedMemory += 1024; // Estimate metadata size
             }
         }
 
@@ -307,7 +307,7 @@ public sealed class SnapshotPerformanceOptimizer : IDisposable
 
     private void CacheSnapshot<T>(string streamId, SnapshotResult<T> result, TimeSpan retrievalTime)
     {
-        if (result.Data == null || result.Metadata == null)
+        if (EqualityComparer<T?>.Default.Equals(result.Data, default(T?)) || result.Metadata == null)
         {
             return;
         }
@@ -471,7 +471,7 @@ public sealed class SnapshotPerformanceOptimizer : IDisposable
         };
     }
 
-    #endregion
+    #endregion Private Methods
 
     public void Dispose()
     {

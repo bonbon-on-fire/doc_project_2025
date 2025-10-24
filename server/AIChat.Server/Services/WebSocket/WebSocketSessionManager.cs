@@ -25,13 +25,17 @@ public class WebSocketSessionManager : IWebSocketSessionManager
     private readonly ILogger<WebSocketSessionManager> _logger;
     private static readonly ActivitySource ActivitySource = new("AIChat.Server.WebSocketSessionManager");
 
-    // Thread-safe collections for session management
+    /// <summary>
+    /// Thread-safe collections for session management
+    /// </summary>
     private readonly ConcurrentDictionary<string, WebSocketSessionInfo> _sessionsBySessionId = new();
     private readonly ConcurrentDictionary<string, WebSocketSessionInfo> _sessionsByConnectionId = new();
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, bool>> _sessionsByUserId = new();
     // Note: Using ConcurrentDictionary<string, bool> as a concurrent set for session IDs
 
-    // Statistics tracking
+    /// <summary>
+    /// Statistics tracking
+    /// </summary>
     private long _totalSessionsCreated;
     private long _totalSessionsRemoved;
     private long _totalHeartbeats;

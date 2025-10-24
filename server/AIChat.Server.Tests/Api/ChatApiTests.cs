@@ -42,7 +42,7 @@ public class ChatApiTests(WebApplicationFactory<Program> factory) : BaseApiTest(
         _ = history!.Chats.Should().NotBeNull();
         _ = history.Chats.Should().NotBeEmpty();
 
-        var id = history.Chats.First().Id;
+        var id = history.Chats[0].Id;
         var del = await client.DeleteAsync($"/api/chat/{id}");
         _ = del.StatusCode.Should().Be(System.Net.HttpStatusCode.NoContent);
     }

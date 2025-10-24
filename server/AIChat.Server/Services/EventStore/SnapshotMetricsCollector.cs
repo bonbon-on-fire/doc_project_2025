@@ -305,25 +305,25 @@ internal enum SnapshotOperationType
     /// <summary>
     /// Snapshot creation operation.
     /// </summary>
-    Create,
+    Create = 0,
 
     /// <summary>
     /// Snapshot read operation.
     /// </summary>
-    Read,
+    Read = 1,
 
     /// <summary>
     /// Snapshot query operation.
     /// </summary>
-    Query,
+    Query = 2,
 
     /// <summary>
     /// Snapshot delete operation.
     /// </summary>
-    Delete,
+    Delete = 3,
 
     /// <summary>
     /// Snapshot store optimization operation.
     /// </summary>
-    Optimize
+    Optimize = 4
 }

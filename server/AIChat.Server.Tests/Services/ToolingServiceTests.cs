@@ -333,7 +333,7 @@ public class ToolingServiceTests
         );
     }
 
-    #endregion
+    #endregion FunctionFiltering Tests
 
     #region Edge Cases
 
@@ -458,5 +458,5 @@ public class ToolingServiceTests
         );
     }
 
-    #endregion
+    #endregion Edge Cases
 }

@@ -41,7 +41,7 @@ public class ModeControllerTests
     public async Task GetModesWithValidUserIdReturnsOkWithModes()
     {
         // Arrange
-        var userId = "test-user-1";
+        const string userId = "test-user-1";
         var modes = new List<ModeDto>
         {
             new()
@@ -100,7 +100,7 @@ public class ModeControllerTests
     public async Task GetModesWithMissingUserIdReturnsBadRequest()
     {
         // Arrange
-        string userId = null!;
+        const string userId = null!;
 
         // Act
         var result = await _controller.GetModes(userId);
@@ -115,7 +115,7 @@ public class ModeControllerTests
     public async Task GetModesWithEmptyUserIdReturnsBadRequest()
     {
         // Arrange
-        var userId = "   "; // Whitespace
+        const string userId = "   "; // Whitespace
 
         // Act
         var result = await _controller.GetModes(userId);
@@ -130,7 +130,7 @@ public class ModeControllerTests
     public async Task GetModesWhenServiceFailsReturnsServerError()
     {
         // Arrange
-        var userId = "test-user-2";
+        const string userId = "test-user-2";
         _ = _modeServiceMock
             .Setup(s => s.GetAllModesAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((false, "Database connection failed", new List<ModeDto>()));
@@ -155,7 +155,7 @@ public class ModeControllerTests
         _ = statusResult.Value!.ToString().Should().Contain("Database connection failed");
     }
 
-    #endregion
+    #endregion GetModes Tests
 
     #region GetMode Tests
 
@@ -163,8 +163,8 @@ public class ModeControllerTests
     public async Task GetModeWithValidIdAndUserIdReturnsOkWithMode()
     {
         // Arrange
-        var modeId = "test-mode-1";
-        var userId = "test-user-3";
+        const string modeId = "test-mode-1";
+        const string userId = "test-user-3";
         var mode = new ModeDto
         {
             Id = modeId,
@@ -204,8 +204,8 @@ public class ModeControllerTests
     public async Task GetModeWithNonExistentIdReturnsNotFound()
     {
         // Arrange
-        var modeId = "non-existent";
-        var userId = "test-user-4";
+        const string modeId = "non-existent";
+        const string userId = "test-user-4";
 
         // Set up the router mock to return NotFound result
         _ = _modeRouterMock
@@ -229,8 +229,8 @@ public class ModeControllerTests
     public async Task GetModeWithMissingUserIdReturnsBadRequest()
     {
         // Arrange
-        var modeId = "test-mode-2";
-        string userId = null!;
+        const string modeId = "test-mode-2";
+        const string userId = null!;
 
         // Act
         var result = await _controller.GetMode(modeId, userId);
@@ -240,7 +240,7 @@ public class ModeControllerTests
         _ = badRequestResult.Value!.ToString().Should().Contain("UserId is required");
     }
 
-    #endregion
+    #endregion GetMode Tests
 
     #region CreateMode Tests
 
@@ -496,7 +496,7 @@ public class ModeControllerTests
         _ = validationResults.Should().Contain(r => r.MemberNames.Contains("Name"));
     }
 
-    #endregion
+    #endregion CreateMode Tests
 
     #region UpdateMode Tests
 
@@ -504,7 +504,7 @@ public class ModeControllerTests
     public async Task UpdateModeWithValidRequestReturnsOkWithUpdatedMode()
     {
         // Arrange
-        var modeId = "mode-to-update";
+        const string modeId = "mode-to-update";
         var request = new UpdateModeApiRequest
         {
             UserId = "test-user-11",
@@ -556,7 +556,7 @@ public class ModeControllerTests
     public async Task UpdateModeWithNonExistentModeReturnsNotFound()
     {
         // Arrange
-        var modeId = "non-existent";
+        const string modeId = "non-existent";
         var request = new UpdateModeApiRequest
         {
             UserId = "test-user-12",
@@ -591,7 +591,7 @@ public class ModeControllerTests
     public async Task UpdateModeWithValidationErrorReturnsBadRequest()
     {
         // Arrange
-        var modeId = "mode-to-update";
+        const string modeId = "mode-to-update";
         var request = new UpdateModeApiRequest
         {
             UserId = "test-user-13",
@@ -614,7 +614,7 @@ public class ModeControllerTests
             .Contain("Mode name cannot contain HTML special characters");
     }
 
-    #endregion
+    #endregion UpdateMode Tests
 
     #region DeleteMode Tests
 
@@ -622,8 +622,8 @@ public class ModeControllerTests
     public async Task DeleteModeWithValidRequestReturnsNoContent()
     {
         // Arrange
-        var modeId = "mode-to-delete";
-        var userId = "test-user-14";
+        const string modeId = "mode-to-delete";
+        const string userId = "test-user-14";
 
         var expectedResult = new NoContentResult();
 
@@ -647,8 +647,8 @@ public class ModeControllerTests
     public async Task DeleteModeWithNonExistentModeReturnsNotFound()
     {
         // Arrange
-        var modeId = "non-existent";
-        var userId = "test-user-15";
+        const string modeId = "non-existent";
+        const string userId = "test-user-15";
 
         var expectedResult = new NotFoundObjectResult(new { Error = "Mode not found or access denied" });
 
@@ -673,8 +673,8 @@ public class ModeControllerTests
     public async Task DeleteModeWithSystemModeReturnsBadRequest()
     {
         // Arrange
-        var modeId = "system-mode";
-        var userId = "test-user-16";
+        const string modeId = "system-mode";
+        const string userId = "test-user-16";
 
         var expectedResult = new BadRequestObjectResult(new { Error = "Cannot delete system modes" });
 
@@ -699,8 +699,8 @@ public class ModeControllerTests
     public async Task DeleteModeWithMissingUserIdReturnsBadRequest()
     {
         // Arrange
-        var modeId = "mode-to-delete";
-        string userId = null!;
+        const string modeId = "mode-to-delete";
+        const string userId = null!;
 
         // Act
         var result = await _controller.DeleteMode(modeId, userId);
@@ -714,8 +714,8 @@ public class ModeControllerTests
     public async Task DeleteModeWhenServiceFailsReturnsServerError()
     {
         // Arrange
-        var modeId = "mode-to-delete";
-        var userId = "test-user-17";
+        const string modeId = "mode-to-delete";
+        const string userId = "test-user-17";
 
         var expectedResult = new ObjectResult(new { Error = "Database error occurred" }) { StatusCode = 500 };
 
@@ -737,7 +737,7 @@ public class ModeControllerTests
         _ = statusResult.Value!.ToString().Should().Contain("Database error occurred");
     }
 
-    #endregion
+    #endregion DeleteMode Tests
 
     #region Logging Tests
 
@@ -745,8 +745,8 @@ public class ModeControllerTests
     public async Task GetModesWhenRouterFailsReturnsServerError()
     {
         // Arrange
-        var userId = "test-user-18";
-        var errorMessage = "Service failure";
+        const string userId = "test-user-18";
+        const string errorMessage = "Service failure";
 
         var expectedResult = new ObjectResult(new { Error = errorMessage }) { StatusCode = 500 };
 
@@ -803,5 +803,5 @@ public class ModeControllerTests
         _ = expectedResult.Should().NotBeNull();
     }
 
-    #endregion
+    #endregion Logging Tests
 }

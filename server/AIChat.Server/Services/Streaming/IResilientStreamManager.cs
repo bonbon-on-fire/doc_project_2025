@@ -217,32 +217,32 @@ public enum StreamState
     /// <summary>
     /// Stream is active and processing normally.
     /// </summary>
-    Active,
+    Active = 0,
 
     /// <summary>
     /// Stream is attempting to reconnect.
     /// </summary>
-    Reconnecting,
+    Reconnecting = 1,
 
     /// <summary>
     /// Stream is in recovery mode.
     /// </summary>
-    Recovering,
+    Recovering = 2,
 
     /// <summary>
     /// Stream has failed and cannot recover.
     /// </summary>
-    Failed,
+    Failed = 3,
 
     /// <summary>
     /// Stream has completed successfully.
     /// </summary>
-    Completed,
+    Completed = 4,
 
     /// <summary>
     /// Stream was cancelled.
     /// </summary>
-    Cancelled,
+    Cancelled = 5,
 }
 
 /// <summary>
@@ -253,15 +253,15 @@ public enum CircuitState
     /// <summary>
     /// Circuit is closed and allowing operations.
     /// </summary>
-    Closed,
+    Closed = 0,
 
     /// <summary>
     /// Circuit is open and rejecting operations.
     /// </summary>
-    Open,
+    Open = 1,
 
     /// <summary>
     /// Circuit is half-open and testing recovery.
     /// </summary>
-    HalfOpen,
+    HalfOpen = 2,
 }

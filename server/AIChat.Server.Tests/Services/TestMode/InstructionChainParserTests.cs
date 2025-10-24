@@ -21,7 +21,7 @@ public class InstructionChainParserTests
     public void ExtractInstructionChainWithToolCallParsesSuccessfully()
     {
         // Arrange
-        var input = """
+        const string input = """
             <|instruction_start|>
             {
                 "id_message": "test-task-create",
@@ -68,7 +68,7 @@ public class InstructionChainParserTests
     public void ExtractInstructionChainWithMultipleToolCallsParsesAllCalls()
     {
         // Arrange
-        var input = """
+        const string input = """
             <|instruction_start|>
             {
                 "id_message": "multi-tool-test",
@@ -116,7 +116,7 @@ public class InstructionChainParserTests
     public void ExtractInstructionChainWithTextAndToolMessagesParsesBoth()
     {
         // Arrange
-        var input = """
+        const string input = """
             <|instruction_start|>
             {
                 "id_message": "mixed-messages",
@@ -166,7 +166,7 @@ public class InstructionChainParserTests
     public void ExtractInstructionChainWithInstructionChainArrayParsesMultipleInstructions()
     {
         // Arrange
-        var input = """
+        const string input = """
             <|instruction_start|>
             {
                 "instruction_chain": [
@@ -218,7 +218,7 @@ public class InstructionChainParserTests
     public void ExtractInstructionChainWithReasoningFieldParsesReasoningLength()
     {
         // Arrange
-        var input = """
+        const string input = """
             <|instruction_start|>
             {
                 "id_message": "with-reasoning",
@@ -269,7 +269,7 @@ public class InstructionChainParserTests
     public void ExtractInstructionChainWithMissingTagsReturnsNull()
     {
         // Arrange
-        var input = /*lang=json,strict*/
+        const string input = /*lang=json,strict*/
             """
             {
                 "id_message": "test",
@@ -288,7 +288,7 @@ public class InstructionChainParserTests
     public void ExtractInstructionChainWithInvalidJsonReturnsNull()
     {
         // Arrange
-        var input = """
+        const string input = """
             <|instruction_start|>
             { invalid json }
             <|instruction_end|>
@@ -305,7 +305,7 @@ public class InstructionChainParserTests
     public void ExtractInstructionChainWithEmptyMessagesArrayReturnsNull()
     {
         // Arrange
-        var input = """
+        const string input = """
             <|instruction_start|>
             {
                 "id_message": "empty",
@@ -325,7 +325,7 @@ public class InstructionChainParserTests
     public void ParseSingleInstructionWithValidJsonElementReturnsInstructionPlan()
     {
         // Arrange
-        var json = """
+        const string json = """
             {
                 "id_message": "test",
                 "messages": [
@@ -356,7 +356,7 @@ public class InstructionChainParserTests
     public void ExtractInstructionChainWithComplexNestedArgsPreservesJsonStructure()
     {
         // Arrange
-        var input = """
+        const string input = """
             <|instruction_start|>
             {
                 "id_message": "complex-args",

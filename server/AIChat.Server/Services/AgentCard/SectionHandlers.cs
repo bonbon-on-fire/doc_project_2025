@@ -101,9 +101,7 @@ public sealed partial class WorkflowSectionHandler : BaseSectionHandler
         }
 
         var steps = new List<string>();
-        var lines = content.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-
-        foreach (var line in lines)
+        foreach (var line in content.Split('\n', StringSplitOptions.RemoveEmptyEntries))
         {
             var trimmed = line.Trim();
             // Match numbered steps like "1. Step description" or "## Phase Name"
@@ -243,9 +241,18 @@ public sealed class SectionHandlerRegistry
     /// </summary>
     public ISectionHandler? GetHandler(string sectionName)
     {
-        return string.IsNullOrWhiteSpace(sectionName) ? null
-            : _handlers.TryGetValue(sectionName, out var handler) ? handler
-            : null;
+        if (string.IsNullOrWhiteSpace(sectionName))
+        {
+            return null;
+        }
+        else if (_handlers.TryGetValue(sectionName, out var handler))
+        {
+            return handler;
+        }
+        else
+        {
+            return null;
+        }
     }
 
     /// <summary>

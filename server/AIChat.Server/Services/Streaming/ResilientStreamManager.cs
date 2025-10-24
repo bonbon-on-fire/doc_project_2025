@@ -24,7 +24,9 @@ public sealed class ResilientStreamManager : IResilientStreamManager
     private readonly Timer _healthCheckTimer;
     private bool _disposed;
 
-    // Metrics
+    /// <summary>
+    /// Metrics
+    /// </summary>
     private long _totalStreamsProcessed;
     private long _totalRecoveryAttempts;
     private long _successfulRecoveries;
@@ -634,15 +636,13 @@ public sealed class ResilientStreamManager : IResilientStreamManager
             _ = context.PartialMessages.TryRemove(oldestKey, out _);
         }
 
-        var partialMessage = new PartialMessage
+        context.PartialMessages[sequenceNumber] = new PartialMessage
         {
             SequenceNumber = sequenceNumber,
             Data = data,
             Timestamp = DateTime.UtcNow,
             SizeBytes = System.Text.Encoding.UTF8.GetByteCount(data),
         };
-
-        context.PartialMessages[sequenceNumber] = partialMessage;
     }
 
     private async Task<int> ReplayBufferedMessagesAsync(
@@ -888,7 +888,7 @@ public sealed class ResilientStreamManager : IResilientStreamManager
             };
     }
 
-    #endregion
+    #endregion Private Methods
 
     #region Nested Types
 
@@ -926,5 +926,5 @@ public sealed class ResilientStreamManager : IResilientStreamManager
         public required long SizeBytes { get; init; }
     }
 
-    #endregion
+    #endregion Nested Types
 }

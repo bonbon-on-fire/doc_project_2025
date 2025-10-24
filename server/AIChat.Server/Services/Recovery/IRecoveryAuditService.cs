@@ -157,22 +157,22 @@ public enum AuditExportFormat
     /// <summary>
     /// Comma-separated values format.
     /// </summary>
-    Csv,
+    Csv = 0,
 
     /// <summary>
     /// JavaScript Object Notation format.
     /// </summary>
-    Json,
+    Json = 1,
 
     /// <summary>
     /// Extensible Markup Language format.
     /// </summary>
-    Xml,
+    Xml = 2,
 
     /// <summary>
     /// Microsoft Excel format.
     /// </summary>
-    Excel
+    Excel = 3
 }
 
 /// <summary>

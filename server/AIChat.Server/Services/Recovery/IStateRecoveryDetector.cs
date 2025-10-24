@@ -212,22 +212,22 @@ public enum RecoveryComplexity
     /// <summary>
     /// Low complexity - snapshot available, few events to replay.
     /// </summary>
-    Low,
+    Low = 0,
 
     /// <summary>
     /// Medium complexity - some events to replay, moderate resource usage.
     /// </summary>
-    Medium,
+    Medium = 1,
 
     /// <summary>
     /// High complexity - many events to replay, significant resource usage.
     /// </summary>
-    High,
+    High = 2,
 
     /// <summary>
     /// Very high complexity - full replay required, maximum resource usage.
     /// </summary>
-    VeryHigh
+    VeryHigh = 3
 }
 
 /// <summary>

@@ -33,13 +33,17 @@ public class LogsController : ControllerBase
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    // Determine the log file path based on the current working directory
-    // When running from the server directory (dotnet run), parent is project root
-    // When running from bin directory (compiled), we need to go up more levels
+    /// <summary>
+    /// Determine the log file path based on the current working directory
+    /// When running from the server directory (dotnet run), parent is project root
+    /// When running from bin directory (compiled), we need to go up more levels
+    /// </summary>
     private static readonly string ClientLogFile = GetClientLogFilePath();
 
-    // Static semaphore to ensure thread-safe writes to the client log file
-    // Acts as a mutex (1,1) to prevent concurrent writes that could corrupt the file
+    /// <summary>
+    /// Static semaphore to ensure thread-safe writes to the client log file
+    /// Acts as a mutex (1,1) to prevent concurrent writes that could corrupt the file
+    /// </summary>
     private static readonly SemaphoreSlim FileWriteLock = new(1, 1);
 
     private static string GetClientLogFilePath()

@@ -197,9 +197,7 @@ CREATE INDEX IF NOT EXISTS idx_snapshots_stream_id ON EventSnapshots(StreamId);"
         try
         {
             // Check that all required tables exist
-            var requiredTables = new[] { "Events", "EventSnapshots" };
-
-            foreach (var tableName in requiredTables)
+            foreach (var tableName in new[] { "Events", "EventSnapshots" })
             {
                 const string checkTableSql = @"
                     SELECT name FROM sqlite_master

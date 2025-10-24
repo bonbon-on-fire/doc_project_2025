@@ -176,32 +176,32 @@ public enum ConnectionStatus
     /// <summary>
     /// Connection is active and healthy.
     /// </summary>
-    Connected,
+    Connected = 0,
 
     /// <summary>
     /// Connection is disconnected.
     /// </summary>
-    Disconnected,
+    Disconnected = 1,
 
     /// <summary>
     /// Connection is attempting to reconnect.
     /// </summary>
-    Reconnecting,
+    Reconnecting = 2,
 
     /// <summary>
     /// Connection is unstable but attempting to maintain.
     /// </summary>
-    Unstable,
+    Unstable = 3,
 
     /// <summary>
     /// Connection has failed permanently.
     /// </summary>
-    Failed,
+    Failed = 4,
 
     /// <summary>
     /// Connection status is unknown.
     /// </summary>
-    Unknown,
+    Unknown = 5,
 }
 
 /// <summary>

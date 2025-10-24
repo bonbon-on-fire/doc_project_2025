@@ -332,7 +332,7 @@ public sealed partial class SqliteEventStore : IEventStore
         }
     }
 
-    #endregion
+    #endregion IEventAppender Implementation
 
     #region IEventReader Implementation
 
@@ -570,7 +570,7 @@ public sealed partial class SqliteEventStore : IEventStore
         }
     }
 
-    #endregion
+    #endregion IEventReader Implementation
 
     #region Helper Methods
 
@@ -682,7 +682,7 @@ public sealed partial class SqliteEventStore : IEventStore
         }
     }
 
-    #endregion
+    #endregion Helper Methods
 
     #region IEventStore Core Implementation
 
@@ -817,5 +817,5 @@ public sealed partial class SqliteEventStore : IEventStore
         }
     }
 
-    #endregion
+    #endregion IEventStore Core Implementation
 }

@@ -381,20 +381,20 @@ public enum StateOperationType
     /// <summary>
     /// Create a new entity.
     /// </summary>
-    Create,
+    Create = 0,
 
     /// <summary>
     /// Update an existing entity.
     /// </summary>
-    Update,
+    Update = 1,
 
     /// <summary>
     /// Partially update an existing entity.
     /// </summary>
-    Patch,
+    Patch = 2,
 
     /// <summary>
     /// Delete an existing entity.
     /// </summary>
-    Delete
+    Delete = 3
 }

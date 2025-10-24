@@ -111,7 +111,7 @@ public class DualModeRouterTests : IDisposable
             _loggerMock.Object,
             _chatServiceMock.Object,
             _optionsMock.Object,
-            null!
+            null
         );
 
         act.Should().NotThrow();
@@ -180,7 +180,7 @@ public class DualModeRouterTests : IDisposable
         );
     }
 
-    #endregion
+    #endregion Constructor Tests
 
     #region ExecuteAsync<T> Tests
 
@@ -241,7 +241,7 @@ public class DualModeRouterTests : IDisposable
     {
         // Arrange
         const string expectedResult = "orleans-result";
-        var operationName = "test-operation";
+        const string operationName = "test-operation";
 
         _featureManagerMock
             .Setup(x => x.IsEnabledAsync(OrleansFeatureFlag))
@@ -272,7 +272,7 @@ public class DualModeRouterTests : IDisposable
     {
         // Arrange
         const string expectedResult = "direct-result";
-        var operationName = "test-operation";
+        const string operationName = "test-operation";
         var orleansException = new InvalidOperationException("Orleans failed");
 
         _featureManagerMock
@@ -313,7 +313,7 @@ public class DualModeRouterTests : IDisposable
     {
         // Arrange
         const string expectedResult = "direct-result";
-        var operationName = "test-operation";
+        const string operationName = "test-operation";
 
         _featureManagerMock
             .Setup(x => x.IsEnabledAsync(OrleansFeatureFlag))
@@ -340,7 +340,7 @@ public class DualModeRouterTests : IDisposable
     public async Task ExecuteAsyncWithBothOperationsFailingThrowsRouterException()
     {
         // Arrange
-        var operationName = "test-operation";
+        const string operationName = "test-operation";
         var orleansException = new InvalidOperationException("Orleans failed");
         var directException = new InvalidOperationException("Direct failed");
 
@@ -367,7 +367,7 @@ public class DualModeRouterTests : IDisposable
     {
         // Arrange
         using var cts = new CancellationTokenSource();
-        var operationName = "test-operation";
+        const string operationName = "test-operation";
         cts.Cancel();
 
         _featureManagerMock
@@ -394,7 +394,7 @@ public class DualModeRouterTests : IDisposable
     {
         // Arrange
         const string expectedResult = "direct-result";
-        var operationName = "circuit-breaker-test";
+        const string operationName = "circuit-breaker-test";
 
         _featureManagerMock
             .Setup(x => x.IsEnabledAsync(OrleansFeatureFlag))
@@ -424,7 +424,7 @@ public class DualModeRouterTests : IDisposable
         );
     }
 
-    #endregion
+    #endregion ExecuteAsync<T> Tests
 
     #region ExecuteAsync (void) Tests
 
@@ -432,7 +432,7 @@ public class DualModeRouterTests : IDisposable
     public async Task ExecuteAsyncVoidOperationExecutesSuccessfully()
     {
         // Arrange
-        var operationName = "void-operation";
+        const string operationName = "void-operation";
         var orleansExecuted = false;
         var directExecuted = false;
 
@@ -464,7 +464,7 @@ public class DualModeRouterTests : IDisposable
     public async Task ExecuteAsyncVoidOperationWithOrleansFailureFallsBackToDirectService()
     {
         // Arrange
-        var operationName = "void-operation-fallback";
+        const string operationName = "void-operation-fallback";
         var directExecuted = false;
 
         _featureManagerMock
@@ -486,7 +486,7 @@ public class DualModeRouterTests : IDisposable
         directExecuted.Should().BeTrue();
     }
 
-    #endregion
+    #endregion ExecuteAsync (void) Tests
 
     #region IsOrleansEnabledAsync Tests
 
@@ -570,7 +570,7 @@ public class DualModeRouterTests : IDisposable
         result.Should().BeFalse();
     }
 
-    #endregion
+    #endregion IsOrleansEnabledAsync Tests
 
     #region CheckHealthAsync Tests
 
@@ -653,7 +653,7 @@ public class DualModeRouterTests : IDisposable
         results.Should().OnlyContain(r => r.IsHealthy);
     }
 
-    #endregion
+    #endregion CheckHealthAsync Tests
 
     #region GetMetricsAsync Tests
 
@@ -775,7 +775,7 @@ public class DualModeRouterTests : IDisposable
         metrics.FailedOperations.Should().Be(1);
     }
 
-    #endregion
+    #endregion GetMetricsAsync Tests
 
     #region Performance and Threading Tests
 
@@ -787,7 +787,7 @@ public class DualModeRouterTests : IDisposable
             .Setup(x => x.IsEnabledAsync(OrleansFeatureFlag))
             .ReturnsAsync(true);
 
-        var operationCount = 50;
+        const int operationCount = 50;
         var random = new Random();
 
         // Act - Execute many concurrent operations
@@ -855,7 +855,7 @@ public class DualModeRouterTests : IDisposable
         result.Should().Be("direct-result");
     }
 
-    #endregion
+    #endregion Performance and Threading Tests
 
     #region Circuit Breaker Tests
 
@@ -931,7 +931,7 @@ public class DualModeRouterTests : IDisposable
         successResult.Should().Be("direct-result");
     }
 
-    #endregion
+    #endregion Circuit Breaker Tests
 
     public void Dispose()
     {

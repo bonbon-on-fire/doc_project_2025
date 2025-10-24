@@ -516,7 +516,11 @@ dotnet_diagnostic.IDE0032.severity = none
 [server/AIChat.Server/Services/**/*.cs]
 dotnet_diagnostic.IDE0052.severity = none
 
-# IDE0055: Fix formatting
+# IDE0055: Fix formatting - Test files (allow flexibility in test formatting)
+[server/**/*Tests.cs]
+dotnet_diagnostic.IDE0055.severity = suggestion
+
+# IDE0055: Fix formatting - Specific performance-critical file
 [server/AIChat.Server/Services/EventStore/Optimization/SnapshotPerformanceOptimizer.cs]
 dotnet_diagnostic.IDE0055.severity = none
 
@@ -743,5 +747,8 @@ dotnet_diagnostic.rcs1259.severity = suggestion
 
 # RCS1249: Unnecessary null-forgiving operator (4 instances)
 dotnet_diagnostic.rcs1249.severity = suggestion
+
+# RCS1194: Implement exception constructors (34 instances from previous auto-fix)
+dotnet_diagnostic.rcs1194.severity = suggestion
 
 # Add more specific rules here as needed...

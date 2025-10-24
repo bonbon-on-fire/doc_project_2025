@@ -454,25 +454,25 @@ public enum RecoveryNotificationType
     /// Recovery operation started.
     /// </summary>
     [Id(0)]
-    Started,
+    Started = 0,
 
     /// <summary>
     /// Recovery operation progress update.
     /// </summary>
     [Id(1)]
-    Progress,
+    Progress = 1,
 
     /// <summary>
     /// Recovery operation completed (success or failure).
     /// </summary>
     [Id(2)]
-    Completed,
+    Completed = 2,
 
     /// <summary>
     /// Recovery operation cancelled.
     /// </summary>
     [Id(3)]
-    Cancelled
+    Cancelled = 3
 }
 
 /// <summary>

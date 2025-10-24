@@ -213,8 +213,7 @@ public abstract class OrleansStateManagerBase<T> : IStateManager<T> where T : cl
             }
 
             // Check grain
-            var result = await ExistsInGrainAsync(id, cancellationToken);
-            return result;
+            return await ExistsInGrainAsync(id, cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -243,8 +242,7 @@ public abstract class OrleansStateManagerBase<T> : IStateManager<T> where T : cl
             Logger.LogDebug("Counting {EntityType} entities (CorrelationId: {CorrelationId})",
                 typeof(T).Name, correlationId);
 
-            var result = await CountInGrainsAsync(query, cancellationToken);
-            return result;
+            return await CountInGrainsAsync(query, cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -261,7 +259,7 @@ public abstract class OrleansStateManagerBase<T> : IStateManager<T> where T : cl
         }
     }
 
-    #endregion
+    #endregion IStateReader<T> Implementation
 
     #region IStateWriter<T> Implementation
 
@@ -468,7 +466,7 @@ public abstract class OrleansStateManagerBase<T> : IStateManager<T> where T : cl
         throw new NotImplementedException("Batch delete not implemented in base class");
     }
 
-    #endregion
+    #endregion IStateWriter<T> Implementation
 
     #region IStateCacheManager<T> Implementation
 
@@ -496,7 +494,7 @@ public abstract class OrleansStateManagerBase<T> : IStateManager<T> where T : cl
     public Task<CacheStatistics> GetCacheStatisticsAsync(CancellationToken cancellationToken = default)
         => CacheManager.GetCacheStatisticsAsync(cancellationToken);
 
-    #endregion
+    #endregion IStateCacheManager<T> Implementation
 
     #region IStateManager<T> Implementation
 
@@ -542,7 +540,7 @@ public abstract class OrleansStateManagerBase<T> : IStateManager<T> where T : cl
         return Task.CompletedTask;
     }
 
-    #endregion
+    #endregion IStateManager<T> Implementation
 
     #region Validation Implementation
 
@@ -655,7 +653,7 @@ public abstract class OrleansStateManagerBase<T> : IStateManager<T> where T : cl
         return new NullStateErrorRecovery<T>();
     }
 
-    #endregion
+    #endregion Validation Implementation
 
     #region Protected Abstract Methods - To be implemented by derived classes
 
@@ -709,5 +707,5 @@ public abstract class OrleansStateManagerBase<T> : IStateManager<T> where T : cl
     /// </summary>
     protected abstract string? GetEntityId(T entity);
 
-    #endregion
+    #endregion Protected Abstract Methods - To be implemented by derived classes
 }

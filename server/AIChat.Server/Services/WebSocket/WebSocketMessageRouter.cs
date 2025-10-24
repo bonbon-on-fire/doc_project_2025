@@ -29,10 +29,14 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
     private readonly ILogger<WebSocketMessageRouter> _logger;
     private static readonly ActivitySource ActivitySource = new("AIChat.Server.WebSocketMessageRouter");
 
-    // Custom message handlers
+    /// <summary>
+    /// Custom message handlers
+    /// </summary>
     private readonly ConcurrentDictionary<string, Func<WebSocketMessage, WebSocketSessionInfo, CancellationToken, Task<MessageRoutingResult>>> _customHandlers = new();
 
-    // Statistics tracking
+    /// <summary>
+    /// Statistics tracking
+    /// </summary>
     private long _totalMessages;
     private long _successfulMessages;
     private long _failedMessages;
@@ -367,13 +371,9 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
             var registered = _customHandlers.TryAdd(messageType, handler);
 
             if (registered)
-            {
                 _logger.LogInformation("Registered custom message handler for type {MessageType}", messageType);
-            }
             else
-            {
                 _logger.LogWarning("Message handler for type {MessageType} already exists", messageType);
-            }
 
             return await Task.FromResult(registered);
         }
@@ -396,13 +396,9 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
             var removed = _customHandlers.TryRemove(messageType, out _);
 
             if (removed)
-            {
                 _logger.LogInformation("Unregistered custom message handler for type {MessageType}", messageType);
-            }
             else
-            {
                 _logger.LogWarning("No message handler found for type {MessageType}", messageType);
-            }
 
             return await Task.FromResult(removed);
         }
@@ -420,7 +416,7 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
         await Task.CompletedTask; // Suppress CS1998
         lock (_statisticsLock)
         {
-            var statistics = new MessageRoutingStatistics
+            return new MessageRoutingStatistics
             {
                 TotalMessages = Interlocked.Read(ref _totalMessages),
                 SuccessfulMessages = Interlocked.Read(ref _successfulMessages),
@@ -432,8 +428,6 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
                 OrleansAttempts = Interlocked.Read(ref _orleansAttempts),
                 DirectServiceUses = Interlocked.Read(ref _directServiceUses)
             };
-
-            return statistics;
         }
     }
 
@@ -453,7 +447,7 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
             var isOrleansAvailable = await IsOrleansRoutingAvailableAsync(cancellationToken);
             var customHandlerCount = _customHandlers.Count;
 
-            var status = new MessageRouterHealthStatus
+            return new MessageRouterHealthStatus
             {
                 IsHealthy = true, // Consider healthy if we can respond
                 IsOrleansAvailable = isOrleansAvailable,
@@ -461,8 +455,6 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
                 CustomHandlerCount = customHandlerCount,
                 Message = isOrleansAvailable ? "All routing modes available" : "Orleans unavailable, using direct service only"
             };
-
-            return status;
         }
         catch (Exception ex)
         {
@@ -713,7 +705,7 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
         }
     }
 
-    #endregion
+    #endregion Private Helper Methods
 
     #region Helper Classes
 
@@ -724,5 +716,5 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
         public WebSocketMessage? ResponseMessage { get; init; }
     }
 
-    #endregion
+    #endregion Helper Classes
 }

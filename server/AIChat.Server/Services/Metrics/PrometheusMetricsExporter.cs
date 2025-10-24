@@ -13,7 +13,9 @@ public class PrometheusMetricsExporter : IPrometheusMetricsExporter
     private readonly IOrleansMetricsCollector _orléansMetrics;
     private readonly ILogger<PrometheusMetricsExporter> _logger;
 
-    // Prometheus metric definitions
+    /// <summary>
+    /// Prometheus metric definitions
+    /// </summary>
     private readonly Counter _grainActivationsTotal;
     private readonly Counter _grainDeactivationsTotal;
     private readonly Histogram _grainActivationDuration;
@@ -233,9 +235,7 @@ public class PrometheusMetricsExporter : IPrometheusMetricsExporter
         try
         {
             // Get detailed metrics for each grain type
-            var grainTypes = new[] { "UserGrain", "ChatGrain", "ModeGrain" };
-
-            foreach (var grainType in grainTypes)
+            foreach (var grainType in new[] { "UserGrain", "ChatGrain", "ModeGrain" })
             {
                 var typeMetrics = await _orléansMetrics.GetGrainTypeMetricsAsync(grainType);
 

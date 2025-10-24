@@ -202,17 +202,17 @@ public enum RouterMode
     /// <summary>
     /// Orleans routing is primary with fallback to direct services.
     /// </summary>
-    Orleans,
+    Orleans = 0,
 
     /// <summary>
     /// Direct service routing only (Orleans disabled or unhealthy).
     /// </summary>
-    DirectService,
+    DirectService = 1,
 
     /// <summary>
     /// Router is degraded - some operations may fail.
     /// </summary>
-    Degraded
+    Degraded = 2
 }
 
 /// <summary>

@@ -394,20 +394,20 @@ public enum ValidationOperation
     /// <summary>
     /// Validating entity creation.
     /// </summary>
-    Create,
+    Create = 0,
 
     /// <summary>
     /// Validating entity update.
     /// </summary>
-    Update,
+    Update = 1,
 
     /// <summary>
     /// Validating entity deletion.
     /// </summary>
-    Delete,
+    Delete = 2,
 
     /// <summary>
     /// Validating partial entity update (patch).
     /// </summary>
-    Patch
+    Patch = 3
 }

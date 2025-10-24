@@ -65,7 +65,9 @@ public sealed class TranslationMetricsCollector : ITranslationMetricsCollector
 {
     private readonly ILogger<TranslationMetricsCollector> _logger;
 
-    // Global metrics using thread-safe operations
+    /// <summary>
+    /// Global metrics using thread-safe operations
+    /// </summary>
     private long _globalTotalTranslations;
     private long _globalSuccessfulTranslations;
     private long _globalFailedTranslations;
@@ -73,14 +75,20 @@ public sealed class TranslationMetricsCollector : ITranslationMetricsCollector
     private long _globalMinDurationTicks = long.MaxValue;
     private long _globalMaxDurationTicks;
 
-    // Per-translator metrics
+    /// <summary>
+    /// Per-translator metrics
+    /// </summary>
     private readonly ConcurrentDictionary<string, TranslatorMetricsData> _translatorMetrics = new();
 
-    // Protocol breakdown
+    /// <summary>
+    /// Protocol breakdown
+    /// </summary>
     private readonly ConcurrentDictionary<string, long> _translationsBySourceProtocol = new();
     private readonly ConcurrentDictionary<string, long> _translationsByTargetProtocol = new();
 
-    // Collector statistics
+    /// <summary>
+    /// Collector statistics
+    /// </summary>
     private readonly DateTime _createdAt = DateTime.UtcNow;
     private DateTime _lastResetTime = DateTime.UtcNow;
 
@@ -103,13 +111,9 @@ public sealed class TranslationMetricsCollector : ITranslationMetricsCollector
         Interlocked.Increment(ref _globalTotalTranslations);
 
         if (success)
-        {
             Interlocked.Increment(ref _globalSuccessfulTranslations);
-        }
         else
-        {
             Interlocked.Increment(ref _globalFailedTranslations);
-        }
 
         // Update duration tracking
         Interlocked.Add(ref _globalTotalDurationTicks, durationTicks);
@@ -178,8 +182,7 @@ public sealed class TranslationMetricsCollector : ITranslationMetricsCollector
             return null;
         }
 
-        var metrics = await metricsData.ToTranslationMetricsAsync();
-        return metrics;
+        return await metricsData.ToTranslationMetricsAsync();
     }
 
     /// <inheritdoc />
@@ -189,8 +192,7 @@ public sealed class TranslationMetricsCollector : ITranslationMetricsCollector
 
         foreach (var kvp in _translatorMetrics)
         {
-            var metrics = await kvp.Value.ToTranslationMetricsAsync();
-            result[kvp.Key] = metrics;
+            result[kvp.Key] = await kvp.Value.ToTranslationMetricsAsync();
         }
 
         return result.AsReadOnly();
@@ -326,13 +328,9 @@ internal sealed class TranslatorMetricsData
         Interlocked.Increment(ref _totalTranslations);
 
         if (success)
-        {
             Interlocked.Increment(ref _successfulTranslations);
-        }
         else
-        {
             Interlocked.Increment(ref _failedTranslations);
-        }
 
         Interlocked.Add(ref _totalDurationTicks, durationTicks);
 

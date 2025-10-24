@@ -49,7 +49,7 @@ public class WebSocketProtocolInfo
     /// Higher numbers indicate higher priority.
     /// </summary>
     [JsonPropertyName("priority")]
-    public int Priority { get; set; } = 0;
+    public int Priority { get; set; }
 }
 
 /// <summary>

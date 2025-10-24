@@ -128,17 +128,14 @@ public class PointInTimeRecoveryController : ControllerBase
                     EstimatedCompletionTime = DateTime.UtcNow.AddMinutes(5) // Rough estimate
                 });
             }
-            else
+            // Perform synchronous recovery (not recommended for large operations)
+            return StatusCode(StatusCodes.Status501NotImplemented, new ProblemDetails
             {
-                // Perform synchronous recovery (not recommended for large operations)
-                return StatusCode(StatusCodes.Status501NotImplemented, new ProblemDetails
-                {
-                    Title = "Synchronous Recovery Not Implemented",
-                    Detail = "Synchronous recovery is not implemented. Please use background recovery (UseBackgroundRecovery = true)",
-                    Status = StatusCodes.Status501NotImplemented,
-                    Instance = HttpContext.Request.Path
-                });
-            }
+                Title = "Synchronous Recovery Not Implemented",
+                Detail = "Synchronous recovery is not implemented. Please use background recovery (UseBackgroundRecovery = true)",
+                Status = StatusCodes.Status501NotImplemented,
+                Instance = HttpContext.Request.Path
+            });
         }
         catch (Exception ex)
         {
@@ -446,13 +443,9 @@ public class PointInTimeRecoveryController : ControllerBase
             var healthStatus = await _recoveryService.GetHealthStatusAsync(cancellationToken);
 
             if (healthStatus.IsHealthy)
-            {
                 return Ok(healthStatus);
-            }
-            else
-            {
-                return StatusCode(StatusCodes.Status503ServiceUnavailable, healthStatus);
-            }
+
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, healthStatus);
         }
         catch (Exception ex)
         {

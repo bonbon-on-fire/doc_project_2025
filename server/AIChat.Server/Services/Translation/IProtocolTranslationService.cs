@@ -216,17 +216,17 @@ public enum HealthStatus
     /// <summary>
     /// Service is healthy and functioning normally.
     /// </summary>
-    Healthy,
+    Healthy = 0,
 
     /// <summary>
     /// Service is functioning but with reduced performance or capabilities.
     /// </summary>
-    Degraded,
+    Degraded = 1,
 
     /// <summary>
     /// Service is not functioning properly.
     /// </summary>
-    Unhealthy
+    Unhealthy = 2
 }
 
 /// <summary>

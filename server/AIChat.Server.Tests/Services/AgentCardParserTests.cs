@@ -27,26 +27,27 @@ public class AgentCardParserTests
     public void ParseAgentCardWithValidCompleteCardShouldParseAllFields()
     {
         // Arrange
-        var content =
-            @"---
-agent: ""test-agent""
-name: ""Test Agent""
-version: ""1.0.0""
-category: ""testing""
+        const string content =
+            """
+---
+agent: "test-agent"
+name: "Test Agent"
+version: "1.0.0"
+category: "testing"
 model_hints:
-  - ""gpt-4""
-  - ""claude-3""
+  - "gpt-4"
+  - "claude-3"
 capabilities:
   tools:
-    - ""search""
-    - ""edit""
-  memory: ""episodic""
+    - "search"
+    - "edit"
+  memory: "episodic"
   max_tokens: 4096
-output_contract: ""json_schema""
-risk_level: ""low""
+output_contract: "json_schema"
+risk_level: "low"
 tags:
-  - ""test""
-  - ""example""
+  - "test"
+  - "example"
 ---
 
 # ROLE
@@ -62,15 +63,16 @@ Validate the parser functionality.
 # OUTPUT SCHEMA
 ```json
 {
-  ""name"": ""TestSchema"",
-  ""schema"": {
-    ""type"": ""object"",
-    ""properties"": {
-      ""test"": { ""type"": ""string"" }
+  "name": "TestSchema",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "test": { "type": "string" }
     }
   }
 }
-```";
+```
+""";
 
         // Act
         var result = _parser.ParseAgentCard(content);
@@ -103,17 +105,19 @@ Validate the parser functionality.
     public void ParseAgentCardWithMinimalCardShouldParseRequiredFields()
     {
         // Arrange
-        var content =
-            @"---
-agent: ""minimal-agent""
-name: ""Minimal Agent""
+        const string content =
+            """
+---
+agent: "minimal-agent"
+name: "Minimal Agent"
 ---
 
 # ROLE
 A minimal test agent.
 
 # OBJECTIVE
-Test minimal configuration.";
+Test minimal configuration.
+""";
 
         // Act
         var result = _parser.ParseAgentCard(content);
@@ -135,7 +139,7 @@ Test minimal configuration.";
     public void ParseAgentCardWithoutFrontMatterShouldReturnFailure()
     {
         // Arrange
-        var content =
+        const string content =
             @"# ROLE
 Some role without front matter";
 
@@ -173,17 +177,18 @@ Some role without front matter";
     public void ToModeShouldConvertCorrectly()
     {
         // Arrange
-        var content =
-            @"---
-agent: ""converter-test""
-name: ""Converter Test""
-category: ""development""
+        const string content =
+            """
+---
+agent: "converter-test"
+name: "Converter Test"
+category: "development"
 capabilities:
   tools:
-    - ""tool1""
-    - ""tool2""
+    - "tool1"
+    - "tool2"
 model_hints:
-  - ""gpt-4""
+  - "gpt-4"
 ---
 
 # ROLE
@@ -194,7 +199,8 @@ Convert to Mode object.
 
 # CONSTRAINTS
 - Constraint 1
-- Constraint 2";
+- Constraint 2
+""";
 
         // Act
         var result = _parser.ParseAgentCard(content);
@@ -219,9 +225,10 @@ Convert to Mode object.
     public void ParseWorkflowWithNumberedStepsShouldExtractSteps()
     {
         // Arrange
-        var content =
-            @"---
-agent: ""workflow-test""
+        const string content =
+            """
+---
+agent: "workflow-test"
 ---
 
 # ROLE
@@ -231,7 +238,8 @@ Test agent
 1. First step in process
 2. Second step with details
 3. Third and final step
-Some additional text that's not a step";
+Some additional text that's not a step
+""";
 
         // Act
         var result = _parser.ParseAgentCard(content);
@@ -249,9 +257,10 @@ Some additional text that's not a step";
     public void ParseJsonSchemaWithValidSchemaShouldParseCorrectly()
     {
         // Arrange
-        var content =
-            @"---
-agent: ""schema-test""
+        const string content =
+            """
+---
+agent: "schema-test"
 ---
 
 # ROLE
@@ -260,19 +269,20 @@ Test
 # OUTPUT SCHEMA
 ```json
 {
-  ""name"": ""TestOutput"",
-  ""schema"": {
-    ""type"": ""object"",
-    ""required"": [""field1""],
-    ""properties"": {
-      ""field1"": {
-        ""type"": ""string"",
-        ""description"": ""Test field""
+  "name": "TestOutput",
+  "schema": {
+    "type": "object",
+    "required": ["field1"],
+    "properties": {
+      "field1": {
+        "type": "string",
+        "description": "Test field"
       }
     }
   }
 }
-```";
+```
+""";
 
         // Act
         var result = _parser.ParseAgentCard(content);
@@ -290,9 +300,10 @@ Test
     public void ParseJsonSchemaWithInvalidJsonShouldGracefullyDegrade()
     {
         // Arrange
-        var content =
-            @"---
-agent: ""invalid-schema-test""
+        const string content =
+            """
+---
+agent: "invalid-schema-test"
 ---
 
 # ROLE
@@ -301,10 +312,11 @@ Test
 # OUTPUT SCHEMA
 ```json
 {
-  ""name"": ""TestOutput"",
+  "name": "TestOutput",
   invalid json here
 }
-```";
+```
+""";
 
         // Act
         var result = _parser.ParseAgentCard(content);
@@ -319,9 +331,10 @@ Test
     public void ParseSectionsShouldHandleAllStandardSections()
     {
         // Arrange
-        var content =
-            @"---
-agent: ""sections-test""
+        const string content =
+            """
+---
+agent: "sections-test"
 ---
 
 # ROLE
@@ -343,7 +356,8 @@ Constraints content
 Style content
 
 # EXAMPLES
-Examples content";
+Examples content
+""";
 
         // Act
         var result = _parser.ParseAgentCard(content);
@@ -365,9 +379,10 @@ Examples content";
     public void ParseSectionsShouldHandleUnknownSections()
     {
         // Arrange
-        var content =
-            @"---
-agent: ""custom-sections-test""
+        const string content =
+            """
+---
+agent: "custom-sections-test"
 ---
 
 # ROLE
@@ -377,7 +392,8 @@ Standard role
 This is a custom section that should still be parsed
 
 # ANOTHER CUSTOM
-Another custom section content";
+Another custom section content
+""";
 
         // Act
         var result = _parser.ParseAgentCard(content);
@@ -397,13 +413,15 @@ Another custom section content";
     public void ParseAgentCardWithMissingAgentIdShouldReturnFailure()
     {
         // Arrange
-        var content =
-            @"---
-name: ""No Agent ID""
+        const string content =
+            """
+---
+name: "No Agent ID"
 ---
 
 # ROLE
-Test";
+Test
+""";
 
         // Act
         var result = _parser.ParseAgentCard(content);
@@ -439,15 +457,17 @@ Test";
     public void ParseAgentCardWithInvalidYamlShouldReturnFailure()
     {
         // Arrange
-        var content =
-            @"---
-agent: ""test-agent""
+        const string content =
+            """
+---
+agent: "test-agent"
 invalid yaml syntax here
   - this is not valid
 ---
 
 # ROLE
-Test";
+Test
+""";
 
         // Act
         var result = _parser.ParseAgentCard(content);

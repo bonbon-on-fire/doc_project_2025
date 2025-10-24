@@ -22,7 +22,9 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
     private Timer? _cleanupTimer;
     private bool _disposed;
 
-    // Metrics
+    /// <summary>
+    /// Metrics
+    /// </summary>
     private long _totalReplayOperations;
     private long _totalMessagesReplayed;
     private long _totalDuplicatesDetected;
@@ -623,13 +625,9 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
                 .GetConnectionStateAsync(kvp.Key)
                 .ConfigureAwait(false);
             if (connectionState?.Status == ConnectionStatus.Connected)
-            {
                 connectedStreams++;
-            }
             else
-            {
                 disconnectedStreams++;
-            }
         }
 
         // Get persistence statistics

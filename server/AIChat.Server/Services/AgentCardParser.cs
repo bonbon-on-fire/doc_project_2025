@@ -16,7 +16,9 @@ namespace AIChat.Server.Services;
 /// <param name="logger">Optional logger for diagnostic output</param>
 public partial class AgentCardParser(ILogger<AgentCardParser>? logger = null)
 {
-    // Compiled regex patterns for better performance
+    /// <summary>
+    /// Compiled regex patterns for better performance
+    /// </summary>
     private static readonly Regex FrontMatterRegex = MyRegex();
 
     private static readonly Regex SectionRegex = MyRegex1();
@@ -80,11 +82,18 @@ public partial class AgentCardParser(ILogger<AgentCardParser>? logger = null)
     /// </summary>
     private static Result ValidateContent(string content)
     {
-        return string.IsNullOrWhiteSpace(content)
-                ? Result.Failure("Agent card content cannot be empty")
-            : !FrontMatterRegex.IsMatch(content)
-                ? Result.Failure("Agent card must have YAML front matter")
-            : Result.Success();
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            return Result.Failure("Agent card content cannot be empty");
+        }
+        else if (!FrontMatterRegex.IsMatch(content))
+        {
+            return Result.Failure("Agent card must have YAML front matter");
+        }
+        else
+        {
+            return Result.Success();
+        }
     }
 
     /// <summary>

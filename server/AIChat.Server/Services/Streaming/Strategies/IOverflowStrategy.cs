@@ -116,32 +116,32 @@ public enum OverflowAction
     /// <summary>
     /// No action taken.
     /// </summary>
-    None,
+    None = 0,
 
     /// <summary>
     /// Applied backpressure delay.
     /// </summary>
-    BackpressureApplied,
+    BackpressureApplied = 1,
 
     /// <summary>
     /// Dropped oldest items.
     /// </summary>
-    DroppedOldest,
+    DroppedOldest = 2,
 
     /// <summary>
     /// Dropped newest items.
     /// </summary>
-    DroppedNewest,
+    DroppedNewest = 3,
 
     /// <summary>
     /// Used hybrid approach.
     /// </summary>
-    HybridAction,
+    HybridAction = 4,
 
     /// <summary>
     /// Failed to handle overflow.
     /// </summary>
-    Failed
+    Failed = 5
 }
 
 /// <summary>

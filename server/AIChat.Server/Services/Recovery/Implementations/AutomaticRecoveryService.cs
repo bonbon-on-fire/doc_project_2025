@@ -499,5 +499,5 @@ public sealed class AutomaticRecoveryService : IAutomaticRecoveryService
         return RecoveryStrategy.FullReplay;
     }
 
-    #endregion
+    #endregion Private Helper Methods
 }

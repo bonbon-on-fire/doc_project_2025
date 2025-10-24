@@ -13,13 +13,13 @@ public class StateManagementExceptionTests
     public void Constructor_WithAllParameters_ShouldSetAllProperties()
     {
         // Arrange
-        var message = "Test error message";
-        var errorCode = StateErrorCode.ValidationError;
-        var entityType = "TestEntity";
-        var entityId = "test-123";
-        var operation = "Create";
+        const string message = "Test error message";
+        const StateErrorCode errorCode = StateErrorCode.ValidationError;
+        const string entityType = "TestEntity";
+        const string entityId = "test-123";
+        const string operation = "Create";
         var context = new Dictionary<string, object> { ["key"] = "value" };
-        var correlationId = "correlation-123";
+        const string correlationId = "correlation-123";
         var innerException = new InvalidOperationException("Inner error");
 
         // Act
@@ -41,7 +41,7 @@ public class StateManagementExceptionTests
     public void Constructor_WithMinimalParameters_ShouldSetDefaults()
     {
         // Arrange
-        var message = "Test error message";
+        const string message = "Test error message";
 
         // Act
         var exception = new StateManagementException(message);
@@ -62,10 +62,10 @@ public class StateManagementExceptionTests
     public void NotFound_ShouldCreateCorrectException()
     {
         // Arrange
-        var entityType = "User";
-        var entityId = "user-123";
-        var operation = "GetById";
-        var correlationId = "correlation-456";
+        const string entityType = "User";
+        const string entityId = "user-123";
+        const string operation = "GetById";
+        const string correlationId = "correlation-456";
 
         // Act
         var exception = StateManagementException.NotFound(entityType, entityId, operation, correlationId);
@@ -85,11 +85,11 @@ public class StateManagementExceptionTests
     public void ValidationError_ShouldCreateCorrectException()
     {
         // Arrange
-        var entityType = "User";
+        const string entityType = "User";
         var validationErrors = new[] { "Name is required", "Email is invalid" };
-        var operation = "Create";
-        var entityId = "user-123";
-        var correlationId = "correlation-789";
+        const string operation = "Create";
+        const string entityId = "user-123";
+        const string correlationId = "correlation-789";
 
         // Act
         var exception = StateManagementException.ValidationError(
@@ -116,11 +116,11 @@ public class StateManagementExceptionTests
     public void DuplicateKey_ShouldCreateCorrectException()
     {
         // Arrange
-        var entityType = "User";
-        var entityId = "user-123";
-        var operation = "Create";
-        var conflictingField = "Email";
-        var correlationId = "correlation-abc";
+        const string entityType = "User";
+        const string entityId = "user-123";
+        const string operation = "Create";
+        const string conflictingField = "Email";
+        const string correlationId = "correlation-abc";
 
         // Act
         var exception = StateManagementException.DuplicateKey(
@@ -145,9 +145,9 @@ public class StateManagementExceptionTests
     public void DuplicateKey_WithoutConflictingField_ShouldCreateCorrectException()
     {
         // Arrange
-        var entityType = "User";
-        var entityId = "user-123";
-        var operation = "Create";
+        const string entityType = "User";
+        const string entityId = "user-123";
+        const string operation = "Create";
 
         // Act
         var exception = StateManagementException.DuplicateKey(entityType, entityId, operation);
@@ -164,12 +164,12 @@ public class StateManagementExceptionTests
     public void ConcurrencyConflict_WithVersions_ShouldCreateCorrectException()
     {
         // Arrange
-        var entityType = "Document";
-        var entityId = "doc-123";
-        var operation = "Update";
-        var expectedVersion = "v1.0";
-        var actualVersion = "v1.1";
-        var correlationId = "correlation-def";
+        const string entityType = "Document";
+        const string entityId = "doc-123";
+        const string operation = "Update";
+        const string expectedVersion = "v1.0";
+        const string actualVersion = "v1.1";
+        const string correlationId = "correlation-def";
 
         // Act
         var exception = StateManagementException.ConcurrencyConflict(
@@ -192,9 +192,9 @@ public class StateManagementExceptionTests
     public void ConcurrencyConflict_WithoutVersions_ShouldCreateCorrectException()
     {
         // Arrange
-        var entityType = "Document";
-        var entityId = "doc-123";
-        var operation = "Update";
+        const string entityType = "Document";
+        const string entityId = "doc-123";
+        const string operation = "Update";
 
         // Act
         var exception = StateManagementException.ConcurrencyConflict(entityType, entityId, operation);
@@ -211,11 +211,11 @@ public class StateManagementExceptionTests
     public void NetworkError_ShouldCreateCorrectException()
     {
         // Arrange
-        var operation = "GetFromDatabase";
+        const string operation = "GetFromDatabase";
         var networkError = new TimeoutException("Connection timeout");
-        var entityType = "User";
-        var entityId = "user-123";
-        var correlationId = "correlation-ghi";
+        const string entityType = "User";
+        const string entityId = "user-123";
+        const string correlationId = "correlation-ghi";
 
         // Act
         var exception = StateManagementException.NetworkError(
@@ -237,11 +237,11 @@ public class StateManagementExceptionTests
     public void TimeoutError_ShouldCreateCorrectException()
     {
         // Arrange
-        var operation = "DatabaseQuery";
-        var timeoutMs = 5000;
-        var entityType = "Chat";
-        var entityId = "chat-123";
-        var correlationId = "correlation-jkl";
+        const string operation = "DatabaseQuery";
+        const int timeoutMs = 5000;
+        const string entityType = "Chat";
+        const string entityId = "chat-123";
+        const string correlationId = "correlation-jkl";
 
         // Act
         var exception = StateManagementException.TimeoutError(
@@ -265,11 +265,11 @@ public class StateManagementExceptionTests
     public void AccessDenied_ShouldCreateCorrectException()
     {
         // Arrange
-        var operation = "DeleteChat";
-        var entityType = "Chat";
-        var entityId = "chat-123";
-        var reason = "User does not own this chat";
-        var correlationId = "correlation-mno";
+        const string operation = "DeleteChat";
+        const string entityType = "Chat";
+        const string entityId = "chat-123";
+        const string reason = "User does not own this chat";
+        const string correlationId = "correlation-mno";
 
         // Act
         var exception = StateManagementException.AccessDenied(
@@ -294,11 +294,11 @@ public class StateManagementExceptionTests
     public void ServiceUnavailable_ShouldCreateCorrectException()
     {
         // Arrange
-        var operation = "StoreInDatabase";
-        var serviceName = "SQLiteDatabase";
-        var entityType = "Message";
-        var entityId = "msg-123";
-        var correlationId = "correlation-pqr";
+        const string operation = "StoreInDatabase";
+        const string serviceName = "SQLiteDatabase";
+        const string entityType = "Message";
+        const string entityId = "msg-123";
+        const string correlationId = "correlation-pqr";
 
         // Act
         var exception = StateManagementException.ServiceUnavailable(
@@ -322,13 +322,13 @@ public class StateManagementExceptionTests
     public void ToString_ShouldIncludeAllContextInformation()
     {
         // Arrange
-        var message = "Test error";
-        var errorCode = StateErrorCode.ValidationError;
-        var entityType = "User";
-        var entityId = "user-123";
-        var operation = "Create";
+        const string message = "Test error";
+        const StateErrorCode errorCode = StateErrorCode.ValidationError;
+        const string entityType = "User";
+        const string entityId = "user-123";
+        const string operation = "Create";
         var context = new Dictionary<string, object> { ["field"] = "email", ["value"] = "invalid" };
-        var correlationId = "correlation-stu";
+        const string correlationId = "correlation-stu";
 
         var exception = new StateManagementException(
             message, errorCode, entityType, entityId, operation, context, correlationId);

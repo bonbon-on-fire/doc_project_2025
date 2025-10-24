@@ -23,7 +23,6 @@ public class ModeApiIntegrationTests : BaseApiTest
 
     public ModeApiIntegrationTests(WebApplicationFactory<Program> factory) : base(factory)
     {
-
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,
@@ -51,7 +50,7 @@ public class ModeApiIntegrationTests : BaseApiTest
             modesData.Modes.FirstOrDefault(m =>
                 m.Category == "task"
                 && m.Name.Contains("Coding", StringComparison.OrdinalIgnoreCase)
-            ) ?? modesData.Modes.First();
+            ) ?? modesData.Modes[0];
 
         // Create chat with selected mode
         var createRequest = new CreateChatRequest(
@@ -126,7 +125,7 @@ public class ModeApiIntegrationTests : BaseApiTest
         // Arrange
         var client = Factory.CreateClient();
         // Use seeded demo user for mode tests to ensure user exists in database
-        var userId = "user-123"; // TestHelpers.GenerateUniqueUserId("custom-mode-flow");
+        const string userId = "user-123"; // TestHelpers.GenerateUniqueUserId("custom-mode-flow");
         ModeDto? createdMode = null;
 
         try
@@ -220,7 +219,7 @@ public class ModeApiIntegrationTests : BaseApiTest
         }
     }
 
-    #endregion
+    #endregion Mode Selection Flow Tests
 
     #region Error Scenario Tests
 
@@ -323,7 +322,7 @@ public class ModeApiIntegrationTests : BaseApiTest
             .BeOneOf(System.Net.HttpStatusCode.BadRequest, System.Net.HttpStatusCode.Forbidden);
     }
 
-    #endregion
+    #endregion Error Scenario Tests
 
     #region Performance Tests
 
@@ -398,12 +397,12 @@ public class ModeApiIntegrationTests : BaseApiTest
 
         // Act - Concurrent mode requests
         var tasks = userIds
-            .Select(async userId =>
+            .ConvertAll(async userId =>
             {
                 var response = await client.GetAsync($"/api/mode?userId={userId}");
                 return (userId, response);
             })
-            .ToList();
+;
 
         var results = await Task.WhenAll(tasks);
 
@@ -418,7 +417,7 @@ public class ModeApiIntegrationTests : BaseApiTest
         }
     }
 
-    #endregion
+    #endregion Performance Tests
 
     #region SSE Integration Tests
 
@@ -454,7 +453,7 @@ public class ModeApiIntegrationTests : BaseApiTest
         // The SSE stream should work with the specified mode
     }
 
-    #endregion
+    #endregion SSE Integration Tests
 
     #region Mode Persistence Tests
 
@@ -464,7 +463,7 @@ public class ModeApiIntegrationTests : BaseApiTest
         // Arrange
         var client = Factory.CreateClient();
         // Use seeded demo user for mode tests to ensure user exists in database
-        var userId = "user-123"; // TestHelpers.GenerateUniqueUserId("mode-persistence");
+        const string userId = "user-123"; // TestHelpers.GenerateUniqueUserId("mode-persistence");
 
         // Create custom mode with guaranteed unique name
         var customMode = new
@@ -559,5 +558,5 @@ public class ModeApiIntegrationTests : BaseApiTest
         }
     }
 
-    #endregion
+    #endregion Mode Persistence Tests
 }

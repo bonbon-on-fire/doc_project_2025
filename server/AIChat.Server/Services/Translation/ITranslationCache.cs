@@ -79,7 +79,7 @@ public class MemoryTranslationCache : ITranslationCache
     public async Task SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken cancellationToken = default)
     {
         await Task.CompletedTask; // Suppress CS1998
-        if (!_options.EnableCaching || value == null)
+        if (!_options.EnableCaching || EqualityComparer<T?>.Default.Equals(value, default(T?)))
         {
             return;
         }
@@ -191,11 +191,11 @@ public class MemoryTranslationCache : ITranslationCache
     {
         // Rough estimation: each cache item takes approximately 100 bytes plus content size
         const int overheadPerItem = 100;
-        long totalSize = _cache.Count * overheadPerItem;
+        
 
         // This is a very rough estimate since we can't easily calculate object sizes
         // In a production system, you might want to use a more sophisticated approach
-        return totalSize;
+        return _cache.Count * overheadPerItem;
     }
 
     /// <summary>

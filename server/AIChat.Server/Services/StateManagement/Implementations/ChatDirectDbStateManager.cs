@@ -285,10 +285,10 @@ public class ChatDirectDbStateManager : DirectDbStateManagerBase<Chat>
                 return StateResult<Chat>.FromError("Chat not found", StateErrorCode.NotFound);
             }
 
-            var current = currentResult.Data;
+            
 
             // Apply updates (simplified - in a real implementation you'd use reflection or a mapper)
-            var updated = current;
+            var updated = currentResult.Data;
             foreach (var update in updates)
             {
                 switch (update.Key.ToLowerInvariant())
@@ -369,7 +369,7 @@ public class ChatDirectDbStateManager : DirectDbStateManagerBase<Chat>
         }
     }
 
-    #endregion
+    #endregion Protected Implementations
 
     #region Validation Implementation
 
@@ -389,7 +389,7 @@ public class ChatDirectDbStateManager : DirectDbStateManagerBase<Chat>
         return new ChatValidator(logger, serviceProvider);
     }
 
-    #endregion
+    #endregion Validation Implementation
 
     #region Private Helper Methods
 
@@ -408,5 +408,5 @@ public class ChatDirectDbStateManager : DirectDbStateManagerBase<Chat>
         };
     }
 
-    #endregion
+    #endregion Private Helper Methods
 }

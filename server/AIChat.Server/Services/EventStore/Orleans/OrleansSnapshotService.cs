@@ -216,13 +216,10 @@ public class OrleansSnapshotService : IOrleansSnapshotService
                     snapshotAge,
                     restoreResult.EventsReplayed);
             }
-            else
-            {
-                _logger.LogDebug("No snapshot available for Orleans grain {GrainType} {GrainId}",
-                    typeof(TGrainState).Name, grainId);
+            _logger.LogDebug("No snapshot available for Orleans grain {GrainType} {GrainId}",
+                typeof(TGrainState).Name, grainId);
 
-                return OrleansSnapshotRestoreResult.CreateNotFound<TGrainState>();
-            }
+            return OrleansSnapshotRestoreResult.CreateNotFound<TGrainState>();
         }
         catch (Exception ex)
         {
@@ -352,7 +349,7 @@ public class OrleansSnapshotService : IOrleansSnapshotService
         return metadata;
     }
 
-    #endregion
+    #endregion Helper Methods
 }
 
 /// <summary>

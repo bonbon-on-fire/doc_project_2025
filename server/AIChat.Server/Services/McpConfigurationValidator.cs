@@ -103,12 +103,9 @@ public class McpConfigurationValidator(
         }
 
         // Validate stdio-specific requirements
-        if (config.Type?.ToLowerInvariant() == "stdio")
+        if (config.Type?.ToLowerInvariant() == "stdio" && string.IsNullOrWhiteSpace(config.Command))
         {
-            if (string.IsNullOrWhiteSpace(config.Command))
-            {
-                errors.Add($"Server '{serverName}' with stdio transport requires a command");
-            }
+            errors.Add($"Server '{serverName}' with stdio transport requires a command");
         }
 
         // Validate SSE/HTTP-specific requirements (for future use)

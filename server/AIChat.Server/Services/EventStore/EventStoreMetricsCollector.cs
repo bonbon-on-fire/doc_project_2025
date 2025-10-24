@@ -221,10 +221,10 @@ public class EventStoreMetricsCollector
     /// </summary>
     internal enum OperationType
     {
-        Append,
-        Read,
-        Query,
-        Replay
+        Append = 0,
+        Read = 1,
+        Query = 2,
+        Replay = 3
     }
 
     /// <summary>

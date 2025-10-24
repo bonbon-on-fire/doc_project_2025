@@ -671,7 +671,7 @@ public class OrleansUserSessionStateManager : OrleansStateManagerBase<UserSessio
         return (session.TotalConnectionTime.TotalMilliseconds / totalTime.TotalMilliseconds) * 100.0;
     }
 
-    #endregion
+    #endregion IUserSessionStateManager Specialized Methods
 
     #region OrleansStateManagerBase Abstract Implementation
 
@@ -899,6 +899,6 @@ public class OrleansUserSessionStateManager : OrleansStateManagerBase<UserSessio
         return null;
     }
 
-    #endregion
+    #endregion OrleansStateManagerBase Abstract Implementation
 
 }

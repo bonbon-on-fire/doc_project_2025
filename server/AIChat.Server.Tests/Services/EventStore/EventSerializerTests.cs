@@ -101,7 +101,7 @@ public class EventSerializerTests
         Assert.Throws<ArgumentNullException>(() => _serializer.Serialize(null!));
     }
 
-    #endregion
+    #endregion Basic Serialization Tests
 
     #region Deserialization Tests
 
@@ -174,7 +174,7 @@ public class EventSerializerTests
     public void JsonEventSerializer_Deserialize_WithInvalidEventType_ShouldThrowEventDeserializationException()
     {
         // Arrange
-        var json = "{\"eventType\":\"UnknownEvent\",\"eventId\":\"test\"}";
+        const string json = "{\"eventType\":\"UnknownEvent\",\"eventId\":\"test\"}";
 
         // Act & Assert
         Assert.Throws<EventDeserializationException>(() =>
@@ -185,7 +185,7 @@ public class EventSerializerTests
     public void JsonEventSerializer_Deserialize_WithMalformedJson_ShouldThrowEventDeserializationException()
     {
         // Arrange
-        var malformedJson = "{\"eventType\":\"ChatMessageSentEvent\""; // Missing closing brace
+        const string malformedJson = "{\"eventType\":\"ChatMessageSentEvent\""; // Missing closing brace
 
         // Act & Assert
         Assert.Throws<EventDeserializationException>(() =>
@@ -208,7 +208,7 @@ public class EventSerializerTests
             _serializer.Deserialize("ChatMessageSentEvent", null!));
     }
 
-    #endregion
+    #endregion Deserialization Tests
 
     #region Metadata Serialization Tests
 
@@ -304,14 +304,14 @@ public class EventSerializerTests
     public void JsonEventSerializer_DeserializeMetadata_WithMalformedJson_ShouldThrowEventDeserializationException()
     {
         // Arrange
-        var malformedJson = "{\"key\":\"value\""; // Missing closing brace
+        const string malformedJson = "{\"key\":\"value\""; // Missing closing brace
 
         // Act & Assert
         Assert.Throws<EventDeserializationException>(() =>
             _serializer.DeserializeMetadata(malformedJson));
     }
 
-    #endregion
+    #endregion Metadata Serialization Tests
 
     #region Event Type Support Tests
 
@@ -368,7 +368,7 @@ public class EventSerializerTests
             customSerializer.RegisterEventType("InvalidType", typeof(string)));
     }
 
-    #endregion
+    #endregion Event Type Support Tests
 
     #region Round-trip Tests
 
@@ -469,5 +469,5 @@ public class EventSerializerTests
         Assert.Equal(originalEvent.Data.EntityVersion, deserializedEvent.Data.EntityVersion);
     }
 
-    #endregion
+    #endregion Round-trip Tests
 }

@@ -2,7 +2,16 @@ namespace AIChat.Server.Storage;
 
 public interface IChatStorage
 {
-    // Chats
+    /// <summary>
+    /// Chats
+    /// </summary>
+    /// <param name="userId"></param>
+    /// <param name="title"></param>
+    /// <param name="createdAtUtc"></param>
+    /// <param name="updatedAtUtc"></param>
+    /// <param name="chatJson"></param>
+    /// <param name="ct"></param>
+    /// <returns></returns>
     Task<(bool Success, string? Error, ChatRecord? Chat)> CreateChatAsync(
         string userId,
         string title,
@@ -40,7 +49,12 @@ public interface IChatStorage
         CancellationToken ct = default
     );
 
-    // Messages
+    /// <summary>
+    /// Messages
+    /// </summary>
+    /// <param name="chatId"></param>
+    /// <param name="ct"></param>
+    /// <returns></returns>
     Task<(bool Success, string? Error, int NextSequence)> AllocateSequenceAsync(
         string chatId,
         CancellationToken ct = default
@@ -88,8 +102,14 @@ public sealed class MessageRecord
 {
     public required string Id { get; init; }
     public required string ChatId { get; init; }
-    public required string Role { get; init; } // user|assistant|tool|system
-    public required string Kind { get; init; } // text|reasoning|toolcall|toolresult (extensible)
+    /// <summary>
+    /// user|assistant|tool|system
+    /// </summary>
+    public required string Role { get; init; }
+    /// <summary>
+    /// text|reasoning|toolcall|toolresult (extensible)
+    /// </summary>
+    public required string Kind { get; init; }
     public required DateTime TimestampUtc { get; init; }
     public required int SequenceNumber { get; init; }
     public required string MessageJson { get; init; }

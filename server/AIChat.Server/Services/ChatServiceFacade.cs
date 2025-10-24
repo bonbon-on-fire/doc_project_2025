@@ -93,7 +93,13 @@ public class ChatServiceFacade(
         );
     }
 
-    // Additional IChatService methods
+    /// <summary>
+    /// Additional IChatService methods
+    /// </summary>
+    /// <param name="chatId"></param>
+    /// <param name="userId"></param>
+    /// <param name="message"></param>
+    /// <returns></returns>
     public async Task<MessageResult> AddUserMessageToExistingChatAsync(
         string chatId,
         string userId,

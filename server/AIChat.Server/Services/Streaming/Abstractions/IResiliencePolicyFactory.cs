@@ -142,25 +142,25 @@ public enum ResilienceState
     /// <summary>
     /// Normal operation.
     /// </summary>
-    Normal,
+    Normal = 0,
 
     /// <summary>
     /// Retrying after failure.
     /// </summary>
-    Retrying,
+    Retrying = 1,
 
     /// <summary>
     /// Circuit is open.
     /// </summary>
-    CircuitOpen,
+    CircuitOpen = 2,
 
     /// <summary>
     /// Circuit is half-open.
     /// </summary>
-    CircuitHalfOpen,
+    CircuitHalfOpen = 3,
 
     /// <summary>
     /// Operation failed.
     /// </summary>
-    Failed,
+    Failed = 4,
 }

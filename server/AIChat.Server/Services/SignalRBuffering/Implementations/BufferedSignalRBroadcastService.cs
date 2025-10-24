@@ -33,7 +33,9 @@ public sealed class BufferedSignalRBroadcastService : ISignalRBroadcastService, 
     private readonly ILogger<BufferedSignalRBroadcastService> _logger;
     private static readonly ActivitySource ActivitySource = new("AIChat.Server.BufferedSignalRBroadcastService");
 
-    // Performance and health tracking
+    /// <summary>
+    /// Performance and health tracking
+    /// </summary>
     private long _totalBroadcastRequests;
     private long _totalBufferedRequests;
     private long _totalDirectRequests;
@@ -340,7 +342,7 @@ public sealed class BufferedSignalRBroadcastService : ISignalRBroadcastService, 
         return MessagePriority.Normal;
     }
 
-    #endregion
+    #endregion Private Helper Methods
 
     #region Event Handlers
 
@@ -367,7 +369,7 @@ public sealed class BufferedSignalRBroadcastService : ISignalRBroadcastService, 
             e.PreviousStatus, e.CurrentStatus, e.HealthDetails.Message);
     }
 
-    #endregion
+    #endregion Event Handlers
 
     #region IDisposable Implementation
 
@@ -408,7 +410,7 @@ public sealed class BufferedSignalRBroadcastService : ISignalRBroadcastService, 
         ObjectDisposedException.ThrowIf(_disposed, this);
     }
 
-    #endregion
+    #endregion IDisposable Implementation
 }
 
 /// <summary>

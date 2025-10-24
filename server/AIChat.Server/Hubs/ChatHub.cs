@@ -24,7 +24,10 @@ public class ChatHub : Hub
 {
     private readonly IDualModeRouter _dualModeRouter;
     private readonly IOrleansEventRelay _eventRelay;
-    private readonly IChatService _chatService; // Kept for fallback compatibility
+    /// <summary>
+    /// Kept for fallback compatibility
+    /// </summary>
+    private readonly IChatService _chatService;
     private readonly ILogger<ChatHub> _logger;
     private static readonly ActivitySource ActivitySource = new("AIChat.Server.ChatHub");
 
@@ -559,7 +562,7 @@ public class ChatHub : Hub
         };
     }
 
-    #endregion
+    #endregion Private Helper Methods
 
     #region Supporting Types
 
@@ -577,12 +580,12 @@ public class ChatHub : Hub
     /// </summary>
     private enum ErrorCategory
     {
-        General,
-        Validation,
-        Orleans,
-        Service,
-        Authentication,
-        Timeout
+        General = 0,
+        Validation = 1,
+        Orleans = 2,
+        Service = 3,
+        Authentication = 4,
+        Timeout = 5
     }
 
     /// <summary>
@@ -598,11 +601,15 @@ public class ChatHub : Hub
         public required string ConnectionId { get; init; }
     }
 
-    #endregion
+    #endregion Supporting Types
 
     #region Event Handlers
 
-    // Event handlers for real-time broadcasting (backward compatibility)
+    /// <summary>
+    /// Event handlers for real-time broadcasting (backward compatibility)
+    /// </summary>
+    /// <param name="messageEvent"></param>
+    /// <returns></returns>
     private async Task OnMessageCreated(MessageCreatedEvent messageEvent)
     {
         await Clients
@@ -690,5 +697,5 @@ public class ChatHub : Hub
             .SendAsync("ReceiveMessageComplete", messageData);
     }
 
-    #endregion
+    #endregion Event Handlers
 }

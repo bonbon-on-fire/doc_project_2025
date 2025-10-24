@@ -9,13 +9,21 @@ namespace AIChat.Server.Services;
 
 public interface IChatService
 {
-    // Chat Management
+    /// <summary>
+    /// Chat Management
+    /// </summary>
+    /// <param name="request"></param>
+    /// <returns></returns>
     Task<ChatResult> CreateChatAsync(CreateChatRequest request);
     Task<ChatResult> GetChatAsync(string chatId);
     Task<ChatHistoryResult> GetChatHistoryAsync(string userId, int page, int pageSize);
     Task<bool> DeleteChatAsync(string chatId);
 
-    // Message Operations
+    /// <summary>
+    /// Message Operations
+    /// </summary>
+    /// <param name="request"></param>
+    /// <returns></returns>
     Task<MessageResult> SendMessageAsync(SendMessageRequest request);
     Task<MessageResult> AddUserMessageToExistingChatAsync(
         string chatId,
@@ -24,8 +32,13 @@ public interface IChatService
     );
     Task<StreamInitResult> PrepareStreamChatAsync(StreamChatRequest request);
     Task<StreamInitResult> PrepareUnifiedStreamChatAsync(StreamChatRequest request);
-    // REMOVED - Phase 3: LLM operations now handled by Orleans ChatGrain
-    // Task StreamChatCompletionAsync(StreamChatRequest request, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// REMOVED - Phase 3: LLM operations now handled by Orleans ChatGrain
+    /// Task StreamChatCompletionAsync(StreamChatRequest request, CancellationToken cancellationToken = default);
+    /// </summary>
+    /// <param name="request"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
     Task StreamUnifiedChatCompletionAsync(
         StreamChatRequest request,
         CancellationToken cancellationToken = default
@@ -35,13 +48,17 @@ public interface IChatService
     Task<string> CreateAssistantMessageForStreamingAsync(string chatId, int sequenceNumber);
     Task<string> GetMessageContentAsync(string messageId);
 
-    // Events for real-time notifications (implemented by ChatServiceFacade)
+    /// <summary>
+    /// Events for real-time notifications (implemented by ChatServiceFacade)
+    /// </summary>
     event Func<MessageCreatedEvent, Task>? MessageCreated;
     event Func<StreamChunkEvent, Task>? StreamChunkReceived;
     event Func<MessageEvent, Task>? MessageReceived;
 }
 
-// Request types
+/// <summary>
+/// Request types
+/// </summary>
 public class CreateChatRequest
 {
     [JsonPropertyName("chatId")]
@@ -93,7 +110,9 @@ public record StreamChatRequest
     public string? ModeId { get; init; }
 }
 
-// Result types
+/// <summary>
+/// Result types
+/// </summary>
 public record ChatResult
 {
     [JsonPropertyName("success")]
@@ -160,7 +179,9 @@ public record ChatHistoryResult
     public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
 }
 
-// Event types for real-time notifications
+/// <summary>
+/// Event types for real-time notifications
+/// </summary>
 public record MessageCreatedEvent
 {
     [JsonPropertyName("chatId")]
@@ -295,7 +316,9 @@ public record ToolsCallAggregateEvent : MessageEvent
     public ToolCallResult[]? ToolResults { get; init; }
 }
 
-// DTO types (moved from ChatController for reuse)
+/// <summary>
+/// DTO types (moved from ChatController for reuse)
+/// </summary>
 public record ChatDto
 {
     [JsonPropertyName("id")]
@@ -320,7 +343,9 @@ public record ChatDto
     public IList<TaskItem>? Tasks { get; init; }
 }
 
-// Enable polymorphic serialization so derived message content (text/reasoning) is included in JSON
+/// <summary>
+/// Enable polymorphic serialization so derived message content (text/reasoning) is included in JSON
+/// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "messageType")]
 [JsonDerivedType(typeof(TextMessageDto), typeDiscriminator: "text")]
 [JsonDerivedType(typeof(ReasoningMessageDto), typeDiscriminator: "reasoning")]
@@ -350,7 +375,9 @@ public class MessageDto
     public bool IsHidden { get; set; }
 }
 
-// Shared JSON serializer options with polymorphic configuration
+/// <summary>
+/// Shared JSON serializer options with polymorphic configuration
+/// </summary>
 public static class MessageSerializationOptions
 {
     public static readonly JsonSerializerOptions Default = new()

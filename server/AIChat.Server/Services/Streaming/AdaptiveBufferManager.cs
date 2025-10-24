@@ -256,9 +256,9 @@ public sealed class BufferSizeChangedEventArgs : EventArgs
 /// </summary>
 public enum UsageTrend
 {
-    Stable,
-    Increasing,
-    Decreasing
+    Stable = 0,
+    Increasing = 1,
+    Decreasing = 2
 }
 
 /// <summary>

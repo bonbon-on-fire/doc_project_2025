@@ -53,13 +53,9 @@ public class OrleansToSignalRTranslator : MessageTranslatorBase<MessageResult, S
             SignalRResponse signalRResponse;
 
             if (source.Success && source.Message != null)
-            {
                 signalRResponse = await TranslateSuccessfulMessageAsync(source, context, cancellationToken);
-            }
             else
-            {
                 signalRResponse = CreateErrorResponse(source, context);
-            }
 
             // Validate the result
             var targetValidationError = ValidateTarget(signalRResponse, context);

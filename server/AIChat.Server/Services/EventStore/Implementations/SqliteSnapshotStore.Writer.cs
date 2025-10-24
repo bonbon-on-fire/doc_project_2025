@@ -61,13 +61,9 @@ public sealed partial class SqliteSnapshotStore : ISnapshotWriter
 
                 // Insert or update content record
                 if (!wasDeduplicated)
-                {
                     await InsertContentAsync(connection, (SqliteTransaction)transaction, contentHash, compressedData, cancellationToken);
-                }
                 else
-                {
                     await IncrementContentReferenceAsync(connection, (SqliteTransaction)transaction, contentHash, cancellationToken);
-                }
 
                 // Insert snapshot metadata
                 await InsertSnapshotAsync(
@@ -339,7 +335,7 @@ public sealed partial class SqliteSnapshotStore : ISnapshotWriter
         }
     }
 
-    #endregion
+    #endregion ISnapshotWriter Implementation
 
     #region Writer Helper Methods
 
@@ -536,5 +532,5 @@ public sealed partial class SqliteSnapshotStore : ISnapshotWriter
         return $"snapshot-{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(input)))[..16]}";
     }
 
-    #endregion
+    #endregion Writer Helper Methods
 }

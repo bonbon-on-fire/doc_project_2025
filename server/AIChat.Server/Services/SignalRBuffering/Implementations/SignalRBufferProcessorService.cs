@@ -26,7 +26,9 @@ public sealed class SignalRBufferProcessorService : BackgroundService
     private readonly SignalRBufferConfiguration _config;
     private readonly ILogger<SignalRBufferProcessorService> _logger;
 
-    // Performance and health tracking
+    /// <summary>
+    /// Performance and health tracking
+    /// </summary>
     private long _totalProcessingCycles;
     private long _totalMessagesProcessed;
     private long _totalProcessingErrors;

@@ -72,8 +72,10 @@
   <ItemGroup Condition="Exists('../../submodules/LmDotnetTools/src/LmCore/AchieveAi.LmDotnetTools.LmCore.csproj')">
     <ProjectReference Include="../../submodules/LmDotnetTools/src/LmCore/AchieveAi.LmDotnetTools.LmCore.csproj" />
     <ProjectReference Include="../../submodules/LmDotnetTools/src/Misc/AchieveAi.LmDotnetTools.Misc.csproj" />
-    <ProjectReference Include="../../submodules/LmDotnetTools/src/McpMiddleware/AchieveAi.LmDotnetTools.McpMiddleware.csproj" />
-    <ProjectReference Include="../../submodules/LmDotnetTools/src/OpenAiProvider/AchieveAi.LmDotnetTools.OpenAiProvider.csproj" />
+    <ProjectReference
+      Include="../../submodules/LmDotnetTools/src/McpMiddleware/AchieveAi.LmDotnetTools.McpMiddleware.csproj" />
+    <ProjectReference
+      Include="../../submodules/LmDotnetTools/src/OpenAiProvider/AchieveAi.LmDotnetTools.OpenAiProvider.csproj" />
     <ProjectReference Include="../../submodules/LmDotnetTools/src/LmConfig/AchieveAi.LmDotnetTools.LmConfig.csproj" />
   </ItemGroup>
   <ItemGroup Condition="!Exists('../../submodules/LmDotnetTools/src/LmCore/AchieveAi.LmDotnetTools.LmCore.csproj')">

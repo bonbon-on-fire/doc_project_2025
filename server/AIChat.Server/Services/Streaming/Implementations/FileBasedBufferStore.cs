@@ -280,14 +280,12 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
                 return [];
             }
 
-            var streamIds = Directory
+            return Directory
                 .GetDirectories(_options.StoragePath)
                 .Select(Path.GetFileName)
                 .Where(name => !string.IsNullOrEmpty(name))
                 .Cast<string>()
                 .ToList();
-
-            return streamIds;
         }
         catch (Exception ex)
         {
@@ -451,9 +449,7 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
             foreach (var streamDir in streamDirs)
             {
                 var dirInfo = new DirectoryInfo(streamDir);
-                var files = dirInfo.GetFiles("*.json");
-
-                foreach (var file in files)
+                foreach (var file in dirInfo.GetFiles("*.json"))
                 {
                     stats = stats with { TotalSizeBytes = stats.TotalSizeBytes + file.Length };
 

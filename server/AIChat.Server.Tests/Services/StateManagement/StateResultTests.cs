@@ -15,7 +15,7 @@ public class StateResultTests
     public void StateResult_FromSuccess_ShouldCreateSuccessfulResult()
     {
         // Arrange
-        var data = "test data";
+        const string data = "test data";
         var metadata = new Dictionary<string, object> { ["key"] = "value" };
 
         // Act
@@ -34,8 +34,8 @@ public class StateResultTests
     public void StateResult_FromError_ShouldCreateFailedResult()
     {
         // Arrange
-        var error = "Test error";
-        var errorCode = StateErrorCode.NotFound;
+        const string error = "Test error";
+        const StateErrorCode errorCode = StateErrorCode.NotFound;
         var metadata = new Dictionary<string, object> { ["key"] = "value" };
 
         // Act
@@ -55,7 +55,7 @@ public class StateResultTests
     {
         // Arrange
         var exception = new InvalidOperationException("Test exception");
-        var errorCode = StateErrorCode.ValidationError;
+        const StateErrorCode errorCode = StateErrorCode.ValidationError;
 
         // Act
         var result = StateResult<string>.FromException(exception, errorCode);
@@ -82,7 +82,7 @@ public class StateResultTests
         Assert.Equal(StateErrorCode.InternalError, result.ErrorCode);
     }
 
-    #endregion
+    #endregion StateResult<T> Tests
 
     #region StateResult (non-generic) Tests
 
@@ -107,8 +107,8 @@ public class StateResultTests
     public void StateResult_FromError_ShouldCreateFailedNonGenericResult()
     {
         // Arrange
-        var error = "Test error";
-        var errorCode = StateErrorCode.AccessDenied;
+        const string error = "Test error";
+        const StateErrorCode errorCode = StateErrorCode.AccessDenied;
 
         // Act
         var result = StateResult.FromError(error, errorCode);
@@ -136,7 +136,7 @@ public class StateResultTests
         Assert.Equal(StateErrorCode.TimeoutError, result.ErrorCode);
     }
 
-    #endregion
+    #endregion StateResult (non-generic) Tests
 
     #region StateErrorCode Tests
 
@@ -157,7 +157,7 @@ public class StateResultTests
         Assert.True(Enum.IsDefined(errorCode));
     }
 
-    #endregion
+    #endregion StateErrorCode Tests
 
     #region Member Access Tests
 
@@ -187,7 +187,7 @@ public class StateResultTests
     public void StateResult_SuccessfulResult_ShouldHaveDataNotNull()
     {
         // Arrange
-        var data = "test";
+        const string data = "test";
         var result = StateResult<string>.FromSuccess(data);
 
         // Assert
@@ -199,7 +199,7 @@ public class StateResultTests
     public void StateResult_FailedResult_ShouldHaveErrorNotNull()
     {
         // Arrange
-        var error = "test error";
+        const string error = "test error";
         var result = StateResult<string>.FromError(error);
 
         // Assert
@@ -207,5 +207,5 @@ public class StateResultTests
         Assert.Equal(error, result.Error);
     }
 
-    #endregion
+    #endregion Member Access Tests
 }

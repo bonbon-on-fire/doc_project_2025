@@ -126,17 +126,25 @@ public class WeatherFunction(ILogger<WeatherFunction> logger) : IFunctionProvide
     private static double EvaluateSimple(string expression, char op)
     {
         var parts = expression.Split(op);
-        return parts.Length != 2 ? 0
-            : double.TryParse(parts[0].Trim(), out var a)
-            && double.TryParse(parts[1].Trim(), out var b)
-                ? op switch
-                {
-                    '+' => a + b,
-                    '-' => a - b,
-                    '*' => a * b,
-                    '/' => b != 0 ? a / b : 0,
-                    _ => 0,
-                }
-            : 0;
+        if (parts.Length != 2)
+        {
+            return 0;
+        }
+        else if (double.TryParse(parts[0].Trim(), out var a)
+            && double.TryParse(parts[1].Trim(), out var b))
+        {
+            return op switch
+            {
+                '+' => a + b,
+                '-' => a - b,
+                '*' => a * b,
+                '/' => b != 0 ? a / b : 0,
+                _ => 0,
+            };
+        }
+        else
+        {
+            return 0;
+        }
     }
 }

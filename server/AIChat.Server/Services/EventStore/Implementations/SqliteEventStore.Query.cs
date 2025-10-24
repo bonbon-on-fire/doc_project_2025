@@ -229,7 +229,7 @@ public sealed partial class SqliteEventStore : IEventQuery, IEventReplay
         }
     }
 
-    #endregion
+    #endregion IEventQuery Implementation
 
     #region IEventReplay Implementation
 
@@ -514,7 +514,7 @@ public sealed partial class SqliteEventStore : IEventQuery, IEventReplay
         }
     }
 
-    #endregion
+    #endregion IEventReplay Implementation
 
     #region Query Helper Methods
 
@@ -718,5 +718,5 @@ public sealed partial class SqliteEventStore : IEventQuery, IEventReplay
                query.MetadataFilters?.Count > 0;
     }
 
-    #endregion
+    #endregion Query Helper Methods
 }

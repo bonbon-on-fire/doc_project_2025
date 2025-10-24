@@ -12,37 +12,37 @@ public enum StateRecoveryNeed
     /// No recovery is needed - state is valid and consistent.
     /// </summary>
     [Id(0)]
-    None,
+    None = 0,
 
     /// <summary>
     /// State is missing or null and needs to be reconstructed.
     /// </summary>
     [Id(1)]
-    MissingState,
+    MissingState = 1,
 
     /// <summary>
     /// State exists but is corrupted or invalid.
     /// </summary>
     [Id(2)]
-    CorruptedState,
+    CorruptedState = 2,
 
     /// <summary>
     /// State exists but is inconsistent with the event stream.
     /// </summary>
     [Id(3)]
-    InconsistentState,
+    InconsistentState = 3,
 
     /// <summary>
     /// Manual recovery has been requested for this grain.
     /// </summary>
     [Id(4)]
-    ForceRecovery,
+    ForceRecovery = 4,
 
     /// <summary>
     /// Unknown recovery need - used when the need cannot be determined.
     /// </summary>
     [Id(5)]
-    Unknown
+    Unknown = 5
 }
 
 /// <summary>
@@ -58,28 +58,28 @@ public enum RecoveryStrategy
     /// Optimal for performance when snapshots are available.
     /// </summary>
     [Id(0)]
-    SnapshotFirst,
+    SnapshotFirst = 0,
 
     /// <summary>
     /// Replay all events from the beginning of the stream.
     /// Fallback strategy when snapshots are unavailable or corrupted.
     /// </summary>
     [Id(1)]
-    FullReplay,
+    FullReplay = 1,
 
     /// <summary>
     /// Try snapshot-first recovery, fallback to full replay if needed.
     /// Balanced approach for reliability and performance.
     /// </summary>
     [Id(2)]
-    HybridRecovery,
+    HybridRecovery = 2,
 
     /// <summary>
     /// Initialize with default/empty state as last resort.
     /// Used when event replay is not possible or fails.
     /// </summary>
     [Id(3)]
-    EmptyState
+    EmptyState = 3
 }
 
 /// <summary>
@@ -94,31 +94,31 @@ public enum RecoveryType
     /// No recovery was performed.
     /// </summary>
     [Id(0)]
-    None,
+    None = 0,
 
     /// <summary>
     /// State was recovered from a snapshot with event replay.
     /// </summary>
     [Id(1)]
-    SnapshotWithReplay,
+    SnapshotWithReplay = 1,
 
     /// <summary>
     /// State was recovered by replaying all events.
     /// </summary>
     [Id(2)]
-    FullEventReplay,
+    FullEventReplay = 2,
 
     /// <summary>
     /// State was initialized with default values.
     /// </summary>
     [Id(3)]
-    DefaultInitialization,
+    DefaultInitialization = 3,
 
     /// <summary>
     /// Recovery was attempted but failed, using fallback state.
     /// </summary>
     [Id(4)]
-    FallbackState
+    FallbackState = 4
 }
 
 /// <summary>
@@ -950,31 +950,31 @@ public enum ValidationSeverity
     /// No issues found.
     /// </summary>
     [Id(0)]
-    None,
+    None = 0,
 
     /// <summary>
     /// Informational messages.
     /// </summary>
     [Id(1)]
-    Info,
+    Info = 1,
 
     /// <summary>
     /// Warning-level issues that don't prevent operation.
     /// </summary>
     [Id(2)]
-    Warning,
+    Warning = 2,
 
     /// <summary>
     /// Error-level issues that require attention.
     /// </summary>
     [Id(3)]
-    Error,
+    Error = 3,
 
     /// <summary>
     /// Critical issues that require immediate recovery.
     /// </summary>
     [Id(4)]
-    Critical
+    Critical = 4
 }
 
 /// <summary>
@@ -1090,7 +1090,7 @@ public record BusinessRuleViolation
     /// Gets whether this violation can be automatically corrected.
     /// </summary>
     [Id(5)]
-    public bool IsAutoCorrectable { get; init; } = false;
+    public bool IsAutoCorrectable { get; init; }
 
     /// <summary>
     /// Gets the timestamp when this violation was detected.

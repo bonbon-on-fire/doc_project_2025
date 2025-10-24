@@ -224,7 +224,7 @@ public sealed class ProtocolTranslationService : IProtocolTranslationService, ID
 
     private TranslationResult<TTarget>? ValidateTranslationRequest<TSource, TTarget>(TSource source, TranslationContext context, Activity? activity)
     {
-        if (source == null)
+        if (EqualityComparer<TSource?>.Default.Equals(source, default(TSource?)))
         {
             return TranslationResult.Failure<TTarget>("Source cannot be null", "NULL_SOURCE");
         }
@@ -293,8 +293,7 @@ public sealed class ProtocolTranslationService : IProtocolTranslationService, ID
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutCts.CancelAfter(_options.TimeoutMs);
 
-        var result = await translator.TranslateAsync(source, context, timeoutCts.Token);
-        return result;
+        return await translator.TranslateAsync(source, context, timeoutCts.Token);
     }
 
     private async Task PostProcessTranslationAsync<TSource, TTarget>(
@@ -311,7 +310,7 @@ public sealed class ProtocolTranslationService : IProtocolTranslationService, ID
         await RecordTranslationAsync(result, elapsed, context, translator.TranslatorName);
 
         // Cache successful results
-        if (result.Success && _options.EnableCaching && result.Data != null)
+        if (result.Success && _options.EnableCaching && !EqualityComparer<TTarget?>.Default.Equals(result.Data, default(TTarget?)))
         {
             var cacheKey = GenerateCacheKey<TSource, TTarget>(source, context);
             var cacheExpiration = TimeSpan.FromMinutes(_options.CacheExpirationMinutes);
@@ -415,13 +414,10 @@ public sealed class ProtocolTranslationService : IProtocolTranslationService, ID
     private async Task<Dictionary<string, TranslatorHealthResult>> BuildTranslatorHealthResultsAsync()
     {
         var translatorResults = new Dictionary<string, TranslatorHealthResult>();
-        var translatorNames = _translatorRegistry.GetRegisteredTranslators();
-
-        foreach (var translatorName in translatorNames)
+        foreach (var translatorName in _translatorRegistry.GetRegisteredTranslators())
         {
             var metrics = await _metricsCollector.GetTranslatorMetricsAsync(translatorName);
-            var healthResult = CreateTranslatorHealthResult(metrics);
-            translatorResults[translatorName] = healthResult;
+            translatorResults[translatorName] = CreateTranslatorHealthResult(metrics);
         }
 
         return translatorResults;

@@ -86,7 +86,7 @@ public record PointInTimeRecoveryRequest
     /// Whether to perform recovery in background with progress notifications.
     /// </summary>
     [Id(12)]
-    public bool UseBackgroundRecovery { get; set; } = false;
+    public bool UseBackgroundRecovery { get; set; }
 
     /// <summary>
     /// Creates a point-in-time recovery request for a specific timestamp.
@@ -174,25 +174,25 @@ public enum RecoveryValidationLevel
     /// Minimal validation - basic structure checks only.
     /// </summary>
     [Id(0)]
-    Minimal,
+    Minimal = 0,
 
     /// <summary>
     /// Standard validation - structure + business rules.
     /// </summary>
     [Id(1)]
-    Standard,
+    Standard = 1,
 
     /// <summary>
     /// Full validation - all checks including cross-grain consistency.
     /// </summary>
     [Id(2)]
-    Full,
+    Full = 2,
 
     /// <summary>
     /// Exhaustive validation - all checks + deep integrity verification.
     /// </summary>
     [Id(3)]
-    Exhaustive
+    Exhaustive = 3
 }
 
 /// <summary>
@@ -307,43 +307,43 @@ public enum RecoveryStatus
     /// Recovery operation is pending start.
     /// </summary>
     [Id(0)]
-    Pending,
+    Pending = 0,
 
     /// <summary>
     /// Recovery operation is in progress.
     /// </summary>
     [Id(1)]
-    InProgress,
+    InProgress = 1,
 
     /// <summary>
     /// Recovery operation completed successfully.
     /// </summary>
     [Id(2)]
-    Completed,
+    Completed = 2,
 
     /// <summary>
     /// Recovery operation failed.
     /// </summary>
     [Id(3)]
-    Failed,
+    Failed = 3,
 
     /// <summary>
     /// Recovery operation partially completed with warnings.
     /// </summary>
     [Id(4)]
-    PartiallyCompleted,
+    PartiallyCompleted = 4,
 
     /// <summary>
     /// Recovery completed but validation failed.
     /// </summary>
     [Id(5)]
-    ValidationFailed,
+    ValidationFailed = 5,
 
     /// <summary>
     /// Recovery operation was cancelled.
     /// </summary>
     [Id(6)]
-    Cancelled
+    Cancelled = 6
 }
 
 /// <summary>
@@ -472,31 +472,31 @@ public enum RecoveryPointType
     /// Recovery point is based on a snapshot.
     /// </summary>
     [Id(0)]
-    Snapshot,
+    Snapshot = 0,
 
     /// <summary>
     /// Recovery point is based on an event.
     /// </summary>
     [Id(1)]
-    Event,
+    Event = 1,
 
     /// <summary>
     /// Recovery point is a system checkpoint.
     /// </summary>
     [Id(2)]
-    Checkpoint,
+    Checkpoint = 2,
 
     /// <summary>
     /// Recovery point represents a state transition.
     /// </summary>
     [Id(3)]
-    StateTransition,
+    StateTransition = 3,
 
     /// <summary>
     /// Recovery point is a manual bookmark.
     /// </summary>
     [Id(4)]
-    Manual
+    Manual = 4
 }
 
 /// <summary>
@@ -552,7 +552,7 @@ public record PointInTimeRecoveryValidationResult
     /// Whether snapshots are available near the target point.
     /// </summary>
     [Id(7)]
-    public bool SnapshotsAvailable { get; set; } = false;
+    public bool SnapshotsAvailable { get; set; }
 
     /// <summary>
     /// The nearest available recovery point if exact target isn't possible.

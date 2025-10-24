@@ -402,12 +402,10 @@ public class SnapshotStoreHealthCheck : Microsoft.Extensions.Diagnostics.HealthC
                     "Snapshot Store is healthy",
                     healthStatus.Details);
             }
-            else
-            {
-                return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Unhealthy(
-                    $"Snapshot Store is unhealthy: {healthStatus.Message}",
-                    data: healthStatus.Details);
-            }
+
+            return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Unhealthy(
+                $"Snapshot Store is unhealthy: {healthStatus.Message}",
+                data: healthStatus.Details);
         }
         catch (Exception ex)
         {

@@ -55,7 +55,7 @@ public static class SSEEventExtensions
             ),
         };
 
-        var envelope = new StreamChunkEventEnvelope
+        return new StreamChunkEventEnvelope
         {
             ChatId = streamEvent.ChatId,
             MessageId = streamEvent.MessageId,
@@ -63,8 +63,6 @@ public static class SSEEventExtensions
             SequenceId = streamEvent.SequenceNumber,
             Payload = payload,
         };
-
-        return envelope;
     }
 
     /// <summary>
@@ -98,7 +96,7 @@ public static class SSEEventExtensions
             ),
         };
 
-        var envelope = new MessageCompleteEventEnvelope
+        return new MessageCompleteEventEnvelope
         {
             ChatId = messageEvent.ChatId,
             MessageId = messageEvent.MessageId,
@@ -106,8 +104,6 @@ public static class SSEEventExtensions
             SequenceId = messageEvent.SequenceNumber,
             Payload = payload,
         };
-
-        return envelope;
     }
 
     /// <summary>

@@ -77,13 +77,9 @@ public static class AutomaticRecoveryServiceExtensions
 
         // Add base recovery services
         if (configureOptions != null)
-        {
             services.AddAutomaticRecoveryServices(configureOptions);
-        }
         else
-        {
             services.AddAutomaticRecoveryServices();
-        }
 
         // Add Orleans-specific services - implementations will be created
         // services.AddSingleton<IOrleansRecoveryHelper, OrleansRecoveryHelper>();

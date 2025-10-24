@@ -430,8 +430,13 @@ public class DistributedStateCacheManager<T> : IStateCacheManager<T> where T : c
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    // Implementation would use JSON serialization with IDistributedCache
-    // For now, throwing NotImplementedException as this is a placeholder
+    /// <summary>
+    /// Implementation would use JSON serialization with IDistributedCache
+    /// For now, throwing NotImplementedException as this is a placeholder
+    /// </summary>
+    /// <param name="key"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
     public Task<T?> GetFromCacheAsync(string key, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException("Distributed caching requires Redis implementation");

@@ -423,7 +423,7 @@ public class ChatMessagePayload
     /// Whether this is a streaming message.
     /// </summary>
     [JsonPropertyName("isStreaming")]
-    public bool IsStreaming { get; set; } = false;
+    public bool IsStreaming { get; set; }
 
     /// <summary>
     /// Parent message ID for replies/threads.

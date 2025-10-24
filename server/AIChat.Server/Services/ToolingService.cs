@@ -22,10 +22,6 @@ public class ToolingService(
     ILogger<ToolingService> logger
 ) : IToolingService
 {
-    // TODO: Re-enable when MCP middleware is available
-#pragma warning disable IDE0052 // Remove unread private members
-#pragma warning restore IDE0052 // Remove unread private members
-
     public async Task<FunctionCallMiddleware?> CreateChatSpecificFunctionCallMiddlewareAsync(
         string chatId,
         string? modeId = null,

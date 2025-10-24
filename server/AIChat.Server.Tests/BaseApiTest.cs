@@ -69,10 +69,10 @@ public abstract class BaseApiTest : IClassFixture<WebApplicationFactory<Program>
                 .WriteTo.File(
                     formatter: new CompactJsonFormatter(),
                     path: logFileName,
-                    rollingInterval: RollingInterval.Day,
-                    retainedFileCountLimit: 7,
                     shared: true
-                )
+,
+                    rollingInterval: RollingInterval.Day,
+                    retainedFileCountLimit: 7)
                 .CreateLogger();
 
             _loggerInitialized = true;

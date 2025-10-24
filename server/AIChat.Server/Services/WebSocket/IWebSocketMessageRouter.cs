@@ -233,42 +233,42 @@ public enum MessageRoutingDestination
     /// <summary>
     /// Unknown or unspecified destination.
     /// </summary>
-    Unknown,
+    Unknown = 0,
 
     /// <summary>
     /// Orleans session grain.
     /// </summary>
-    OrleansSessionGrain,
+    OrleansSessionGrain = 1,
 
     /// <summary>
     /// Orleans chat grain.
     /// </summary>
-    OrleansChatGrain,
+    OrleansChatGrain = 2,
 
     /// <summary>
     /// Direct chat service.
     /// </summary>
-    DirectChatService,
+    DirectChatService = 3,
 
     /// <summary>
     /// Custom message handler.
     /// </summary>
-    CustomHandler,
+    CustomHandler = 4,
 
     /// <summary>
     /// Broadcast to multiple destinations.
     /// </summary>
-    Broadcast,
+    Broadcast = 5,
 
     /// <summary>
     /// Heartbeat handler.
     /// </summary>
-    HeartbeatHandler,
+    HeartbeatHandler = 6,
 
     /// <summary>
     /// Protocol negotiation handler.
     /// </summary>
-    ProtocolNegotiationHandler
+    ProtocolNegotiationHandler = 7
 }
 
 /// <summary>

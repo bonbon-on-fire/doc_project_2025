@@ -80,11 +80,9 @@ public static class SnapshotSchemaHelper
             }
 
             // Check if the table has the expected columns
-            const string checkColumnsSql = @"
+            command.CommandText = @"
                 SELECT COUNT(*) FROM pragma_table_info('Snapshots')
                 WHERE name IN ('Id', 'StreamId', 'Version', 'ContentHash', 'Timestamp', 'CompressedSize', 'UncompressedSize', 'CompressionType', 'StateType', 'Metadata')";
-
-            command.CommandText = checkColumnsSql;
             var columnCount = (long)(await command.ExecuteScalarAsync(cancellationToken) ?? 0L);
 
             // We expect 10 columns
@@ -222,19 +220,17 @@ public static class SnapshotSchemaHelper
         await command.ExecuteNonQueryAsync(cancellationToken);
 
         // Create snapshot content table (for content-addressable storage)
-        const string createContentSql = @"
+        command.CommandText = @"
             CREATE TABLE IF NOT EXISTS SnapshotContent (
                 ContentHash TEXT PRIMARY KEY,
                 CompressedData BLOB NOT NULL,
                 ReferenceCount INTEGER NOT NULL DEFAULT 1,
                 CreatedAt TEXT NOT NULL DEFAULT (datetime('now'))
             )";
-
-        command.CommandText = createContentSql;
         await command.ExecuteNonQueryAsync(cancellationToken);
 
         // Create snapshots metadata table
-        const string createSnapshotsSql = @"
+        command.CommandText = @"
             CREATE TABLE IF NOT EXISTS Snapshots (
                 Id TEXT PRIMARY KEY,
                 StreamId TEXT NOT NULL,
@@ -250,8 +246,6 @@ public static class SnapshotSchemaHelper
                 FOREIGN KEY (ContentHash) REFERENCES SnapshotContent(ContentHash),
                 UNIQUE(StreamId, Version)
             )";
-
-        command.CommandText = createSnapshotsSql;
         await command.ExecuteNonQueryAsync(cancellationToken);
 
         // Create indexes for optimal query performance
@@ -282,11 +276,9 @@ public static class SnapshotSchemaHelper
 
         foreach (var (key, value) in metadataInserts)
         {
-            const string insertMetadataSql = @"
+            command.CommandText = @"
                 INSERT OR REPLACE INTO SnapshotSchemaInfo (Key, Value)
                 VALUES (@key, @value)";
-
-            command.CommandText = insertMetadataSql;
             command.Parameters.Clear();
             command.Parameters.AddWithValue("@key", key);
             command.Parameters.AddWithValue("@value", value);
@@ -307,9 +299,7 @@ public static class SnapshotSchemaHelper
         try
         {
             // Check that all required tables exist
-            var requiredTables = new[] { "Snapshots", "SnapshotContent", "SnapshotSchemaInfo" };
-
-            foreach (var tableName in requiredTables)
+            foreach (var tableName in new[] { "Snapshots", "SnapshotContent", "SnapshotSchemaInfo" })
             {
                 const string checkTableSql = @"
                     SELECT COUNT(*) FROM sqlite_master

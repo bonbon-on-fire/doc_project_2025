@@ -192,22 +192,22 @@ public enum OverflowStrategy
     /// <summary>
     /// Drop the oldest messages.
     /// </summary>
-    DropOldest,
+    DropOldest = 0,
 
     /// <summary>
     /// Drop the newest messages.
     /// </summary>
-    DropNewest,
+    DropNewest = 1,
 
     /// <summary>
     /// Reject new messages.
     /// </summary>
-    RejectNew,
+    RejectNew = 2,
 
     /// <summary>
     /// Drop low priority messages first.
     /// </summary>
-    DropLowPriority,
+    DropLowPriority = 3,
 }
 
 /// <summary>

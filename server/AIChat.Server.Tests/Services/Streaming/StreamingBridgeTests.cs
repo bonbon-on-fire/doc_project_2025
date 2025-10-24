@@ -107,7 +107,7 @@ public class StreamingBridgeTests : IDisposable
     public async Task HandleBackpressureAsyncTriggersWhenThresholdExceeded()
     {
         // Arrange
-        var highUtilization = 85.0f; // Above 80% threshold
+        const float highUtilization = 85.0f; // Above 80% threshold
 
         // Act
         var result = await _streamingBridge.HandleBackpressureAsync(
@@ -136,7 +136,7 @@ public class StreamingBridgeTests : IDisposable
     public async Task HandleBackpressureAsyncDoesNotTriggerBelowThreshold()
     {
         // Arrange
-        var lowUtilization = 50.0f; // Below 80% threshold
+        const float lowUtilization = 50.0f; // Below 80% threshold
 
         // Act
         var result = await _streamingBridge.HandleBackpressureAsync(
@@ -264,7 +264,11 @@ public class StreamingBridgeTests : IDisposable
         );
     }
 
-    // Helper methods
+    /// <summary>
+    /// Helper methods
+    /// </summary>
+    /// <param name="items"></param>
+    /// <returns></returns>
     private static async IAsyncEnumerable<string> GenerateAsyncEnumerable(string[] items)
     {
         foreach (var item in items)

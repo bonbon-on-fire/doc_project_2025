@@ -525,24 +525,24 @@ public enum EventSortOrder
     /// <summary>
     /// Sort by timestamp ascending (oldest first).
     /// </summary>
-    TimestampAscending,
+    TimestampAscending = 0,
 
     /// <summary>
     /// Sort by timestamp descending (newest first).
     /// </summary>
-    TimestampDescending,
+    TimestampDescending = 1,
 
     /// <summary>
     /// Sort by version ascending (lowest version first).
     /// Only valid for single-stream queries.
     /// </summary>
-    VersionAscending,
+    VersionAscending = 2,
 
     /// <summary>
     /// Sort by version descending (highest version first).
     /// Only valid for single-stream queries.
     /// </summary>
-    VersionDescending
+    VersionDescending = 3
 }
 
 /// <summary>
@@ -553,62 +553,62 @@ public enum EventStoreErrorCode
     /// <summary>
     /// No error occurred.
     /// </summary>
-    None,
+    None = 0,
 
     /// <summary>
     /// The specified stream was not found.
     /// </summary>
-    StreamNotFound,
+    StreamNotFound = 1,
 
     /// <summary>
     /// The specified event was not found.
     /// </summary>
-    EventNotFound,
+    EventNotFound = 2,
 
     /// <summary>
     /// A concurrency conflict occurred (version mismatch).
     /// </summary>
-    ConcurrencyConflict,
+    ConcurrencyConflict = 3,
 
     /// <summary>
     /// Event data validation failed.
     /// </summary>
-    ValidationError,
+    ValidationError = 4,
 
     /// <summary>
     /// An event with the same ID already exists.
     /// </summary>
-    DuplicateEvent,
+    DuplicateEvent = 5,
 
     /// <summary>
     /// Event serialization failed.
     /// </summary>
-    SerializationError,
+    SerializationError = 6,
 
     /// <summary>
     /// Event deserialization failed.
     /// </summary>
-    DeserializationError,
+    DeserializationError = 7,
 
     /// <summary>
     /// Storage backend is unavailable.
     /// </summary>
-    StorageUnavailable,
+    StorageUnavailable = 8,
 
     /// <summary>
     /// The operation timed out.
     /// </summary>
-    TimeoutError,
+    TimeoutError = 9,
 
     /// <summary>
     /// An internal error occurred.
     /// </summary>
-    InternalError,
+    InternalError = 10,
 
     /// <summary>
     /// Network connectivity error.
     /// </summary>
-    NetworkError
+    NetworkError = 11
 }
 
 /// <summary>

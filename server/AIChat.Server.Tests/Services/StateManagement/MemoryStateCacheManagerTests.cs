@@ -48,7 +48,7 @@ public class MemoryStateCacheManagerTests : IDisposable
     public async Task GetFromCacheAsync_WhenItemExists_ShouldReturnItem()
     {
         // Arrange
-        var key = "test-key";
+        const string key = "test-key";
         var entity = new TestEntity { Id = "1", Name = "Test" };
         await _cacheManager.SetCacheAsync(key, entity);
 
@@ -65,7 +65,7 @@ public class MemoryStateCacheManagerTests : IDisposable
     public async Task GetFromCacheAsync_WhenItemDoesNotExist_ShouldReturnNull()
     {
         // Arrange
-        var key = "non-existent-key";
+        const string key = "non-existent-key";
 
         // Act
         var result = await _cacheManager.GetFromCacheAsync(key);
@@ -86,7 +86,7 @@ public class MemoryStateCacheManagerTests : IDisposable
     public async Task SetCacheAsync_ShouldStoreItem()
     {
         // Arrange
-        var key = "test-key";
+        const string key = "test-key";
         var entity = new TestEntity { Id = "1", Name = "Test" };
 
         // Act
@@ -102,7 +102,7 @@ public class MemoryStateCacheManagerTests : IDisposable
     public async Task SetCacheAsync_WithExpiry_ShouldExpireItem()
     {
         // Arrange
-        var key = "test-key";
+        const string key = "test-key";
         var entity = new TestEntity { Id = "1", Name = "Test" };
         var expiry = TimeSpan.FromMilliseconds(50);
 
@@ -142,7 +142,7 @@ public class MemoryStateCacheManagerTests : IDisposable
     public async Task RemoveFromCacheAsync_ShouldRemoveItem()
     {
         // Arrange
-        var key = "test-key";
+        const string key = "test-key";
         var entity = new TestEntity { Id = "1", Name = "Test" };
         await _cacheManager.SetCacheAsync(key, entity);
 
@@ -181,7 +181,7 @@ public class MemoryStateCacheManagerTests : IDisposable
     public async Task ExistsInCacheAsync_WhenItemExists_ShouldReturnTrue()
     {
         // Arrange
-        var key = "test-key";
+        const string key = "test-key";
         var entity = new TestEntity { Id = "1", Name = "Test" };
         await _cacheManager.SetCacheAsync(key, entity);
 
@@ -196,7 +196,7 @@ public class MemoryStateCacheManagerTests : IDisposable
     public async Task ExistsInCacheAsync_WhenItemDoesNotExist_ShouldReturnFalse()
     {
         // Arrange
-        var key = "non-existent-key";
+        const string key = "non-existent-key";
 
         // Act
         var exists = await _cacheManager.ExistsInCacheAsync(key);

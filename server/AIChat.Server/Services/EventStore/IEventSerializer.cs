@@ -253,7 +253,7 @@ public class JsonEventSerializer : IEventSerializer
                 parsedEvent = JsonSerializer.Deserialize<T>(eventData, _options)!;
             }
 
-            if (parsedEvent == null)
+            if (EqualityComparer<T>.Default.Equals(parsedEvent, default(T)))
             {
                 throw new EventDeserializationException(
                     $"Deserialization to type {typeof(T).Name} returned null",
@@ -494,12 +494,9 @@ public class DateTimeOffsetConverter : JsonConverter<DateTimeOffset>
     /// </summary>
     public override DateTimeOffset Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
-        if (reader.TokenType == JsonTokenType.String)
+        if (reader.TokenType == JsonTokenType.String && DateTimeOffset.TryParse(reader.GetString(), out var result))
         {
-            if (DateTimeOffset.TryParse(reader.GetString(), out var result))
-            {
-                return result;
-            }
+            return result;
         }
         return reader.GetDateTimeOffset();
     }

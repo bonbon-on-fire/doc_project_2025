@@ -24,10 +24,10 @@ public class SchemaHelperTests
         await SchemaHelper.EnsureSchemaAsync(conn);
 
         // Validate tables exist
-        using var cmd = conn.CreateCommand();
+        await using var cmd = conn.CreateCommand();
         cmd.CommandText =
             "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('chats','messages') ORDER BY name";
-        using var reader = await cmd.ExecuteReaderAsync();
+        await using var reader = await cmd.ExecuteReaderAsync();
         var names = Enumerable.Empty<string>().ToList();
         while (await reader.ReadAsync())
         {
@@ -47,7 +47,7 @@ public class SchemaHelperTests
         await SchemaHelper.SeedUsersAsync(conn);
         await SchemaHelper.SeedUsersAsync(conn);
 
-        using var cmd = conn.CreateCommand();
+        await using var cmd = conn.CreateCommand();
         cmd.CommandText = "SELECT COUNT(*) FROM users";
         var count = (long)(await cmd.ExecuteScalarAsync() ?? 0L);
         _ = count.Should().BeGreaterThanOrEqualTo(2);
@@ -66,7 +66,7 @@ public class SchemaHelperTests
         // Insert a row via a non-root connection
         await using (var conn = await factory.CreateOpenConnectionAsync())
         {
-            using var cmd = conn.CreateCommand();
+            await using var cmd = conn.CreateCommand();
             cmd.CommandText =
                 "INSERT INTO chats (Id, UserId, Title, CreatedAtUtc, UpdatedAtUtc) VALUES ('c1','user-123','t', '2025-01-01T00:00:00Z', '2025-01-01T00:00:00Z')";
             _ = await cmd.ExecuteNonQueryAsync();
@@ -75,7 +75,7 @@ public class SchemaHelperTests
         // Read it back via another connection
         await using (var conn2 = await factory.CreateOpenConnectionAsync())
         {
-            using var cmd2 = conn2.CreateCommand();
+            await using var cmd2 = conn2.CreateCommand();
             cmd2.CommandText = "SELECT COUNT(*) FROM chats WHERE Id='c1'";
             var count = (long)(await cmd2.ExecuteScalarAsync() ?? 0L);
             _ = count.Should().Be(1);

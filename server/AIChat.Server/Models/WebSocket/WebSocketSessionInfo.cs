@@ -77,32 +77,32 @@ public enum WebSocketConnectionStatus
     /// <summary>
     /// Connection is being established.
     /// </summary>
-    Connecting,
+    Connecting = 0,
 
     /// <summary>
     /// Connection is active and healthy.
     /// </summary>
-    Connected,
+    Connected = 1,
 
     /// <summary>
     /// Connection is experiencing issues but still active.
     /// </summary>
-    Degraded,
+    Degraded = 2,
 
     /// <summary>
     /// Connection is being gracefully closed.
     /// </summary>
-    Disconnecting,
+    Disconnecting = 3,
 
     /// <summary>
     /// Connection has been closed.
     /// </summary>
-    Disconnected,
+    Disconnected = 4,
 
     /// <summary>
     /// Connection encountered an error.
     /// </summary>
-    Error
+    Error = 5
 }
 
 /// <summary>
@@ -185,13 +185,9 @@ public class WebSocketConnectionMetrics
         // Simple moving average calculation
         var totalMessages = MessagesSent + MessagesReceived;
         if (totalMessages > 1)
-        {
             AverageLatencyMs = ((AverageLatencyMs * (totalMessages - 1)) + latencyMs) / totalMessages;
-        }
         else
-        {
             AverageLatencyMs = latencyMs;
-        }
         LastUpdated = DateTime.UtcNow;
     }
 }

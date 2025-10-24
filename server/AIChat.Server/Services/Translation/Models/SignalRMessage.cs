@@ -349,22 +349,22 @@ public enum SignalRTargetType
     /// <summary>
     /// Target all connected clients.
     /// </summary>
-    All,
+    All = 0,
 
     /// <summary>
     /// Target a specific group.
     /// </summary>
-    Group,
+    Group = 1,
 
     /// <summary>
     /// Target a specific connection.
     /// </summary>
-    Connection,
+    Connection = 2,
 
     /// <summary>
     /// Target all connections for a specific user.
     /// </summary>
-    User
+    User = 3
 }
 
 /// <summary>

@@ -261,37 +261,37 @@ public enum ConsistencyIssueType
     /// <summary>
     /// Property values differ between Orleans and DirectDB.
     /// </summary>
-    ValueMismatch,
+    ValueMismatch = 0,
 
     /// <summary>
     /// Entity exists in DirectDB but not in Orleans.
     /// </summary>
-    MissingInOrleans,
+    MissingInOrleans = 1,
 
     /// <summary>
     /// Entity exists in Orleans but not in DirectDB.
     /// </summary>
-    MissingInDirectDb,
+    MissingInDirectDb = 2,
 
     /// <summary>
     /// Property types don't match between storage backends.
     /// </summary>
-    TypeMismatch,
+    TypeMismatch = 3,
 
     /// <summary>
     /// Version information indicates data skew.
     /// </summary>
-    VersionSkew,
+    VersionSkew = 4,
 
     /// <summary>
     /// Timestamp differences indicate temporal inconsistency.
     /// </summary>
-    TimestampDrift,
+    TimestampDrift = 5,
 
     /// <summary>
     /// Structural differences in complex objects.
     /// </summary>
-    StructuralMismatch
+    StructuralMismatch = 6
 }
 
 /// <summary>
@@ -302,22 +302,22 @@ public enum ConsistencyIssueSeverity
     /// <summary>
     /// Informational - minor difference that doesn't affect functionality.
     /// </summary>
-    Info,
+    Info = 0,
 
     /// <summary>
     /// Warning - noticeable difference that should be monitored.
     /// </summary>
-    Warning,
+    Warning = 1,
 
     /// <summary>
     /// Error - significant difference that may affect functionality.
     /// </summary>
-    Error,
+    Error = 2,
 
     /// <summary>
     /// Critical - major difference that will cause system issues.
     /// </summary>
-    Critical
+    Critical = 3
 }
 
 /// <summary>
@@ -413,27 +413,27 @@ public enum ReconciliationStrategy
     /// <summary>
     /// Orleans grain state is considered authoritative.
     /// </summary>
-    OrleansWins,
+    OrleansWins = 0,
 
     /// <summary>
     /// DirectDB state is considered authoritative.
     /// </summary>
-    DirectDbWins,
+    DirectDbWins = 1,
 
     /// <summary>
     /// Use the most recently modified value.
     /// </summary>
-    LastWriteWins,
+    LastWriteWins = 2,
 
     /// <summary>
     /// Attempt to merge the values intelligently.
     /// </summary>
-    Merge,
+    Merge = 3,
 
     /// <summary>
     /// Requires manual intervention to resolve.
     /// </summary>
-    Manual
+    Manual = 4
 }
 
 /// <summary>

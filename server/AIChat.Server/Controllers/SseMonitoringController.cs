@@ -512,5 +512,5 @@ public class SseMonitoringController : ControllerBase
         return $"{(int)duration.TotalSeconds}s";
     }
 
-    #endregion
+    #endregion Private Helper Methods
 }

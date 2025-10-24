@@ -10,9 +10,14 @@ namespace AIChat.Server.Services.TestMode;
 /// </summary>
 public sealed class TestSseMessageHandler : HttpMessageHandler
 {
-    // Default configuration values with clear intent
+    /// <summary>
+    /// Default configuration values with clear intent
+    /// </summary>
     private const int DefaultWordsPerChunk = 10; // Number of words to send per SSE chunk
-    private const int DefaultChunkDelayMs = 500; // Delay between chunks to simulate streaming
+    /// <summary>
+    /// Delay between chunks to simulate streaming
+    /// </summary>
+    private const int DefaultChunkDelayMs = 500;
 
     private readonly ILogger<TestSseMessageHandler> _logger;
     private readonly IInstructionChainParser _chainParser;

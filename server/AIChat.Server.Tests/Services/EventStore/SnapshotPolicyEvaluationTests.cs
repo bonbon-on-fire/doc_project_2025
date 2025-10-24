@@ -466,7 +466,7 @@ public class SnapshotResultTests
     {
         // Arrange
         const string error = "Snapshot corruption detected";
-        var errorCode = SnapshotErrorCode.IntegrityError;
+        const SnapshotErrorCode errorCode = SnapshotErrorCode.IntegrityError;
         var restorationTime = TimeSpan.FromMilliseconds(100);
 
         // Act

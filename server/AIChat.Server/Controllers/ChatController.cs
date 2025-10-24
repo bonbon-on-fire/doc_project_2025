@@ -30,14 +30,18 @@ public class ChatController(
     IResilientStreamManager? resilientStreamManager = null
 ) : ControllerBase
 {
-    // Core dependencies (required)
+    /// <summary>
+    /// Core dependencies (required)
+    /// </summary>
     private readonly IChatService _chatService = chatService;
     private readonly ILogger<ChatController> _logger = logger;
     private readonly Services.Routing.IDualModeRouter _router = router;
     private readonly ITaskStorage _taskStorage = taskStorage;
     private readonly IChatStorage _chatStorage = chatStorage;
 
-    // Optional dependencies for advanced features
+    /// <summary>
+    /// Optional dependencies for advanced features
+    /// </summary>
     private readonly IServerSentEventsService? _serverSentEventsService = serverSentEventsService;
     private readonly IHubContext<ChatHub>? _hubContext = hubContext;
     private readonly IBackgroundChatService? _backgroundChatService = backgroundChatService;
@@ -142,7 +146,7 @@ public class ChatController(
         };
     }
 
-    #endregion
+    #endregion Router Pattern Helper Methods
 
     /// <summary>
     /// Helper method for streaming operations through router.
@@ -263,7 +267,14 @@ public class ChatController(
         }
     }
 
-    // GET: api/chat/history?userId={userId}&page={page}&pageSize={pageSize}
+    /// <summary>
+    /// GET: api/chat/history?userId={userId}&page={page}&pageSize={pageSize}
+    /// </summary>
+    /// <param name="userId"></param>
+    /// <param name="page"></param>
+    /// <param name="pageSize"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
     [HttpGet("history")]
     public async Task<ActionResult<ChatHistoryResponse>> GetChatHistory(
         [FromQuery] string userId,
@@ -322,7 +333,12 @@ public class ChatController(
         );
     }
 
-    // GET: api/chat/{id}
+    /// <summary>
+    /// GET: api/chat/{id}
+    /// </summary>
+    /// <param name="id"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
     [HttpGet("{id}")]
     public async Task<ActionResult<ChatDto>> GetChat(string id, CancellationToken cancellationToken = default)
     {
@@ -367,7 +383,12 @@ public class ChatController(
         );
     }
 
-    // POST: api/chat
+    /// <summary>
+    /// POST: api/chat
+    /// </summary>
+    /// <param name="request"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
     [HttpPost]
     public async Task<ActionResult<ChatDto>> CreateChat([FromBody] CreateChatRequest request, CancellationToken cancellationToken = default)
     {
@@ -541,7 +562,12 @@ public class ChatController(
         );
     }
 
-    // DELETE: api/chat/{id}
+    /// <summary>
+    /// DELETE: api/chat/{id}
+    /// </summary>
+    /// <param name="id"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
     [HttpDelete("{id}")]
     public async Task<ActionResult> DeleteChat(string id, CancellationToken cancellationToken = default)
     {
@@ -582,7 +608,12 @@ public class ChatController(
         );
     }
 
-    // GET: api/chat/{chatId}/tasks
+    /// <summary>
+    /// GET: api/chat/{chatId}/tasks
+    /// </summary>
+    /// <param name="chatId"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
     [HttpGet("{chatId}/tasks")]
     public async Task<ActionResult<GetTasksResponse>> GetTasks(string chatId, CancellationToken cancellationToken = default)
     {
@@ -669,7 +700,12 @@ public class ChatController(
     // Note: Task updates are handled server-side only through LLM tool calls
     // The client has read-only access to task state via the GET endpoint above
 
-    // POST: api/chat/stream-sse
+    /// <summary>
+    /// POST: api/chat/stream-sse
+    /// </summary>
+    /// <param name="request"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
     [HttpPost("stream-sse")]
     public async Task<IActionResult> StreamChatCompletionSse(
         [FromBody] CreateChatRequest request,
@@ -849,7 +885,12 @@ public class ChatController(
         return new EmptyResult();
     }
 
-    // Handle SignalR-based streaming with operation ID
+    /// <summary>
+    /// Handle SignalR-based streaming with operation ID
+    /// </summary>
+    /// <param name="request"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
     private async Task<IActionResult> HandleSignalRStreamingAsync(
         CreateChatRequest request,
         CancellationToken cancellationToken = default
@@ -941,23 +982,20 @@ public class ChatController(
                         );
 
                         // Send error via SignalR
-                        if (initResult?.ChatId != null)
+                        if (initResult?.ChatId != null && _hubContext != null)
                         {
-                            if (_hubContext != null)
-                            {
-                                await _hubContext
-                                    .Clients.Group($"chat_{initResult.ChatId}")
-                                    .SendAsync(
-                                        "ReceiveError",
-                                    new
-                                    {
-                                        OperationId = operationId,
-                                        ChatId = initResult.ChatId,
-                                        Error = ex.Message,
-                                        Timestamp = DateTime.UtcNow,
-                                    }
-                                );
-                            }
+                            await _hubContext
+                                .Clients.Group($"chat_{initResult.ChatId}")
+                                .SendAsync(
+                                    "ReceiveError",
+                                new
+                                {
+                                    OperationId = operationId,
+                                    ChatId = initResult.ChatId,
+                                    Error = ex.Message,
+                                    Timestamp = DateTime.UtcNow,
+                                }
+                            );
                         }
                     }
                 },
@@ -1188,7 +1226,12 @@ public class ChatController(
         }
     }
 
-    // POST: api/chat/operations/{operationId}/cancel
+    /// <summary>
+    /// POST: api/chat/operations/{operationId}/cancel
+    /// </summary>
+    /// <param name="operationId"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
     [HttpPost("operations/{operationId}/cancel")]
     public async Task<ActionResult> CancelOperation(string operationId, CancellationToken cancellationToken = default)
     {
@@ -1268,23 +1311,20 @@ public class ChatController(
                                     }
                                 );
                             }
-                            else
-                            {
-                                _logger.LogWarning(
-                                    "No ChatId available for Orleans operation cancellation {OperationId} (user {UserId})",
-                                    operationId,
-                                    operationContext.UserId
-                                );
+                            _logger.LogWarning(
+                                "No ChatId available for Orleans operation cancellation {OperationId} (user {UserId})",
+                                operationId,
+                                operationContext.UserId
+                            );
 
-                                return BadRequest(
-                                    new
-                                    {
-                                        Error = "Operation could not be cancelled - no ChatId available",
-                                        OperationId = operationId,
-                                        UserId = operationContext.UserId,
-                                    }
-                                );
-                            }
+                            return BadRequest(
+                                new
+                                {
+                                    Error = "Operation could not be cancelled - no ChatId available",
+                                    OperationId = operationId,
+                                    UserId = operationContext.UserId,
+                                }
+                            );
                         }
                         catch (Exception ex)
                         {
@@ -1359,7 +1399,12 @@ public class ChatController(
         }
     }
 
-    // GET: api/chat/operations/{operationId}/status
+    /// <summary>
+    /// GET: api/chat/operations/{operationId}/status
+    /// </summary>
+    /// <param name="operationId"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
     [HttpGet("operations/{operationId}/status")]
     public async Task<ActionResult> GetOperationStatus(string operationId, CancellationToken cancellationToken = default)
     {
@@ -1410,7 +1455,14 @@ public class ChatController(
     }
 }
 
-// Request DTOs for API endpoints
+/// <summary>
+/// Request DTOs for API endpoints
+/// </summary>
+/// <param name="ChatId"></param>
+/// <param name="UserId"></param>
+/// <param name="Message"></param>
+/// <param name="SystemPrompt"></param>
+/// <param name="ModeId"></param>
 public record CreateChatRequest(
     string? ChatId,
     string UserId,
@@ -1436,7 +1488,9 @@ public class ChatHistoryResponse
     public int PageSize { get; set; }
 }
 
-// Task-related DTOs
+/// <summary>
+/// Task-related DTOs
+/// </summary>
 public class GetTasksResponse
 {
     public required string ChatId { get; set; }

@@ -46,7 +46,7 @@ public readonly struct Result<T>
 #pragma warning disable CA1000 // Do not declare static members on generic types - This is a common pattern for Result types
     public static Result<T> Success(T value)
     {
-        return value == null
+        return EqualityComparer<T?>.Default.Equals(value, default(T?))
             ? throw new ArgumentNullException(nameof(value))
             : new Result<T>(value, null, true);
     }
@@ -67,9 +67,19 @@ public readonly struct Result<T>
     /// </summary>
     public Result<TNew> Map<TNew>(Func<T, TNew> mapper)
     {
-        return mapper == null ? throw new ArgumentNullException(nameof(mapper))
-            : IsSuccess ? Result<TNew>.Success(mapper(_value!))
-            : Result<TNew>.Failure(Error!);
+        if (mapper == null)
+        {
+            throw new ArgumentNullException(nameof(mapper));
+        }
+
+        if (IsSuccess)
+        {
+            return Result<TNew>.Success(mapper(_value!));
+        }
+        else
+        {
+            return Result<TNew>.Failure(Error!);
+        }
     }
 
     /// <summary>
@@ -77,9 +87,19 @@ public readonly struct Result<T>
     /// </summary>
     public Result<TNew> Bind<TNew>(Func<T, Result<TNew>> mapper)
     {
-        return mapper == null ? throw new ArgumentNullException(nameof(mapper))
-            : IsSuccess ? mapper(_value!)
-            : Result<TNew>.Failure(Error!);
+        if (mapper == null)
+        {
+            throw new ArgumentNullException(nameof(mapper));
+        }
+
+        if (IsSuccess)
+        {
+            return mapper(_value!);
+        }
+        else
+        {
+            return Result<TNew>.Failure(Error!);
+        }
     }
 
     /// <summary>

@@ -75,20 +75,20 @@ public enum OverflowStrategy
     /// <summary>
     /// Apply backpressure to slow down producers.
     /// </summary>
-    Backpressure,
+    Backpressure = 0,
 
     /// <summary>
     /// Drop oldest items from the buffer.
     /// </summary>
-    DropOldest,
+    DropOldest = 1,
 
     /// <summary>
     /// Drop newest items (reject new items).
     /// </summary>
-    DropNewest,
+    DropNewest = 2,
 
     /// <summary>
     /// Hybrid approach combining multiple strategies.
     /// </summary>
-    Hybrid
+    Hybrid = 3
 }

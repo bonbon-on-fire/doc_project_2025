@@ -115,7 +115,7 @@ public abstract class CachedRouterBase<TRouter> : IDisposable where TRouter : cl
             try
             {
                 var cachedResult = await CacheManager.GetCachedResponseAsync<T>(cacheKey, cancellationToken);
-                if (cachedResult != null)
+                if (!EqualityComparer<T?>.Default.Equals(cachedResult, default(T?)))
                 {
                     Logger.LogDebug("Cache hit for {RouterType} operation {OperationName} (ID: {OperationId})",
                         RouterTypeName, operationName, operationId);
@@ -212,9 +212,7 @@ public abstract class CachedRouterBase<TRouter> : IDisposable where TRouter : cl
     {
         try
         {
-            var invalidationPatterns = GetInvalidationPatterns(operationName, parameters, userContext);
-
-            foreach (var pattern in invalidationPatterns)
+            foreach (var pattern in GetInvalidationPatterns(operationName, parameters, userContext))
             {
                 await CacheManager.InvalidateResponsePatternAsync(pattern);
 

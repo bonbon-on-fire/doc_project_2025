@@ -5,7 +5,10 @@ namespace AIChat.Server.Services.Streaming;
 /// </summary>
 public sealed class TrendAnalyzer : ITrendAnalyzer
 {
-    private const double TrendThreshold = 0.5; // Sensitivity for trend detection
+    /// <summary>
+    /// Sensitivity for trend detection
+    /// </summary>
+    private const double TrendThreshold = 0.5;
     private readonly ILogger<TrendAnalyzer> _logger;
 
     public TrendAnalyzer(ILogger<TrendAnalyzer> logger)

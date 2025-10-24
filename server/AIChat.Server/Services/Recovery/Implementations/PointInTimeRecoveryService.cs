@@ -16,7 +16,9 @@ public class PointInTimeRecoveryService : IPointInTimeRecoveryService
     private readonly IStateConsistencyVerifier? _consistencyVerifier;
     private readonly ILogger<PointInTimeRecoveryService> _logger;
 
-    // Background operation tracking
+    /// <summary>
+    /// Background operation tracking
+    /// </summary>
     private readonly ConcurrentDictionary<string, BackgroundRecoveryOperation> _backgroundOperations = new();
 
     /// <summary>

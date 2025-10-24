@@ -122,7 +122,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
     public async Task ProcessResilientStreamAsyncSuccessfulStreamCompletesNormally()
     {
         // Arrange
-        var streamId = "test-stream-1";
+        const string streamId = "test-stream-1";
         var testData = new[] { "chunk1", "chunk2", "chunk3" };
         var grainStream = CreateAsyncEnumerable(testData);
         var formatter = new Func<string, string>(s => $"formatted-{s}");
@@ -157,7 +157,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
     public async Task ProcessResilientStreamAsyncDuplicateStreamIdThrowsException()
     {
         // Arrange
-        var streamId = "test-stream-2";
+        const string streamId = "test-stream-2";
         var grainStream = CreateAsyncEnumerable(stringArray);
         var formatter = new Func<string, string>(s => s);
         var cts = new CancellationTokenSource();
@@ -208,7 +208,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
     public async Task RecoverStreamAsyncNonExistentStreamReturnsFalse()
     {
         // Arrange
-        var streamId = "non-existent";
+        const string streamId = "non-existent";
 
         // Act
         var result = await _manager.RecoverStreamAsync(streamId);
@@ -237,7 +237,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
     public async Task GetStreamMetricsAsyncActiveStreamReturnsMetrics()
     {
         // Arrange
-        var streamId = "test-stream-3";
+        const string streamId = "test-stream-3";
         var cts = new CancellationTokenSource();
         var streamTask = _manager.ProcessResilientStreamAsync(
             streamId,
@@ -281,7 +281,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
     public async Task ResetCircuitBreakerAsyncExistingStreamReturnsTrue()
     {
         // Arrange
-        var streamId = "test-stream-4";
+        const string streamId = "test-stream-4";
         var cts = new CancellationTokenSource();
         var streamTask = _manager.ProcessResilientStreamAsync(
             streamId,
@@ -322,7 +322,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
     public async Task ClearBufferedMessagesAsyncExistingStreamReturnsCount()
     {
         // Arrange
-        var streamId = "test-stream-5";
+        const string streamId = "test-stream-5";
         var cts = new CancellationTokenSource();
         var streamTask = _manager.ProcessResilientStreamAsync(
             streamId,
@@ -425,7 +425,7 @@ public class ResilientStreamManagerTests : IAsyncDisposable
     public async Task ProcessResilientStreamAsyncWithCancellationStopsGracefully()
     {
         // Arrange
-        var streamId = "test-stream-9";
+        const string streamId = "test-stream-9";
         var cts = new CancellationTokenSource();
         var grainStream = CreateInfiniteStream(cts.Token);
         var formatter = new Func<string, string>(s => s);

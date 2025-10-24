@@ -20,7 +20,9 @@ public class ProductionMonitoringService : IHostedService, IDisposable
     private readonly Timer _metricsTimer;
     private readonly Timer _alertTimer;
 
-    // OpenTelemetry Metrics
+    /// <summary>
+    /// OpenTelemetry Metrics
+    /// </summary>
     private readonly Meter _meter;
     private readonly Counter<long> _grainActivationsCounter;
     private readonly Counter<long> _messageRelayCounter;
@@ -38,15 +40,21 @@ public class ProductionMonitoringService : IHostedService, IDisposable
     private readonly Gauge<double> _cpuUsageGauge;
 #pragma warning restore IDE0052
 
-    // Metrics storage for dashboard
+    /// <summary>
+    /// Metrics storage for dashboard
+    /// </summary>
     private readonly ConcurrentDictionary<string, MetricValue> _currentMetrics = new();
     private readonly ConcurrentQueue<HistoricalMetric> _historicalMetrics = new();
     private readonly ConcurrentDictionary<string, AlertState> _alertStates = new();
 
-    // Configuration
+    /// <summary>
+    /// Configuration
+    /// </summary>
     private readonly ProductionMonitoringOptions _options;
 
-    // Performance tracking - using cross-platform alternatives
+    /// <summary>
+    /// Performance tracking - using cross-platform alternatives
+    /// </summary>
     private DateTime _lastCpuTime = DateTime.UtcNow;
     private TimeSpan _lastTotalProcessorTime = TimeSpan.Zero;
 
@@ -294,10 +302,19 @@ public class ProductionMonitoringService : IHostedService, IDisposable
                 UpdateMetric("system.memory.gc_mb", gcMemoryMB, timestamp);
 
                 // Rough estimation of memory pressure
-                var memoryPressure =
-                    gcMemoryMB > 512 ? 80
-                    : gcMemoryMB > 256 ? 60
-                    : 40;
+                int memoryPressure;
+                if (gcMemoryMB > 512)
+                {
+                    memoryPressure = 80;
+                }
+                else if (gcMemoryMB > 256)
+                {
+                    memoryPressure = 60;
+                }
+                else
+                {
+                    memoryPressure = 40;
+                }
                 // Note: Gauge metrics are recorded differently - we'll store in our metrics instead
             }
             catch (Exception ex)

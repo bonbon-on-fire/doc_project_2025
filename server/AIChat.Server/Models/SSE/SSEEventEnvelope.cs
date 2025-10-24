@@ -255,8 +255,11 @@ public class TaskOperationEventEnvelope : SSEEventEnvelope
 /// </summary>
 public class TaskOperationPayload
 {
+    /// <summary>
+    /// &quot;start&quot;, &quot;complete&quot;, &quot;sync&quot;
+    /// </summary>
     [JsonPropertyName("operationType")]
-    public required string OperationType { get; set; } // "start", "complete", "sync"
+    public required string OperationType { get; set; }
 
     [JsonPropertyName("operation")]
     public TaskOperation? Operation { get; set; }
@@ -273,8 +276,11 @@ public class TaskOperationPayload
 /// </summary>
 public class TaskOperation
 {
+    /// <summary>
+    /// &quot;add&quot;, &quot;update&quot;, &quot;delete&quot;, &quot;list&quot;, &quot;manage_notes&quot;
+    /// </summary>
     [JsonPropertyName("type")]
-    public required string Type { get; set; } // "add", "update", "delete", "list", "manage_notes"
+    public required string Type { get; set; }
 
     [JsonPropertyName("function")]
     public required string Function { get; set; }

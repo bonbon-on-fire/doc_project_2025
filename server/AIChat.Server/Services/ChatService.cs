@@ -772,12 +772,6 @@ public class ChatService(ILogger<ChatService> logger, IOptions<AiOptions> aiOpti
     /// The server only persists final complete messages with proper sequences.
     /// </para>
     /// </summary>
-    // TODO: Remove or re-enable when Orleans LLM integration is fully active
-#pragma warning disable IDE0051 // Remove unused private members
-
-    // TODO: Remove or re-enable when Orleans LLM integration is fully active
-#pragma warning disable IDE0051 // Remove unused private members
-
     public async Task<MessageResult> AddUserMessageToExistingChatAsync(
         string chatId,
         string userId,
@@ -911,10 +905,8 @@ public class ChatService(ILogger<ChatService> logger, IOptions<AiOptions> aiOpti
                         UserSequenceNumber = userMessageResult.UserMessage.SequenceNumber,
                     };
             }
-            else
-            {
-                return await PrepareStreamChatAsync(request, storage, modeService);
-            }
+
+            return await PrepareStreamChatAsync(request, storage, modeService);
         }
         catch (Exception ex)
         {
@@ -1026,30 +1018,18 @@ public class ChatService(ILogger<ChatService> logger, IOptions<AiOptions> aiOpti
         throw new NotImplementedException("Use Orleans ChatGrain instead. See comment above.");
     }
 
+    #endregion IChatServiceStreaming Implementation
+
     /// <summary>
-    /// Stream chat completion using callbacks instead of events (for background processing)
+    /// Helper methods
     /// </summary>
-    // TODO: Remove or re-enable when Orleans LLM integration is fully active
-#pragma warning disable IDE0051 // Remove unused private members
-
-    #endregion
-
-    /*
-     * ========================================
-     * PHASE 3 - LLM METHOD REMOVED
-     *
-     * This method previously called IStreamingAgent directly for LLM operations.
-     * LLM functionality has been moved to Orleans ChatGrain.
-     *
-     * MIGRATION PATH:
-     * Old: var response = await GenerateAIResponseAsync(chatId, storage, streamingAgent, ...)
-     * New: var grain = grainFactory.GetGrain<IChatGrain>(chatId);
-     *      var response = await grain.GenerateSimpleResponseAsync(userId, modeId, ...)
-     *
-     * Reference: server/AIChat.Orleans/Grains/ChatGrain.cs
-     * ========================================
-     */
-    // Helper methods
+    /// <param name="chatId"></param>
+    /// <param name="storage"></param>
+    /// <param name="streamingAgent"></param>
+    /// <param name="modeService"></param>
+    /// <param name="modeId"></param>
+    /// <param name="userId"></param>
+    /// <returns></returns>
     private static async Task<string> GenerateAIResponseAsync(
         string chatId,
         IChatStorage storage,
@@ -1067,8 +1047,7 @@ public class ChatService(ILogger<ChatService> logger, IOptions<AiOptions> aiOpti
 
     private static string GenerateChatTitle(string firstMessage)
     {
-        var title = firstMessage.Length > 50 ? firstMessage[..47] + "..." : firstMessage;
-        return title;
+        return firstMessage.Length > 50 ? firstMessage[..47] + "..." : firstMessage;
     }
 
     #region IToolResultCallback Implementation - TODO: Refactor for stateless design
@@ -1121,6 +1100,6 @@ public class ChatService(ILogger<ChatService> logger, IOptions<AiOptions> aiOpti
         await Task.CompletedTask;
     }
 
-    #endregion
+    #endregion IToolResultCallback Implementation - TODO: Refactor for stateless design
 
 }

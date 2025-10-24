@@ -631,13 +631,70 @@ Run format-code.ps1 regularly during development, not just before commit.
 ### 3. Fix Warnings Immediately
 Don't accumulate warnings—fix them as you encounter them.
 
-### 4. Understand Each Warning
+### 4. NEVER Suppress Warnings Without Fixing The Root Cause
+
+**🚫 CRITICAL: Avoid `#pragma warning disable`**
+
+Using `#pragma warning disable` to suppress warnings without fixing the underlying issue is considered **code smell** and creates technical debt. It hides problems instead of solving them.
+
+**BAD Example (Don't do this):**
+```csharp
+// TODO: Remove or re-enable when Orleans LLM integration is fully active
+#pragma warning disable IDE0051 // Remove unused private members
+
+private void UnusedMethod()
+{
+    // This method is no longer needed but we're hiding the warning
+}
+```
+
+**GOOD Example (Fix the actual issue):**
+```csharp
+// Method removed entirely since it's no longer needed
+// Old Orleans LLM integration is now handled by ChatGrain
+```
+
+**When pragma suppression seems necessary:**
+
+1. **First, try to fix the issue properly:**
+   - IDE0051 (unused member) → Remove the member entirely
+   - IDE0055 (formatting) → Run the formatter to fix formatting
+   - CS0618 (obsolete API) → Update to the non-obsolete API
+   - IDE0052 (unread field) → Either use the field or remove it
+
+2. **If the warning is truly inappropriate:**
+   - Use `.editorconfig` to downgrade severity globally or per-file
+   - Document WHY the rule doesn't apply
+   - Examples of legitimate cases:
+     - Interface members required but not used yet
+     - Low-level performance code that needs specific patterns
+     - Test mocks that intentionally violate normal rules
+
+3. **Never suppress to avoid fixing formatting or code quality issues**
+   - Use auto-fixers: `roslynator fix`, `dotnet format`
+   - Let the tools do the work
+   - If a fixer creates broken code, report it and fix manually
+
+**Consequences of excessive suppression:**
+- ❌ Warnings accumulate and become unmanageable
+- ❌ Real issues get hidden among suppressed warnings
+- ❌ Code quality degrades over time
+- ❌ Team members stop trusting the warning system
+- ❌ Technical debt grows exponentially
+
+**The clean-builds philosophy:**
+- ✅ Zero warnings through proper fixes, not suppression
+- ✅ Auto-fixers do the heavy lifting
+- ✅ Manual fixes for cases that can't be automated
+- ✅ `.editorconfig` for project-wide policy, not per-file suppression
+
+### 5. Understand Each Warning
 Read the warning message and URL before dismissing. Warnings usually indicate real issues.
 
-### 5. Use the Grouped Output
+### 6. Use the Grouped Output
 The script groups warnings by code, making it easy to batch-fix similar issues.
 
-### 6. Validate Package Versions
+### 7. Validate Package Versions
 
 Run package validation before committing, especially if you've updated any dependencies:
 ```pwsh
@@ -646,7 +703,7 @@ pwsh scripts/validate-package-versions.ps1
 
 Fix critical issues (CRITICAL severity) before proceeding. Warnings can be addressed during the next maintenance window.
 
-### 7. Enable Code Style Enforcement During Build
+### 8. Enable Code Style Enforcement During Build
 
 To catch IDE0005 (unused imports) and other style violations during build, add this to your `.csproj` files:
 

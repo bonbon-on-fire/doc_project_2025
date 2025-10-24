@@ -58,7 +58,7 @@ public sealed class StateRecoveryDetector : IStateRecoveryDetector
                 grainId, grainType);
 
             // Check if state is missing or null
-            if (currentState == null)
+            if (EqualityComparer<T?>.Default.Equals(currentState, default(T?)))
             {
                 _logger.LogInformation("State is missing for grain {GrainId}, recovery needed", grainId);
                 return StateRecoveryNeed.MissingState;
@@ -129,7 +129,7 @@ public sealed class StateRecoveryDetector : IStateRecoveryDetector
         {
             var issues = new List<string>();
 
-            if (state == null)
+            if (EqualityComparer<T?>.Default.Equals(state, default(T?)))
             {
                 return StateValidationResult.Invalid(
                     StateRecoveryNeed.MissingState,
@@ -150,13 +150,9 @@ public sealed class StateRecoveryDetector : IStateRecoveryDetector
                 var stateVersion = GetStateVersion(state);
 
                 if (stateVersion < 0)
-                {
                     issues.Add("State version is negative");
-                }
                 else if (stateVersion > streamVersion)
-                {
                     issues.Add($"State version {stateVersion} exceeds stream version {streamVersion}");
-                }
             }
 
             if (issues.Count == 0)
@@ -208,7 +204,7 @@ public sealed class StateRecoveryDetector : IStateRecoveryDetector
 
         try
         {
-            if (state == null)
+            if (EqualityComparer<T?>.Default.Equals(state, default(T?)))
             {
                 return false;
             }
@@ -396,7 +392,7 @@ public sealed class StateRecoveryDetector : IStateRecoveryDetector
     /// <returns>The version number, or -1 if not found</returns>
     private static long GetStateVersion<T>(T state)
     {
-        if (state == null)
+        if (EqualityComparer<T?>.Default.Equals(state, default(T?)))
         {
             return -1;
         }
@@ -429,7 +425,7 @@ public sealed class StateRecoveryDetector : IStateRecoveryDetector
     /// <returns>True if structure is valid, false otherwise</returns>
     private static bool ValidateStateStructure<T>(T state)
     {
-        if (state == null)
+        if (EqualityComparer<T?>.Default.Equals(state, default(T?)))
         {
             return false;
         }

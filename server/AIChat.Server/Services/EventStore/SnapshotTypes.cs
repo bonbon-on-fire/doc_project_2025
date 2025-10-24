@@ -612,44 +612,44 @@ public enum SnapshotSortOrder
     /// <summary>
     /// Sort by timestamp ascending (oldest first).
     /// </summary>
-    TimestampAscending,
+    TimestampAscending = 0,
 
     /// <summary>
     /// Sort by timestamp descending (newest first).
     /// </summary>
-    TimestampDescending,
+    TimestampDescending = 1,
 
     /// <summary>
     /// Sort by version ascending (lowest version first).
     /// Only valid for single-stream queries.
     /// </summary>
-    VersionAscending,
+    VersionAscending = 2,
 
     /// <summary>
     /// Sort by version descending (highest version first).
     /// Only valid for single-stream queries.
     /// </summary>
-    VersionDescending,
+    VersionDescending = 3,
 
     /// <summary>
     /// Sort by compressed size ascending (smallest first).
     /// </summary>
-    SizeAscending,
+    SizeAscending = 4,
 
     /// <summary>
     /// Sort by compressed size descending (largest first).
     /// </summary>
-    SizeDescending,
+    SizeDescending = 5,
 
     /// <summary>
     /// Sort by compression ratio ascending (least compressed first).
     /// </summary>
-    CompressionRatioAscending,
+    CompressionRatioAscending = 6,
 
     /// <summary>
     /// Sort by compression ratio descending (most compressed first).
     /// </summary>
-    CompressionRatioDescending
+    CompressionRatioDescending = 7
 }
 
 /// <summary>
@@ -660,82 +660,82 @@ public enum SnapshotErrorCode
     /// <summary>
     /// No error occurred.
     /// </summary>
-    None,
+    None = 0,
 
     /// <summary>
     /// The specified snapshot was not found.
     /// </summary>
-    SnapshotNotFound,
+    SnapshotNotFound = 1,
 
     /// <summary>
     /// The specified stream was not found.
     /// </summary>
-    StreamNotFound,
+    StreamNotFound = 2,
 
     /// <summary>
     /// Snapshot data validation failed.
     /// </summary>
-    ValidationError,
+    ValidationError = 3,
 
     /// <summary>
     /// A snapshot with the same ID already exists.
     /// </summary>
-    DuplicateSnapshot,
+    DuplicateSnapshot = 4,
 
     /// <summary>
     /// Snapshot serialization failed.
     /// </summary>
-    SerializationError,
+    SerializationError = 5,
 
     /// <summary>
     /// Snapshot deserialization failed.
     /// </summary>
-    DeserializationError,
+    DeserializationError = 6,
 
     /// <summary>
     /// Snapshot compression failed.
     /// </summary>
-    CompressionError,
+    CompressionError = 7,
 
     /// <summary>
     /// Snapshot decompression failed.
     /// </summary>
-    DecompressionError,
+    DecompressionError = 8,
 
     /// <summary>
     /// Content hash verification failed (data corruption detected).
     /// </summary>
-    IntegrityError,
+    IntegrityError = 9,
 
     /// <summary>
     /// Storage backend is unavailable.
     /// </summary>
-    StorageUnavailable,
+    StorageUnavailable = 10,
 
     /// <summary>
     /// The operation timed out.
     /// </summary>
-    TimeoutError,
+    TimeoutError = 11,
 
     /// <summary>
     /// An internal error occurred.
     /// </summary>
-    InternalError,
+    InternalError = 12,
 
     /// <summary>
     /// Network connectivity error.
     /// </summary>
-    NetworkError,
+    NetworkError = 13,
 
     /// <summary>
     /// Insufficient storage space.
     /// </summary>
-    InsufficientStorage,
+    InsufficientStorage = 14,
 
     /// <summary>
     /// Version conflict detected.
     /// </summary>
-    VersionConflict
+    VersionConflict = 15
 }
 
 /// <summary>

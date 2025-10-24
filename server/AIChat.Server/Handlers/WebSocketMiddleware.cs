@@ -25,7 +25,9 @@ public class WebSocketMiddleware
     private readonly ILogger<WebSocketMiddleware> _logger;
     private static readonly ActivitySource ActivitySource = new("AIChat.Server.WebSocketMiddleware");
 
-    // Configuration
+    /// <summary>
+    /// Configuration
+    /// </summary>
     private readonly WebSocketMiddlewareOptions _options;
 
     /// <summary>
@@ -284,7 +286,7 @@ public class WebSocketMiddleware
                "unknown";
     }
 
-    #endregion
+    #endregion Private Helper Methods
 }
 
 /// <summary>

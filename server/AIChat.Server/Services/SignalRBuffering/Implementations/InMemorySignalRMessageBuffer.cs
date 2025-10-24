@@ -28,11 +28,15 @@ public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDispo
     private readonly IBufferOverflowStrategy _overflowStrategy;
     private readonly ILogger<InMemorySignalRMessageBuffer> _logger;
 
-    // Thread-safe message storage
+    /// <summary>
+    /// Thread-safe message storage
+    /// </summary>
     private readonly ConcurrentQueue<SignalRMessage> _messageQueue = new();
     private readonly ConcurrentDictionary<string, SignalRMessage> _messageIndex = new();
 
-    // Metrics and health tracking
+    /// <summary>
+    /// Metrics and health tracking
+    /// </summary>
     private long _totalEnqueued;
     private long _totalDelivered;
     private long _totalDropped;
@@ -45,10 +49,14 @@ public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDispo
     private readonly ConcurrentDictionary<DeliveryStatus, long> _deliveryStatusCounts = new();
     private readonly ConcurrentDictionary<BufferOperationResult, long> _operationResultCounts = new();
 
-    // Event tracking
+    /// <summary>
+    /// Event tracking
+    /// </summary>
     private volatile bool _disposed;
 
-    // Performance tracking
+    /// <summary>
+    /// Performance tracking
+    /// </summary>
     private readonly object _metricsLock = new();
     private DateTime _lastMetricsUpdate = DateTime.UtcNow;
     private double _currentMessagesPerSecond;
@@ -509,7 +517,7 @@ public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDispo
         return Task.CompletedTask;
     }
 
-    #endregion
+    #endregion ISignalRMessageBuffer Implementation
 
     #region Events
 
@@ -528,7 +536,7 @@ public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDispo
     /// <inheritdoc />
     public event EventHandler<BufferHealthChangedEventArgs>? HealthStatusChanged;
 
-    #endregion
+    #endregion Events
 
     #region Private Helper Methods
 
@@ -615,8 +623,7 @@ public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDispo
 
             if (timeSinceLastUpdate.TotalSeconds >= 1.0) // Update every second
             {
-                var recentOps = _recentOperations.Count(op => op >= now.AddSeconds(-1));
-                _currentMessagesPerSecond = recentOps;
+                _currentMessagesPerSecond = _recentOperations.Count(op => op >= now.AddSeconds(-1));
 
                 if (_currentMessagesPerSecond > _peakMessagesPerSecond)
                 {
@@ -651,12 +658,12 @@ public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDispo
 
     private double CalculateErrorRate()
     {
-        var recentFailures = _deliveryStatusCounts
-            .Where(kvp => kvp.Key is DeliveryStatus.Failed or DeliveryStatus.Timeout)
-            .Sum(kvp => kvp.Value);
+        
 
         // Simple hourly rate calculation
-        return recentFailures; // TODO: Implement proper time-based calculation
+        return _deliveryStatusCounts
+            .Where(kvp => kvp.Key is DeliveryStatus.Failed or DeliveryStatus.Timeout)
+            .Sum(kvp => kvp.Value); // TODO: Implement proper time-based calculation
     }
 
     private Dictionary<DeliveryStatus, long> GetDeliveryStatusBreakdown()
@@ -691,7 +698,7 @@ public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDispo
         }
     }
 
-    #endregion
+    #endregion Private Helper Methods
 
     #region Event Raising Methods
 
@@ -755,7 +762,7 @@ public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDispo
         }
     }
 
-    #endregion
+    #endregion Event Raising Methods
 
     #region IDisposable Implementation
 
@@ -800,5 +807,5 @@ public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDispo
         ObjectDisposedException.ThrowIf(_disposed, this);
     }
 
-    #endregion
+    #endregion IDisposable Implementation
 }

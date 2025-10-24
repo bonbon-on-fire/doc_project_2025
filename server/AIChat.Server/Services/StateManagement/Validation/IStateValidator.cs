@@ -184,22 +184,22 @@ public enum ValidationSeverity
     /// <summary>
     /// Informational - does not prevent operation.
     /// </summary>
-    Info,
+    Info = 0,
 
     /// <summary>
     /// Warning - logged but does not prevent operation.
     /// </summary>
-    Warning,
+    Warning = 1,
 
     /// <summary>
     /// Error - prevents operation from proceeding.
     /// </summary>
-    Error,
+    Error = 2,
 
     /// <summary>
     /// Critical - indicates a serious system issue.
     /// </summary>
-    Critical
+    Critical = 3
 }
 
 /// <summary>

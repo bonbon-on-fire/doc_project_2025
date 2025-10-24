@@ -262,7 +262,7 @@ public sealed partial class SqliteSnapshotStore : ISnapshotQuery
         }
     }
 
-    #endregion
+    #endregion ISnapshotQuery Implementation
 
     #region Query Helper Methods
 
@@ -473,5 +473,5 @@ public sealed partial class SqliteSnapshotStore : ISnapshotQuery
         return result is long count ? (int)count : 0;
     }
 
-    #endregion
+    #endregion Query Helper Methods
 }

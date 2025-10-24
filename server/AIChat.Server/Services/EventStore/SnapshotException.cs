@@ -613,25 +613,25 @@ public enum SnapshotCorruptionType
     /// <summary>
     /// Content hash mismatch detected.
     /// </summary>
-    ContentHashMismatch,
+    ContentHashMismatch = 0,
 
     /// <summary>
     /// Compression format is invalid or corrupted.
     /// </summary>
-    CompressionCorruption,
+    CompressionCorruption = 1,
 
     /// <summary>
     /// Serialized data is invalid or corrupted.
     /// </summary>
-    SerializationCorruption,
+    SerializationCorruption = 2,
 
     /// <summary>
     /// Metadata is inconsistent or corrupted.
     /// </summary>
-    MetadataCorruption,
+    MetadataCorruption = 3,
 
     /// <summary>
     /// Storage-level corruption detected.
     /// </summary>
-    StorageCorruption
+    StorageCorruption = 4
 }

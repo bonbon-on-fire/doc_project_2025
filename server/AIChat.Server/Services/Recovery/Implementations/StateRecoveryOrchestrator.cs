@@ -511,5 +511,5 @@ public sealed class StateRecoveryOrchestrator : IStateRecoveryOrchestrator
             correlationId: request.CorrelationId);
     }
 
-    #endregion
+    #endregion Private Helper Methods
 }

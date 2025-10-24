@@ -18,7 +18,9 @@ public class CircuitBreakerDualModeRouter : IDualModeRouter
     private readonly ILogger<CircuitBreakerDualModeRouter> _logger;
     private static readonly ActivitySource ActivitySource = new("AIChat.Server.CircuitBreakerRouter");
 
-    // Circuit breaker metrics
+    /// <summary>
+    /// Circuit breaker metrics
+    /// </summary>
     private long _circuitOpenCount;
     private long _circuitHalfOpenCount;
     private long _circuitClosedCount;
@@ -385,7 +387,7 @@ public class CircuitBreakerDualModeRouter : IDualModeRouter
         };
     }
 
-    #endregion
+    #endregion Private Helper Methods
 }
 
 /// <summary>

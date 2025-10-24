@@ -50,13 +50,9 @@ public sealed class HybridStrategy : IOverflowStrategy
             lock (_statsLock)
             {
                 if (result.Success)
-                {
                     _successfulHandlings++;
-                }
                 else
-                {
                     _failedHandlings++;
-                }
             }
 
             // Wrap result to indicate hybrid action
@@ -81,13 +77,9 @@ public sealed class HybridStrategy : IOverflowStrategy
         lock (_statsLock)
         {
             if (dropResult.Success)
-            {
                 _successfulHandlings++;
-            }
             else
-            {
                 _failedHandlings++;
-            }
         }
 
         // Wrap result to indicate hybrid action

@@ -348,52 +348,52 @@ public enum RecoveryStrategy
     /// <summary>
     /// Retry the operation with exponential backoff.
     /// </summary>
-    RetryWithDelay,
+    RetryWithDelay = 0,
 
     /// <summary>
     /// Correct the data based on validation rules.
     /// </summary>
-    CorrectData,
+    CorrectData = 1,
 
     /// <summary>
     /// Use default or fallback values for invalid properties.
     /// </summary>
-    UseDefaultValue,
+    UseDefaultValue = 2,
 
     /// <summary>
     /// Remove invalid properties from the entity.
     /// </summary>
-    RemoveInvalidProperties,
+    RemoveInvalidProperties = 3,
 
     /// <summary>
     /// Transform the data to match validation requirements.
     /// </summary>
-    TransformData,
+    TransformData = 4,
 
     /// <summary>
     /// Skip validation for this specific operation.
     /// </summary>
-    SkipValidation,
+    SkipValidation = 5,
 
     /// <summary>
     /// Rollback the operation to previous state.
     /// </summary>
-    Rollback,
+    Rollback = 6,
 
     /// <summary>
     /// Requires manual intervention to resolve.
     /// </summary>
-    ManualIntervention,
+    ManualIntervention = 7,
 
     /// <summary>
     /// Split the operation into smaller, valid operations.
     /// </summary>
-    SplitOperation,
+    SplitOperation = 8,
 
     /// <summary>
     /// Merge conflicting data using predefined rules.
     /// </summary>
-    MergeData
+    MergeData = 9
 }
 
 /// <summary>
@@ -404,22 +404,22 @@ public enum RecoveryRiskLevel
     /// <summary>
     /// Low risk - unlikely to cause issues.
     /// </summary>
-    Low,
+    Low = 0,
 
     /// <summary>
     /// Medium risk - may cause minor issues.
     /// </summary>
-    Medium,
+    Medium = 1,
 
     /// <summary>
     /// High risk - may cause significant issues.
     /// </summary>
-    High,
+    High = 2,
 
     /// <summary>
     /// Critical risk - may cause system-wide issues.
     /// </summary>
-    Critical
+    Critical = 3
 }
 
 /// <summary>

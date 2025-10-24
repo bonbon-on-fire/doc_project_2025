@@ -442,12 +442,9 @@ public abstract class StateValidatorBase<T> : IStateValidator<T> where T : class
     private static List<ValidationRuleInfo> GetDataAnnotationRules()
     {
         var rules = new List<ValidationRuleInfo>();
-        var properties = typeof(T).GetProperties();
-
-        foreach (var property in properties)
+        foreach (var property in typeof(T).GetProperties())
         {
-            var attributes = property.GetCustomAttributes<ValidationAttribute>();
-            foreach (var attribute in attributes)
+            foreach (var attribute in property.GetCustomAttributes<ValidationAttribute>())
             {
                 var ruleId = $"{property.Name}_{attribute.GetType().Name}";
                 var name = $"{property.Name} {attribute.GetType().Name.Replace("Attribute", "")}";
@@ -569,13 +566,9 @@ internal sealed class ValidationMetricsCollector
         {
             _totalValidations++;
             if (isSuccessful)
-            {
                 _successfulValidations++;
-            }
             else
-            {
                 _failedValidations++;
-            }
 
             var durationMs = duration.TotalMilliseconds;
             _totalDurationMs += durationMs;

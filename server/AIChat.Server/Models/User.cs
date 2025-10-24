@@ -29,6 +29,8 @@ public class User
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-    // Navigation properties
+    /// <summary>
+    /// Navigation properties
+    /// </summary>
     public virtual ICollection<Chat> Chats { get; set; } = [];
 }

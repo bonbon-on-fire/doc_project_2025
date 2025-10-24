@@ -22,7 +22,6 @@ public class ModeSseIntegrationTests : BaseApiTest
 
     public ModeSseIntegrationTests(WebApplicationFactory<Program> factory) : base(factory)
     {
-
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,
@@ -94,7 +93,7 @@ public class ModeSseIntegrationTests : BaseApiTest
         // Arrange
         var client = Factory.CreateClient();
         // Use seeded demo user for mode tests to ensure user exists in database
-        var userId = "user-123"; // TestHelpers.GenerateUniqueUserId("sse-custom-mode-filter");
+        const string userId = "user-123"; // TestHelpers.GenerateUniqueUserId("sse-custom-mode-filter");
         ModeDto? createdMode = null;
 
         try
@@ -172,8 +171,7 @@ public class ModeSseIntegrationTests : BaseApiTest
             _ = events.Should().NotBeEmpty();
 
             // Verify that tool calls (if any) are limited to the mode's tools
-            var toolEvents = events.Where(e => e.EventType == "toolcall").ToList();
-            foreach (var toolEvent in toolEvents)
+            foreach (var toolEvent in events.Where(e => e.EventType == "toolcall").ToList())
             {
                 if (!string.IsNullOrEmpty(toolEvent.Data))
                 {
