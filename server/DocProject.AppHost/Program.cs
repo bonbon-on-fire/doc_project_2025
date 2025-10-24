@@ -3,6 +3,39 @@
 // Task 6: Full AppHost configuration with all services
 
 var builder = DistributedApplication.CreateBuilder(args);
+var config = builder.Configuration;
+
+// ========================================================================
+// UNIFIED PORT CONFIGURATION
+// ========================================================================
+// Single source of truth for all service ports across environments
+// Defined in AIChat.Server/appsettings.json under "ServicePorts"
+
+// Validate and load port configuration
+var apiServerPortStr = config["ServicePorts:ApiServer:Development"];
+if (string.IsNullOrEmpty(apiServerPortStr))
+{
+    throw new InvalidOperationException(
+        "❌ ServicePorts:ApiServer:Development not found in appsettings.json. " +
+        "Unified port configuration is required for AppHost operation.");
+}
+
+// Parse port values with validation and invariant culture
+var apiServerPort = int.Parse(apiServerPortStr, System.Globalization.CultureInfo.InvariantCulture);
+var clientPort = int.Parse(config["ServicePorts:Client:Development"]
+    ?? throw new InvalidOperationException("ServicePorts:Client:Development not configured"),
+    System.Globalization.CultureInfo.InvariantCulture);
+var orleansHostHttpPort = int.Parse(config["ServicePorts:OrleansHost:Http:Development"]
+    ?? throw new InvalidOperationException("ServicePorts:OrleansHost:Http:Development not configured"),
+    System.Globalization.CultureInfo.InvariantCulture);
+
+Console.WriteLine("═════════════════════════════════════════════════════════");
+Console.WriteLine("🔌 UNIFIED PORT CONFIGURATION");
+Console.WriteLine("═════════════════════════════════════════════════════════");
+Console.WriteLine($"  API Server:   http://localhost:{apiServerPort}");
+Console.WriteLine($"  Client:       http://localhost:{clientPort}");
+Console.WriteLine($"  Orleans Host: http://localhost:{orleansHostHttpPort}");
+Console.WriteLine("═════════════════════════════════════════════════════════");
 
 // ========================================================================
 // INFRASTRUCTURE RESOURCES
@@ -23,25 +56,25 @@ var database = builder.AddSqlite("sqlite-server");
 
 // Orleans Host as separate service (no longer embedded in AIChat.Server)
 // This is a major architectural change - Orleans runs independently
+// Orleans.Host defines its own endpoints in launchSettings.json (55500 HTTPS, 55501 HTTP)
+// No need to override via AppHost - AppHost just orchestrates the service
 var orleansHost = builder.AddProject("orleans-host", "../AIChat.Orleans.Host/AIChat.Orleans.Host.csproj")
     .WithReference(database)
-    .WithHttpEndpoint(port: 11111, name: "silo")        // Silo port for cluster communication
-    .WithHttpEndpoint(port: 30000, name: "gateway")     // Gateway port for client connections
-    .WithHttpEndpoint(port: 5100, name: "monitoring")   // Monitoring API for health checks
     .WaitFor(database);                                  // Ensure DB ready first
 
 // ========================================================================
 // BACKEND API SERVER (ORLEANS CLIENT)
 // ========================================================================
 
-// AIChat.Server - Now Orleans CLIENT only (silo code will be removed in Task 7)
+// AIChat.Server - Now Orleans CLIENT only (silo code removed in Task 7)
 // Server connects to Orleans Host as a client, no longer hosts the silo
+// Ports are explicitly managed via unified configuration
+// Use environment variable to override launchSettings (avoids endpoint conflicts)
+var aspnetcoreUrls = $"http://localhost:{apiServerPort}";
 var apiServer = builder.AddProject("api-server", "../AIChat.Server/AIChat.Server.csproj")
     .WithReference(database)
     .WithReference(orleansHost)
-    .WithEnvironment("Orleans__GatewayPort", orleansHost.GetEndpoint("gateway"))
-    .WithEnvironment("ASPNETCORE_URLS", "http://+:5099")
-    .WithHttpEndpoint(port: 5099, name: "http")
+    .WithEnvironment("ASPNETCORE_URLS", aspnetcoreUrls)
     .WaitFor(orleansHost)               // Orleans must be ready for client connection
     .WaitFor(database);                 // Database must be ready for queries
 
@@ -50,11 +83,14 @@ var apiServer = builder.AddProject("api-server", "../AIChat.Server/AIChat.Server
 // ========================================================================
 
 // SvelteKit client with automatic API URL configuration
-// Aspire injects environment variables for seamless service discovery
-var client = builder.AddNpmApp("client", "../client", "dev")
+// API URL is now explicitly injected from unified port configuration
+// This replaces reliance on apiServer.GetEndpoint() which could fail
+var viteApiUrl = $"http://localhost:{apiServerPort}";
+var client = builder.AddNpmApp("client", "../../client", "dev")
     .WithReference(apiServer)
-    .WithHttpEndpoint(env: "PORT", port: 5173)
-    .WithEnvironment("VITE_API_URL", apiServer.GetEndpoint("http"))
+    .WithHttpEndpoint(env: "PORT", port: clientPort)
+    .WithEnvironment("VITE_API_URL", viteApiUrl)
+    .WithEnvironment("ASPIRE_ENVIRONMENT", "Development")  // Signal to client we're in AppHost
     .WaitFor(apiServer);                // API must be ready before client starts
 
 // ========================================================================

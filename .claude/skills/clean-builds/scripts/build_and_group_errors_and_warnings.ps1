@@ -321,7 +321,7 @@ try {
     $issues = Parse-BuildOutput -BuildOutput $allOutput
 
     if ($issues.Count -eq 0) {
-        Write-ColorOutput "[OK] No issues found in build output!" $SuccessColor
+        Write-ColorOutput "✅ No issues found in build output!" $SuccessColor
         return
     }
 
@@ -382,24 +382,24 @@ try {
 
     if ($errorCount -gt 0) {
         Write-ColorOutput ""
-        Write-ColorOutput "[ERROR] VALIDATION FAILED: $errorCount error(s) found" $ErrorColor
+        Write-ColorOutput "❌ VALIDATION FAILED: $errorCount error(s) found" $ErrorColor
         exit 1
     }
 
     if ($warningCount -gt 0) {
         Write-ColorOutput ""
-        Write-ColorOutput "[WARNING] VALIDATION FAILED: $warningCount warning(s) found in project code" $WarningColor
+        Write-ColorOutput "⚠️  VALIDATION FAILED: $warningCount warning(s) found in project code" $WarningColor
         Write-ColorOutput "All warnings must be resolved before proceeding" $WarningColor
         exit 1
     }
 
     if ($submoduleWarningCount -gt 0) {
         Write-ColorOutput ""
-        Write-ColorOutput "[INFO] Note: $submoduleWarningCount warning(s) found in external submodules (not counted)" $InfoColor
+        Write-ColorOutput "ℹ️  Note: $submoduleWarningCount warning(s) found in external submodules (not counted)" $InfoColor
     }
 
     Write-ColorOutput ""
-    Write-ColorOutput "[OK] VALIDATION PASSED: No errors or warnings found" $SuccessColor
+    Write-ColorOutput "✅ VALIDATION PASSED: No errors or warnings found" $SuccessColor
     exit 0
 
 }

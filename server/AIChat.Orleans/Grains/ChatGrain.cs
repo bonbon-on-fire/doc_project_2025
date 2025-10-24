@@ -1,4 +1,6 @@
 using System.Text.Json;
+using AchieveAi.LmDotnetTools.LmCore.Agents;
+using AchieveAi.LmDotnetTools.LmCore.Messages;
 using AIChat.Orleans.Configuration;
 using AIChat.Orleans.Contracts;
 using AIChat.Orleans.Metrics;
@@ -25,6 +27,7 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
     private readonly OrleansGrainConfiguration _configuration;
     private readonly IOrleansMetricsCollector _metricsCollector;
     private readonly ISignalRBroadcastService _signalRBroadcast;
+    private readonly IStreamingAgent? _streamingAgent;
 
     private IGrainTimer? _cleanupTimer;
     private IGrainTimer? _metricsTimer;
@@ -46,17 +49,20 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
     /// <param name="configuration">Configuration for Orleans grains</param>
     /// <param name="metricsCollector">Metrics collector for performance tracking</param>
     /// <param name="signalRBroadcast">SignalR broadcast service for real-time messaging (optional)</param>
+    /// <param name="streamingAgent">LLM streaming agent for real-time AI responses (optional)</param>
     public ChatGrain(
         ILogger<ChatGrain> logger,
         IOptionsSnapshot<OrleansGrainConfiguration> configuration,
         IOrleansMetricsCollector metricsCollector,
-        ISignalRBroadcastService? signalRBroadcast = null
+        ISignalRBroadcastService? signalRBroadcast = null,
+        IStreamingAgent? streamingAgent = null
     )
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _configuration = configuration?.Value ?? new OrleansGrainConfiguration();
         _metricsCollector = metricsCollector ?? throw new ArgumentNullException(nameof(metricsCollector));
         _signalRBroadcast = signalRBroadcast ?? new NullSignalRBroadcastService();
+        _streamingAgent = streamingAgent;
     }
 
     /// <inheritdoc />
@@ -2898,6 +2904,322 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
         return true; // Always return true since we perform recovery
     }
 
+
+    #region LLM Streaming Integration (Phase 2)
+
+    /// <summary>
+    /// Processes a chat message with real-time LLM streaming.
+    /// This method initiates background LLM processing and returns immediately with a stream handle.
+    /// </summary>
+    /// <param name="message">The user message to process</param>
+    /// <param name="cancellationToken">Cancellation token for operation control</param>
+    /// <returns>Stream handle for tracking the LLM response stream</returns>
+    public async Task<StreamHandle> ProcessMessageWithLLMAsync(
+        ChatMessage message,
+        CancellationToken cancellationToken = default)
+    {
+        using var activity = OrleansActivitySource.StartGrainActivity("ChatGrain", nameof(ProcessMessageWithLLMAsync), this.GetPrimaryKeyString());
+
+        try
+        {
+            // Validate IStreamingAgent is available
+            if (_streamingAgent == null)
+            {
+                throw new InvalidOperationException(
+                    "IStreamingAgent is not configured. Ensure Orleans Host has registered IStreamingAgent in DI.");
+            }
+
+            // Step 1: Persist user message via existing pipeline
+            var messageResult = await ProcessMessageAsync(message, cancellationToken);
+
+            if (!messageResult.Success)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to persist user message: {messageResult.ErrorMessage}");
+            }
+
+            // Step 2: Create stream handle
+            var streamHandle = new StreamHandle
+            {
+                StreamId = Guid.NewGuid().ToString(),
+                ChatId = State.ChatMetadata.ChatId,
+                OrleansStreamId = Guid.NewGuid(),
+                Status = StreamStatus.Active,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            // Step 3: Start background LLM streaming task
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await StreamFromLLMAsync(message, streamHandle.StreamId, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "LLM streaming failed for chat {ChatId}, stream {StreamId}",
+                        State.ChatMetadata.ChatId, streamHandle.StreamId);
+
+                    // Notify error via UserGrain
+                    await NotifyStreamErrorAsync(streamHandle.StreamId, ex);
+                }
+            }, CancellationToken.None); // Don't cancel background task with request cancellation
+
+            _logger.LogInformation(
+                "Started LLM streaming for chat {ChatId}, stream {StreamId}",
+                State.ChatMetadata.ChatId, streamHandle.StreamId);
+
+            OrleansActivitySource.SetSuccess(activity);
+            return streamHandle;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to initiate LLM streaming for chat {ChatId}", State.ChatMetadata.ChatId);
+            OrleansActivitySource.SetError(activity, ex);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Streams tokens from LLM and broadcasts them to UserGrain.
+    /// This method accumulates the response, persists state periodically, and notifies completion.
+    /// </summary>
+    /// <param name="userMessage">The user message that triggered the LLM call</param>
+    /// <param name="streamId">Unique stream identifier for tracking</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    private async Task StreamFromLLMAsync(
+        ChatMessage userMessage,
+        string streamId,
+        CancellationToken cancellationToken = default)
+    {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        // Create assistant message to accumulate content
+        var assistantMessage = new ChatMessage
+        {
+            Id = Guid.NewGuid().ToString(),
+            ChatId = State.ChatMetadata.ChatId,
+            UserId = "assistant",
+            Role = "assistant",
+            Content = string.Empty,
+            IsStreaming = true,
+            Timestamp = DateTime.UtcNow
+        };
+
+        var sequenceNumber = 0;
+        var userId = State.ChatMetadata.CreatedBy; // Assume single-user chat for Phase 2
+
+        try
+        {
+            // Build LLM context from chat history
+            var context = BuildLLMContext();
+
+            // Stream tokens from LLM
+            var tokenStream = await _streamingAgent!.GenerateReplyStreamingAsync(
+                context,
+                options: null,
+                cancellationToken: cancellationToken);
+
+            await foreach (var token in tokenStream.WithCancellation(cancellationToken))
+            {
+                // Extract content from IMessage
+                var content = (token as ICanGetText)?.GetText() ?? string.Empty;
+                if (string.IsNullOrEmpty(content))
+                {
+                    continue; // Skip empty tokens
+                }
+
+                assistantMessage.Content += content;
+                sequenceNumber++;
+
+                // Broadcast chunk to UserGrain
+                var userGrain = GrainFactory.GetGrain<IUserGrain>(userId);
+                await userGrain.RelayStreamChunk(new StreamChunk
+                {
+                    OperationId = streamId,
+                    ChatId = State.ChatMetadata.ChatId,
+                    Content = content,
+                    ChunkIndex = sequenceNumber,
+                    IsComplete = false,
+                    MessageId = assistantMessage.Id,
+                    Type = StreamChunkType.Delta,
+                    Timestamp = DateTime.UtcNow
+                });
+
+                // Periodic state persistence (every 10 tokens)
+                if (sequenceNumber % 10 == 0)
+                {
+                    lock (_stateLock)
+                    {
+                        State.ActiveStreams[streamId] = new StreamState
+                        {
+                            StreamId = streamId,
+                            ChatId = State.ChatMetadata.ChatId,
+                            UserId = userId,
+                            PartialMessage = assistantMessage.Content,
+                            LastActivity = DateTime.UtcNow,
+                            Status = StreamStatus.Active,
+                            StartedAt = assistantMessage.Timestamp
+                        };
+                    }
+                    await WriteStateAsync();
+                }
+
+                // Record metrics
+                await _metricsCollector.RecordGrainOperationAsync(
+                    this.GetType().Name,
+                    nameof(StreamFromLLMAsync),
+                    stopwatch.Elapsed.TotalMilliseconds,
+                    success: true);
+            }
+
+            // Finalize message
+            assistantMessage.IsStreaming = false;
+            assistantMessage.Timestamp = DateTime.UtcNow;
+
+            // Add to state
+            lock (_stateLock)
+            {
+                State.RecentMessages.Enqueue(assistantMessage);
+                State.ChatMetadata.MessageCount++;
+                State.ChatMetadata.LastActivityAt = DateTime.UtcNow;
+                State.ActiveStreams.Remove(streamId);
+
+                // Trim recent messages buffer if needed
+                while (State.RecentMessages.Count > _configuration.ChatGrain.MaxRecentMessages)
+                {
+                    State.RecentMessages.Dequeue();
+                }
+            }
+            await WriteStateAsync();
+
+            // Notify completion
+            var finalUserGrain = GrainFactory.GetGrain<IUserGrain>(userId);
+            await finalUserGrain.RelayStreamChunk(new StreamChunk
+            {
+                OperationId = streamId,
+                ChatId = State.ChatMetadata.ChatId,
+                Content = string.Empty,
+                ChunkIndex = sequenceNumber + 1,
+                IsComplete = true,
+                MessageId = assistantMessage.Id,
+                Type = StreamChunkType.Complete,
+                Timestamp = DateTime.UtcNow
+            });
+
+            _logger.LogInformation(
+                "Completed LLM streaming for chat {ChatId}, stream {StreamId}, tokens: {TokenCount}, duration: {Duration}ms",
+                State.ChatMetadata.ChatId, streamId, sequenceNumber, stopwatch.ElapsedMilliseconds);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("LLM streaming cancelled for chat {ChatId}, stream {StreamId}",
+                State.ChatMetadata.ChatId, streamId);
+
+            // Clean up partial stream state
+            lock (_stateLock)
+            {
+                State.ActiveStreams.Remove(streamId);
+            }
+            await WriteStateAsync();
+
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during LLM streaming for chat {ChatId}, stream {StreamId}",
+                State.ChatMetadata.ChatId, streamId);
+
+            // Clean up failed stream state
+            lock (_stateLock)
+            {
+                State.ActiveStreams.Remove(streamId);
+            }
+            await WriteStateAsync();
+
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Builds LLM context from chat history.
+    /// Converts ChatMessage objects to IMessage format expected by IStreamingAgent.
+    /// </summary>
+    /// <returns>Enumerable of IMessage for LLM processing</returns>
+    private List<AchieveAi.LmDotnetTools.LmCore.Messages.IMessage> BuildLLMContext()
+    {
+        var messages = new List<AchieveAi.LmDotnetTools.LmCore.Messages.IMessage>();
+
+        // Add system prompt if configured
+        if (!string.IsNullOrEmpty(State.ChatMetadata.SystemPrompt))
+        {
+            messages.Add(new AchieveAi.LmDotnetTools.LmCore.Messages.TextMessage
+            {
+                Text = State.ChatMetadata.SystemPrompt,
+                Role = Role.System
+            });
+        }
+
+        // Add recent messages from chat history
+        lock (_stateLock)
+        {
+            foreach (var chatMsg in State.RecentMessages)
+            {
+                // Skip streaming messages (incomplete)
+                if (chatMsg.IsStreaming)
+                {
+                    continue;
+                }
+
+                messages.Add(new AchieveAi.LmDotnetTools.LmCore.Messages.TextMessage
+                {
+                    Text = chatMsg.Content,
+                    Role = Enum.Parse<Role>(chatMsg.Role, ignoreCase: true)
+                });
+            }
+        }
+
+        return messages;
+    }
+
+    /// <summary>
+    /// Notifies UserGrain about stream errors.
+    /// </summary>
+    /// <param name="streamId">Stream identifier</param>
+    /// <param name="exception">The exception that occurred</param>
+    private async Task NotifyStreamErrorAsync(string streamId, Exception exception)
+    {
+        try
+        {
+            var userId = State.ChatMetadata.CreatedBy;
+            var userGrain = GrainFactory.GetGrain<IUserGrain>(userId);
+
+            await userGrain.RelayStreamChunk(new StreamChunk
+            {
+                OperationId = streamId,
+                ChatId = State.ChatMetadata.ChatId,
+                Content = $"Error: {exception.Message}",
+                ChunkIndex = -1,
+                IsComplete = true,
+                Type = StreamChunkType.Error,
+                Timestamp = DateTime.UtcNow,
+                Metadata = new Dictionary<string, string>
+                {
+                    ["ErrorType"] = exception.GetType().Name,
+                    ["ErrorMessage"] = exception.Message
+                }
+            });
+
+            _logger.LogInformation("Notified user {UserId} about stream error in stream {StreamId}",
+                userId, streamId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to notify stream error for stream {StreamId}", streamId);
+        }
+    }
+
+    #endregion
     #endregion
 
     #region Helper Classes for Sequence Processing Optimization

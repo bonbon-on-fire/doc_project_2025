@@ -1,6 +1,7 @@
 using AchieveAi.LmDotnetTools.LmCore.Middleware;
-using AchieveAi.LmDotnetTools.McpMiddleware;
-using AchieveAi.LmDotnetTools.McpMiddleware.Extensions;
+// TODO: Re-enable when MCP middleware is available in LmDotnetTools
+// using AchieveAi.LmDotnetTools.McpMiddleware;
+// using AchieveAi.LmDotnetTools.McpMiddleware.Extensions;
 using AIChat.Server.Functions;
 using AIChat.Server.Models;
 using Microsoft.Extensions.Options;
@@ -21,7 +22,10 @@ public class ToolingService(
     ILogger<ToolingService> logger
 ) : IToolingService
 {
+    // TODO: Re-enable when MCP middleware is available
+#pragma warning disable IDE0052 // Remove unread private members
     private readonly IMcpClientManager _mcpClientManager = mcpClientManager;
+#pragma warning restore IDE0052 // Remove unread private members
 
     public async Task<FunctionCallMiddleware?> CreateChatSpecificFunctionCallMiddlewareAsync(
         string chatId,
@@ -142,6 +146,8 @@ public class ToolingService(
             logger.LogInformation("Added TaskManager functions for chat {ChatId}", chatId);
 
             // Add MCP clients to the registry
+            // TODO: Re-enable when MCP middleware (AddMcpClientsAsync, McpClientFunctionProvider) is available
+            /*
             try
             {
                 var mcpClients = await _mcpClientManager.GetActiveClientsAsync(cancellationToken);
@@ -176,6 +182,8 @@ public class ToolingService(
             {
                 logger.LogError(mcpEx, "Failed to add MCP clients to function registry");
             }
+            */
+            logger.LogInformation("MCP client integration is currently disabled (middleware not available)");
 
             // Apply mode-based filtering if modeId and userId are provided
             if (!string.IsNullOrEmpty(modeId) && !string.IsNullOrEmpty(userId))

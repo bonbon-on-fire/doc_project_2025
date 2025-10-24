@@ -1,9 +1,4 @@
 using AchieveAi.LmDotnetTools.LmConfig.Services;
-using AchieveAi.LmDotnetTools.LmCore.Agents;
-using AchieveAi.LmDotnetTools.Misc.Configuration;
-using AchieveAi.LmDotnetTools.Misc.Http;
-using AchieveAi.LmDotnetTools.Misc.Storage;
-using AchieveAi.LmDotnetTools.OpenAIProvider.Agents;
 using AIChat.Orleans.Client.Configuration;
 using AIChat.Orleans.Client.Services;
 using AIChat.Orleans.Placement;
@@ -17,7 +12,6 @@ using AIChat.Server.Services;
 using AIChat.Server.Services.EventStore;
 using AIChat.Server.Services.ResponseCaching;
 using AIChat.Server.Services.ResponseCaching.Decorators;
-using AIChat.Server.Services.TestMode;
 using AIChat.Server.Services.WebSocket;
 using AIChat.Server.Storage;
 using AIChat.Server.Storage.Sqlite;
@@ -32,8 +26,8 @@ using Serilog.Formatting.Compact;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Orleans Host cancellation token for graceful shutdown
-CancellationTokenSource? orleansHostCts = null;
+// Add Aspire service defaults for observability and health checks
+builder.AddServiceDefaults();
 
 // Configure Serilog for JSON file logging - ensure logs go to project root
 // When running from server/AIChat.Server, we need to go up two levels to reach project root
@@ -54,7 +48,9 @@ Directory.CreateDirectory(Path.GetDirectoryName(logFileName)!);
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Verbose()
-    .WriteTo.Console(formatProvider: System.Globalization.CultureInfo.InvariantCulture)
+    .WriteTo.Console(
+        restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Warning,
+        formatProvider: System.Globalization.CultureInfo.InvariantCulture)
     .WriteTo.File(
         new CompactJsonFormatter(),
         logFileName,
@@ -63,7 +59,45 @@ Log.Logger = new LoggerConfiguration()
         shared: true)
     .CreateLogger();
 
-builder.Host.UseSerilog();
+builder.Host.UseSerilog((context, services, configuration) =>
+{
+    configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .Enrich.FromLogContext()
+        .Enrich.WithMachineName()
+        .Enrich.WithThreadId()
+        .Enrich.WithEnvironmentName()
+        .Enrich.WithProperty("Application", "AIChat.Server")
+        .Enrich.WithProperty("Environment", context.HostingEnvironment.EnvironmentName);
+
+    // Add console sink (Warning and above only - keep console clean)
+    configuration.WriteTo.Console(
+        restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Warning,
+        formatProvider: System.Globalization.CultureInfo.InvariantCulture
+    );
+
+    // Add file sink for all logs (Verbose level)
+    configuration.WriteTo.File(
+        new CompactJsonFormatter(),
+        logFileName,
+        restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Verbose,
+        rollingInterval: RollingInterval.Day,
+        buffered: false,
+        shared: true
+    );
+
+    // Add Seq sink for centralized structured logging (if enabled)
+    var enableSeq = context.Configuration.GetValue("Serilog:EnableSeq", true);
+    if (enableSeq)
+    {
+        var seqServerUrl = context.Configuration["Serilog:SeqServerUrl"] ?? "http://localhost:5341";
+        configuration.WriteTo.Seq(
+            serverUrl: seqServerUrl,
+            apiKey: context.Configuration["Serilog:SeqApiKey"],
+            restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Debug
+        );
+    }
+});
 
 // Add services to the container
 builder
@@ -273,42 +307,9 @@ if (!orleansDisabled)
 {
     try
     {
-        // Start Orleans Host as separate process for Development/Test environments
-        if (isDevelopmentEnvironment || isTestEnvironment)
-        {
-            Log.Information(
-                "Starting Orleans Host as separate process for {Environment} environment",
-                builder.Environment.EnvironmentName
-            );
-
-            orleansHostCts = new CancellationTokenSource();
-
-            // Start Orleans Host in background task with separate DI container
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    Log.Information("Orleans Host starting in background...");
-                    // Pass empty args to Orleans Host to avoid URL conflicts
-                    await AIChat.Orleans.Host.Program.Main([]);
-                }
-                catch (OperationCanceledException)
-                {
-                    Log.Information("Orleans Host shutdown requested");
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Orleans Host failed unexpectedly");
-                }
-            }, orleansHostCts.Token);
-
-            // Wait for Orleans to initialize before proceeding
-            Log.Information("Waiting for Orleans Host to initialize...");
-            Task.Delay(TimeSpan.FromSeconds(5)).Wait();
-            Log.Information("Orleans Host initialization delay completed");
-        }
-
-        // Always use Orleans client for all environments (ensures clean separation)
+        // Orleans client-only configuration - Orleans Host runs as separate service (orchestrated by Aspire)
+        // In Development/Test: Orleans Host started by Aspire AppHost or manually
+        // In Production: Orleans Host runs as independent service
         Log.Information("Configuring Orleans client for {Environment} environment", builder.Environment.EnvironmentName);
         _ = builder.Services.AddOrleansClient(builder.Configuration, builder.Environment);
 
@@ -389,86 +390,8 @@ builder.Services.Configure<McpConfiguration>(builder.Configuration.GetSection("M
 builder.Services.AddSingleton<IMcpConfigurationValidator, McpConfigurationValidator>();
 builder.Services.AddSingleton<IMcpClientManager, McpClientManager>();
 
-// Register IStreamingAgent as scoped service
-builder.Services.AddTransient<IStreamingAgent>(provider =>
-{
-    // Register IStreamingAgent as an OpenAIProvider-based agent with caching
-    // Get configuration - prioritize environment variables, then User Secrets/config
-    var configuration = provider.GetRequiredService<IConfiguration>();
-    var logger = provider.GetRequiredService<ILogger<Program>>();
-    var hostEnv = provider.GetRequiredService<IHostEnvironment>();
-
-    var apiKey =
-        Environment.GetEnvironmentVariable("LLM_API_KEY") ?? configuration["OpenAI:ApiKey"] ?? "";
-    var baseUrl =
-        Environment.GetEnvironmentVariable("LLM_BASE_API_URL")
-        ?? configuration["OpenAI:BaseUrl"]
-        ?? "https://api.openai.com/v1";
-
-    // Diagnostic logging for API configuration
-    logger.LogInformation("[DIAGNOSTIC] API Configuration:");
-    logger.LogInformation("[DIAGNOSTIC] Base URL: {BaseUrl}", baseUrl);
-    logger.LogInformation("[DIAGNOSTIC] API Key Length: {ApiKeyLength}", apiKey?.Length ?? 0);
-    logger.LogInformation(
-        "[DIAGNOSTIC] API Key Prefix: {ApiKeyPrefix}",
-        apiKey?.Length > 10 ? string.Concat(apiKey.AsSpan(0, 10), "...") : "[EMPTY]"
-    );
-
-    if (hostEnv.IsEnvironment("Test"))
-    {
-        // In Test environment, synthesize streaming via TestSseMessageHandler and bypass API key
-        var testHandler = new TestSseMessageHandler();
-        var testHttpClient = new HttpClient(testHandler)
-        {
-            BaseAddress = new Uri(baseUrl),
-            Timeout = TimeSpan.FromMinutes(5),
-        };
-        var openClientTest = new OpenClient(testHttpClient, baseUrl, null, logger);
-        return new OpenClientAgent("OpenAi", openClientTest);
-    }
-
-    // Create an OpenAI client with caching (non-Test environments)
-    if (string.IsNullOrEmpty(apiKey))
-    {
-        throw new InvalidOperationException("OpenAI API key is required but was not provided.");
-    }
-
-    // Create cache infrastructure
-    var cacheDirectory = configuration["LlmCache:CacheDirectory"] ?? "./llm-cache";
-    var cache = new FileKvStore(cacheDirectory);
-
-    // Configure cache options
-    var cacheOptions = new LlmCacheOptions
-    {
-        EnableCaching = configuration.GetValue("LlmCache:EnableCaching", true),
-        CacheExpiration = configuration.GetValue<TimeSpan?>(
-            "LlmCache:CacheExpiration",
-            TimeSpan.FromHours(24)
-        ),
-        MaxCacheItems = configuration.GetValue<int?>("LlmCache:MaxCacheItems", 10000),
-    };
-
-    // Create HTTP client with caching handler
-    var httpClientHandler = new HttpClientHandler();
-    var cachingHandler = new CachingHttpMessageHandler(
-        cache,
-        cacheOptions,
-        httpClientHandler,
-        logger
-    );
-
-    var httpClient = new HttpClient(cachingHandler)
-    {
-        BaseAddress = new Uri(baseUrl),
-        Timeout = TimeSpan.FromMinutes(5),
-    };
-
-    // Add authentication headers
-    httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
-
-    var openClient = new OpenClient(httpClient, baseUrl, null, logger);
-    return new OpenClientAgent("OpenAi", openClient);
-});
+// Phase 3.3: IStreamingAgent registration removed - LLM operations now handled by Orleans ChatGrain
+// IStreamingAgent is injected at the Orleans grain level, not at the server application level
 
 // Add CORS for development and test
 builder.Services.AddCors(options =>
@@ -770,6 +693,26 @@ _ = Task.Run(async () =>
 
 app.UseCors("AllowSvelteApp");
 
+// Add W3C TraceContext middleware for distributed tracing
+// Captures TraceId and SpanId from Activity (OpenTelemetry) or HTTP headers
+// and makes them available to all downstream logging and grain calls
+app.Use(async (context, next) =>
+{
+    // Get TraceId from current Activity (set by OpenTelemetry or ASP.NET Core)
+    var traceId = System.Diagnostics.Activity.Current?.TraceId.ToString() ?? context.TraceIdentifier;
+    var spanId = System.Diagnostics.Activity.Current?.SpanId.ToString() ?? "root";
+
+    // Push to LogContext for structured logging
+    using (Serilog.Context.LogContext.PushProperty("TraceId", traceId))
+    using (Serilog.Context.LogContext.PushProperty("SpanId", spanId))
+    using (Serilog.Context.LogContext.PushProperty("RequestPath", context.Request.Path.Value))
+    using (Serilog.Context.LogContext.PushProperty("RequestMethod", context.Request.Method))
+    using (Serilog.Context.LogContext.PushProperty("UserId", context.User?.Identity?.Name ?? "Anonymous"))
+    {
+        await next();
+    }
+});
+
 // Add Prometheus metrics middleware
 app.UseHttpMetrics();
 
@@ -823,21 +766,10 @@ app.MapGet(
     }
 );
 
-// Setup graceful shutdown for Orleans Host
-Console.CancelKeyPress += (sender, e) =>
-{
-    if (orleansHostCts != null)
-    {
-        Log.Information("Shutting down Orleans Host...");
-        orleansHostCts.Cancel();
-    }
-};
+// Map default Aspire endpoints (health checks, metrics, etc.)
+app.MapDefaultEndpoints();
 
 app.Run();
-
-// Cleanup Orleans Host on shutdown
-orleansHostCts?.Cancel();
-orleansHostCts?.Dispose();
 
 public partial class Program
 {

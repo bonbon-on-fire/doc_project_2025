@@ -5,12 +5,22 @@ namespace AIChat.Server.Services.Streaming.Strategies;
 /// </summary>
 public sealed class BackpressureStrategy : IOverflowStrategy
 {
+    private readonly ILogger<BackpressureStrategy>? _logger;
     private long _totalOverflowEvents;
     private long _successfulHandlings;
     private long _failedHandlings;
     private long _totalDelayMs;
     private DateTime? _lastOverflowTime;
     private readonly Lock _statsLock = new();
+
+    /// <summary>
+    /// Initializes a new instance of the BackpressureStrategy class.
+    /// </summary>
+    /// <param name="logger">Optional logger for diagnostics</param>
+    public BackpressureStrategy(ILogger<BackpressureStrategy>? logger = null)
+    {
+        _logger = logger;
+    }
 
     /// <inheritdoc />
     public string Name => "Backpressure";
@@ -42,7 +52,8 @@ public sealed class BackpressureStrategy : IOverflowStrategy
             // Cap the delay
             delay = Math.Min(delay, 5000); // Max 5 seconds
 
-            context.Logger?.LogWarning(
+            // Log using injected logger if available, otherwise use context logger
+            (_logger ?? context.Logger)?.LogWarning(
                 "Applying backpressure. Utilization: {Utilization:F1}%, Delay: {Delay}ms",
                 context.UtilizationPercentage,
                 delay);
@@ -87,7 +98,8 @@ public sealed class BackpressureStrategy : IOverflowStrategy
                 _failedHandlings++;
             }
 
-            context.Logger?.LogError(ex, "Failed to apply backpressure");
+            // Log using injected logger if available, otherwise use context logger
+            (_logger ?? context.Logger)?.LogError(ex, "Failed to apply backpressure");
 
             return new OverflowHandlingResult
             {

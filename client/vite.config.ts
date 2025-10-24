@@ -34,11 +34,21 @@ export default defineConfig({
 		]
 	},
 	server: {
+		// Use Aspire-injected PORT or fallback to 5173
+		port: parseInt(process.env.PORT || '5173'),
 		proxy: {
 			'/api': {
-				// Keep in sync with server dev port; default docs use 5099
-				target: 'http://localhost:5099',
-				changeOrigin: true
+				// Use Aspire-injected VITE_API_URL or fallback to localhost:5099
+				// Aspire injects this via AppHost environment variable configuration
+				target: process.env.VITE_API_URL || 'http://localhost:5099',
+				changeOrigin: true,
+				secure: false
+			},
+			// WebSocket proxy for SignalR hub
+			'/api/chat-hub': {
+				target: process.env.VITE_API_URL || 'http://localhost:5099',
+				changeOrigin: true,
+				ws: true // Enable WebSocket support
 			}
 		}
 	}

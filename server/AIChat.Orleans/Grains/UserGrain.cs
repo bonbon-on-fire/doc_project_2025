@@ -29,7 +29,6 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
     private readonly OrleansGrainConfiguration _configuration;
     private readonly IOrleansMetricsCollector _metricsCollector;
     private readonly ISignalRBroadcastService _signalRBroadcast;
-    private readonly IChatServiceProxy _chatServiceProxy;
     private readonly IActivityAnalyticsService _activityAnalytics;
     private readonly IActivityPrivacyService _activityPrivacy;
     private IGrainTimer? _cleanupTimer;
@@ -43,7 +42,6 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
     /// <param name="configuration">Configuration for Orleans grains</param>
     /// <param name="metricsCollector">Metrics collector for performance tracking</param>
     /// <param name="signalRBroadcast">SignalR broadcast service for real-time messaging (optional)</param>
-    /// <param name="chatServiceProxy">Chat service proxy for LLM processing (optional)</param>
     /// <param name="activityAnalytics">Activity analytics service for telemetry integration (optional)</param>
     /// <param name="activityPrivacy">Activity privacy service for PII protection (optional)</param>
     public UserGrain(
@@ -51,7 +49,6 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
         IOptionsSnapshot<OrleansGrainConfiguration> configuration,
         IOrleansMetricsCollector metricsCollector,
         ISignalRBroadcastService? signalRBroadcast = null,
-        IChatServiceProxy? chatServiceProxy = null,
         IActivityAnalyticsService? activityAnalytics = null,
         IActivityPrivacyService? activityPrivacy = null
     )
@@ -61,18 +58,6 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
         _metricsCollector =
             metricsCollector ?? throw new ArgumentNullException(nameof(metricsCollector));
         _signalRBroadcast = signalRBroadcast ?? new NullSignalRBroadcastService(); // Default to no-op implementation
-
-        // Use default proxy if none provided - allows for testing and gradual rollout
-        if (chatServiceProxy == null)
-        {
-            var proxyLogger =
-                new Microsoft.Extensions.Logging.Abstractions.NullLogger<DefaultChatServiceProxy>();
-            _chatServiceProxy = new DefaultChatServiceProxy(proxyLogger);
-        }
-        else
-        {
-            _chatServiceProxy = chatServiceProxy;
-        }
 
         // Initialize enhanced activity tracking services (ORL-ST-P2-005)
         if (activityAnalytics == null)
@@ -3149,8 +3134,8 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                 )
             );
 
-            // Process the message with callbacks
-            processingTask = ProcessMessageWithStreamingCallbacks(
+            // Process the message with ChatGrain delegation
+            processingTask = ProcessMessageWithChatGrain(
                 request,
                 streamState,
                 channel.Writer,
@@ -3351,10 +3336,11 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
     }
 
     /// <summary>
-    /// Processes a message with streaming callbacks and writes to channel.
-    /// This method bridges the callback-based ChatService API with IAsyncEnumerable.
+    /// Processes a message with ChatGrain LLM integration and writes to channel.
+    /// Delegates to ChatGrain which has direct IStreamingAgent access.
+    /// ChatGrain will relay chunks back to this UserGrain via RelayStreamChunk.
     /// </summary>
-    private async Task ProcessMessageWithStreamingCallbacks(
+    private async Task ProcessMessageWithChatGrain(
         ChatRequest request,
         StreamState streamState,
         System.Threading.Channels.ChannelWriter<StreamChunk> channelWriter,
@@ -3364,72 +3350,58 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
         try
         {
             _logger.LogInformation(
-                "Processing message for stream {StreamId} with ChatService integration",
+                "Processing message for stream {StreamId} with ChatGrain LLM integration",
                 streamState.StreamId
             );
 
-            // Process the chat stream through the ChatServiceProxy
-            var chunkCount = 0;
-            await foreach (
-                var chunk in _chatServiceProxy.ProcessChatStreamAsync(request, cancellationToken)
-            )
+            // Get ChatGrain for this chat
+            var chatGrain = GrainFactory.GetGrain<IChatGrain>(request.ChatId);
+
+            // Create ChatMessage from request
+            var message = new ChatMessage
             {
-                // Forward chunks to the channel
-                await channelWriter.WriteAsync(chunk, cancellationToken);
-                chunkCount++;
+                Id = Guid.NewGuid().ToString(),
+                ChatId = request.ChatId,
+                UserId = request.UserId,
+                Content = request.Message,
+                Role = "user",
+                Timestamp = DateTime.UtcNow,
+                IsStreaming = false
+            };
 
-                // Update stream state
-                streamState.ChunksSent = chunkCount;
-                streamState.LastActivity = DateTime.UtcNow;
+            // Start LLM processing via ChatGrain
+            // ChatGrain will call UserGrain.RelayStreamChunk to broadcast chunks
+            var streamHandle = await chatGrain.ProcessMessageWithLLMAsync(message, cancellationToken);
 
-                // Add partial message for recovery if configured
-                if (
-                    _configuration.Streaming.PersistPartialStreams
-                    && !string.IsNullOrEmpty(chunk.Content)
-                )
-                {
-                    streamState.PartialMessage += chunk.Content;
-                }
+            _logger.LogInformation(
+                "Started ChatGrain LLM processing. Stream {StreamId}, ChatId {ChatId}",
+                streamHandle.StreamId,
+                request.ChatId
+            );
 
-                // Check for completion
-                if (chunk.IsComplete)
-                {
-                    streamState.Status =
-                        chunk.Type == StreamChunkType.Error
-                            ? StreamStatus.Failed
-                            : StreamStatus.Completed;
+            // Note: Chunks will arrive via RelayStreamChunk and be broadcast via SignalR
+            // This method completes the channel immediately since streaming happens via push model
+            _ = channelWriter.TryComplete();
 
-                    if (
-                        chunk.Type == StreamChunkType.Error
-                        && chunk.Metadata?.ContainsKey("error") == true
-                    )
-                    {
-                        streamState.ErrorMessage = chunk.Metadata["error"]?.ToString();
-                    }
-
-                    _logger.LogInformation(
-                        "Stream {StreamId} completed with {ChunkCount} chunks. Status: {Status}",
-                        streamState.StreamId,
-                        chunkCount,
-                        streamState.Status
-                    );
-                    break;
-                }
-            }
+            streamState.Status = StreamStatus.Completed;
+            _logger.LogInformation(
+                "Stream {StreamId} initiated successfully via ChatGrain",
+                streamState.StreamId
+            );
         }
         catch (Exception ex)
         {
             _logger.LogError(
                 ex,
-                "Error processing message for stream {StreamId}",
+                "Error processing message for stream {StreamId} via ChatGrain",
                 streamState.StreamId
             );
+
+            streamState.Status = StreamStatus.Failed;
+            streamState.ErrorMessage = ex.Message;
+
+            _ = channelWriter.TryComplete(ex);
             throw;
-        }
-        finally
-        {
-            // Always close the channel writer
-            _ = channelWriter.TryComplete();
         }
     }
 

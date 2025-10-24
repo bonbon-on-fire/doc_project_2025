@@ -32,6 +32,11 @@ public class OrleansGrainConfiguration
     /// Settings for streaming operations.
     /// </summary>
     public StreamingSettings Streaming { get; set; } = new();
+
+    /// <summary>
+    /// Settings for ChatGrain behavior.
+    /// </summary>
+    public ChatGrainSettings ChatGrain { get; set; } = new();
 }
 
 /// <summary>
@@ -248,4 +253,44 @@ public class StreamingSettings
     /// Default: true
     /// </summary>
     public bool EnableStreamMetrics { get; set; } = true;
+}
+
+/// <summary>
+/// Configuration settings specific to ChatGrain.
+/// </summary>
+public class ChatGrainSettings
+{
+    /// <summary>
+    /// Maximum number of recent messages to keep in memory.
+    /// Default: 50
+    /// </summary>
+    [Range(10, 500)]
+    public int MaxRecentMessages { get; set; } = 50;
+
+    /// <summary>
+    /// Maximum concurrent stream operations per chat.
+    /// Default: 5
+    /// </summary>
+    [Range(1, 20)]
+    public int MaxConcurrentStreams { get; set; } = 5;
+
+    /// <summary>
+    /// Timeout in seconds for LLM streaming operations.
+    /// Default: 300 seconds (5 minutes)
+    /// </summary>
+    [Range(30, 600)]
+    public int StreamTimeoutSeconds { get; set; } = 300;
+
+    /// <summary>
+    /// Whether to enable automatic message cleanup.
+    /// Default: true
+    /// </summary>
+    public bool EnableMessageCleanup { get; set; } = true;
+
+    /// <summary>
+    /// Interval in minutes for message cleanup operations.
+    /// Default: 10 minutes
+    /// </summary>
+    [Range(1, 60)]
+    public int MessageCleanupIntervalMinutes { get; set; } = 10;
 }

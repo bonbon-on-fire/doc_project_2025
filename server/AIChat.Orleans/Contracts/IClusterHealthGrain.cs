@@ -40,71 +40,87 @@ public interface IClusterHealthGrain : IGrainWithIntegerKey
 /// <summary>
 /// Represents the overall health status of the Orleans cluster.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.ClusterHealthStatus")]
 public class ClusterHealthStatus
 {
     /// <summary>
     /// Indicates whether the cluster is healthy and operational.
     /// </summary>
+    [Id(0)]
     public bool IsHealthy { get; set; }
 
     /// <summary>
     /// Number of active silos in the cluster.
     /// </summary>
+    [Id(1)]
     public int ActiveSiloCount { get; set; }
 
     /// <summary>
     /// Timestamp when the health check was performed.
     /// </summary>
+    [Id(2)]
     public DateTime CheckedAt { get; set; }
 
     /// <summary>
     /// Overall cluster state description (e.g., "Healthy", "Degraded", "Unhealthy").
     /// </summary>
+    [Id(3)]
     public string Status { get; set; } = string.Empty;
 
     /// <summary>
     /// List of warnings or issues detected during health check.
     /// </summary>
+    [Id(4)]
     public List<string> Warnings { get; set; } = [];
 
     /// <summary>
     /// Additional diagnostic information about cluster health.
     /// </summary>
+    [Id(5)]
     public Dictionary<string, object> Details { get; set; } = [];
 }
 
 /// <summary>
 /// Represents information about a single silo in the cluster.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Contracts.SiloInfo")]
 public class SiloInfo
 {
     /// <summary>
     /// Unique identifier for the silo.
     /// </summary>
+    [Id(0)]
     public string SiloAddress { get; set; } = string.Empty;
 
     /// <summary>
     /// Silo name if configured.
     /// </summary>
+    [Id(1)]
     public string? SiloName { get; set; }
 
     /// <summary>
     /// Current status of the silo (e.g., "Active", "Stopping", "Dead").
     /// </summary>
+    [Id(2)]
     public string Status { get; set; } = string.Empty;
 
     /// <summary>
     /// Number of active grain activations on this silo.
     /// </summary>
+    [Id(3)]
     public int ActivationCount { get; set; }
 
     /// <summary>
     /// When the silo became active in the cluster.
     /// </summary>
+    [Id(4)]
     public DateTime? SinceWhen { get; set; }
 
     /// <summary>
     /// Additional silo-specific information.
     /// </summary>
+    [Id(5)]
     public Dictionary<string, object> Metadata { get; set; } = [];
 }

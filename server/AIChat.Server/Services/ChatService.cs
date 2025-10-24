@@ -18,6 +18,8 @@ public class ChatService(ILogger<ChatService> logger, IOptions<AiOptions> aiOpti
 {
     private readonly AiOptions _aiOptions = aiOptions.Value;
 
+    // TODO: Remove or re-enable when Orleans LLM integration is fully active
+#pragma warning disable IDE0051 // Remove unused private members
     private async Task<FunctionCallMiddleware?> CreateChatSpecificFunctionCallMiddleware(
         string chatId,
         IToolingService toolingService,
@@ -34,6 +36,7 @@ public class ChatService(ILogger<ChatService> logger, IOptions<AiOptions> aiOpti
             CancellationToken.None
         );
     }
+#pragma warning restore IDE0051 // Remove unused private members
 
     // Note: Stateful fields removed for thread-safety
     // Tool execution state is now passed via StreamingContext parameter
@@ -732,7 +735,22 @@ public class ChatService(ILogger<ChatService> logger, IOptions<AiOptions> aiOpti
         );
     }
 
-    private async Task StreamChatCompletionAsync(
+    /*
+     * ========================================
+     * PHASE 3 - LLM METHOD REMOVED
+     *
+     * This method previously called IStreamingAgent directly for LLM operations.
+     * LLM functionality has been moved to Orleans ChatGrain.
+     *
+     * MIGRATION PATH:
+     * Old: await StreamChatCompletionAsync(chatId, history, streamingAgent, ...)
+     * New: var grain = grainFactory.GetGrain<IChatGrain>(chatId);
+     *      await grain.ProcessMessageWithLLMAsync(message, userId, ...)
+     *
+     * Reference: server/AIChat.Orleans/Grains/ChatGrain.cs
+     * ========================================
+     */
+    private Task StreamChatCompletionAsync(
         string chatId,
         List<MessageDto> history,
         IStreamingAgent streamingAgent,
@@ -747,252 +765,9 @@ public class ChatService(ILogger<ChatService> logger, IOptions<AiOptions> aiOpti
         CancellationToken cancellationToken = default
     )
     {
-        // NOTE: Stateful context removed - will be passed via StreamingContext parameter
-        // TODO: Implement stateless streaming with callback parameters
-
-        logger.LogInformation(
-            "[DEBUG] StreamChatCompletionAsync - ChatId: {ChatId}, History count: {Count}",
-            chatId,
-            history.Count
-        );
-        foreach (var msg in history)
-        {
-            logger.LogInformation(
-                "[DEBUG] History message - Role: {Role}, Type: {Type}, Content: {Content}",
-                msg.Role,
-                msg.GetType().Name,
-                msg is TextMessageDto textMsg
-                    ? textMsg.Text?[..Math.Min(100, textMsg.Text.Length)] + "..."
-                    : "N/A"
-            );
-        }
-
-        var lmMessages = history.Select(ConvertToLmMessage).ToList();
-        var userMsgSequence = history.Count > 0 ? history.Max(m => m.SequenceNumber) : 0;
-
-        logger.LogInformation("[DEBUG] Converted to {Count} LM messages", lmMessages.Count);
-        foreach (var lmMsg in lmMessages)
-        {
-            logger.LogInformation(
-                "[DEBUG] LM message - Role: {Role}, Type: {Type}",
-                lmMsg.Role,
-                lmMsg.GetType().Name
-            );
-        }
-
-        logger.LogInformation("Making API call to LLM for chat {ChatId}", chatId);
-        var modelId = await GetModelIdAsync(modeService, modeId, userId);
-        var options = new GenerateReplyOptions
-        {
-            ModelId = modelId,
-            ExtraProperties = new Dictionary<string, object?>()
-            {
-                ["reasoning"] = "low",
-                // ["frequency_penalty"] = 1.0f,
-                // ["parallel_tool_calls"] = true,
-                // ["provider"] = new
-                // {
-                //     order = new[] { "chutes" }
-                // }
-            }.ToImmutableDictionary(),
-        };
-        var streamProcessor = ProcessStream(chatId, userMsgSequence, chunkCallback);
-
-        // Build middleware chain
-        var agent = streamingAgent
-            .WithMiddleware(new JsonFragmentUpdateMiddleware())
-            .WithMiddleware(
-                (context, agent, cancellationToken) =>
-                    agent.GenerateReplyAsync(context.Messages, context.Options, cancellationToken),
-                async (context, agent, cancellationToken) =>
-                {
-                    var stream = await agent.GenerateReplyStreamingAsync(
-                        context.Messages,
-                        context.Options,
-                        cancellationToken
-                    );
-
-                    return streamProcessor(stream, cancellationToken);
-                }
-            );
-
-        // Create and add chat-specific FunctionCallMiddleware
-        var functionCallMiddleware = await CreateChatSpecificFunctionCallMiddleware(
-            chatId,
-            toolingService,
-            modeId,
-            userId
-        );
-        if (functionCallMiddleware != null)
-        {
-            logger.LogInformation(
-                "Adding chat-specific FunctionCallMiddleware to processing chain for chat {ChatId}",
-                chatId
-            );
-            agent = agent.WithMiddleware(functionCallMiddleware);
-        }
-        else
-        {
-            logger.LogWarning(
-                "FunctionCallMiddleware is null for chat {ChatId}, tool calls will not be processed",
-                chatId
-            );
-        }
-
-        var loop = false;
-        var hasTextMessage = false;
-        var fullMessageIndex = userMsgSequence;
-        do
-        {
-            loop = false;
-            var streamingResponse = await agent
-                .WithMiddleware(new MessageUpdateJoinerMiddleware())
-                .GenerateReplyStreamingAsync(
-                    lmMessages,
-                    options,
-                    cancellationToken: cancellationToken
-                );
-
-            logger.LogInformation("Received response from LLM for chat {ChatId}", chatId);
-
-            Type? lastFullMessageType = null;
-            var replies = new List<IMessage>();
-            await foreach (var message in streamingResponse.WithCancellation(cancellationToken))
-            {
-                replies.Add(message);
-                logger.LogInformation(
-                    "[MIDDLEWARE] Message from middleware stream - Type: {MessageType}, ChatId: {ChatId}",
-                    message.GetType().Name,
-                    chatId
-                );
-
-                fullMessageIndex++;
-
-                lastFullMessageType = message.GetType();
-                // Ensure we have a valid and unique generation ID (add time salt for cache scenarios)
-                var generationId = EnsureUniqueGenerationId(message.GenerationId, chatId);
-                var fullMessageId = generationId + $"-{fullMessageIndex:D3}";
-                // TODO: Track message ID via StreamingContext parameter
-
-                logger.LogInformation(
-                    "Persisting message from middleware - Type: {MessageType}, MessageId: {MessageId}, ChatId: {ChatId}",
-                    message.GetType().Name,
-                    fullMessageId,
-                    chatId
-                );
-
-                var sequenceNumber = await PersistFullMessage(
-                    chatId,
-                    message,
-                    fullMessageId,
-                    storage
-                );
-
-                // Skip sending encrypted reasoning messages to client (they have sequence -1)
-                if (sequenceNumber == -1)
-                {
-                    logger.LogInformation(
-                        "Encrypted reasoning persisted but not sent to client - ChatId: {ChatId}, MessageId: {MessageId}",
-                        chatId,
-                        fullMessageId
-                    );
-                    continue; // Skip to next message without sending to client
-                }
-
-                if (sequenceNumber != fullMessageIndex)
-                {
-                    logger.LogError(
-                        "Sequence number mismatch: {Expected}, {Actual}",
-                        fullMessageIndex,
-                        sequenceNumber
-                    );
-                }
-
-                // Fire callbacks/events for message completion
-                if (messageCallback != null)
-                {
-                    MessageEvent? evt = message switch
-                    {
-                        TextMessage textMessage => new TextEvent
-                        {
-                            ChatId = chatId,
-                            MessageId = fullMessageId,
-                            Kind = "text",
-                            SequenceNumber = sequenceNumber,
-                            Text = textMessage.Text,
-                        },
-                        ReasoningMessage reasoningMessage => new ReasoningEvent
-                        {
-                            ChatId = chatId,
-                            MessageId = fullMessageId,
-                            Kind = "reasoning",
-                            SequenceNumber = sequenceNumber,
-                            Reasoning = reasoningMessage.Reasoning,
-                            Visibility = reasoningMessage.Visibility,
-                        },
-                        ToolsCallMessage toolsCallMessage => new ToolCallEvent
-                        {
-                            ChatId = chatId,
-                            MessageId = fullMessageId,
-                            Kind = "tools_call",
-                            SequenceNumber = sequenceNumber,
-                            ToolCalls = [.. toolsCallMessage.ToolCalls],
-                        },
-                        UsageMessage usageMessage => new UsageEvent
-                        {
-                            ChatId = chatId,
-                            MessageId = fullMessageId,
-                            Kind = "usage",
-                            SequenceNumber = sequenceNumber,
-                            Usage = usageMessage.Usage,
-                        },
-                        ToolsCallAggregateMessage toolsAggregateMessage =>
-                            new ToolsCallAggregateEvent
-                            {
-                                ChatId = chatId,
-                                MessageId = fullMessageId,
-                                Kind = "tools_aggregate",
-                                SequenceNumber = sequenceNumber,
-                                ToolCalls = [.. toolsAggregateMessage.ToolsCallMessage.ToolCalls],
-                                ToolResults =
-                                    toolsAggregateMessage.ToolsCallResult?.ToolCallResults?.ToArray(),
-                            },
-                        _ => null,
-                    };
-
-                    if (evt != null)
-                    {
-                        // Log tool call completion details
-                        if (evt is ToolCallEvent toolCallEvt)
-                        {
-                            logger.LogInformation(
-                                "Firing MessageEvent - ChatId: {ChatId}, MessageId: {MessageId}, ToolCount: {ToolCount}, Sequence: {Sequence}",
-                                toolCallEvt.ChatId,
-                                toolCallEvt.MessageId,
-                                toolCallEvt.ToolCalls.Length,
-                                toolCallEvt.SequenceNumber
-                            );
-                        }
-
-                        await messageCallback(evt);
-                    }
-                }
-
-                loop = loop || message is ToolsCallAggregateMessage;
-                hasTextMessage =
-                    hasTextMessage
-                    || (message is TextMessage tmpTm && !string.IsNullOrWhiteSpace(tmpTm.Text));
-            }
-
-            loop = loop || !hasTextMessage;
-            _ = await storage.UpdateChatUpdatedAtAsync(chatId, DateTime.UtcNow, cancellationToken);
-
-            lmMessages.Add(
-                replies.Count == 1
-                    ? replies[0]
-                    : new CompositeMessage { Messages = [.. replies], Role = Role.Assistant }
-            );
-        } while (loop);
+        // Method body removed in Phase 3
+        // LLM operations now handled by Orleans ChatGrain
+        throw new NotImplementedException("Use Orleans ChatGrain instead. See comment above.");
     }
 
     /// <summary>
@@ -1017,6 +792,8 @@ public class ChatService(ILogger<ChatService> logger, IOptions<AiOptions> aiOpti
     /// chunk management (SlimChatSyncManager), not server-side persistence.
     /// The server only persists final complete messages with proper sequences.
     /// </summary>
+    // TODO: Remove or re-enable when Orleans LLM integration is fully active
+#pragma warning disable IDE0051 // Remove unused private members
     private Func<
         IAsyncEnumerable<IMessage>,
         CancellationToken,
@@ -1026,6 +803,7 @@ public class ChatService(ILogger<ChatService> logger, IOptions<AiOptions> aiOpti
         int userMsgSequence,
         Func<StreamChunkEvent, Task>? chunkCallback = null
     )
+#pragma warning restore IDE0051 // Remove unused private members
     {
         var messageIndex = userMsgSequence;
         var chunkSequenceId = 0;
@@ -1243,12 +1021,15 @@ public class ChatService(ILogger<ChatService> logger, IOptions<AiOptions> aiOpti
         return ProcessStreamInternal;
     }
 
+    // TODO: Remove or re-enable when Orleans LLM integration is fully active
+#pragma warning disable IDE0051 // Remove unused private members
     private async Task<int> PersistFullMessage(
         string chatId,
         IMessage message,
         string fullMessageId,
         IChatStorage storage
     )
+#pragma warning restore IDE0051 // Remove unused private members
     {
         // For encrypted reasoning messages, persist but don't assign sequence number
         var isEncryptedReasoning =
@@ -1631,6 +1412,21 @@ public class ChatService(ILogger<ChatService> logger, IOptions<AiOptions> aiOpti
 
     #region IChatServiceStreaming Implementation
 
+    /*
+     * ========================================
+     * PHASE 3 - LLM METHOD REMOVED
+     *
+     * This method previously called IStreamingAgent directly for LLM operations.
+     * LLM functionality has been moved to Orleans ChatGrain.
+     *
+     * MIGRATION PATH:
+     * Old: await chatService.ProcessMessageWithCallbackAsync(chatId, message, userId, ...)
+     * New: var grain = grainFactory.GetGrain<IChatGrain>(chatId);
+     *      await grain.ProcessMessageWithLLMAsync(message, userId, callbacks: ...)
+     *
+     * Reference: server/AIChat.Orleans/Grains/ChatGrain.cs
+     * ========================================
+     */
     /// <summary>
     /// Process a message with streaming callbacks for background services
     /// This method is stateless and suitable for singleton services
@@ -1651,63 +1447,17 @@ public class ChatService(ILogger<ChatService> logger, IOptions<AiOptions> aiOpti
         CancellationToken cancellationToken = default
     )
     {
-        // Add user message to chat
-        var userMessageResult = await AddUserMessageToExistingChatAsync(
-            chatId,
-            userId,
-            message,
-            storage
-        );
-        if (!userMessageResult.Success)
-        {
-            throw new InvalidOperationException(
-                userMessageResult.Error ?? "Failed to add user message"
-            );
-        }
-
-        // Create streaming context for this operation
-        var context = new StreamingContext
-        {
-            ChatId = chatId,
-            UserId = userId,
-            ModeId = modeId,
-        };
-
-        // Get chat history and stream AI response
-        var (_, _, listMessages) = await storage.ListChatMessagesOrderedAsync(
-            chatId,
-            cancellationToken
-        );
-
-        var history = listMessages
-            .Select(m =>
-                JsonSerializer.Deserialize<MessageDto>(
-                    m.MessageJson,
-                    MessageSerializationOptions.Default
-                )!
-            )
-            .Where(d =>
-                (d is TextMessageDto td && !string.IsNullOrWhiteSpace(td.Text))
-                || d is ReasoningMessageDto
-            )
-            .ToList();
-
-        // Stream the AI response with callbacks
-        await StreamChatCompletionWithCallbacksAsync(
-            context,
-            history,
-            messageCallback,
-            chunkCallback,
-            storage,
-            streamingAgent,
-            modeService,
-            cancellationToken
-        );
+        // Method body removed in Phase 3
+        // LLM operations now handled by Orleans ChatGrain
+        await Task.CompletedTask;
+        throw new NotImplementedException("Use Orleans ChatGrain instead. See comment above.");
     }
 
     /// <summary>
     /// Stream chat completion using callbacks instead of events (for background processing)
     /// </summary>
+    // TODO: Remove or re-enable when Orleans LLM integration is fully active
+#pragma warning disable IDE0051 // Remove unused private members
     private async Task StreamChatCompletionWithCallbacksAsync(
         StreamingContext context,
         List<MessageDto> history,
@@ -1718,6 +1468,7 @@ public class ChatService(ILogger<ChatService> logger, IOptions<AiOptions> aiOpti
         IModeService modeService,
         CancellationToken cancellationToken = default
     )
+#pragma warning restore IDE0051 // Remove unused private members
     {
         // This is a callback-based version of StreamChatCompletionAsync
         // For now, delegate to the existing method with null callbacks to prevent recursion
@@ -1787,8 +1538,23 @@ public class ChatService(ILogger<ChatService> logger, IOptions<AiOptions> aiOpti
 
     #endregion
 
+    /*
+     * ========================================
+     * PHASE 3 - LLM METHOD REMOVED
+     *
+     * This method previously called IStreamingAgent directly for LLM operations.
+     * LLM functionality has been moved to Orleans ChatGrain.
+     *
+     * MIGRATION PATH:
+     * Old: var response = await GenerateAIResponseAsync(chatId, storage, streamingAgent, ...)
+     * New: var grain = grainFactory.GetGrain<IChatGrain>(chatId);
+     *      var response = await grain.GenerateSimpleResponseAsync(userId, modeId, ...)
+     *
+     * Reference: server/AIChat.Orleans/Grains/ChatGrain.cs
+     * ========================================
+     */
     // Helper methods
-    private async Task<string> GenerateAIResponseAsync(
+    private static async Task<string> GenerateAIResponseAsync(
         string chatId,
         IChatStorage storage,
         IStreamingAgent streamingAgent,
@@ -1797,34 +1563,10 @@ public class ChatService(ILogger<ChatService> logger, IOptions<AiOptions> aiOpti
         string? userId = null
     )
     {
-        try
-        {
-            var (_, _, listMessages) = await storage.ListChatMessagesOrderedAsync(chatId);
-            var history = listMessages
-                .Select(m =>
-                    JsonSerializer.Deserialize<MessageDto>(
-                        m.MessageJson,
-                        MessageSerializationOptions.Default
-                    )!
-                )
-                .Where(d =>
-                    (d is TextMessageDto td && !string.IsNullOrWhiteSpace(td.Text))
-                    || d is ReasoningMessageDto
-                ) // Include ALL reasoning messages for LLM context
-                .ToList();
-            var lmMessages = history.Select(ConvertToLmMessage).ToList();
-
-            // Get model ID from mode preference or fallback to default
-            var modelId = await GetModelIdAsync(modeService, modeId, userId);
-            var options = new GenerateReplyOptions { ModelId = modelId };
-            var messages = await streamingAgent.GenerateReplyAsync(lmMessages, options);
-            return string.Join("", messages.OfType<TextMessage>().Select(m => m.Text));
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error generating AI response");
-            return $"Error: Failed to generate AI response. {ex.Message}";
-        }
+        // Method body removed in Phase 3
+        // LLM operations now handled by Orleans ChatGrain
+        await Task.CompletedTask;
+        throw new NotImplementedException("Use Orleans ChatGrain instead. See comment above.");
     }
 
     private async Task<string> GetModelIdAsync(

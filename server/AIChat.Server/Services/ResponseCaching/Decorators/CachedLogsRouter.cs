@@ -80,7 +80,10 @@ public class CachedLogsRouter : CachedRouterBase<ILogsRouter>, ILogsRouter
         ArgumentException.ThrowIfNullOrEmpty(operationName);
 
         // Extract log entry details for cache key generation
-        var logLevel = logEntry.TryGetProperty("level", out var levelElement) ? levelElement.GetString() : "unknown";
+        var logLevel = logEntry.TryGetProperty("level", out var levelElement)
+            && levelElement.ValueKind == JsonValueKind.Number
+            ? levelElement.GetInt32().ToString(System.Globalization.CultureInfo.InvariantCulture)
+            : levelElement.GetString() ?? "unknown";
         var timestamp = logEntry.TryGetProperty("timestamp", out var timestampElement) ? timestampElement.GetString() : null;
         var source = logEntry.TryGetProperty("source", out var sourceElement) ? sourceElement.GetString() : "unknown";
 

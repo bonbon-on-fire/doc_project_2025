@@ -26,15 +26,29 @@ public sealed class OverflowStrategyFactory : IOverflowStrategyFactory
         // Initialize strategy factories (lazy creation)
         _strategyFactories = new Dictionary<OverflowStrategy, Func<IServiceProvider, IOverflowStrategy>>
         {
-            [OverflowStrategy.Backpressure] = sp => new BackpressureStrategy(),
-            [OverflowStrategy.DropOldest] = sp => new DropOldestStrategy(),
-            [OverflowStrategy.DropNewest] = sp => new DropNewestStrategy(),
+            [OverflowStrategy.Backpressure] = sp =>
+            {
+                var backpressureLogger = sp.GetService(typeof(ILogger<BackpressureStrategy>)) as ILogger<BackpressureStrategy>;
+                return new BackpressureStrategy(backpressureLogger);
+            },
+            [OverflowStrategy.DropOldest] = sp =>
+            {
+                var dropOldestLogger = sp.GetService(typeof(ILogger<DropOldestStrategy>)) as ILogger<DropOldestStrategy>;
+                return new DropOldestStrategy(dropOldestLogger);
+            },
+            [OverflowStrategy.DropNewest] = sp =>
+            {
+                var dropNewestLogger = sp.GetService(typeof(ILogger<DropNewestStrategy>)) as ILogger<DropNewestStrategy>;
+                return new DropNewestStrategy(dropNewestLogger);
+            },
             [OverflowStrategy.Hybrid] = sp =>
             {
                 var hybridLogger = sp.GetService(typeof(ILogger<HybridStrategy>)) as ILogger<HybridStrategy>
                     ?? _logger as ILogger<HybridStrategy>
                     ?? throw new InvalidOperationException("Could not create logger for HybridStrategy");
-                return new HybridStrategy(hybridLogger, new BackpressureStrategy(), new DropOldestStrategy());
+                var backpressureLogger = sp.GetService(typeof(ILogger<BackpressureStrategy>)) as ILogger<BackpressureStrategy>;
+                var dropOldestLogger = sp.GetService(typeof(ILogger<DropOldestStrategy>)) as ILogger<DropOldestStrategy>;
+                return new HybridStrategy(hybridLogger, new BackpressureStrategy(backpressureLogger), new DropOldestStrategy(dropOldestLogger));
             }
         };
 

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
@@ -13,6 +13,7 @@
     <NoWarn>CS0618;CS1591</NoWarn>
     <!-- CS0618: Suppress obsolete warnings from submodules -->
     <!-- CS1591: Missing XML comment for publicly visible type or member -->
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
   <!-- Standard package references -->
   <ItemGroup>
@@ -24,16 +25,22 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.3" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Lib.AspNetCore.ServerSentEvents" Version="9.0.0" />
+    <!-- Serilog and Logging -->
     <PackageReference Include="Serilog.Extensions.Hosting" Version="8.0.0" />
-    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageReference Include="Serilog.Sinks.Seq" Version="7.0.0" />
     <PackageReference Include="Serilog.Formatting.Compact" Version="3.0.0" />
+    <PackageReference Include="Serilog.Enrichers.Environment" Version="3.0.0" />
+    <PackageReference Include="Serilog.Enrichers.CorrelationId" Version="3.0.1" />
+    <PackageReference Include="Serilog.Enrichers.Thread" Version="3.1.0" />
     <PackageReference Include="YamlDotNet" Version="16.3.0" />
   </ItemGroup>
   <!-- Orleans client integration -->
   <ItemGroup>
     <ProjectReference Include="..\AIChat.Orleans.Client\AIChat.Orleans.Client.csproj" />
     <ProjectReference Include="..\AIChat.Orleans.Host\AIChat.Orleans.Host.csproj" />
+    <ProjectReference Include="..\DocProject.ServiceDefaults\DocProject.ServiceDefaults.csproj" />
   </ItemGroup>
   <!-- Orleans server for co-hosting in Development/Test -->
   <ItemGroup>
@@ -44,13 +51,11 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.FeatureManagement.AspNetCore" Version="3.0.0" />
   </ItemGroup>
-
   <!-- Prometheus Metrics -->
   <ItemGroup>
     <PackageReference Include="prometheus-net" Version="8.2.1" />
     <PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1" />
   </ItemGroup>
-
   <!-- OpenTelemetry for distributed tracing -->
   <ItemGroup>
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.10.0" />

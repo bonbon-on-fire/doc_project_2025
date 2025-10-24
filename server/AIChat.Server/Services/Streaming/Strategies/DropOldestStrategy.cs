@@ -5,12 +5,22 @@ namespace AIChat.Server.Services.Streaming.Strategies;
 /// </summary>
 public sealed class DropOldestStrategy : IOverflowStrategy
 {
+    private readonly ILogger<DropOldestStrategy>? _logger;
     private long _totalOverflowEvents;
     private long _successfulHandlings;
     private long _failedHandlings;
     private long _totalItemsDropped;
     private DateTime? _lastOverflowTime;
     private readonly Lock _statsLock = new();
+
+    /// <summary>
+    /// Initializes a new instance of the DropOldestStrategy class.
+    /// </summary>
+    /// <param name="logger">Optional logger for diagnostics</param>
+    public DropOldestStrategy(ILogger<DropOldestStrategy>? logger = null)
+    {
+        _logger = logger;
+    }
 
     /// <inheritdoc />
     public string Name => "DropOldest";
@@ -50,7 +60,8 @@ public sealed class DropOldestStrategy : IOverflowStrategy
                 itemsToDrop = actualDropped;
             }
 
-            context.Logger?.LogWarning(
+            // Log using injected logger if available, otherwise use context logger
+            (_logger ?? context.Logger)?.LogWarning(
                 "Dropping {Count} oldest items from buffer. Utilization: {Utilization:F1}%",
                 itemsToDrop,
                 context.UtilizationPercentage);
@@ -76,7 +87,8 @@ public sealed class DropOldestStrategy : IOverflowStrategy
                 _failedHandlings++;
             }
 
-            context.Logger?.LogError(ex, "Failed to drop oldest items");
+            // Log using injected logger if available, otherwise use context logger
+            (_logger ?? context.Logger)?.LogError(ex, "Failed to drop oldest items");
 
             return Task.FromResult(new OverflowHandlingResult
             {

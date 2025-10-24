@@ -364,8 +364,8 @@ public static class SnapshotSchemaHelper
                     (SELECT COUNT(*) FROM Snapshots) as SnapshotCount,
                     (SELECT COUNT(*) FROM SnapshotContent) as ContentCount,
                     (SELECT COUNT(DISTINCT StreamId) FROM Snapshots) as StreamCount,
-                    (SELECT SUM(CompressedSize) FROM Snapshots) as TotalCompressedSize,
-                    (SELECT SUM(UncompressedSize) FROM Snapshots) as TotalUncompressedSize,
+                    (SELECT COALESCE(SUM(CompressedSize), 0) FROM Snapshots) as TotalCompressedSize,
+                    (SELECT COALESCE(SUM(UncompressedSize), 0) FROM Snapshots) as TotalUncompressedSize,
                     (SELECT COUNT(*) FROM SnapshotContent WHERE ReferenceCount > 1) as DeduplicatedContent";
 
             var command = connection.CreateCommand();

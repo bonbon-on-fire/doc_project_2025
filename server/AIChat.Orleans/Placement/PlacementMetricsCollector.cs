@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
+using Orleans;
 using Orleans.Runtime;
 
 namespace AIChat.Orleans.Placement;
@@ -245,44 +246,53 @@ public class PlacementMetricsCollector : IPlacementMetricsCollector
 /// <summary>
 /// Summary of placement metrics for analysis and monitoring.
 /// </summary>
+[GenerateSerializer]
+[Alias("AIChat.Orleans.Placement.PlacementMetricsSummary")]
 public class PlacementMetricsSummary
 {
     /// <summary>
     /// Total number of grain placements recorded.
     /// </summary>
+    [Id(0)]
     public long TotalPlacements { get; set; }
 
     /// <summary>
     /// When metrics collection started.
     /// </summary>
+    [Id(1)]
     public DateTime MetricsStartTime { get; set; }
 
     /// <summary>
     /// When metrics summary was generated.
     /// </summary>
+    [Id(2)]
     public DateTime MetricsEndTime { get; set; }
 
     /// <summary>
     /// Count of placements by strategy type.
     /// Key format: "GrainType:PlacementStrategy"
     /// </summary>
+    [Id(3)]
     public Dictionary<string, long> PlacementStrategyCounts { get; set; } = [];
 
     /// <summary>
     /// Count of cross-silo communications by grain type pairs.
     /// Key format: "SourceGrainType->TargetGrainType"
     /// </summary>
+    [Id(4)]
     public Dictionary<string, long> CrossSiloCommunicationCounts { get; set; } = [];
 
     /// <summary>
     /// Count of successful affinity co-locations by grain type pairs.
     /// Key format: "GrainType1+GrainType2"
     /// </summary>
+    [Id(5)]
     public Dictionary<string, long> AffinitySuccessCounts { get; set; } = [];
 
     /// <summary>
     /// Distribution of grain placements across silos.
     /// </summary>
+    [Id(6)]
     public Dictionary<string, long> SiloLoadDistribution { get; set; } = [];
 
     /// <summary>

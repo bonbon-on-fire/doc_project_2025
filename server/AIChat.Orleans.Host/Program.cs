@@ -1,6 +1,5 @@
 using System.Globalization;
 using AIChat.Orleans.Configuration;
-using AIChat.Orleans.Host.Services;
 using AIChat.Orleans.Metrics;
 using AIChat.Orleans.Placement;
 using Microsoft.ApplicationInsights.AspNetCore.Extensions;
@@ -131,6 +130,7 @@ public class Program
                         .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
                         .MinimumLevel.Override("AIChat.Orleans", LogEventLevel.Debug)
                         .WriteTo.Console(
+                            restrictedToMinimumLevel: LogEventLevel.Warning,
                             outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}",
                             formatProvider: CultureInfo.InvariantCulture
                         )
@@ -152,6 +152,27 @@ public class Program
                             TelemetryConverter.Traces
                         );
                     }
+
+                    // Add Seq sink for centralized structured logging (if enabled)
+                    var enableSeq = context.Configuration.GetValue("Serilog:EnableSeq", true);
+                    if (enableSeq)
+                    {
+                        var seqServerUrl = context.Configuration["Serilog:SeqServerUrl"] ?? "http://localhost:5341";
+                        _ = configuration.WriteTo.Seq(
+                            serverUrl: seqServerUrl,
+                            apiKey: context.Configuration["Serilog:SeqApiKey"],
+                            restrictedToMinimumLevel: LogEventLevel.Debug
+                        );
+                    }
+
+                    // Add enrichers for better log context
+                    _ = configuration
+                        .Enrich.FromLogContext()
+                        .Enrich.WithMachineName()
+                        .Enrich.WithThreadId()
+                        .Enrich.WithEnvironmentName()
+                        .Enrich.WithProperty("Application", "AIChat.Orleans.Host")
+                        .Enrich.WithProperty("Environment", context.HostingEnvironment.EnvironmentName);
                 }
             )
             .UseOrleans(ConfigureOrleans)
@@ -201,21 +222,79 @@ public class Program
                     // Phase 5: Add placement metrics collection (ORL-ST-P5-001)
                     _ = services.AddPlacementMetrics();
 
-                    // Add HTTP client for ChatServiceProxy
-                    _ = services.AddHttpClient<HttpChatServiceProxy>(client =>
+                    // ========================================================================
+                    // LLM Server Cleanup Phase 1: IStreamingAgent Registration
+                    // ========================================================================
+                    // Moved from AIChat.Server to Orleans.Host
+                    // Orleans Host now owns LLM credential management and caching infrastructure
+                    // ========================================================================
+                    _ = services.AddTransient<AchieveAi.LmDotnetTools.LmCore.Agents.IStreamingAgent>(provider =>
                     {
-                        // Configure base address - in production this should come from configuration
-                        // For development, assume Server runs on localhost:5000
-                        client.BaseAddress = new Uri("http://localhost:5000/");
-                        client.Timeout = TimeSpan.FromMinutes(5); // Long timeout for LLM processing
-                    });
+                        // Register IStreamingAgent as an OpenAIProvider-based agent with caching
+                        // Get configuration - prioritize environment variables, then User Secrets/config
+                        var configuration = provider.GetRequiredService<IConfiguration>();
+                        var logger = provider.GetRequiredService<ILogger<Program>>();
+                        var hostEnv = provider.GetRequiredService<IHostEnvironment>();
 
-                    // Add ChatServiceProxy for grain LLM processing
-                    // Production implementation that calls real Server API endpoints
-                    _ = services.AddSingleton<
-                        Orleans.Services.IChatServiceProxy,
-                        HttpChatServiceProxy
-                    >();
+                        var apiKey =
+                            Environment.GetEnvironmentVariable("LLM_API_KEY") ?? configuration["OpenAI:ApiKey"] ?? "";
+                        var baseUrl =
+                            Environment.GetEnvironmentVariable("LLM_BASE_API_URL")
+                            ?? configuration["OpenAI:BaseUrl"]
+                            ?? "https://api.openai.com/v1";
+
+                        // Diagnostic logging for API configuration
+                        logger.LogInformation("[DIAGNOSTIC] API Configuration:");
+                        logger.LogInformation("[DIAGNOSTIC] Base URL: {BaseUrl}", baseUrl);
+                        logger.LogInformation("[DIAGNOSTIC] API Key Length: {ApiKeyLength}", apiKey?.Length ?? 0);
+                        logger.LogInformation(
+                            "[DIAGNOSTIC] API Key Prefix: {ApiKeyPrefix}",
+                            apiKey?.Length > 10 ? string.Concat(apiKey.AsSpan(0, 10), "...") : "[EMPTY]"
+                        );
+
+
+                        // Create an OpenAI client with caching (non-Test environments)
+                        if (string.IsNullOrEmpty(apiKey))
+                        {
+                            throw new InvalidOperationException("OpenAI API key is required but was not provided.");
+                        }
+
+                        // Create cache infrastructure
+                        var cacheDirectory = configuration["LlmCache:CacheDirectory"] ?? "./llm-cache";
+                        var cache = new AchieveAi.LmDotnetTools.Misc.Storage.FileKvStore(cacheDirectory);
+
+                        // Configure cache options
+                        var cacheOptions = new AchieveAi.LmDotnetTools.Misc.Configuration.LlmCacheOptions
+                        {
+                            EnableCaching = configuration.GetValue("LlmCache:EnableCaching", true),
+                            CacheExpiration = configuration.GetValue<TimeSpan?>(
+                                "LlmCache:CacheExpiration",
+                                TimeSpan.FromHours(24)
+                            ),
+                            MaxCacheItems = configuration.GetValue<int?>("LlmCache:MaxCacheItems", 10000),
+                        };
+
+                        // Create HTTP client with caching handler
+                        var httpClientHandler = new HttpClientHandler();
+                        var cachingHandler = new AchieveAi.LmDotnetTools.Misc.Http.CachingHttpMessageHandler(
+                            cache,
+                            cacheOptions,
+                            httpClientHandler,
+                            logger
+                        );
+
+                        var httpClient = new HttpClient(cachingHandler)
+                        {
+                            BaseAddress = new Uri(baseUrl),
+                            Timeout = TimeSpan.FromMinutes(5),
+                        };
+
+                        // Add authentication headers
+                        httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+
+                        var openClient = new AchieveAi.LmDotnetTools.OpenAIProvider.Agents.OpenClient(httpClient, baseUrl, null, logger);
+                        return new AchieveAi.LmDotnetTools.OpenAIProvider.Agents.OpenClientAgent("OpenAi", openClient);
+                    });
 
                     // Add health checks
                     _ = services.AddHealthChecks();
@@ -284,6 +363,10 @@ public class Program
             _ = logging.AddSerilog();
         });
 
+        // Enable distributed tracing with Activity propagation
+        // This enables W3C Trace Context support for grain calls
+        _ = siloBuilder.AddActivityPropagation();
+
         // Note: GrainPlacementOptions configuration updated for Orleans 9.x
         // ResourceOptimizedPlacement is used by default
 
@@ -296,6 +379,10 @@ public class Program
 
         // Enable placement metrics collection through grain filters
         _ = siloBuilder.UseOrleansPlacementMetrics();
+
+        // Add distributed logging filter for all grain calls
+        // Provides entry/exit logging, performance tracking, and error diagnostics
+        _ = siloBuilder.AddIncomingGrainCallFilter<AIChat.Orleans.Logging.LoggingGrainCallFilter>();
 
         // Configure grain collection
         _ = siloBuilder.Configure<GrainCollectionOptions>(options =>

@@ -80,4 +80,17 @@ public interface IChatMessagingGrain : IGrainWithStringKey
     [Alias("GetMessageStatusAsync")]
     [ReadOnly]
     Task<MessageStatus> GetMessageStatusAsync(string messageId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Processes a message with LLM integration (Orleans-First architecture).
+    /// Persists the user message, starts LLM streaming via IStreamingAgent, and broadcasts chunks via UserGrain.
+    /// </summary>
+    /// <param name="message">The user message to process</param>
+    /// <param name="cancellationToken">Cancellation token for operation control</param>
+    /// <returns>Stream handle for tracking the LLM response stream</returns>
+    /// <exception cref="InvalidOperationException">Thrown when IStreamingAgent is not configured</exception>
+    /// <exception cref="ChatNotFoundException">Thrown when the chat does not exist</exception>
+    /// <exception cref="ChatArchivedException">Thrown when attempting to send a message to an archived chat</exception>
+    [Alias("ProcessMessageWithLLMAsync")]
+    Task<StreamHandle> ProcessMessageWithLLMAsync(ChatMessage message, CancellationToken cancellationToken = default);
 }

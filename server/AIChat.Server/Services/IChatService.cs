@@ -24,10 +24,8 @@ public interface IChatService
     );
     Task<StreamInitResult> PrepareStreamChatAsync(StreamChatRequest request);
     Task<StreamInitResult> PrepareUnifiedStreamChatAsync(StreamChatRequest request);
-    Task StreamChatCompletionAsync(
-        StreamChatRequest request,
-        CancellationToken cancellationToken = default
-    );
+    // REMOVED - Phase 3: LLM operations now handled by Orleans ChatGrain
+    // Task StreamChatCompletionAsync(StreamChatRequest request, CancellationToken cancellationToken = default);
     Task StreamUnifiedChatCompletionAsync(
         StreamChatRequest request,
         CancellationToken cancellationToken = default

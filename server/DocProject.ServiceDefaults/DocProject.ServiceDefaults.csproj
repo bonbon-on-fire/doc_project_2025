@@ -1,27 +1,25 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net9.0;net10.0</TargetFrameworks>
+    <!-- Target only .NET 9.0 - net10.0 removed as it's not yet released -->
+    <TargetFrameworks>net9.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
-
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
-
   <ItemGroup>
     <!-- HTTP Resilience and Service Discovery - use latest stable versions -->
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="9.9.0" />
     <PackageReference Include="Microsoft.Extensions.ServiceDiscovery" Version="9.5.1" />
-
     <!-- OpenTelemetry packages -->
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.10.0" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.10.0" />
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.10.1" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.10.0" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.10.0" />
-
     <!-- Orleans client for service discovery helpers -->
-    <PackageReference Include="Microsoft.Orleans.Client" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Orleans.Client" Version="9.2.1" />
   </ItemGroup>
 </Project>

@@ -1,6 +1,22 @@
 namespace AIChat.Server.Services.Metrics;
 
 /// <summary>
+/// Health information for the metrics exporter.
+/// </summary>
+/// <param name="Status">Health status string (e.g., "Healthy", "Degraded")</param>
+/// <param name="IsHealthy">True if the exporter is healthy and collecting metrics</param>
+/// <param name="LastUpdateTime">Time of the last metrics update</param>
+/// <param name="TotalMetricsExported">Total number of metrics exported</param>
+/// <param name="TrackedGrainTypes">List of grain types being tracked</param>
+public record MetricsHealthInfo(
+    string Status,
+    bool IsHealthy,
+    DateTime? LastUpdateTime,
+    int TotalMetricsExported,
+    List<string> TrackedGrainTypes
+);
+
+/// <summary>
 /// Interface for exporting Orleans metrics to Prometheus format.
 /// Bridges between IOrleansMetricsCollector and Prometheus metric types.
 /// </summary>

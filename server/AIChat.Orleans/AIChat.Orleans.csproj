@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -9,8 +8,8 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors />
     <WarningsNotAsErrors>CS1591</WarningsNotAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
-
   <PropertyGroup>
     <AssemblyTitle>AIChat Orleans Grains</AssemblyTitle>
     <AssemblyDescription>Orleans grains and contracts for AIChat application</AssemblyDescription>
@@ -18,20 +17,24 @@
     <AssemblyProduct>AIChat Orleans</AssemblyProduct>
     <Copyright>© 2024 AIChat</Copyright>
   </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="Microsoft.Orleans.Core.Abstractions" Version="9.2.1" />
     <PackageReference Include="Microsoft.Orleans.Serialization.Abstractions" Version="9.2.1" />
     <PackageReference Include="Microsoft.Orleans.Serialization" Version="9.2.1" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.3" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.5" />
     <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
   </ItemGroup>
-
   <!-- OpenTelemetry for distributed tracing in grains -->
   <ItemGroup>
     <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="8.0.1" />
   </ItemGroup>
-
+  <!-- LmDotnetTools for LLM streaming agent integration (Phase 2) -->
+  <ItemGroup Condition="Exists('../../submodules/LmDotnetTools/src/LmCore/AchieveAi.LmDotnetTools.LmCore.csproj')">
+    <ProjectReference Include="../../submodules/LmDotnetTools/src/LmCore/AchieveAi.LmDotnetTools.LmCore.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="!Exists('../../submodules/LmDotnetTools/src/LmCore/AchieveAi.LmDotnetTools.LmCore.csproj')">
+    <PackageReference Include="AchieveAi.LmDotnetTools.LmCore" Version="1.0.20" />
+  </ItemGroup>
 </Project>

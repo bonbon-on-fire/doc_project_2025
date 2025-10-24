@@ -78,6 +78,10 @@ public static class OrleansClientExtensions
         _ = clientBuilder.Configure<GatewayOptions>(options =>
             options.GatewayListRefreshPeriod = TimeSpan.FromMinutes(5)
         );
+
+        // Enable distributed tracing with Activity propagation
+        // This enables W3C Trace Context support for client calls to grains
+        _ = clientBuilder.AddActivityPropagation();
     }
 
     /// <summary>
