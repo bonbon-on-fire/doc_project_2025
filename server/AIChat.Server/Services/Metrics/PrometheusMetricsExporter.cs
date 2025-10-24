@@ -156,7 +156,6 @@ public class PrometheusMetricsExporter : IPrometheusMetricsExporter
         }
     }
 
-
     /// <inheritdoc />
     public async Task ResetMetricsAsync()
     {
@@ -208,7 +207,7 @@ public class PrometheusMetricsExporter : IPrometheusMetricsExporter
             var summary = await _orléansMetrics.GetMetricsSummaryAsync();
             var isHealthy = summary != null && summary.CollectedAt > DateTime.UtcNow.AddMinutes(-5);
             var status = isHealthy ? "Healthy" : "Degraded";
-            var totalMetricsExported = 8; // Number of Prometheus metric types we're tracking
+            const int totalMetricsExported = 8; // Number of Prometheus metric types we're tracking
             var trackedGrainTypes = new List<string> { "UserGrain", "ChatGrain", "ModeGrain" };
 
             return new MetricsHealthInfo(

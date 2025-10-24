@@ -163,7 +163,6 @@ public sealed class TranslationResult<T>
     /// Target type that was translated to.
     /// </summary>
     public Type? TargetType { get; set; }
-
 }
 
 /// <summary>

@@ -22,7 +22,7 @@ public static class EventStoreSchemaHelper
         // Check if we need to reset the event store schema
         var needsReset = await NeedsEventStoreSchemaResetAsync(connection, cancellationToken);
 
-        using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
         try
         {
             if (needsReset)

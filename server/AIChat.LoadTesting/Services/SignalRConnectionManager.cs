@@ -412,7 +412,7 @@ public class SignalRConnectionManager : IDisposable
         return false;
     }
 
-    private double CalculateAverageLatency(List<TestUser> users)
+    private static double CalculateAverageLatency(List<TestUser> users)
     {
         var allLatencies = users.SelectMany(u => u.Metrics.MessageLatencies).ToList();
         return allLatencies.Count > 0 ? allLatencies.Average() : 0;

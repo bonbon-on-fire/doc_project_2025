@@ -233,6 +233,10 @@ public class RouterException : Exception
     /// <param name="innerException">The inner exception</param>
     public RouterException(string message, Exception innerException) : base(message, innerException) { }
 
+    public RouterException() : base()
+    {
+    }
+
     /// <summary>
     /// Gets the operation name that failed.
     /// </summary>

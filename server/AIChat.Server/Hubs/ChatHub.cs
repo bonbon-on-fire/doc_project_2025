@@ -7,15 +7,18 @@ using Microsoft.AspNetCore.SignalR;
 namespace AIChat.Server.Hubs;
 
 /// <summary>
+/// <para>
 /// SignalR hub for real-time chat communication with Orleans integration.
 /// This hub routes operations through DualModeRouter to support both Orleans grains
 /// and direct service operations, providing seamless scalability and fallback capabilities.
-///
+/// </para>
+/// <para>
 /// Features:
 /// - Standardized error handling with categorized responses
 /// - Structured logging with performance metrics
 /// - Orleans-aware connection management
 /// - Backward compatibility with direct service mode
+/// </para>
 /// </summary>
 public class ChatHub : Hub
 {

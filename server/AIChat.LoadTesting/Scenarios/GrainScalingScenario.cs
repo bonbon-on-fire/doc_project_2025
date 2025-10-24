@@ -411,7 +411,7 @@ public class GrainScalingScenario : LoadTestScenarioBase
         };
     }
 
-    private void ValidateScalingBehavior(BurstResult result)
+    private static void ValidateScalingBehavior(BurstResult result)
     {
         // Validate grain activation occurred appropriately
         var expectedGrainIncrease = Math.Max(1, result.UserCount / 10); // Expect at least 1 grain per 10 users

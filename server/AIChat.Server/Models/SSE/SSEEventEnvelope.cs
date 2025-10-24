@@ -153,7 +153,7 @@ public class MessageCompleteEventEnvelope : SSEEventEnvelope
 /// <summary>
 /// Base class for all message completion payloads
 /// </summary>
-public abstract class MessageCompletePayload { }
+public abstract class MessageCompletePayload;
 
 /// <summary>
 /// Payload for completed text messages

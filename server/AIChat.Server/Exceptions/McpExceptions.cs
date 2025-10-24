@@ -24,6 +24,10 @@ public class McpException : Exception
     {
         ServerName = serverName;
     }
+
+    public McpException() : base()
+    {
+    }
 }
 
 /// <summary>
@@ -47,6 +51,14 @@ public class McpConfigurationException : McpException
     {
         ConfigSection = configSection;
     }
+
+    public McpConfigurationException(string message, Exception innerException) : base(message, innerException)
+    {
+    }
+
+    public McpConfigurationException() : base()
+    {
+    }
 }
 
 /// <summary>
@@ -59,6 +71,18 @@ public class McpInitializationException : McpException
 
     public McpInitializationException(string message, string serverName, Exception innerException)
         : base(message, serverName, innerException) { }
+
+    public McpInitializationException(string message) : base(message)
+    {
+    }
+
+    public McpInitializationException(string message, Exception innerException) : base(message, innerException)
+    {
+    }
+
+    public McpInitializationException() : base()
+    {
+    }
 }
 
 /// <summary>
@@ -84,6 +108,26 @@ public class McpTransportException : McpException
     {
         TransportType = transportType;
     }
+
+    public McpTransportException(string message) : base(message)
+    {
+    }
+
+    public McpTransportException(string message, Exception innerException) : base(message, innerException)
+    {
+    }
+
+    public McpTransportException(string message, string serverName) : base(message, serverName)
+    {
+    }
+
+    public McpTransportException(string message, string serverName, Exception innerException) : base(message, serverName, innerException)
+    {
+    }
+
+    public McpTransportException() : base()
+    {
+    }
 }
 
 /// <summary>
@@ -96,4 +140,16 @@ public class McpConnectionException : McpException
 
     public McpConnectionException(string message, string serverName, Exception innerException)
         : base(message, serverName, innerException) { }
+
+    public McpConnectionException(string message) : base(message)
+    {
+    }
+
+    public McpConnectionException(string message, Exception innerException) : base(message, innerException)
+    {
+    }
+
+    public McpConnectionException() : base()
+    {
+    }
 }

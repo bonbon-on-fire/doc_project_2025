@@ -32,9 +32,9 @@ public class ModeRouter : IModeRouter, IDisposable
     /// </summary>
     /// <param name="featureManager">Feature manager for Orleans feature flag evaluation</param>
     /// <param name="logger">Logger for structured logging</param>
-    /// <param name="grainFactory">Orleans grain factory for grain creation</param>
     /// <param name="modeService">Direct mode service for fallback operations</param>
     /// <param name="options">Configuration options for router behavior</param>
+    /// <param name="grainFactory">Orleans grain factory for grain creation</param>
     public ModeRouter(
         IFeatureManager featureManager,
         ILogger<ModeRouter> logger,

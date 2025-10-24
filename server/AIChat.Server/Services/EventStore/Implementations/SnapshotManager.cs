@@ -114,7 +114,7 @@ public sealed class SnapshotManager : ISnapshotManager
                 // Estimate stream size based on event count and average event size
                 // This is a rough estimate - could be improved with actual size tracking
                 var eventsSinceSnapshot = currentVersion - latestSnapshotVersion;
-                var estimatedEventSize = 1024; // 1KB per event (conservative estimate)
+                const int estimatedEventSize = 1024; // 1KB per event (conservative estimate)
                 var estimatedStreamSize = eventsSinceSnapshot * estimatedEventSize;
 
                 if (estimatedStreamSize >= policy.StreamSizeThreshold.Value)

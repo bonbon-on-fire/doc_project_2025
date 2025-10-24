@@ -630,7 +630,7 @@ public sealed class ResilientStreamManager : IResilientStreamManager
         if (context.PartialMessages.Count >= _configuration.PartialRecovery.MaxPartialMessages)
         {
             // Remove oldest partial message
-            var oldestKey = context.PartialMessages.Keys.OrderBy(k => k).FirstOrDefault();
+            var oldestKey = context.PartialMessages.Keys.Order().FirstOrDefault();
             _ = context.PartialMessages.TryRemove(oldestKey, out _);
         }
 

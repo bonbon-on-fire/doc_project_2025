@@ -35,6 +35,10 @@
     <PackageReference Include="Serilog.Enrichers.CorrelationId" Version="3.0.1" />
     <PackageReference Include="Serilog.Enrichers.Thread" Version="3.1.0" />
     <PackageReference Include="YamlDotNet" Version="16.3.0" />
+    <PackageReference Include="Roslynator.Analyzers" Version="4.14.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
   <!-- Orleans client integration -->
   <ItemGroup>
@@ -68,10 +72,8 @@
   <ItemGroup Condition="Exists('../../submodules/LmDotnetTools/src/LmCore/AchieveAi.LmDotnetTools.LmCore.csproj')">
     <ProjectReference Include="../../submodules/LmDotnetTools/src/LmCore/AchieveAi.LmDotnetTools.LmCore.csproj" />
     <ProjectReference Include="../../submodules/LmDotnetTools/src/Misc/AchieveAi.LmDotnetTools.Misc.csproj" />
-    <ProjectReference
-      Include="../../submodules/LmDotnetTools/src/McpMiddleware/AchieveAi.LmDotnetTools.McpMiddleware.csproj" />
-    <ProjectReference
-      Include="../../submodules/LmDotnetTools/src/OpenAiProvider/AchieveAi.LmDotnetTools.OpenAiProvider.csproj" />
+    <ProjectReference Include="../../submodules/LmDotnetTools/src/McpMiddleware/AchieveAi.LmDotnetTools.McpMiddleware.csproj" />
+    <ProjectReference Include="../../submodules/LmDotnetTools/src/OpenAiProvider/AchieveAi.LmDotnetTools.OpenAiProvider.csproj" />
     <ProjectReference Include="../../submodules/LmDotnetTools/src/LmConfig/AchieveAi.LmDotnetTools.LmConfig.csproj" />
   </ItemGroup>
   <ItemGroup Condition="!Exists('../../submodules/LmDotnetTools/src/LmCore/AchieveAi.LmDotnetTools.LmCore.csproj')">

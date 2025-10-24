@@ -192,7 +192,7 @@ public record PagedResult<T>
     /// <summary>
     /// Gets the 1-based index of the first item in the current page.
     /// </summary>
-    public int FirstItemIndex => TotalCount == 0 ? 0 : (Page - 1) * PageSize + 1;
+    public int FirstItemIndex => TotalCount == 0 ? 0 : ((Page - 1) * PageSize) + 1;
 
     /// <summary>
     /// Gets the 1-based index of the last item in the current page.

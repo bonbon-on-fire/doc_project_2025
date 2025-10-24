@@ -176,7 +176,7 @@ public class McpClientManager(
     {
         if (string.IsNullOrEmpty(config.Command))
         {
-            var errorMsg = "Command is required for stdio transport";
+            const string errorMsg = "Command is required for stdio transport";
             logger.LogError("{Error} for server: {ServerName}", errorMsg, serverName);
             throw new McpConfigurationException(
                 $"{errorMsg} in server configuration for '{serverName}'",
@@ -210,7 +210,7 @@ public class McpClientManager(
     {
         // SSE/HTTP transport is not yet available in the current ModelContextProtocol.Client version
         // This is a placeholder for future implementation when the SDK supports it
-        var errorMsg =
+        const string errorMsg =
             "SSE/HTTP transport is not yet supported in the current ModelContextProtocol.Client version";
         logger.LogWarning("{Error}. Server {ServerName} will be skipped.", errorMsg, serverName);
         throw new McpTransportException(

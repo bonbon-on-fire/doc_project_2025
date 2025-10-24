@@ -3,12 +3,15 @@ using AIChat.Server.Services.SignalRBuffering.Models;
 namespace AIChat.Server.Services.SignalRBuffering.Abstractions;
 
 /// <summary>
+/// <para>
 /// Abstraction for SignalR message buffering operations.
 /// Provides thread-safe, high-performance message queuing with overflow handling,
 /// delivery confirmation, and comprehensive metrics collection.
-///
+/// </para>
+/// <para>
 /// This interface supports various buffering strategies and can be implemented
 /// with different backing stores (in-memory, persistent, distributed).
+/// </para>
 /// </summary>
 public interface ISignalRMessageBuffer
 {

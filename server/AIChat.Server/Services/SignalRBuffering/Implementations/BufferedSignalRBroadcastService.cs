@@ -7,19 +7,23 @@ using Microsoft.Extensions.Options;
 namespace AIChat.Server.Services.SignalRBuffering.Implementations;
 
 /// <summary>
+/// <para>
 /// Decorator implementation of ISignalRBroadcastService that adds message buffering capabilities.
 /// This service transparently intercepts SignalR broadcast calls and routes them through the
 /// message buffer for improved reliability, overflow handling, and delivery confirmation.
-///
+/// </para>
+/// <para>
 /// Features:
 /// - Transparent buffering for all SignalR broadcast operations
 /// - Automatic fallback to direct broadcast when buffering is disabled or unhealthy
 /// - Comprehensive metrics collection and health monitoring
 /// - Integration with Orleans grain broadcasting
 /// - Zero breaking changes to existing SignalR contracts
-///
+/// </para>
+/// <para>
 /// The decorator pattern ensures that existing code continues to work unchanged while
 /// gaining the benefits of message buffering and improved reliability.
+/// </para>
 /// </summary>
 public sealed class BufferedSignalRBroadcastService : ISignalRBroadcastService, IDisposable
 {

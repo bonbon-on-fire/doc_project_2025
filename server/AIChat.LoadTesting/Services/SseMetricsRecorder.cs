@@ -277,7 +277,7 @@ public class SseMetricsRecorder : ISseMetricsRecorder
         return allMessageLatencies.Count > 0 ? allMessageLatencies.Average() : 0;
     }
 
-    private LatencyPercentiles? CalculateLatencyPercentiles(List<double> sortedLatencies)
+    private static LatencyPercentiles? CalculateLatencyPercentiles(List<double> sortedLatencies)
     {
         if (sortedLatencies.Count == 0)
         {
@@ -308,7 +308,7 @@ public class SseMetricsRecorder : ISseMetricsRecorder
         return sortedValues[index];
     }
 
-    private SseConnectionMetrics ConvertToConnectionMetrics(string connectionId, ConnectionMetricsData data)
+    private static SseConnectionMetrics ConvertToConnectionMetrics(string connectionId, ConnectionMetricsData data)
     {
         var latencies = data.MessageLatencies.ToList();
         latencies.Sort();

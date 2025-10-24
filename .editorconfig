@@ -539,3 +539,209 @@ dotnet_diagnostic.IDE0037.severity = none
 dotnet_diagnostic.IDE0037.severity = none
 [server/AIChat.Server/Hubs/ChatHub.cs]
 dotnet_diagnostic.IDE0037.severity = none
+
+# ========================================
+# Roslynator Analyzer Configuration
+# Auto-generated on 2025-10-23 21:54:17
+# ========================================
+
+[*.cs]
+
+# Enable Roslynator analyzers
+roslynator_analyzers.enabled_by_default = true
+
+# Set global severity for all Roslynator rules
+# Options: none, silent, suggestion, warning, error
+dotnet_analyzer_diagnostic.category-roslynator.severity = warning
+
+# Enable refactorings (code fixes)
+roslynator_refactorings.enabled = true
+
+# Enable compiler diagnostic fixes
+roslynator_compiler_diagnostic_fixes.enabled = true
+
+# ========================================
+# Roslynator Code Style Options
+# ========================================
+
+# Accessibility modifiers
+roslynator_accessibility_modifiers = explicit
+
+# Array creation - prefer collection expressions in C# 12+
+roslynator_array_creation_type_style = implicit
+
+# Use var when type is obvious
+roslynator_use_var = when_type_is_obvious
+
+# Prefix field identifiers with underscore
+roslynator_prefix_field_identifier_with_underscore = true
+
+# Use block body for local functions
+roslynator_body_style = block
+
+# Blank line after file scoped namespace declaration
+roslynator_blank_line_after_file_scoped_namespace_declaration = true
+
+# Use collection expression for array, list, collection, etc. (C# 12+)
+roslynator_use_collection_expression = true
+
+# ========================================
+# Common Roslynator Rules Configuration
+# ========================================
+
+# RCS1036: Remove unnecessary blank line
+dotnet_diagnostic.rcs1036.severity = suggestion
+
+# RCS1037: Remove trailing white-space
+dotnet_diagnostic.rcs1037.severity = warning
+
+# RCS1138: Add summary to documentation comment
+dotnet_diagnostic.rcs1138.severity = suggestion
+
+# RCS1163: Unused parameter (104 instances - consider fixing manually)
+dotnet_diagnostic.rcs1163.severity = suggestion
+
+# RCS1186: Use Regex instance instead of static method
+dotnet_diagnostic.rcs1186.severity = suggestion
+
+# RCS1090: Call 'ConfigureAwait(false)'
+dotnet_diagnostic.rcs1090.severity = none
+
+# ========================================
+# Documentation Rules (Unfixable - Downgraded)
+# ========================================
+
+# RCS1141: Add 'param' element to documentation comment (416 instances - unfixable)
+dotnet_diagnostic.rcs1141.severity = none
+
+# RCS1140: Add exception to documentation comment (34 instances - unfixable)
+dotnet_diagnostic.rcs1140.severity = none
+
+# RCS1155: Use StringComparison when comparing strings
+dotnet_diagnostic.rcs1155.severity = suggestion
+
+# RCS1142: Add 'typeparam' element to documentation comment (16 instances - unfixable)
+dotnet_diagnostic.rcs1142.severity = none
+
+# RCS1226: Add paragraph to documentation comment (14 instances - unfixable)
+dotnet_diagnostic.rcs1226.severity = none
+
+# RCS1228: Convert comment to documentation comment (34 instances - unfixable)
+dotnet_diagnostic.rcs1228.severity = suggestion
+
+# ========================================
+# Code Quality Rules (Can be fixed manually over time)
+# ========================================
+
+# RCS1189: Add region name to #endregion (94 instances)
+dotnet_diagnostic.rcs1189.severity = suggestion
+
+# RCS1194: Implement exception constructors (66 instances)
+dotnet_diagnostic.rcs1194.severity = suggestion
+
+# RCS1188: Remove redundant auto-property initialization (52 instances)
+dotnet_diagnostic.rcs1188.severity = suggestion
+
+# RCS1181: Convert comment to documentation comment
+dotnet_diagnostic.rcs1181.severity = suggestion
+
+# RCS1124: Inline local variable (48 instances)
+dotnet_diagnostic.rcs1124.severity = suggestion
+
+# RCS1161: Enum should declare explicit values (48 instances)
+dotnet_diagnostic.rcs1161.severity = suggestion
+
+# RCS1199: Unnecessary null check (18 instances)
+dotnet_diagnostic.rcs1199.severity = suggestion
+
+# RCS1214: Unnecessary interpolated string (8 instances)
+dotnet_diagnostic.rcs1214.severity = suggestion
+
+# RCS1225: Make class sealed (2 instances)
+dotnet_diagnostic.rcs1225.severity = suggestion
+
+# RCS1146: Use conditional access (10 instances)
+dotnet_diagnostic.rcs1146.severity = suggestion
+
+# RCS1004: Avoid nested ?: operator (14 instances)
+dotnet_diagnostic.rcs1004.severity = suggestion
+
+# RCS1021: Use expression-bodied lambda
+dotnet_diagnostic.rcs1021.severity = suggestion
+
+# RCS1032: Remove redundant parentheses
+dotnet_diagnostic.rcs1032.severity = suggestion
+
+# RCS1103: Convert 'if' to assignment
+dotnet_diagnostic.rcs1103.severity = suggestion
+
+# RCS1123: Add parentheses when necessary
+dotnet_diagnostic.rcs1123.severity = suggestion
+
+# RCS1129: Remove redundant field initialization
+dotnet_diagnostic.rcs1129.severity = suggestion
+
+# RCS1169: Make field read-only
+dotnet_diagnostic.rcs1169.severity = suggestion
+
+# RCS1181: Mark class as sealed
+dotnet_diagnostic.rcs1181.severity = suggestion
+
+# RCS1238: Avoid nested ?: operator (28 instances)
+dotnet_diagnostic.rcs1238.severity = suggestion
+
+# RCS1211: Remove unnecessary else clause (12 instances)
+dotnet_diagnostic.rcs1211.severity = suggestion
+
+# RCS1097: Remove redundant 'ToString' call (12 instances)
+dotnet_diagnostic.rcs1097.severity = suggestion
+
+# RCS1201: Use method chaining (8 instances)
+dotnet_diagnostic.rcs1201.severity = suggestion
+
+# RCS1118: Mark local variable as const (8 instances)
+dotnet_diagnostic.rcs1118.severity = suggestion
+
+# RCS1242: Do not pass non-read-only struct by read-only reference (4 instances)
+dotnet_diagnostic.rcs1242.severity = suggestion
+
+# RCS1165: Unconstrained type parameter checked for null (4 instances)
+dotnet_diagnostic.rcs1165.severity = suggestion
+
+# RCS1077: Optimize LINQ method call (4 instances)
+dotnet_diagnostic.rcs1077.severity = suggestion
+
+# RCS1061: Merge 'if' with nested 'if' (4 instances)
+dotnet_diagnostic.rcs1061.severity = suggestion
+
+# RCS1015: Use nameof operator (4 instances)
+dotnet_diagnostic.rcs1015.severity = suggestion
+
+# RCS1006: Merge 'else' with nested 'if' (4 instances)
+dotnet_diagnostic.rcs1006.severity = suggestion
+
+# RCS1205: Order named arguments according to the order of parameters (2 instances)
+dotnet_diagnostic.rcs1205.severity = suggestion
+
+# RCS1267: Use string interpolation instead of 'string.Concat' (1 instance)
+dotnet_diagnostic.rcs1267.severity = suggestion
+
+# RCS1266: Use raw string literal (84 instances)
+dotnet_diagnostic.rcs1266.severity = suggestion
+
+# RCS1261: Resource can be disposed asynchronously (24 instances)
+dotnet_diagnostic.rcs1261.severity = suggestion
+
+# RCS1235: Optimize 'string.Join' call (24 instances)
+dotnet_diagnostic.rcs1235.severity = suggestion
+
+# RCS1246: Use element access (12 instances)
+dotnet_diagnostic.rcs1246.severity = suggestion
+
+# RCS1259: Call Enumerable.Skip and Enumerable.Any instead of Enumerable.Count (4 instances)
+dotnet_diagnostic.rcs1259.severity = suggestion
+
+# RCS1249: Unnecessary null-forgiving operator (4 instances)
+dotnet_diagnostic.rcs1249.severity = suggestion
+
+# Add more specific rules here as needed...

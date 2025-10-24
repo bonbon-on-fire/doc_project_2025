@@ -548,11 +548,7 @@ public class OrleansUserSessionStateManager : OrleansStateManagerBase<UserSessio
             // Cast connectionStateData to expected type
             // Note: This assumes the caller passes the actual ConnectionStateData object
             // In a real implementation, you might need reflection or a known interface
-            var connectionData = connectionStateData as dynamic;
-            if (connectionData == null)
-            {
-                return StateResult<UserSessionState>.FromError("Invalid connection state data format");
-            }
+            dynamic connectionData = connectionStateData;
 
             // Map ConnectionStatus to SessionLifecycleState
             var sessionState = MapConnectionStatusToSessionState(connectionData.Status);
@@ -673,71 +669,6 @@ public class OrleansUserSessionStateManager : OrleansStateManagerBase<UserSessio
         }
 
         return (session.TotalConnectionTime.TotalMilliseconds / totalTime.TotalMilliseconds) * 100.0;
-    }
-
-    #endregion
-
-    #region Helper Methods
-
-    /// <summary>
-    /// Updates the state of a session.
-    /// </summary>
-    private async Task<StateResult> UpdateSessionStateAsync(
-        string userId,
-        string sessionId,
-        SessionLifecycleState newState,
-        CancellationToken cancellationToken = default)
-    {
-        var stopwatch = Stopwatch.StartNew();
-
-        try
-        {
-            Logger.LogDebug("Updating session {SessionId} state to {NewState} for user {UserId}",
-                sessionId, newState, userId);
-
-            var userGrain = GrainFactory.GetGrain<IUserGrain>(userId);
-            StateResult updateResult;
-
-            // Use specific grain methods based on the new state
-            switch (newState)
-            {
-                case SessionLifecycleState.Connected:
-                    var connectResult = await userGrain.RecordSessionConnectionAsync(sessionId, cancellationToken);
-                    updateResult = MapToServerResult(connectResult);
-                    break;
-                case SessionLifecycleState.Disconnected:
-                    var disconnectResult = await userGrain.RecordSessionDisconnectionAsync(sessionId, cancellationToken: cancellationToken);
-                    updateResult = MapToServerResult(disconnectResult);
-                    break;
-                case SessionLifecycleState.Archived:
-                    var archiveResult = await userGrain.ArchiveSessionAsync(sessionId, cancellationToken: cancellationToken);
-                    updateResult = MapToServerResult(archiveResult);
-                    break;
-                default:
-                    // For other states (Initialized, Reconnecting, Error), use the general state update method
-                    var stateUpdateResult = await userGrain.UpdateSessionStateAsync(sessionId, newState, cancellationToken);
-                    updateResult = MapToServerResult(stateUpdateResult);
-                    break;
-            }
-
-            if (!updateResult.Success)
-            {
-                Logger.LogError("Failed to update session state in UserGrain: {Error}", updateResult.Error);
-                Metrics.RecordWrite(stopwatch.ElapsedMilliseconds, success: false);
-                return StateResult.FromError($"Failed to update session state: {updateResult.Error}");
-            }
-
-            Metrics.RecordWrite(stopwatch.ElapsedMilliseconds, success: true);
-
-            return StateResult.FromSuccess();
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to update session {SessionId} state for user {UserId}", sessionId, userId);
-            Metrics.RecordWrite(stopwatch.ElapsedMilliseconds, success: false);
-
-            return StateResult.FromError($"Failed to update session state: {ex.Message}");
-        }
     }
 
     #endregion
@@ -970,32 +901,4 @@ public class OrleansUserSessionStateManager : OrleansStateManagerBase<UserSessio
 
     #endregion
 
-    #region Mapping Helper Methods
-
-    /// <summary>
-    /// Maps an Orleans StateResult to a Server StateResult.
-    /// </summary>
-    /// <param name="orleansResult">The Orleans StateResult to map</param>
-    /// <returns>The corresponding Server StateResult</returns>
-    private static StateResult MapToServerResult(AIChat.Orleans.Models.StateResult orleansResult)
-    {
-        return orleansResult.Success
-            ? StateResult.FromSuccess()
-            : StateResult.FromError(orleansResult.Error ?? "Unknown error");
-    }
-
-    /// <summary>
-    /// Maps an Orleans StateResult{T} to a Server StateResult{T}.
-    /// </summary>
-    /// <typeparam name="T">The data type</typeparam>
-    /// <param name="orleansResult">The Orleans StateResult{T} to map</param>
-    /// <returns>The corresponding Server StateResult{T}</returns>
-    private static StateResult<T> MapToServerResult<T>(AIChat.Orleans.Models.StateResult<T> orleansResult)
-    {
-        return orleansResult.Success
-            ? StateResult<T>.FromSuccess(orleansResult.Data!)
-            : StateResult<T>.FromError(orleansResult.Error ?? "Unknown error");
-    }
-
-    #endregion
 }

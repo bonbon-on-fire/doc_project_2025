@@ -273,7 +273,6 @@ public record EventReplayResult<T>
     /// Gets any error that occurred during replay.
     /// </summary>
     public string? Error { get; init; }
-
 }
 
 /// <summary>

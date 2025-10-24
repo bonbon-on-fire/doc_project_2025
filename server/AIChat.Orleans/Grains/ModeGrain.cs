@@ -2555,7 +2555,7 @@ public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDi
     /// <summary>
     /// Generates a cache key for prompt-related operations.
     /// </summary>
-    private string GeneratePromptCacheKey(ModeConfiguration config, Dictionary<string, string>? parameters = null)
+    private static string GeneratePromptCacheKey(ModeConfiguration config, Dictionary<string, string>? parameters = null)
     {
         var keyBuilder = new StringBuilder("prompt");
 
@@ -2588,7 +2588,7 @@ public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDi
     /// <summary>
     /// Computes a consistent hash for a configuration object.
     /// </summary>
-    private string ComputeConfigurationHash(ModeConfiguration configuration)
+    private static string ComputeConfigurationHash(ModeConfiguration configuration)
     {
         var configData = JsonSerializer.Serialize(configuration, CacheJsonOptions);
         return ComputeStringHash(configData);
@@ -2597,7 +2597,7 @@ public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDi
     /// <summary>
     /// Computes a hash for a dictionary of parameters.
     /// </summary>
-    private string ComputeParametersHash(Dictionary<string, string> parameters)
+    private static string ComputeParametersHash(Dictionary<string, string> parameters)
     {
         var sortedParams = parameters.OrderBy(kvp => kvp.Key).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         var paramData = JsonSerializer.Serialize(sortedParams, CacheJsonOptions);
@@ -2607,7 +2607,7 @@ public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDi
     /// <summary>
     /// Computes a hash for any object.
     /// </summary>
-    private string ComputeObjectHash(object obj)
+    private static string ComputeObjectHash(object obj)
     {
         var objData = JsonSerializer.Serialize(obj, CacheJsonOptions);
         return ComputeStringHash(objData);
@@ -3062,7 +3062,7 @@ public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDi
     /// <summary>
     /// Applies parameter substitution to the prompt template.
     /// </summary>
-    private async Task<string> ApplyParameterSubstitutionAsync(string template, Dictionary<string, string>? parameters = null, CancellationToken cancellationToken = default)
+    private static async Task<string> ApplyParameterSubstitutionAsync(string template, Dictionary<string, string>? parameters = null, CancellationToken cancellationToken = default)
     {
         if (parameters == null || parameters.Count == 0)
         {
@@ -3301,7 +3301,7 @@ public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDi
     /// <summary>
     /// Gets the target mode template for transition.
     /// </summary>
-    private async Task<ModeTemplate?> GetTargetModeTemplateAsync(string targetModeId, CancellationToken cancellationToken = default)
+    private static async Task<ModeTemplate?> GetTargetModeTemplateAsync(string targetModeId, CancellationToken cancellationToken = default)
     {
         // In a full implementation, this would query a mode template repository
         // For now, return a basic template based on the target mode ID
@@ -3372,7 +3372,7 @@ public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDi
     /// <summary>
     /// Creates a new configuration from a template while preserving relevant context.
     /// </summary>
-    private ModeConfiguration CreateConfigurationFromTemplate(ModeTemplate template, ModeConfiguration currentConfig, Dictionary<string, string> preservedContext)
+    private static ModeConfiguration CreateConfigurationFromTemplate(ModeTemplate template, ModeConfiguration currentConfig, Dictionary<string, string> preservedContext)
     {
         var newConfig = template.DefaultConfiguration;
 
@@ -3428,7 +3428,7 @@ public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDi
     /// <summary>
     /// Validates user permissions for a specific action.
     /// </summary>
-    private async Task<bool> ValidateUserPermissionAsync(string userId, ModeAction action, CancellationToken cancellationToken = default)
+    private static async Task<bool> ValidateUserPermissionAsync(string userId, ModeAction action, CancellationToken cancellationToken = default)
     {
         // In a full implementation, this would check user permissions against a permission service
         // For now, assume all users have basic permissions
@@ -3798,7 +3798,7 @@ public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDi
     /// <summary>
     /// Validates an initialization request.
     /// </summary>
-    private async Task ValidateInitializationRequestAsync(ModeInitRequest request, CancellationToken cancellationToken)
+    private static async Task ValidateInitializationRequestAsync(ModeInitRequest request, CancellationToken cancellationToken)
     {
         // Basic validation
         if (string.IsNullOrWhiteSpace(request.Name))
@@ -4086,7 +4086,7 @@ public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDi
     /// <summary>
     /// Validates mode constraints.
     /// </summary>
-    private async Task ValidateConstraintsAsync(ModeConstraints constraints, List<ValidationError> errors, List<ValidationWarning> warnings)
+    private static async Task ValidateConstraintsAsync(ModeConstraints constraints, List<ValidationError> errors, List<ValidationWarning> warnings)
     {
         // Validate message length constraint
         if (constraints.MaxMessageLength.HasValue &&

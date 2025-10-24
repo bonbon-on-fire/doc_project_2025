@@ -4,16 +4,19 @@ using Microsoft.AspNetCore.Authorization;
 namespace AIChat.Server.Handlers;
 
 /// <summary>
+/// <para>
 /// ASP.NET Core middleware for handling WebSocket connections.
 /// Integrates WebSocket protocol handling into the request pipeline and delegates
 /// to the WebSocketHandler for comprehensive connection management.
-///
+/// </para>
+/// <para>
 /// Features:
 /// - WebSocket upgrade request detection and handling
 /// - Authentication and authorization integration
 /// - Request validation and security checks
 /// - Integration with existing ASP.NET Core pipeline
 /// - Comprehensive logging and error handling
+/// </para>
 /// </summary>
 public class WebSocketMiddleware
 {
@@ -87,7 +90,7 @@ public class WebSocketMiddleware
             }
 
             // Perform authentication if required
-            if (_options.RequireAuthentication && !context.User.Identity?.IsAuthenticated == true)
+            if (_options.RequireAuthentication && context.User.Identity?.IsAuthenticated == false)
             {
                 _logger.LogWarning("Unauthenticated WebSocket request rejected");
 

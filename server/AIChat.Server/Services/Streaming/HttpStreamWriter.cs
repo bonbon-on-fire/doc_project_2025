@@ -79,7 +79,7 @@ public sealed class HttpStreamWriter : IHttpStreamWriter
     {
         ThrowIfDisposed();
 
-        var keepAlive = ":keepalive\n\n";
+        const string keepAlive = ":keepalive\n\n";
         var bytes = Encoding.UTF8.GetBytes(keepAlive);
 
         await WriteInternalAsync(bytes, cancellationToken).ConfigureAwait(false);

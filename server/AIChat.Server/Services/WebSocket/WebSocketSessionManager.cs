@@ -6,16 +6,19 @@ using NetWebSocket = System.Net.WebSockets.WebSocket;
 namespace AIChat.Server.Services.WebSocket;
 
 /// <summary>
+/// <para>
 /// Implementation of IWebSocketSessionManager for managing active WebSocket sessions.
 /// Provides thread-safe session lifecycle management, connection tracking, and correlation
 /// with Orleans grains for the WebSocket handler system.
-///
+/// </para>
+/// <para>
 /// Features:
 /// - Thread-safe concurrent session management
 /// - Comprehensive metrics and statistics collection
 /// - Distributed tracing integration
 /// - Health monitoring with detailed status reporting
 /// - Automatic cleanup of stale sessions
+/// </para>
 /// </summary>
 public class WebSocketSessionManager : IWebSocketSessionManager
 {
@@ -29,7 +32,6 @@ public class WebSocketSessionManager : IWebSocketSessionManager
     // Note: Using ConcurrentDictionary<string, bool> as a concurrent set for session IDs
 
     // Statistics tracking
-    private readonly DateTime _serviceStartTime = DateTime.UtcNow;
     private long _totalSessionsCreated;
     private long _totalSessionsRemoved;
     private long _totalHeartbeats;
@@ -200,7 +202,6 @@ public class WebSocketSessionManager : IWebSocketSessionManager
             activity?.SetTag("error.type", ex.GetType().Name);
             throw;
         }
-
     }
 
     /// <inheritdoc />

@@ -11,32 +11,28 @@ namespace AIChat.Server.Services.ResponseCaching.Decorators;
 /// <typeparam name="TRouter">The type of router being decorated</typeparam>
 public abstract class CachedRouterBase<TRouter> : IDisposable where TRouter : class
 {
-    private readonly TRouter _innerRouter;
-    private readonly IResponseCacheManager _cacheManager;
-    private readonly ICacheKeyGenerator _keyGenerator;
-    private readonly ILogger _logger;
     private readonly object _disposeLock = new();
     private bool _disposed;
 
     /// <summary>
     /// Gets the inner router instance being decorated with caching functionality.
     /// </summary>
-    protected TRouter InnerRouter => _innerRouter;
+    protected TRouter InnerRouter { get; }
 
     /// <summary>
     /// Gets the response cache manager for cache operations.
     /// </summary>
-    protected IResponseCacheManager CacheManager => _cacheManager;
+    protected IResponseCacheManager CacheManager { get; }
 
     /// <summary>
     /// Gets the cache key generator for consistent key creation.
     /// </summary>
-    protected ICacheKeyGenerator KeyGenerator => _keyGenerator;
+    protected ICacheKeyGenerator KeyGenerator { get; }
 
     /// <summary>
     /// Gets the logger for diagnostic and performance information.
     /// </summary>
-    protected ILogger Logger => _logger;
+    protected ILogger Logger { get; }
 
     /// <summary>
     /// Gets the router type name for cache key generation.
@@ -57,12 +53,12 @@ public abstract class CachedRouterBase<TRouter> : IDisposable where TRouter : cl
         ICacheKeyGenerator keyGenerator,
         ILogger logger)
     {
-        _innerRouter = innerRouter ?? throw new ArgumentNullException(nameof(innerRouter));
-        _cacheManager = cacheManager ?? throw new ArgumentNullException(nameof(cacheManager));
-        _keyGenerator = keyGenerator ?? throw new ArgumentNullException(nameof(keyGenerator));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        InnerRouter = innerRouter ?? throw new ArgumentNullException(nameof(innerRouter));
+        CacheManager = cacheManager ?? throw new ArgumentNullException(nameof(cacheManager));
+        KeyGenerator = keyGenerator ?? throw new ArgumentNullException(nameof(keyGenerator));
+        Logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-        _logger.LogInformation("Cached{RouterType} initialized with caching capabilities", RouterTypeName);
+        Logger.LogInformation("Cached{RouterType} initialized with caching capabilities", RouterTypeName);
     }
 
     /// <summary>
@@ -324,8 +320,8 @@ public abstract class CachedRouterBase<TRouter> : IDisposable where TRouter : cl
 
             return routerMetrics with
             {
-                OrleansAverageExecutionTimeMs = routerMetrics.OrleansAverageExecutionTimeMs * (1.0 - cacheSpeedup * 0.8),
-                DirectServiceAverageExecutionTimeMs = routerMetrics.DirectServiceAverageExecutionTimeMs * (1.0 - cacheSpeedup * 0.8)
+                OrleansAverageExecutionTimeMs = routerMetrics.OrleansAverageExecutionTimeMs * (1.0 - (cacheSpeedup * 0.8)),
+                DirectServiceAverageExecutionTimeMs = routerMetrics.DirectServiceAverageExecutionTimeMs * (1.0 - (cacheSpeedup * 0.8))
             };
         }
         catch (Exception ex)

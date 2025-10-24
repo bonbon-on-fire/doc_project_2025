@@ -370,7 +370,7 @@ public class SseConnectionLoadScenario : LoadTestScenarioBase
         );
     }
 
-    private void PopulateResultMetrics(
+    private static void PopulateResultMetrics(
         ScenarioResult result,
         SseLoadTestMetrics metrics,
         SseConnectionLoadScenarioConfig config

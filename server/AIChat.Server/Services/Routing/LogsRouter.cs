@@ -7,12 +7,15 @@ using Microsoft.FeatureManagement;
 namespace AIChat.Server.Services.Routing;
 
 /// <summary>
+/// <para>
 /// Production implementation of logs router for coordinating between Orleans logging systems and direct file logging.
 /// Provides feature flag control, automatic fallback, comprehensive logging, and performance metrics collection.
-///
+/// </para>
+/// <para>
 /// Note: This router is designed with direct file operations as the primary path since logging operations
 /// typically benefit more from direct I/O than Orleans coordination. Orleans integration is provided
 /// for future enhancements such as distributed logging coordination, log aggregation, or audit trails.
+/// </para>
 /// </summary>
 public class LogsRouter : ILogsRouter, IDisposable
 {

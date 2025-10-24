@@ -685,7 +685,7 @@ public sealed class ActivityPrivacyService : IActivityPrivacyService
     /// <summary>
     /// Sanitizes content by removing or masking detected PII.
     /// </summary>
-    private async Task<string> SanitizeDetectedPIIAsync(string content, List<PIIPattern> detectedPII)
+    private static async Task<string> SanitizeDetectedPIIAsync(string content, List<PIIPattern> detectedPII)
     {
         var sanitized = content;
 

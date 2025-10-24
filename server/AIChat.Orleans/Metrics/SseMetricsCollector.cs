@@ -604,7 +604,7 @@ public class SseMetricsCollector : ISseMetricsCollector
         return HealthStatus.Healthy;
     }
 
-    private List<SseAlert> GenerateAlerts(SseHealthIndicators indicators, SseMetricsSummary summary)
+    private static List<SseAlert> GenerateAlerts(SseHealthIndicators indicators, SseMetricsSummary summary)
     {
         var alerts = new List<SseAlert>();
 

@@ -363,7 +363,7 @@ public class LoadTestRunner
         return validation;
     }
 
-    private ValidationCriterion ValidateUsers10kConnected(ScenarioResult? connectionResult)
+    private static ValidationCriterion ValidateUsers10kConnected(ScenarioResult? connectionResult)
     {
         var criterion = new ValidationCriterion
         {
@@ -442,7 +442,7 @@ public class LoadTestRunner
         return criterion;
     }
 
-    private ValidationCriterion ValidateNoMessagesLost(List<ScenarioResult> scenarioResults)
+    private static ValidationCriterion ValidateNoMessagesLost(List<ScenarioResult> scenarioResults)
     {
         var criterion = new ValidationCriterion
         {
@@ -480,7 +480,7 @@ public class LoadTestRunner
         return criterion;
     }
 
-    private ValidationCriterion ValidateSystemScales(
+    private static ValidationCriterion ValidateSystemScales(
         ScenarioResult? grainScalingResult,
         ScenarioResult? connectionResult
     )

@@ -236,7 +236,7 @@ public sealed class TestSseMessageHandler : HttpMessageHandler
         // Try to extract instruction chain (which may contain a single instruction)
         var plans = _chainParser.ExtractInstructionChain(userMessage);
 
-        if (plans != null && plans.Length > 0)
+        if (plans?.Length > 0)
         {
             // Return the first instruction for backward compatibility
             return (plans[0], userMessage);

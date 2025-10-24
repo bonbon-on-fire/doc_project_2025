@@ -376,6 +376,10 @@ public class StateConsistencyVerificationException : RecoveryException
         var issuesArray = info.GetValue(nameof(ConsistencyIssues), typeof(string[])) as string[];
         ConsistencyIssues = issuesArray ?? [];
     }
+
+    public StateConsistencyVerificationException(string? message, string? grainId, string? correlationId) : base(message, grainId, correlationId)
+    {
+    }
 #pragma warning restore SYSLIB0051
 
     /// <summary>
@@ -443,6 +447,10 @@ public class AutomaticRecoveryServiceException : RecoveryException
     /// <param name="context">The StreamingContext that contains contextual information</param>
 #pragma warning disable SYSLIB0051 // Formatter-based serialization is obsolete
     protected AutomaticRecoveryServiceException(SerializationInfo info, System.Runtime.Serialization.StreamingContext context) : base(info, context)
+    {
+    }
+
+    public AutomaticRecoveryServiceException(string? message, string? grainId, string? correlationId, Exception? innerException) : base(message, grainId, correlationId, innerException)
     {
     }
 #pragma warning restore SYSLIB0051

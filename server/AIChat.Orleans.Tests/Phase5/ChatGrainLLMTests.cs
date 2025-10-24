@@ -84,7 +84,7 @@ public class ChatGrainLLMTests
     /// <summary>
     /// Helper to create an async enumerable of mock messages.
     /// </summary>
-    private async IAsyncEnumerable<IMessage> CreateMockTokenStream(params string[] tokens)
+    private static async IAsyncEnumerable<IMessage> CreateMockTokenStream(params string[] tokens)
     {
         foreach (var token in tokens)
         {

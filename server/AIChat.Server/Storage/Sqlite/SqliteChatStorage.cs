@@ -54,7 +54,7 @@ VALUES ($id, $userId, $title, $createdAtUtc, $updatedAtUtc, $chatJson);";
     {
         await using var conn = await factory.CreateOpenConnectionAsync(ct);
         const string sql =
-            @"SELECT Id, UserId, Title, CreatedAtUtc, UpdatedAtUtc, ChatJson FROM chats WHERE Id=$id LIMIT 1";
+            "SELECT Id, UserId, Title, CreatedAtUtc, UpdatedAtUtc, ChatJson FROM chats WHERE Id=$id LIMIT 1";
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = sql;
         _ = cmd.Parameters.AddWithValue("$id", chatId);
@@ -272,7 +272,7 @@ VALUES ($id, $chatId, $role, $kind, $timestampUtc, $seq, $json)";
         await using var conn = await factory.CreateOpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText =
-            @"SELECT Id, ChatId, Role, Kind, TimestampUtc, SequenceNumber, MessageJson FROM messages WHERE ChatId=$chatId ORDER BY SequenceNumber ASC";
+            "SELECT Id, ChatId, Role, Kind, TimestampUtc, SequenceNumber, MessageJson FROM messages WHERE ChatId=$chatId ORDER BY SequenceNumber ASC";
         _ = cmd.Parameters.AddWithValue("$chatId", chatId);
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         var list = new List<MessageRecord>();
@@ -305,7 +305,7 @@ VALUES ($id, $chatId, $role, $kind, $timestampUtc, $seq, $json)";
         await using var conn = await factory.CreateOpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText =
-            @"SELECT Id, ChatId, Role, Kind, TimestampUtc, SequenceNumber, MessageJson FROM messages WHERE Id=$id";
+            "SELECT Id, ChatId, Role, Kind, TimestampUtc, SequenceNumber, MessageJson FROM messages WHERE Id=$id";
         _ = cmd.Parameters.AddWithValue("$id", messageId);
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         if (await reader.ReadAsync(ct))

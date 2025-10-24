@@ -32,42 +32,90 @@ Invoke this skill when you need to:
 - Understand code quality issues and package compatibility problems
 - Prepare for code review with confidence
 
+## Prerequisites and One-Time Setup
+
+Before using the clean-builds workflow for the first time, you must configure the project to enable all code quality tooling. This is a **one-time setup** that ensures:
+
+1. ✅ Code style enforcement is enabled during build
+2. ✅ Roslynator analyzers are installed in all projects
+3. ✅ EditorConfig is properly configured
+4. ✅ Package versions are validated
+
+### Setup Commands (Run Once)
+
+Execute these commands in order to prepare your project:
+
+```pwsh
+# Step 1: Enable code style enforcement in all projects
+pwsh scripts/validate-code-style-enforcement.ps1 -Enforce
+
+# Step 2: Enable Roslynator analyzers (200+ code quality rules)
+# Use -ExcludeSubmodules to skip external dependencies
+pwsh scripts/enable-roslynator-analyzers.ps1 -ExcludeSubmodules
+
+# Step 3: Configure .editorconfig with Roslynator severity settings
+# Start with 'warning' severity (can escalate to 'error' later)
+pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity warning
+
+# Step 4: Validate package versions
+pwsh scripts/validate-package-versions.ps1
+```
+
+### Verification
+
+After setup, verify the configuration worked:
+
+```pwsh
+# Check that analyzers are installed
+pwsh scripts/enable-roslynator-analyzers.ps1 -CheckOnly
+
+# Check that code style is enforced
+pwsh scripts/validate-code-style-enforcement.ps1
+
+# Preview .editorconfig settings
+pwsh scripts/configure-roslynator-editorconfig.ps1 -ShowPreview
+```
+
+### When to Re-Run Setup
+
+Re-run the setup if:
+- ✅ Adding new projects to the solution
+- ✅ Updating Roslynator version
+- ✅ Changing severity levels (.editorconfig)
+- ✅ After cloning the repository on a new machine (some settings are project-file based)
+
+**Important**: The setup phase modifies `.csproj` files and `.editorconfig`. These changes should be committed to version control so all team members benefit.
+
 ## Quick Start Workflow
 
 ### Option 1: Complete Quality Validation (Recommended)
 
+**Prerequisites**: Ensure you've completed the [one-time setup](#prerequisites-and-one-time-setup) first.
+
 Execute all steps in sequence before committing:
 
-1. **Validate code style enforcement** to enable IDE0005 detection:
-   ```pwsh
-   pwsh scripts/validate-code-style-enforcement.ps1 -Enforce
-   ```
-   - Ensures all projects have `EnforceCodeStyleInBuild` enabled
-   - Enables IDE0005 (unused imports) and style rule detection during build
-   - Automatically enables the setting if missing
-
-2. **Validate package versions** to ensure no conflicts:
+1. **Validate package versions** to ensure no conflicts:
    ```pwsh
    pwsh scripts/validate-package-versions.ps1
    ```
    - If critical issues found, see "Fixing Package Version Issues" below
    - Fix all CRITICAL issues before proceeding
 
-3. **Format the code** to fix style issues and apply code analysis fixes:
+2. **Format the code** to fix style issues and apply code analysis fixes:
    ```pwsh
    pwsh scripts/format-code.ps1
    ```
 
-4. **Build and check** for any remaining errors or warnings:
+3. **Build and check** for any remaining errors or warnings:
    ```pwsh
    pwsh scripts/build_and_group_errors_and_warnings.ps1
    ```
 
-5. **Review output** and fix any remaining issues:
+4. **Review output** and fix any remaining issues:
    - Warnings: See "Handling Build Warnings" below
    - Package issues: See "Fixing Package Version Issues" below
 
-6. **Repeat** until all validations pass
+5. **Repeat** steps 2-4 until all validations pass
 
 ### Option 2: Check Formatting Only
 
@@ -108,6 +156,53 @@ pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity warning
 - Before starting a major refactoring effort
 
 **Note:** This is a one-time setup. Once enabled, Roslynator analyzers will run automatically during every build, providing immediate feedback on code quality issues.
+
+### Option 6: Auto-Fix Roslynator Issues
+
+After enabling Roslynator analyzers, you may see hundreds of code quality warnings. Many of these can be automatically fixed using the Roslynator CLI:
+
+```pwsh
+# Auto-fix Roslynator diagnostics across the entire solution
+roslynator fix DOC_Project_2025.sln --ignore-compiler-errors --format
+```
+
+**What this does:**
+- Automatically fixes code quality issues detected by Roslynator analyzers
+- Applies code refactorings (simplify expressions, use recommended patterns, etc.)
+- Formats the code during fixing
+
+**Expected Results:**
+- Can fix 200-300+ diagnostics automatically in large codebases
+- Unfixable diagnostics (e.g., missing documentation comments) remain as warnings
+- Some manual fixes may still be needed for complex issues
+
+**When to use:**
+- After enabling Roslynator analyzers for the first time (initial cleanup)
+- After upgrading Roslynator version (new rules may trigger)
+- When you have accumulated many Roslynator warnings
+
+**Best Practice Workflow After Auto-Fix:**
+```pwsh
+# Step 1: Auto-fix what can be fixed
+roslynator fix DOC_Project_2025.sln --ignore-compiler-errors --format
+
+# Step 2: Review what couldn't be fixed
+dotnet build 2>&1 | grep "error RCS" | grep -oP "RCS\d+" | sort | uniq -c
+
+# Step 3: Downgrade unfixable rules to suggestion severity in .editorconfig
+# (e.g., RCS1141 for missing documentation comments)
+
+# Step 4: Verify clean build
+pwsh scripts/build_and_group_errors_and_warnings.ps1
+```
+
+**Important Notes:**
+- Some diagnostics cannot be auto-fixed and require manual intervention:
+  - **Documentation comments** (RCS1141, RCS1140, RCS1142) - require human-written descriptions
+  - **Unused parameters** (RCS1163) - may be required by interfaces
+  - **Complex refactorings** - require semantic understanding
+- Unfixable rules should be downgraded from `error` to `suggestion` in `.editorconfig` to allow builds to pass while keeping them as IDE hints
+- Always review auto-fixes before committing - verify tests still pass and logic is unchanged
 
 ## Enabling Roslynator Analyzers (Optional but Recommended)
 
@@ -178,10 +273,19 @@ pwsh scripts/enable-roslynator-analyzers.ps1 -ExcludeSubmodules
 # Step 3: Configure with lower severity initially
 pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity suggestion
 
-# Step 4: Build and review warnings
+# Step 4: Auto-fix Roslynator issues
+roslynator fix DOC_Project_2025.sln --ignore-compiler-errors --format
+
+# Step 5: Build and review remaining warnings
 pwsh scripts/build_and_group_errors_and_warnings.ps1
 
-# Step 5: Fix critical issues, then gradually increase severity
+# Step 6: Downgrade unfixable rules to suggestion in .editorconfig
+# (Review build output to identify which rules need downgrading)
+
+# Step 7: Verify clean build
+pwsh scripts/build_and_group_errors_and_warnings.ps1
+
+# Step 8: Gradually increase severity for critical rules
 pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity warning
 ```
 
@@ -503,19 +607,37 @@ Get-ChildItem -Recurse -Filter "*.csproj" |
 
 ## Best Practices for Zero-Warning Builds
 
-### 1. Format After Every Change
+### 1. Complete One-Time Setup First
+
+Before using the clean-builds workflow for the first time, complete the [Prerequisites and One-Time Setup](#prerequisites-and-one-time-setup). This ensures all code quality tools are properly configured.
+
+**Why this matters**:
+- Without Roslynator analyzers, you'll miss 200+ code quality issues during build
+- Without EnforceCodeStyleInBuild, IDE warnings won't appear during `dotnet build`
+- Without proper .editorconfig, team members may have inconsistent settings
+
+**Check if setup is complete**:
+```pwsh
+# Should report all projects have analyzers
+pwsh scripts/enable-roslynator-analyzers.ps1 -CheckOnly
+
+# Should report all projects have enforcement enabled
+pwsh scripts/validate-code-style-enforcement.ps1
+```
+
+### 2. Format After Every Change
 Run format-code.ps1 regularly during development, not just before commit.
 
-### 2. Fix Warnings Immediately
+### 3. Fix Warnings Immediately
 Don't accumulate warnings—fix them as you encounter them.
 
-### 3. Understand Each Warning
+### 4. Understand Each Warning
 Read the warning message and URL before dismissing. Warnings usually indicate real issues.
 
-### 4. Use the Grouped Output
+### 5. Use the Grouped Output
 The script groups warnings by code, making it easy to batch-fix similar issues.
 
-### 5. Validate Package Versions
+### 6. Validate Package Versions
 
 Run package validation before committing, especially if you've updated any dependencies:
 ```pwsh
@@ -524,7 +646,7 @@ pwsh scripts/validate-package-versions.ps1
 
 Fix critical issues (CRITICAL severity) before proceeding. Warnings can be addressed during the next maintenance window.
 
-### 6. Enable Code Style Enforcement During Build
+### 7. Enable Code Style Enforcement During Build
 
 To catch IDE0005 (unused imports) and other style violations during build, add this to your `.csproj` files:
 
@@ -555,7 +677,7 @@ Get-ChildItem -Recurse -Filter "*.csproj" |
 
 **Note:** This is particularly important for test projects where code style often gets neglected.
 
-### 7. Pre-Commit Validation
+### 8. Pre-Commit Validation
 
 Always run the full workflow before creating a commit:
 ```pwsh
@@ -580,7 +702,7 @@ git commit -m "message"
 
 **Note:** The `-Enforce` flag in step 1 automatically enables `EnforceCodeStyleInBuild` in any projects that are missing it. This ensures IDE0005 warnings are detected during the build check in step 4.
 
-### 8. Enable Roslynator Analyzers for Maximum Code Quality
+### 9. Enable Roslynator Analyzers for Maximum Code Quality
 
 For the most comprehensive code quality enforcement, enable Roslynator analyzers in all your projects. This provides build-time analysis with 200+ code quality rules.
 
@@ -986,6 +1108,12 @@ If Visual Studio/Rider shows different warnings than the build:
 ## References
 
 For detailed information:
+
+- **One-Time Setup Guide**: [Step-by-step guide to configuring all tools](references/one-time-setup-guide.md)
+  - Complete setup checklist with verification steps
+  - Troubleshooting for each setup step
+  - Understanding what each tool does
+  - Commit strategy for setup changes
 
 - **Warning Codes Guide**: [Detailed explanation of build warnings and how to fix them](references/warning-codes-guide.md)
   - 15+ common warning codes with examples

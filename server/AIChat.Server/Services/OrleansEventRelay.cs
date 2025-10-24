@@ -5,16 +5,19 @@ using AIChat.Server.Services.Routing;
 namespace AIChat.Server.Services;
 
 /// <summary>
+/// <para>
 /// Implementation of IOrleansEventRelay that bridges Orleans grain events to ChatService events.
 /// This service enables seamless integration between Orleans grains and existing SignalR hub event handlers
 /// by converting Orleans grain events to ChatService-compatible event formats.
-///
+/// </para>
+/// <para>
 /// Features:
 /// - Comprehensive diagnostic logging with structured data
 /// - Performance metrics collection
 /// - Distributed tracing integration
 /// - Health monitoring with detailed status reporting
 /// - Thread-safe subscription management
+/// </para>
 /// </summary>
 public class OrleansEventRelay : IOrleansEventRelay
 {
@@ -444,7 +447,7 @@ public class OrleansEventRelay : IOrleansEventRelay
         }
         else if (subscriptionDetails.Count > 5)
         {
-            diagnostics += $", Subscriptions: {subscriptionDetails.Count} active (oldest: {subscriptionDetails.First()})";
+            diagnostics += $", Subscriptions: {subscriptionDetails.Count} active (oldest: {subscriptionDetails[0]})";
         }
 
         return baseMessage + diagnostics;

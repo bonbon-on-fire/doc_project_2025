@@ -215,7 +215,7 @@ public class InMemorySseMetricsStorage : ISseMetricsStorage
         }
     }
 
-    private int CleanQueue<T>(ConcurrentQueue<T> queue, DateTime cutoffTime, Func<T, DateTime> getTimestamp)
+    private static int CleanQueue<T>(ConcurrentQueue<T> queue, DateTime cutoffTime, Func<T, DateTime> getTimestamp)
     {
         var itemsRemoved = 0;
         var tempQueue = new ConcurrentQueue<T>();

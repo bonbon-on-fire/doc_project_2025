@@ -1,10 +1,12 @@
 namespace AIChat.Server.Services;
 
 /// <summary>
+/// <para>
 /// Abstraction for relaying Orleans grain events to ChatService-compatible event handlers.
 /// This service bridges Orleans grain events to the existing ChatService event system
 /// used by SignalR hubs, enabling seamless integration between Orleans and direct service modes.
-///
+/// </para>
+/// <para>
 /// <example>
 /// Usage in ChatHub:
 /// <code>
@@ -21,11 +23,13 @@ namespace AIChat.Server.Services;
 /// }
 /// </code>
 /// </example>
-///
+/// </para>
+/// <para>
 /// <remarks>
 /// The service automatically falls back to NullOrleansEventRelay when Orleans is not available,
 /// ensuring seamless operation in both Orleans and direct service modes.
 /// </remarks>
+/// </para>
 /// </summary>
 public interface IOrleansEventRelay
 {

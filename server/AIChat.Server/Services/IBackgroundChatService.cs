@@ -3,11 +3,12 @@ using AIChat.Server.Models;
 namespace AIChat.Server.Services;
 
 /// <summary>
-/// Interface for the background chat service that processes chat operations asynchronously.
-///
+/// <para>Interface for the background chat service that processes chat operations asynchronously.</para>
+/// <para>
 /// This service manages a queue of chat operations and processes them in the background
 /// using a worker pool with concurrency limits. It integrates with the existing ChatService
 /// to leverage all LLM processing, tool integration, and agentic loop functionality.
+/// </para>
 /// </summary>
 public interface IBackgroundChatService
 {

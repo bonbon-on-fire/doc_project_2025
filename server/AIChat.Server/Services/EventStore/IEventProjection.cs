@@ -316,6 +316,22 @@ public class EventProjectionException : EventStoreException
         ProjectionName = projectionName;
         EventType = eventType;
     }
+
+    public EventProjectionException(string message, EventStoreErrorCode errorCode = EventStoreErrorCode.InternalError, string? streamId = null, string? eventId = null, string? correlationId = null, Dictionary<string, object>? context = null, Exception? innerException = null) : base(message, errorCode, streamId, eventId, correlationId, context, innerException)
+    {
+    }
+
+    public EventProjectionException() : base()
+    {
+    }
+
+    public EventProjectionException(string? message) : base(message)
+    {
+    }
+
+    public EventProjectionException(string? message, Exception? innerException) : base(message, innerException)
+    {
+    }
 }
 
 /// <summary>

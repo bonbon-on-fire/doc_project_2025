@@ -462,7 +462,6 @@ public record OrleansSnapshotRestoreResult<TGrainState>
     /// Gets the error message if restoration failed.
     /// </summary>
     public string? Error { get; init; }
-
 }
 
 /// <summary>
@@ -516,4 +515,3 @@ public static class OrleansSnapshotRestoreResult
         };
     }
 }
-

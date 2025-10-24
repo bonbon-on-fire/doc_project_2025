@@ -322,13 +322,13 @@ public class SseLoadTestMetricsCollector : ISseLoadTestMetricsCollector
         _logger.LogInformation("SSE metrics collector reset");
     }
 
-    private double CalculateAverage(IEnumerable<double> values)
+    private static double CalculateAverage(IEnumerable<double> values)
     {
         var list = values.ToList();
         return list.Count > 0 ? list.Average() : 0;
     }
 
-    private double CalculatePercentile(IEnumerable<double> values, double percentile)
+    private static double CalculatePercentile(IEnumerable<double> values, double percentile)
     {
         var sortedValues = values.OrderBy(v => v).ToList();
         if (sortedValues.Count == 0)

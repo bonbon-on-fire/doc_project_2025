@@ -7,10 +7,12 @@ using AIChat.Server.Services.Routing;
 namespace AIChat.Server.Services.WebSocket;
 
 /// <summary>
+/// <para>
 /// Implementation of IWebSocketMessageRouter for routing WebSocket messages through Orleans grains or direct services.
 /// Implements the dual-mode routing pattern for seamless Orleans integration with fallback capabilities.
 /// Provides comprehensive message routing, custom handler registration, and statistics collection.
-///
+/// </para>
+/// <para>
 /// Features:
 /// - Dual-mode routing with Orleans grain integration
 /// - Custom message handler registration and management
@@ -18,6 +20,7 @@ namespace AIChat.Server.Services.WebSocket;
 /// - Broadcasting capabilities for group messaging
 /// - Comprehensive statistics and health monitoring
 /// - Distributed tracing and structured logging
+/// </para>
 /// </summary>
 public class WebSocketMessageRouter : IWebSocketMessageRouter
 {

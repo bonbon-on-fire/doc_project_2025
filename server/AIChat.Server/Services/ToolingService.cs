@@ -24,7 +24,6 @@ public class ToolingService(
 {
     // TODO: Re-enable when MCP middleware is available
 #pragma warning disable IDE0052 // Remove unread private members
-    private readonly IMcpClientManager _mcpClientManager = mcpClientManager;
 #pragma warning restore IDE0052 // Remove unread private members
 
     public async Task<FunctionCallMiddleware?> CreateChatSpecificFunctionCallMiddlewareAsync(
@@ -195,7 +194,7 @@ public class ToolingService(
                     allDescriptors.AddRange(provider.GetFunctions());
                 }
 
-                var availableToolNames = allDescriptors.Select(d => d.Contract.Name).ToList();
+                var availableToolNames = allDescriptors.ConvertAll(d => d.Contract.Name);
                 var (Success, Error, FilteredTools) = await modeService.FilterToolsByModeAsync(
                     modeId,
                     userId,

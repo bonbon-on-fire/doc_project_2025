@@ -139,7 +139,7 @@ public class BufferManagementController : ControllerBase
         try
         {
             var stats = await _bufferService.GetStatisticsAsync();
-            var totalCleared = 0;
+            const int totalCleared = 0;
             var buffersCleared = new List<string>();
 
             // Note: This would need to be added to IBufferManagementService interface

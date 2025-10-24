@@ -47,7 +47,7 @@ public sealed class DropOldestStrategy : IOverflowStrategy
 
             // In a real implementation, we would actually remove items from the buffer
             // For now, we're just tracking the operation
-            if (context.DroppableItems != null && context.DroppableItems.Count > 0)
+            if (context.DroppableItems?.Count > 0)
             {
                 var actualDropped = Math.Min(itemsToDrop, context.DroppableItems.Count);
 

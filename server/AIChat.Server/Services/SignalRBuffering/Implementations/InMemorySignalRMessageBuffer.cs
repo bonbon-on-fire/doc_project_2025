@@ -7,10 +7,12 @@ using Microsoft.Extensions.Options;
 namespace AIChat.Server.Services.SignalRBuffering.Implementations;
 
 /// <summary>
+/// <para>
 /// High-performance, thread-safe in-memory implementation of SignalR message buffering.
 /// Uses concurrent collections and channel-based processing for optimal throughput
 /// and low-latency message delivery in multi-threaded environments.
-///
+/// </para>
+/// <para>
 /// Features:
 /// - Thread-safe operations using ConcurrentQueue and atomic operations
 /// - Real-time metrics tracking and health monitoring
@@ -18,6 +20,7 @@ namespace AIChat.Server.Services.SignalRBuffering.Implementations;
 /// - Event-driven notifications for monitoring and analytics
 /// - Automatic cleanup and memory management
 /// - Support for priority-based message processing
+/// </para>
 /// </summary>
 public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDisposable
 {

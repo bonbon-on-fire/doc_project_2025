@@ -47,7 +47,7 @@ public class BufferReplayService : IBufferReplayService
         var messagesReplayed = 0;
         var duplicatesSkipped = 0;
         var messagesFailed = 0;
-        var partialMessagesMerged = 0;
+        const int partialMessagesMerged = 0;
         var bytesReplayed = 0L;
         var replayedSequenceNumbers = new List<long>();
         var success = true;
@@ -355,10 +355,10 @@ public class BufferReplayService : IBufferReplayService
         public int ReplayOperations { get; private set; }
         public long TotalMessagesReplayed { get; private set; }
         public long TotalDuplicatesDetected { get; private set; }
-        public long TotalPartialsMerged { get; private set; }
-        public long TotalBytesReplayed { get; private set; }
+        public long TotalPartialsMerged { get; }
+        public long TotalBytesReplayed { get; }
         public DateTime? LastReplayTime { get; private set; }
-        public TimeSpan AverageReplayDuration { get; private set; }
+        public TimeSpan AverageReplayDuration { get; }
         public long HighestSequenceDelivered { get; private set; }
 
         public bool IsDelivered(long sequenceNumber)
@@ -438,14 +438,14 @@ public class BufferReplayService : IBufferReplayService
 
             // Sort by chunk index and concatenate data
             var sortedPartials = partials.OrderBy(p => p.ChunkIndex).ToList();
-            var mergedData = string.Join("", sortedPartials.Select(p => p.Data));
+            var mergedData = string.Concat(sortedPartials.Select(p => p.Data));
             var totalSize = Encoding.UTF8.GetByteCount(mergedData);
 
             return new BufferedStreamMessage
             {
                 SequenceNumber = sequenceNumber,
                 Data = mergedData,
-                Timestamp = sortedPartials.First().Timestamp,
+                Timestamp = sortedPartials[0].Timestamp,
                 SizeBytes = totalSize,
                 Metadata = new Dictionary<string, object>
                 {

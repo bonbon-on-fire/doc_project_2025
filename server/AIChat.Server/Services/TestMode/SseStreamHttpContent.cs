@@ -124,7 +124,7 @@ public sealed class SseStreamHttpContent : HttpContent
                 Exception? error = null;
                 try
                 {
-                    using var writerStream = pipe.Writer.AsStream(leaveOpen: false);
+                    await using var writerStream = pipe.Writer.AsStream(leaveOpen: false);
                     await SerializeCoreAsync(writerStream, cancellationToken).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
@@ -165,7 +165,7 @@ public sealed class SseStreamHttpContent : HttpContent
     private async Task SerializeCoreAsync(Stream stream, CancellationToken cancellationToken)
     {
         // Important: leave the provided stream open so HttpContent can buffer/read it after serialization
-        using var writer = new StreamWriter(stream, new UTF8Encoding(false), 1024, leaveOpen: true)
+        await using var writer = new StreamWriter(stream, new UTF8Encoding(false), 1024, leaveOpen: true)
         {
             AutoFlush = false,
         };
@@ -408,7 +408,7 @@ public sealed class SseStreamHttpContent : HttpContent
                 .Skip(i)
                 .Take(Math.Min(wordsPerChunk, basis.Length - i))
                 .ToList();
-            yield return string.Join(string.Empty, chunkTokens);
+            yield return string.Concat(chunkTokens);
         }
     }
 
@@ -419,7 +419,7 @@ public sealed class SseStreamHttpContent : HttpContent
     )
     {
         var tokens = reasoning.Split(' ');
-        var useReasoning = true; // reasoning.GetHashCode() % 2 == 0;
+        const bool useReasoning = true; // reasoning.GetHashCode() % 2 == 0;
         for (var i = 0; i < tokens.Length; i += wordsPerChunk)
         {
             var chunkTokens = string.Join(

@@ -333,7 +333,7 @@ public class RecoveryAuditService : IRecoveryAuditService
             var failedRecoveries = filteredEntries.Count(e => !e.Success);
 
             var completedEntries = filteredEntries.Where(e => e.CompletedAt.HasValue).ToList();
-            var recoveryTimes = completedEntries.Select(e => e.RecoveryDuration).ToList();
+            var recoveryTimes = completedEntries.ConvertAll(e => e.RecoveryDuration);
 
             var averageRecoveryTime = recoveryTimes.Count != 0 ? recoveryTimes.Average(t => t.TotalMilliseconds) : 0;
             var medianRecoveryTime = recoveryTimes.Count != 0 ?
@@ -398,7 +398,7 @@ public class RecoveryAuditService : IRecoveryAuditService
     }
 
     /// <inheritdoc />
-    public Task<byte[]> ExportAuditDataAsync(
+    public async Task<byte[]> ExportAuditDataAsync(
         RecoveryAuditQuery query,
         AuditExportFormat format = AuditExportFormat.Csv,
         CancellationToken cancellationToken = default)
@@ -415,13 +415,13 @@ public class RecoveryAuditService : IRecoveryAuditService
                 "Exporting {EntryCount} audit entries in {Format} format",
                 entries.Count, format);
 
-            return format switch
+            return await (format switch
             {
                 AuditExportFormat.Csv => Task.FromResult(ExportToCsv(entries)),
                 AuditExportFormat.Json => Task.FromResult(ExportToJson(entries)),
                 AuditExportFormat.Xml => Task.FromResult(ExportToXml(entries)),
                 _ => throw new ArgumentException($"Export format {format} is not supported", nameof(format))
-            };
+            });
         }
         catch (Exception ex)
         {

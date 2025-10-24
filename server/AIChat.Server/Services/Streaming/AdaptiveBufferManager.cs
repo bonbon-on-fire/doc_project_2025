@@ -220,7 +220,6 @@ public sealed class AdaptiveBufferManager : IAdaptiveBufferManager
         }
     }
 
-
     public void Dispose()
     {
         if (_disposed)

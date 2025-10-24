@@ -57,7 +57,7 @@ public class LogsController : ControllerBase
         {
             // Running from bin directory, need to find project root
             var dir = new DirectoryInfo(currentDir);
-            while (dir != null && !dir.Name.Equals("server", StringComparison.OrdinalIgnoreCase))
+            while (dir?.Name.Equals("server", StringComparison.OrdinalIgnoreCase) == false)
             {
                 dir = dir.Parent;
             }

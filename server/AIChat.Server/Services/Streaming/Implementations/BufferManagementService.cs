@@ -282,7 +282,7 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
                 var persistedBuffer = await _persistentStore
                     .LoadBufferAsync(streamId, cancellationToken)
                     .ConfigureAwait(false);
-                if (persistedBuffer != null && !persistedBuffer.IsCorrupted)
+                if (persistedBuffer?.IsCorrupted == false)
                 {
                     messagesFromPersistence = persistedBuffer.Messages.Count;
 

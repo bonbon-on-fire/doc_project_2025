@@ -293,7 +293,6 @@ public record PointInTimeRecoveryResult<T>
     /// </summary>
     [Id(14)]
     public DateTimeOffset CompletedAt { get; set; } = DateTimeOffset.UtcNow;
-
 }
 
 /// <summary>
@@ -455,7 +454,7 @@ public record RecoveryPoint
             Type = RecoveryPointType.Event,
             Description = description ?? $"Event at {timestamp:yyyy-MM-dd HH:mm:ss}",
             DataSizeBytes = dataSizeBytes,
-            EstimatedRecoveryTime = TimeSpan.FromMilliseconds(dataSizeBytes / 1024 + 100), // Rough estimate
+            EstimatedRecoveryTime = TimeSpan.FromMilliseconds((dataSizeBytes / 1024) + 100), // Rough estimate
             ConfidenceLevel = 0.85
         };
     }

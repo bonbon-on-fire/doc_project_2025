@@ -39,13 +39,13 @@ public sealed class TrendAnalyzer : ITrendAnalyzer
             sumX2 += x * x;
         }
 
-        var denominator = n * sumX2 - sumX * sumX;
+        var denominator = (n * sumX2) - (sumX * sumX);
         if (Math.Abs(denominator) < 0.0001) // Avoid division by zero
         {
             return UsageTrend.Stable;
         }
 
-        var slope = (n * sumXY - sumX * sumY) / denominator;
+        var slope = ((n * sumXY) - (sumX * sumY)) / denominator;
 
         // Determine trend based on slope
         if (slope > TrendThreshold)

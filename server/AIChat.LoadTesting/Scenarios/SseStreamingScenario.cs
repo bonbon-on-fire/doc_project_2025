@@ -372,7 +372,7 @@ public class SseStreamingScenario : LoadTestScenarioBase
         };
     }
 
-    private void PopulateResultMetrics(
+    private static void PopulateResultMetrics(
         ScenarioResult result,
         SseLoadTestMetrics metrics,
         SseStreamingScenarioConfig config,

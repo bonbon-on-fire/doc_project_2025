@@ -10,9 +10,9 @@ public static class TestDatabaseInitializer
         // Ensure root connection exists and schema is recreated for a clean state
         var root = await factory.CreateOpenConnectionAsync(ct);
         // Explicitly drop and recreate schema for tests
-        using (var dropCmd = root.CreateCommand())
+        await using (var dropCmd = root.CreateCommand())
         {
-            dropCmd.CommandText = @"DROP TABLE IF EXISTS messages; DROP TABLE IF EXISTS chats;";
+            dropCmd.CommandText = "DROP TABLE IF EXISTS messages; DROP TABLE IF EXISTS chats;";
             _ = await dropCmd.ExecuteNonQueryAsync(ct);
         }
 

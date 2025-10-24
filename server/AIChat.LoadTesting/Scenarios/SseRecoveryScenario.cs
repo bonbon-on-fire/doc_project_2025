@@ -484,7 +484,7 @@ public class SseRecoveryScenario : LoadTestScenarioBase
         _recoveryMetrics.Clear();
     }
 
-    private void PopulateResultMetrics(ScenarioResult result, Dictionary<string, object> metrics)
+    private static void PopulateResultMetrics(ScenarioResult result, Dictionary<string, object> metrics)
     {
         // Populate result with metrics
         if (metrics.TryGetValue("total_connections", out var totalConnections))

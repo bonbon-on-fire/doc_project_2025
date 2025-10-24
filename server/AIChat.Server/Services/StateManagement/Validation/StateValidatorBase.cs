@@ -13,7 +13,6 @@ namespace AIChat.Server.Services.StateManagement.Validation;
 public abstract class StateValidatorBase<T> : IStateValidator<T> where T : class
 {
     private readonly ILogger<StateValidatorBase<T>> _logger;
-    private readonly IServiceProvider _serviceProvider;
     private readonly ValidationMetricsCollector _metricsCollector;
 
     /// <summary>
@@ -30,7 +29,7 @@ public abstract class StateValidatorBase<T> : IStateValidator<T> where T : class
     protected StateValidatorBase(ILogger<StateValidatorBase<T>> logger, IServiceProvider serviceProvider)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        ServiceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _metricsCollector = new ValidationMetricsCollector();
     }
 
@@ -359,7 +358,7 @@ public abstract class StateValidatorBase<T> : IStateValidator<T> where T : class
     /// <summary>
     /// Gets the service provider for accessing dependencies.
     /// </summary>
-    protected IServiceProvider ServiceProvider => _serviceProvider;
+    protected IServiceProvider ServiceProvider { get; }
 
     /// <summary>
     /// Gets the logger for this validator.
@@ -399,7 +398,7 @@ public abstract class StateValidatorBase<T> : IStateValidator<T> where T : class
     private List<ValidationError> ValidateDataAnnotations(T entity)
     {
         var errors = new List<ValidationError>();
-        var validationContext = new ValidationContext(entity, _serviceProvider, null);
+        var validationContext = new ValidationContext(entity, ServiceProvider, null);
         var validationResults = new List<ValidationResult>();
 
         if (!Validator.TryValidateObject(entity, validationContext, validationResults, true))

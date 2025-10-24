@@ -15,6 +15,7 @@ clean-builds/
 │   ├── enable-roslynator-analyzers.ps1               # Add Roslynator.Analyzers to all projects
 │   └── configure-roslynator-editorconfig.ps1         # Configure Roslynator in .editorconfig
 ├── references/
+│   ├── one-time-setup-guide.md                       # Step-by-step first-time configuration guide
 │   ├── warning-codes-guide.md                        # Detailed guide to common warning codes
 │   └── package-version-management.md                 # Complete package version management guide
 └── README.md                                          # This file
@@ -29,25 +30,27 @@ clean-builds/
 
 2. **Or manually reference** `SKILL.md` for detailed instructions
 
-3. **Optional: Enable Roslynator analyzers** (one-time setup, recommended):
+3. **IMPORTANT: One-time setup** (if not already done):
    ```pwsh
-   # Step 0: Enable 200+ code quality analyzers (one-time setup)
-   pwsh scripts/enable-roslynator-analyzers.ps1
+   # Enable code style enforcement
+   pwsh scripts/validate-code-style-enforcement.ps1 -Enforce
+
+   # Enable Roslynator analyzers (skip submodules)
+   pwsh scripts/enable-roslynator-analyzers.ps1 -ExcludeSubmodules
+
+   # Configure .editorconfig
    pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity warning
    ```
 
 4. **Run the complete workflow**:
    ```pwsh
-   # Step 1: Validate and enable code style enforcement
-   pwsh scripts/validate-code-style-enforcement.ps1 -Enforce
-
-   # Step 2: Validate package versions
+   # Validate package versions
    pwsh scripts/validate-package-versions.ps1
 
-   # Step 3: Format code
+   # Format code
    pwsh scripts/format-code.ps1
 
-   # Step 4: Check build quality
+   # Build and check quality
    pwsh scripts/build_and_group_errors_and_warnings.ps1
    ```
 
@@ -139,6 +142,7 @@ pwsh scripts/configure-roslynator-editorconfig.ps1 -ShowPreview
 
 ## When to Use
 
+- **First-time setup**: Configure all code quality tools in a new project
 - Setting up a new project for the first time (enable analyzers)
 - Before committing code changes
 - When you want build-time enforcement of code quality rules
@@ -151,6 +155,7 @@ pwsh scripts/configure-roslynator-editorconfig.ps1 -ShowPreview
 
 ## Key Features
 
+✓ **One-time setup automation** - Configure all tools with simple commands
 ✓ **Roslynator analyzer integration** - 200+ analyzers enforced at build time
 ✓ **EditorConfig management** - Automated .editorconfig setup for team consistency
 ✓ **Automated formatting** with multiple tools (ReSharper, Roslynator, dotnet format)

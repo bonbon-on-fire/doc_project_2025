@@ -20,7 +20,7 @@ public sealed partial class SqliteEventStore : IEventQuery, IEventReplay
         var (isValid, error) = query.Validate();
         if (!isValid)
         {
-            throw new EventValidationException(error!, correlationId: query.CorrelationId);
+            throw new EventValidationException(error!, eventId: null, streamId: null, correlationId: query.CorrelationId, innerException: null);
         }
 
         using var activity = _metrics.StartQueryActivity();

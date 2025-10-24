@@ -4,13 +4,16 @@ using Microsoft.AspNetCore.Mvc;
 namespace AIChat.Server.Services.Routing;
 
 /// <summary>
+/// <para>
 /// Router interface for dual-mode operation between Orleans logging coordination and direct logging services.
 /// Provides seamless switching between Orleans-coordinated logging operations and direct file operations,
 /// supporting the gradual migration strategy with fallback logic and feature flag integration.
-///
+/// </para>
+/// <para>
 /// Note: Logging operations typically benefit more from direct file access than Orleans coordination,
 /// so this router primarily focuses on maintaining the existing direct operations while providing
 /// Orleans integration points for future enhancements like distributed logging coordination.
+/// </para>
 /// </summary>
 public interface ILogsRouter
 {

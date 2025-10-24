@@ -411,7 +411,6 @@ public record StateRecoveryResult<T>
     /// </summary>
     [Id(12)]
     public DateTimeOffset CompletedAt { get; init; } = DateTimeOffset.UtcNow;
-
 }
 
 /// <summary>
@@ -1189,7 +1188,6 @@ public record IntegrityCheckScheduleResult
     public string? Error { get; init; }
 }
 
-
 /// <summary>
 /// Represents health status for automatic recovery service.
 /// </summary>
@@ -1233,7 +1231,6 @@ public record AutomaticRecoveryHealthStatus
     [Id(5)]
     public Dictionary<string, object>? Details { get; init; }
 }
-
 
 /// <summary>
 /// Represents configuration for automatic recovery service.
@@ -1290,4 +1287,3 @@ public record AutomaticRecoveryConfiguration
     [Id(7)]
     public DateTimeOffset LastUpdated { get; init; }
 }
-

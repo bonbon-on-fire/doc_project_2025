@@ -81,10 +81,10 @@ builder.Host.UseSerilog((context, services, configuration) =>
         new CompactJsonFormatter(),
         logFileName,
         restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Verbose,
-        rollingInterval: RollingInterval.Day,
         buffered: false,
         shared: true
-    );
+,
+        rollingInterval: RollingInterval.Day);
 
     // Add Seq sink for centralized structured logging (if enabled)
     var enableSeq = context.Configuration.GetValue("Serilog:EnableSeq", true);
@@ -93,9 +93,9 @@ builder.Host.UseSerilog((context, services, configuration) =>
         var seqServerUrl = context.Configuration["Serilog:SeqServerUrl"] ?? "http://localhost:5341";
         configuration.WriteTo.Seq(
             serverUrl: seqServerUrl,
-            apiKey: context.Configuration["Serilog:SeqApiKey"],
             restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Debug
-        );
+,
+            apiKey: context.Configuration["Serilog:SeqApiKey"]);
     }
 });
 
@@ -774,8 +774,4 @@ app.Run();
 public partial class Program
 {
     private static readonly string[] tags = ["streaming"];
-}
-
-namespace AIChat.Server
-{
 }

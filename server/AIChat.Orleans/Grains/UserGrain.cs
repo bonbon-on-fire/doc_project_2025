@@ -2000,7 +2000,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
     /// </summary>
     /// <param name="activityType">The type of activity</param>
     /// <returns>Expiration date for the activity data</returns>
-    private DateTime CalculateRetentionExpiry(ActivityType activityType)
+    private static DateTime CalculateRetentionExpiry(ActivityType activityType)
     {
         // Default retention periods by activity type
         var retentionDays = activityType switch

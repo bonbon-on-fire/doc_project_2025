@@ -58,6 +58,18 @@ public class EventStoreException : Exception
         Context = context;
     }
 
+    public EventStoreException() : base()
+    {
+    }
+
+    public EventStoreException(string? message) : base(message)
+    {
+    }
+
+    public EventStoreException(string? message, Exception? innerException) : base(message, innerException)
+    {
+    }
+
     /// <summary>
     /// Gets a string representation of the exception with all context information.
     /// </summary>
@@ -140,6 +152,22 @@ public class ConcurrencyException : EventStoreException
         ExpectedVersion = expectedVersion;
         ActualVersion = actualVersion;
     }
+
+    public ConcurrencyException(string message, EventStoreErrorCode errorCode = EventStoreErrorCode.InternalError, string? streamId = null, string? eventId = null, string? correlationId = null, Dictionary<string, object>? context = null, Exception? innerException = null) : base(message, errorCode, streamId, eventId, correlationId, context, innerException)
+    {
+    }
+
+    public ConcurrencyException() : base()
+    {
+    }
+
+    public ConcurrencyException(string? message) : base(message)
+    {
+    }
+
+    public ConcurrencyException(string? message, Exception? innerException) : base(message, innerException)
+    {
+    }
 }
 
 /// <summary>
@@ -175,6 +203,22 @@ public class EventSerializationException : EventStoreException
             innerException: innerException)
     {
         EventType = eventType;
+    }
+
+    public EventSerializationException(string message, EventStoreErrorCode errorCode = EventStoreErrorCode.InternalError, string? streamId = null, string? eventId = null, string? correlationId = null, Dictionary<string, object>? context = null, Exception? innerException = null) : base(message, errorCode, streamId, eventId, correlationId, context, innerException)
+    {
+    }
+
+    public EventSerializationException() : base()
+    {
+    }
+
+    public EventSerializationException(string? message) : base(message)
+    {
+    }
+
+    public EventSerializationException(string? message, Exception? innerException) : base(message, innerException)
+    {
     }
 }
 
@@ -224,6 +268,22 @@ public class EventDeserializationException : EventStoreException
         EventType = eventType;
         EventData = eventData;
     }
+
+    public EventDeserializationException(string message, EventStoreErrorCode errorCode = EventStoreErrorCode.InternalError, string? streamId = null, string? eventId = null, string? correlationId = null, Dictionary<string, object>? context = null, Exception? innerException = null) : base(message, errorCode, streamId, eventId, correlationId, context, innerException)
+    {
+    }
+
+    public EventDeserializationException() : base()
+    {
+    }
+
+    public EventDeserializationException(string? message) : base(message)
+    {
+    }
+
+    public EventDeserializationException(string? message, Exception? innerException) : base(message, innerException)
+    {
+    }
 }
 
 /// <summary>
@@ -247,6 +307,22 @@ public class StreamNotFoundException : EventStoreException
             streamId,
             correlationId: correlationId,
             innerException: innerException)
+    {
+    }
+
+    public StreamNotFoundException(string message, EventStoreErrorCode errorCode = EventStoreErrorCode.InternalError, string? streamId = null, string? eventId = null, string? correlationId = null, Dictionary<string, object>? context = null, Exception? innerException = null) : base(message, errorCode, streamId, eventId, correlationId, context, innerException)
+    {
+    }
+
+    public StreamNotFoundException() : base()
+    {
+    }
+
+    public StreamNotFoundException(string? message) : base(message)
+    {
+    }
+
+    public StreamNotFoundException(string? message, Exception? innerException) : base(message, innerException)
     {
     }
 }
@@ -277,6 +353,22 @@ public class EventNotFoundException : EventStoreException
             innerException: innerException)
     {
     }
+
+    public EventNotFoundException(string message, EventStoreErrorCode errorCode = EventStoreErrorCode.InternalError, string? streamId = null, string? eventId = null, string? correlationId = null, Dictionary<string, object>? context = null, Exception? innerException = null) : base(message, errorCode, streamId, eventId, correlationId, context, innerException)
+    {
+    }
+
+    public EventNotFoundException() : base()
+    {
+    }
+
+    public EventNotFoundException(string? message) : base(message)
+    {
+    }
+
+    public EventNotFoundException(string? message, Exception? innerException) : base(message, innerException)
+    {
+    }
 }
 
 /// <summary>
@@ -299,6 +391,22 @@ public class StorageUnavailableException : EventStoreException
             EventStoreErrorCode.StorageUnavailable,
             correlationId: correlationId,
             innerException: innerException)
+    {
+    }
+
+    public StorageUnavailableException(string message, EventStoreErrorCode errorCode = EventStoreErrorCode.InternalError, string? streamId = null, string? eventId = null, string? correlationId = null, Dictionary<string, object>? context = null, Exception? innerException = null) : base(message, errorCode, streamId, eventId, correlationId, context, innerException)
+    {
+    }
+
+    public StorageUnavailableException() : base()
+    {
+    }
+
+    public StorageUnavailableException(string? message) : base(message)
+    {
+    }
+
+    public StorageUnavailableException(string? message, Exception? innerException) : base(message, innerException)
     {
     }
 }
@@ -361,6 +469,22 @@ public class EventValidationException : EventStoreException
             innerException)
     {
     }
+
+    public EventValidationException(string message, EventStoreErrorCode errorCode = EventStoreErrorCode.InternalError, string? streamId = null, string? eventId = null, string? correlationId = null, Dictionary<string, object>? context = null, Exception? innerException = null) : base(message, errorCode, streamId, eventId, correlationId, context, innerException)
+    {
+    }
+
+    public EventValidationException() : base()
+    {
+    }
+
+    public EventValidationException(string? message) : base(message)
+    {
+    }
+
+    public EventValidationException(string? message, Exception? innerException) : base(message, innerException)
+    {
+    }
 }
 
 /// <summary>
@@ -387,6 +511,22 @@ public class DuplicateEventException : EventStoreException
             eventId,
             correlationId,
             innerException: innerException)
+    {
+    }
+
+    public DuplicateEventException(string message, EventStoreErrorCode errorCode = EventStoreErrorCode.InternalError, string? streamId = null, string? eventId = null, string? correlationId = null, Dictionary<string, object>? context = null, Exception? innerException = null) : base(message, errorCode, streamId, eventId, correlationId, context, innerException)
+    {
+    }
+
+    public DuplicateEventException() : base()
+    {
+    }
+
+    public DuplicateEventException(string? message) : base(message)
+    {
+    }
+
+    public DuplicateEventException(string? message, Exception? innerException) : base(message, innerException)
     {
     }
 }

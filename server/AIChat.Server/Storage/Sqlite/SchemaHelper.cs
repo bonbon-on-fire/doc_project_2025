@@ -9,7 +9,7 @@ public static class SchemaHelper
         CancellationToken ct = default
     )
     {
-        using var cmd = connection.CreateCommand();
+        await using var cmd = connection.CreateCommand();
         cmd.CommandText = "PRAGMA foreign_keys=ON;";
         _ = await cmd.ExecuteNonQueryAsync(ct);
     }
@@ -22,12 +22,12 @@ public static class SchemaHelper
         // Detect existing schema and reset if mismatched (new project rule: nuke and recreate on mismatch)
         var needsReset = await NeedsSchemaResetAsync(connection, ct);
 
-        using var tx = await connection.BeginTransactionAsync(ct);
+        await using var tx = await connection.BeginTransactionAsync(ct);
         try
         {
             if (needsReset)
             {
-                using var drop = connection.CreateCommand();
+                await using var drop = connection.CreateCommand();
                 drop.Transaction = (SqliteTransaction)tx;
                 drop.CommandText =
                     @"
@@ -95,7 +95,7 @@ CREATE TABLE IF NOT EXISTS user_modes (
 );
 CREATE INDEX IF NOT EXISTS idx_user_modes_user ON user_modes (UserId);";
 
-            using (var cmd = connection.CreateCommand())
+            await using (var cmd = connection.CreateCommand())
             {
                 cmd.Transaction = (SqliteTransaction)tx;
                 cmd.CommandText = ddl;
@@ -103,7 +103,7 @@ CREATE INDEX IF NOT EXISTS idx_user_modes_user ON user_modes (UserId);";
             }
 
             // Optionally set user_version for future migrations
-            using (var ver = connection.CreateCommand())
+            await using (var ver = connection.CreateCommand())
             {
                 ver.Transaction = (SqliteTransaction)tx;
                 ver.CommandText = "PRAGMA user_version = 3;";
@@ -141,7 +141,7 @@ CREATE INDEX IF NOT EXISTS idx_user_modes_user ON user_modes (UserId);";
   UNIQUE (Email)
 );";
 
-        using (var cmd = connection.CreateCommand())
+        await using (var cmd = connection.CreateCommand())
         {
             cmd.CommandText = createUsersTable;
             _ = await cmd.ExecuteNonQueryAsync(ct);
@@ -189,7 +189,7 @@ INSERT INTO users (Id, Email, Name, Provider, ProviderUserId, ProfileImageUrl, C
 VALUES ($id, $email, $name, $provider, $providerUserId, $profileImageUrl, $createdAt, $updatedAt)
 ON CONFLICT(Email) DO NOTHING;";
 
-        using var cmd = connection.CreateCommand();
+        await using var cmd = connection.CreateCommand();
         cmd.CommandText = sql;
         _ = cmd.Parameters.AddWithValue("$id", id);
         _ = cmd.Parameters.AddWithValue("$email", email);
@@ -311,7 +311,7 @@ ON CONFLICT(Email) DO NOTHING;";
         CancellationToken ct
     )
     {
-        using var cmd = connection.CreateCommand();
+        await using var cmd = connection.CreateCommand();
         cmd.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name=$name;";
         _ = cmd.Parameters.AddWithValue("$name", tableName);
         var result = await cmd.ExecuteScalarAsync(ct);
@@ -324,10 +324,10 @@ ON CONFLICT(Email) DO NOTHING;";
         CancellationToken ct
     )
     {
-        using var cmd = connection.CreateCommand();
+        await using var cmd = connection.CreateCommand();
         cmd.CommandText = $"PRAGMA table_info({tableName});";
         var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        using var reader = await cmd.ExecuteReaderAsync(ct);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
             _ = columns.Add(reader.GetString(1)); // name column

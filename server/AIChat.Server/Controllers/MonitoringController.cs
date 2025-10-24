@@ -609,7 +609,7 @@ public class MonitoringController : ControllerBase
             };
         }
 
-        var values = historicalData.Select(h => h.Value).ToList();
+        var values = historicalData.ConvertAll(h => h.Value);
         var recent = values.TakeLast(values.Count / 3).Average();
         var older = values.Take(values.Count / 3).Average();
 

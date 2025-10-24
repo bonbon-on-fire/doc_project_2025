@@ -472,8 +472,8 @@ public sealed partial class SqliteSnapshotStore : ISnapshotStore
     /// </summary>
     private static async Task<byte[]> CompressDataAsync(byte[] data)
     {
-        using var output = new MemoryStream();
-        using (var gzip = new GZipStream(output, DefaultCompressionLevel))
+        await using var output = new MemoryStream();
+        await using (var gzip = new GZipStream(output, DefaultCompressionLevel))
         {
             await gzip.WriteAsync(data);
         }
@@ -485,8 +485,8 @@ public sealed partial class SqliteSnapshotStore : ISnapshotStore
     /// </summary>
     private static async Task<byte[]> DecompressDataAsync(byte[] compressedData, string compressionType = DefaultCompressionType)
     {
-        using var input = new MemoryStream(compressedData);
-        using var output = new MemoryStream();
+        await using var input = new MemoryStream(compressedData);
+        await using var output = new MemoryStream();
 
         Stream decompressionStream = compressionType.ToLowerInvariant() switch
         {

@@ -5,16 +5,19 @@ using Microsoft.Extensions.Options;
 namespace AIChat.Server.Services.SignalRBuffering.Implementations;
 
 /// <summary>
+/// <para>
 /// Background service that continuously processes the SignalR message buffer.
 /// This service runs in the background and periodically calls the buffer's ProcessBufferAsync
 /// method to deliver queued messages to SignalR clients.
-///
+/// </para>
+/// <para>
 /// Features:
 /// - Configurable processing intervals for optimal performance tuning
 /// - Automatic error handling and recovery
 /// - Graceful shutdown with proper cleanup
 /// - Comprehensive logging and metrics integration
 /// - Health monitoring and performance tracking
+/// </para>
 /// </summary>
 public sealed class SignalRBufferProcessorService : BackgroundService
 {

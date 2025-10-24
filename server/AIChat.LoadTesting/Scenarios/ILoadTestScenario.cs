@@ -108,7 +108,7 @@ public abstract class LoadTestScenarioBase : ILoadTestScenario
     /// <summary>
     /// Calculates latency statistics from a list of latencies
     /// </summary>
-    protected LatencyStatistics CalculateLatencyStatistics(IEnumerable<double> latencies)
+    protected static LatencyStatistics CalculateLatencyStatistics(IEnumerable<double> latencies)
     {
         var latencyList = latencies.Where(l => l > 0).ToList();
 
@@ -134,7 +134,7 @@ public abstract class LoadTestScenarioBase : ILoadTestScenario
     /// <summary>
     /// Gets a percentile value from a sorted list
     /// </summary>
-    protected double GetPercentile(List<double> sortedValues, double percentile)
+    protected static double GetPercentile(List<double> sortedValues, double percentile)
     {
         if (sortedValues.Count == 0)
         {
@@ -150,7 +150,7 @@ public abstract class LoadTestScenarioBase : ILoadTestScenario
     /// <summary>
     /// Generates a random chat ID for testing
     /// </summary>
-    protected string GenerateTestChatId()
+    protected static string GenerateTestChatId()
     {
         return $"test-chat-{Guid.NewGuid():N}";
     }
@@ -158,7 +158,7 @@ public abstract class LoadTestScenarioBase : ILoadTestScenario
     /// <summary>
     /// Generates a random user ID for testing
     /// </summary>
-    protected string GenerateTestUserId()
+    protected static string GenerateTestUserId()
     {
         return $"test-user-{Guid.NewGuid():N}";
     }
@@ -166,7 +166,7 @@ public abstract class LoadTestScenarioBase : ILoadTestScenario
     /// <summary>
     /// Generates random message content for testing
     /// </summary>
-    protected string GenerateTestMessage()
+    protected static string GenerateTestMessage()
     {
         var messages = new[]
         {
@@ -189,7 +189,7 @@ public abstract class LoadTestScenarioBase : ILoadTestScenario
     /// <summary>
     /// Creates a delay with some randomization to avoid thundering herd effects
     /// </summary>
-    protected async Task RandomDelayAsync(
+    protected static async Task RandomDelayAsync(
         TimeSpan baseDelay,
         double variationPercent = 0.2,
         CancellationToken cancellationToken = default

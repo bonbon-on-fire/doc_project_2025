@@ -66,6 +66,18 @@ public class StateManagementException : Exception
         CorrelationId = correlationId ?? Guid.NewGuid().ToString();
     }
 
+    public StateManagementException() : base()
+    {
+    }
+
+    public StateManagementException(string? message) : base(message)
+    {
+    }
+
+    public StateManagementException(string? message, Exception? innerException) : base(message, innerException)
+    {
+    }
+
     /// <summary>
     /// Creates a StateManagementException for entity not found scenarios.
     /// </summary>

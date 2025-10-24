@@ -17,8 +17,6 @@ public sealed class StateRecoveryDetector : IStateRecoveryDetector
     /// </summary>
     public string Name => "DefaultStateRecoveryDetector";
 
-    private static readonly string[] issues = ["State is null"];
-
     /// <summary>
     /// Initializes a new instance of the StateRecoveryDetector class.
     /// </summary>

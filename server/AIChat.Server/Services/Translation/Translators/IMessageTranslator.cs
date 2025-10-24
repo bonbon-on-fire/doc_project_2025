@@ -58,7 +58,7 @@ public abstract class MessageTranslatorBase<TSource, TTarget> : IMessageTranslat
     /// <summary>
     /// Logger instance for this translator.
     /// </summary>
-    protected ILogger Logger { get; private set; }
+    protected ILogger Logger { get; }
 
     /// <summary>
     /// Metrics collection for translation operations.
@@ -158,7 +158,7 @@ public abstract class MessageTranslatorBase<TSource, TTarget> : IMessageTranslat
 
         // Update average (simple moving average)
         Metrics.AverageTranslationTimeMs =
-            (Metrics.AverageTranslationTimeMs * (Metrics.SuccessfulTranslations - 1) + durationMs) /
+            ((Metrics.AverageTranslationTimeMs * (Metrics.SuccessfulTranslations - 1)) + durationMs) /
             Metrics.SuccessfulTranslations;
 
         // Update protocol metrics

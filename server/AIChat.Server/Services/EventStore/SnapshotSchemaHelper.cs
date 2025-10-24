@@ -25,7 +25,7 @@ public static class SnapshotSchemaHelper
         var currentVersion = await GetCurrentSchemaVersionAsync(connection, cancellationToken);
         var needsReset = await NeedsSnapshotSchemaResetAsync(connection, cancellationToken);
 
-        using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
         try
         {
             if (needsReset)

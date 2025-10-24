@@ -50,6 +50,18 @@ public class SnapshotStoreException : Exception
         Context = context;
     }
 
+    public SnapshotStoreException() : base()
+    {
+    }
+
+    public SnapshotStoreException(string? message) : base(message)
+    {
+    }
+
+    public SnapshotStoreException(string? message, Exception? innerException) : base(message, innerException)
+    {
+    }
+
     /// <summary>
     /// Creates a snapshot not found exception.
     /// </summary>
@@ -359,6 +371,22 @@ public class SnapshotManagerException : SnapshotStoreException
         Operation = operation;
     }
 
+    public SnapshotManagerException(string message, SnapshotErrorCode errorCode = SnapshotErrorCode.InternalError, string? snapshotId = null, string? streamId = null, Dictionary<string, object>? context = null, Exception? innerException = null) : base(message, errorCode, snapshotId, streamId, context, innerException)
+    {
+    }
+
+    public SnapshotManagerException() : base()
+    {
+    }
+
+    public SnapshotManagerException(string? message) : base(message)
+    {
+    }
+
+    public SnapshotManagerException(string? message, Exception? innerException) : base(message, innerException)
+    {
+    }
+
     /// <summary>
     /// Creates a snapshot creation failure exception.
     /// </summary>
@@ -505,6 +533,22 @@ public class SnapshotConcurrencyException : SnapshotStoreException
     {
         ConflictingVersion = conflictingVersion;
     }
+
+    public SnapshotConcurrencyException(string message, SnapshotErrorCode errorCode = SnapshotErrorCode.InternalError, string? snapshotId = null, string? streamId = null, Dictionary<string, object>? context = null, Exception? innerException = null) : base(message, errorCode, snapshotId, streamId, context, innerException)
+    {
+    }
+
+    public SnapshotConcurrencyException() : base()
+    {
+    }
+
+    public SnapshotConcurrencyException(string? message) : base(message)
+    {
+    }
+
+    public SnapshotConcurrencyException(string? message, Exception? innerException) : base(message, innerException)
+    {
+    }
 }
 
 /// <summary>
@@ -542,6 +586,22 @@ public class SnapshotCorruptionException : SnapshotStoreException
             })
     {
         CorruptionType = corruptionType;
+    }
+
+    public SnapshotCorruptionException(string message, SnapshotErrorCode errorCode = SnapshotErrorCode.InternalError, string? snapshotId = null, string? streamId = null, Dictionary<string, object>? context = null, Exception? innerException = null) : base(message, errorCode, snapshotId, streamId, context, innerException)
+    {
+    }
+
+    public SnapshotCorruptionException() : base()
+    {
+    }
+
+    public SnapshotCorruptionException(string? message) : base(message)
+    {
+    }
+
+    public SnapshotCorruptionException(string? message, Exception? innerException) : base(message, innerException)
+    {
     }
 }
 

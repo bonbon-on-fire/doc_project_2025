@@ -479,7 +479,7 @@ public class SseMonitoringController : ControllerBase
             return "stable";
         }
 
-        var values = dataPoints.Select(d => d.Value).ToList();
+        var values = dataPoints.ConvertAll(d => d.Value);
         var recentAvg = values.TakeLast(values.Count / 3).Average();
         var olderAvg = values.Take(values.Count / 3).Average();
 

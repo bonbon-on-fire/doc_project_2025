@@ -161,7 +161,7 @@ public class SseMixedLoadScenario : LoadTestScenarioBase
         LogProfileDistribution();
     }
 
-    private int GetProcessingDelay(ClientBehavior behavior, Random random) => behavior switch
+    private static int GetProcessingDelay(ClientBehavior behavior, Random random) => behavior switch
     {
         ClientBehavior.Normal => random.Next(1, 10),
         ClientBehavior.SlowConsumer => random.Next(100, 500),
@@ -170,7 +170,7 @@ public class SseMixedLoadScenario : LoadTestScenarioBase
         _ => random.Next(10, 100)
     };
 
-    private double GetDisconnectProbability(ClientBehavior behavior) => behavior switch
+    private static double GetDisconnectProbability(ClientBehavior behavior) => behavior switch
     {
         ClientBehavior.FrequentDisconnect => 0.1,
         ClientBehavior.Intermittent => 0.05,
@@ -178,7 +178,7 @@ public class SseMixedLoadScenario : LoadTestScenarioBase
         _ => 0.001
     };
 
-    private int GetReconnectDelay(ClientBehavior behavior, Random random) => behavior switch
+    private static int GetReconnectDelay(ClientBehavior behavior, Random random) => behavior switch
     {
         ClientBehavior.FrequentDisconnect => random.Next(100, 1000),
         ClientBehavior.Intermittent => random.Next(5000, 30000),
@@ -186,7 +186,7 @@ public class SseMixedLoadScenario : LoadTestScenarioBase
         _ => random.Next(1000, 5000)
     };
 
-    private int GetBurstSize(ClientBehavior behavior, Random random) => behavior switch
+    private static int GetBurstSize(ClientBehavior behavior, Random random) => behavior switch
     {
         ClientBehavior.Bursty => random.Next(10, 100),
         ClientBehavior.StressTester => random.Next(100, 1000),
@@ -629,7 +629,7 @@ public class SseMixedLoadScenario : LoadTestScenarioBase
         return metrics;
     }
 
-    private double GetPercentile(List<double> sortedValues, int percentile)
+    private static double GetPercentile(List<double> sortedValues, int percentile)
     {
         if (sortedValues.Count == 0)
         {
@@ -664,7 +664,7 @@ public class SseMixedLoadScenario : LoadTestScenarioBase
         _clientMetrics.Clear();
     }
 
-    private void PopulateResultMetrics(ScenarioResult result, Dictionary<string, object> metrics)
+    private static void PopulateResultMetrics(ScenarioResult result, Dictionary<string, object> metrics)
     {
         // Populate result with metrics
         if (metrics.TryGetValue("total_connections", out var totalConnections))

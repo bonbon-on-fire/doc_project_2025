@@ -111,10 +111,12 @@ internal sealed class WebSocketHeartbeatManager : IDisposable
 }
 
 /// <summary>
+/// <para>
 /// Implementation of IWebSocketHandler for managing WebSocket connections with Orleans integration.
 /// Provides comprehensive WebSocket lifecycle management, message processing, and protocol negotiation
 /// within the Orleans-based architecture following established patterns from ChatHub.
-///
+/// </para>
+/// <para>
 /// Features:
 /// - Complete WebSocket connection lifecycle management
 /// - Protocol negotiation with Orleans grain integration
@@ -122,6 +124,7 @@ internal sealed class WebSocketHeartbeatManager : IDisposable
 /// - Comprehensive error handling and recovery
 /// - Distributed tracing and structured logging
 /// - Health monitoring and metrics collection
+/// </para>
 /// </summary>
 public class WebSocketHandler : IWebSocketHandler
 {
@@ -800,7 +803,6 @@ public class WebSocketHandler : IWebSocketHandler
             _logger.LogError(ex, "Failed to close WebSocket with error status {CloseStatus}", closeStatus);
         }
     }
-
 
     #endregion
 }

@@ -15,6 +15,10 @@
     <PackageReference Include="Aspire.Hosting.NodeJs" Version="9.5.1" />
     <!-- Community SQLite hosting package -->
     <PackageReference Include="CommunityToolkit.Aspire.Hosting.Sqlite" Version="9.6.0" />
+    <PackageReference Include="Roslynator.Analyzers" Version="4.14.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
   <ItemGroup>
     <!-- Project references for orchestration -->

@@ -13,8 +13,8 @@ using ServerOperationStatus = AIChat.Server.Models.OperationStatus;
 namespace AIChat.Server.Services;
 
 /// <summary>
-/// Background service that processes chat operations asynchronously.
-///
+/// <para>Background service that processes chat operations asynchronously.</para>
+/// <para>
 /// KEY ARCHITECTURAL DECISION: This service uses the existing ChatService internally
 /// to leverage all existing functionality:
 /// - Agentic loop and LLM processing
@@ -22,12 +22,14 @@ namespace AIChat.Server.Services;
 /// - Mode-based system prompts
 /// - Message persistence and validation
 /// - Stream processing capabilities
-///
+/// </para>
+/// <para>
 /// BackgroundChatService handles:
 /// - Queueing and worker pool management
 /// - Operation lifecycle tracking
 /// - Cancellation support
 /// - Grain coordination
+/// </para>
 /// </summary>
 public class BackgroundChatService : BackgroundService, IBackgroundChatService
 {
@@ -318,10 +320,8 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
         }
 
         var operations = _activeOperations
-            .Values.Where(state => state.Operation.UserId == userId)
-            .Where(state =>
-                state.Status is ServerOperationStatus.Queued or ServerOperationStatus.InProgress
-            )
+            .Values.Where(state => state.Operation.UserId == userId && state.Status is ServerOperationStatus.Queued or ServerOperationStatus.InProgress
+)
             .Select(state => new OperationStatusInfo
             {
                 OperationId = state.Operation.Id,
@@ -348,10 +348,8 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
         }
 
         var operations = _activeOperations
-            .Values.Where(state => state.Operation.ChatId == chatId)
-            .Where(state =>
-                state.Status is ServerOperationStatus.Queued or ServerOperationStatus.InProgress
-            )
+            .Values.Where(state => state.Operation.ChatId == chatId && state.Status is ServerOperationStatus.Queued or ServerOperationStatus.InProgress
+)
             .Select(state => new OperationStatusInfo
             {
                 OperationId = state.Operation.Id,

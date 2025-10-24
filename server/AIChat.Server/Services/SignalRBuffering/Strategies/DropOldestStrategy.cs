@@ -5,16 +5,19 @@ using AIChat.Server.Services.SignalRBuffering.Models;
 namespace AIChat.Server.Services.SignalRBuffering.Strategies;
 
 /// <summary>
+/// <para>
 /// Overflow strategy that removes the oldest messages from the buffer to make room for new ones.
 /// This strategy prioritizes recent messages over older ones, which is suitable for real-time
 /// applications where older messages become less relevant over time.
-///
+/// </para>
+/// <para>
 /// Characteristics:
 /// - FIFO (First In, First Out) removal policy
 /// - Always accepts new messages
 /// - Preserves message ordering
 /// - Low computational complexity (O(1) for single message removal)
 /// - Best for time-sensitive real-time applications
+/// </para>
 /// </summary>
 public class DropOldestStrategy : IBufferOverflowStrategy
 {

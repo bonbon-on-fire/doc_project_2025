@@ -392,7 +392,7 @@ public class ChatGrainSequencingTests
     /// <summary>
     /// Helper method to extract sequence number from message metadata.
     /// </summary>
-    private long GetSequenceNumberFromMessage(ChatMessage message)
+    private static long GetSequenceNumberFromMessage(ChatMessage message)
     {
         if (string.IsNullOrEmpty(message.Metadata))
         {

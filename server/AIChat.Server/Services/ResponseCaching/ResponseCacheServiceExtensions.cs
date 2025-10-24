@@ -381,7 +381,7 @@ public class DistributedCacheHealthCheck : IHealthCheck
         try
         {
             var testKey = $"health_check_{Guid.NewGuid():N}";
-            var testValue = "health_check_value";
+            const string testValue = "health_check_value";
 
             // Test write operation
             await _distributedCache.SetStringAsync(testKey, testValue, cancellationToken);

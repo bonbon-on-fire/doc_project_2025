@@ -2112,7 +2112,7 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
     /// </summary>
     /// <param name="metadata">The JSON metadata string</param>
     /// <returns>The sequence number if found via fast path, 0 otherwise</returns>
-    private long TryExtractSequenceNumberFast(string metadata)
+    private static long TryExtractSequenceNumberFast(string metadata)
     {
         // Look for the pattern: "SequenceNumber":number (with various whitespace possibilities)
         const string sequenceKey = "\"SequenceNumber\"";
@@ -2308,7 +2308,7 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
     /// <param name="participant">The participant to validate</param>
     /// <exception cref="ArgumentException">When participant data is invalid</exception>
     /// <exception cref="InvalidChatStateException">When participant violates chat state rules</exception>
-    private void ValidateParticipantData(ChatParticipant participant)
+    private static void ValidateParticipantData(ChatParticipant participant)
     {
         // Basic null/empty validation
         if (string.IsNullOrWhiteSpace(participant.ParticipantId))
@@ -2397,7 +2397,7 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
     /// <param name="role">Participant role</param>
     /// <param name="action">Action to check</param>
     /// <returns>True if permission is granted</returns>
-    private bool HasPermission(ParticipantRole role, ChatAction action)
+    private static bool HasPermission(ParticipantRole role, ChatAction action)
     {
         return action switch
         {

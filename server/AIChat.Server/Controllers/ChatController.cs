@@ -76,7 +76,6 @@ public class ChatController(
         );
     }
 
-
     /// <summary>
     /// Executes a simple operation without return value with distinct Orleans and Direct implementations.
     /// </summary>
@@ -263,11 +262,6 @@ public class ChatController(
             }
         }
     }
-
-
-
-
-
 
     // GET: api/chat/history?userId={userId}&page={page}&pageSize={pageSize}
     [HttpGet("history")]
@@ -757,15 +751,14 @@ public class ChatController(
         return await ProcessStreamDirectlyWithRouterAsync(request, cancellationToken);
     }
 
-
     private async Task<IActionResult> ProcessStreamDirectlyWithRouterAsync(
         CreateChatRequest request,
         CancellationToken cancellationToken = default
     )
     {
         string? currentChatId = null;
-        string? currentAssistantMessageId = null;
-        var currentAssistantSequenceNumber = 0;
+        const string? currentAssistantMessageId = null;
+        const int currentAssistantSequenceNumber = 0;
 
         // Generic side-channel forwarder
         async Task ForwardSideChannel(StreamChunkEvent ev)

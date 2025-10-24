@@ -122,7 +122,7 @@ public class ResponseCacheManager : IResponseCacheManager, IDisposable
         ThrowIfDisposed();
 
         // Don't cache write-through operations or if caching is disabled
-        if (policy.OperationType == CacheOperationType.WriteThrough || !_configuration.EnableCompression && response is byte[])
+        if (policy.OperationType == CacheOperationType.WriteThrough || (!_configuration.EnableCompression && response is byte[]))
         {
             _logger.LogTrace("Skipping cache for write-through operation with key {CacheKey}", cacheKey);
             return;
@@ -535,7 +535,7 @@ public class ResponseCacheManager : IResponseCacheManager, IDisposable
 
             // Estimate compression effectiveness based on typical JSON compression ratios
             var estimatedCompressedEntries = (long)(baseStats.EntryCount * 0.3); // Assume 30% of entries are large enough to be compressed
-            var estimatedCompressionRatio = 0.6; // Typical JSON compression ratio is around 60%
+            const double estimatedCompressionRatio = 0.6; // Typical JSON compression ratio is around 60%
             var estimatedMemorySaved = (long)(baseStats.EstimatedMemoryUsage * 0.3 * 0.4); // 30% compressed * 40% savings
 
             return new CompressionStatistics

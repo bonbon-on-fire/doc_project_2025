@@ -235,5 +235,4 @@ public class DefaultCacheKeyGenerator : ICacheKeyGenerator
             return Convert.ToHexString(hashBytes)[..16];
         }
     }
-
 }

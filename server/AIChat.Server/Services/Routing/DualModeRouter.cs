@@ -33,9 +33,9 @@ public class DualModeRouter : IDualModeRouter, IDisposable
     /// </summary>
     /// <param name="featureManager">Feature manager for Orleans feature flag evaluation</param>
     /// <param name="logger">Logger for structured logging</param>
-    /// <param name="grainFactory">Orleans grain factory for grain creation</param>
     /// <param name="chatService">Direct chat service for fallback operations</param>
     /// <param name="options">Configuration options for router behavior</param>
+    /// <param name="grainFactory">Orleans grain factory for grain creation</param>
     public DualModeRouter(
         IFeatureManager featureManager,
         ILogger<DualModeRouter> logger,
@@ -394,7 +394,7 @@ public class DualModeRouter : IDualModeRouter, IDisposable
             // Use a single well-known grain key for all chat operations
             // This ensures proper Orleans grain usage while maintaining backward compatibility
             // Future enhancement: Use actual chat session IDs when full Orleans integration is implemented
-            var grainKey = "default-chat-grain";
+            const string grainKey = "default-chat-grain";
             var grain = _grainFactory.GetGrain<IChatGrain>(grainKey);
 
             _logger.LogDebug("Executing Orleans operation {OperationName} on grain {GrainKey}", operationName, grainKey);

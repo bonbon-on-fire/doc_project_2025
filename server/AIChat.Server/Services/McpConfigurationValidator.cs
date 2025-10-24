@@ -47,8 +47,7 @@ public class McpConfigurationValidator(
 
         // Validate inputs if referenced by any server
         if (
-            _configuration.McpServers != null
-            && _configuration.McpServers.Any(s => s.Value.Env != null)
+            _configuration.McpServers?.Any(s => s.Value.Env != null) == true
         )
         {
             ValidateInputs(errors);
@@ -141,8 +140,7 @@ public class McpConfigurationValidator(
                 {
                     var inputId = value[8..^1];
                     if (
-                        _configuration.Inputs == null
-                        || !_configuration.Inputs.Any(i => i.Id == inputId)
+                        _configuration.Inputs?.Any(i => i.Id == inputId) != true
                     )
                     {
                         errors.Add($"Server '{serverName}' references undefined input '{inputId}'");

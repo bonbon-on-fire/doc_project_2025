@@ -6,16 +6,19 @@ using AIChat.Server.Services.Routing;
 namespace AIChat.Server.Services.WebSocket;
 
 /// <summary>
+/// <para>
 /// Implementation of IWebSocketProtocolNegotiator for WebSocket protocol negotiation with Orleans integration.
 /// Handles protocol selection, capability negotiation, and integration with Orleans session grains
 /// following the dual-mode routing pattern for resilient operation.
-///
+/// </para>
+/// <para>
 /// Features:
 /// - Orleans grain integration for protocol operations
 /// - Dual-mode routing with fallback to direct protocol handling
 /// - Comprehensive capability validation and negotiation
 /// - Distributed tracing and structured logging
 /// - Statistics collection for monitoring
+/// </para>
 /// </summary>
 public class WebSocketProtocolNegotiator : IWebSocketProtocolNegotiator
 {
@@ -492,7 +495,7 @@ public class WebSocketProtocolNegotiator : IWebSocketProtocolNegotiator
         CancellationToken cancellationToken)
     {
         var protocolInfo = await GetProtocolInfoAsync(protocolName, cancellationToken);
-        return protocolInfo != null && protocolInfo.Enabled;
+        return protocolInfo?.Enabled == true;
     }
 
     private static WebSocketProtocolInfo? FindBestProtocolMatch(
