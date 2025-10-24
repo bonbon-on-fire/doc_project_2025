@@ -1,6 +1,6 @@
 ---
 name: clean-builds
-description: This skill guides developers through achieving zero-warning builds, consistent code style, and NuGet package version consistency. It provides a comprehensive workflow combining code formatting (format-code.ps1), build quality checks (build_and_group_errors_and_warnings.ps1), and package version validation (validate-package-versions.ps1). This skill should be used when preparing code for commit, validating build quality, fixing code style issues, ensuring all warnings are addressed, or consolidating package versions before merging.
+description: This skill guides developers through achieving zero-warning builds, consistent code style, and NuGet package version consistency. It provides a comprehensive workflow combining Roslynator analyzer integration (200+ code analyzers), code formatting (format-code.ps1), build quality checks (build_and_group_errors_and_warnings.ps1), and package version validation (validate-package-versions.ps1). This skill should be used when preparing code for commit, validating build quality, fixing code style issues, ensuring all warnings are addressed, or consolidating package versions before merging.
 ---
 
 # Clean Builds Skill
@@ -90,6 +90,101 @@ Check for package version inconsistencies:
 pwsh scripts/validate-package-versions.ps1
 ```
 
+### Option 5: Enable Roslynator Analyzers (One-Time Setup)
+
+Add 200+ code quality analyzers that run during build to catch issues early:
+
+```pwsh
+# Step 1: Add Roslynator.Analyzers NuGet package to all projects
+pwsh scripts/enable-roslynator-analyzers.ps1
+
+# Step 2: Configure .editorconfig with Roslynator severity settings
+pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity warning
+```
+
+**When to use:**
+- Setting up a new project for the first time
+- When you want build-time enforcement of code quality rules
+- Before starting a major refactoring effort
+
+**Note:** This is a one-time setup. Once enabled, Roslynator analyzers will run automatically during every build, providing immediate feedback on code quality issues.
+
+## Enabling Roslynator Analyzers (Optional but Recommended)
+
+### What are Roslynator Analyzers?
+
+Roslynator is a comprehensive collection of 200+ code analyzers, refactorings, and fixes for C#. Unlike the Roslynator CLI tool (which runs on-demand during formatting), Roslynator.Analyzers is a NuGet package that integrates directly into your build process.
+
+**Key Benefits:**
+- **Build-time enforcement:** Issues are detected during compilation, not just during formatting
+- **Immediate feedback:** Your IDE shows warnings as you type
+- **Comprehensive coverage:** 200+ analyzers covering code quality, style, performance, and potential bugs
+- **Configurable severity:** Control which rules are errors, warnings, or suggestions
+- **Team consistency:** Same rules enforced for all developers through .editorconfig
+
+### How They Differ from the CLI Tool
+
+| Feature | Roslynator CLI (format-code.ps1) | Roslynator.Analyzers (NuGet) |
+|---------|----------------------------------|------------------------------|
+| **When it runs** | On-demand (manual script execution) | Every build (automatic) |
+| **What it does** | Fixes issues automatically | Detects and reports issues |
+| **Integration** | External tool | Built into compilation |
+| **IDE support** | No real-time feedback | Real-time feedback as you type |
+| **Team enforcement** | Requires manual runs | Automatic enforcement |
+
+**Recommendation:** Use both together for maximum code quality:
+1. Enable Roslynator.Analyzers for continuous enforcement
+2. Run format-code.ps1 to automatically fix detected issues
+
+### When to Enable Roslynator Analyzers
+
+Enable Roslynator analyzers when you want:
+- **Proactive quality enforcement:** Catch issues during development, not just before commit
+- **Consistent team standards:** Ensure all developers see the same warnings
+- **Build-time validation:** Prevent low-quality code from being built
+- **Comprehensive coverage:** Go beyond basic compiler warnings
+- **IDE integration:** Real-time feedback while coding
+
+### Expected Impact
+
+**Build Time:** Expect 10-30% increase in build time as analyzers run on every build. The exact impact depends on:
+- Number of projects in your solution
+- Size of your codebase
+- Number of enabled analyzer rules
+
+**Initial Warnings:** May introduce 100s of new warnings initially, especially if the codebase hasn't been consistently formatted.
+
+**Recommendations:**
+1. **Run `format-code.ps1` BEFORE enabling analyzers** to reduce initial noise from fixable issues
+2. **Start with `suggestion` severity**, gradually increase to `warning` or `error`:
+   ```pwsh
+   pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity suggestion
+   ```
+3. **Use `-ExcludeSubmodules`** if you don't want to analyze external dependencies:
+   ```pwsh
+   pwsh scripts/enable-roslynator-analyzers.ps1 -ExcludeSubmodules
+   ```
+4. **Review warnings incrementally** - fix high-priority issues first, then address lower-priority ones
+5. **Disable noisy rules** if certain warnings are overwhelming (see Troubleshooting below)
+
+**Best Practice Workflow:**
+```pwsh
+# Step 1: Format code first to fix auto-fixable issues
+pwsh scripts/format-code.ps1
+
+# Step 2: Enable analyzers (exclude submodules for faster builds)
+pwsh scripts/enable-roslynator-analyzers.ps1 -ExcludeSubmodules
+
+# Step 3: Configure with lower severity initially
+pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity suggestion
+
+# Step 4: Build and review warnings
+pwsh scripts/build_and_group_errors_and_warnings.ps1
+
+# Step 5: Fix critical issues, then gradually increase severity
+pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity warning
+```
+
 ## How the Scripts Work
 
 ### format-code.ps1
@@ -169,6 +264,152 @@ pwsh scripts/validate-package-versions.ps1
 **Key flags:**
 - `-OutputFormat Console|Json|Summary` - Choose output type
 - `-SaveToFile <path>` - Export report to file
+
+### enable-roslynator-analyzers.ps1
+
+**Purpose:** Add the Roslynator.Analyzers NuGet package to all .csproj files in the solution
+
+**What it does:**
+1. Scans all .csproj files in the solution
+2. Checks which projects already have Roslynator.Analyzers
+3. Adds the package reference with proper configuration (PrivateAssets, IncludeAssets)
+4. Reports which projects were modified or already had the package
+
+**How it configures the package:**
+The script adds a properly configured PackageReference:
+```xml
+<PackageReference Include="Roslynator.Analyzers" Version="4.14.1">
+  <PrivateAssets>all</PrivateAssets>
+  <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+</PackageReference>
+```
+
+This ensures the analyzers run during build but don't propagate to consuming projects.
+
+**Output formats:**
+- `Console` (default) - Colored report with modification status for each project
+- `Json` - Structured data for automation and tooling
+- `Summary` - Quick statistics-only output
+
+**Key data reported:**
+- Total projects scanned
+- Projects that already have Roslynator.Analyzers
+- Projects where the package was added
+- Relative path for each project
+
+**Exit codes:**
+- `0` - Success (all projects processed successfully)
+- `1` - Failure (no projects found or modification failed)
+
+**Key flags:**
+- `-RoslynatorVersion <version>` - Specify version to install (default: 4.14.1, latest as of October 2025)
+- `-CheckOnly` - Check which projects need the package without making changes
+- `-RemoveAnalyzers` - Remove Roslynator.Analyzers from all projects (useful for reverting)
+- `-ExcludeSubmodules` - Exclude projects in submodules/ directory from processing (recommended for faster builds)
+- `-WhatIf` - Preview changes without actually modifying files (PowerShell ShouldProcess support)
+- `-OutputFormat Console|Json|Summary` - Choose output type
+- `-SaveToFile <path>` - Export report to file
+
+**Usage examples:**
+```pwsh
+# Add to all projects (default version 4.14.1)
+pwsh scripts/enable-roslynator-analyzers.ps1
+
+# Add only to main projects, excluding submodules (recommended)
+pwsh scripts/enable-roslynator-analyzers.ps1 -ExcludeSubmodules
+
+# Preview what would be changed
+pwsh scripts/enable-roslynator-analyzers.ps1 -WhatIf
+
+# Check which projects need it
+pwsh scripts/enable-roslynator-analyzers.ps1 -CheckOnly
+
+# Install specific version
+pwsh scripts/enable-roslynator-analyzers.ps1 -RoslynatorVersion "4.12.0"
+
+# Remove from all projects
+pwsh scripts/enable-roslynator-analyzers.ps1 -RemoveAnalyzers
+
+# Export results to JSON
+pwsh scripts/enable-roslynator-analyzers.ps1 -OutputFormat Json -SaveToFile roslynator-status.json
+```
+
+### configure-roslynator-editorconfig.ps1
+
+**Purpose:** Create or update .editorconfig file with Roslynator analyzer severity settings and code style preferences
+
+**What it does:**
+1. Creates a new .editorconfig file if it doesn't exist (or updates existing one)
+2. Adds Roslynator configuration section with:
+   - Global severity setting for all Roslynator rules
+   - Enable/disable flags for analyzers, refactorings, and compiler fixes
+   - Code style preferences (var usage, accessibility modifiers, etc.)
+   - Individual rule configurations for common scenarios
+3. Preserves existing .editorconfig content (appends Roslynator section)
+4. Prevents duplicate configuration (detects existing Roslynator settings)
+
+**Severity Levels Explained:**
+
+| Severity | Effect | When to Use |
+|----------|--------|-------------|
+| `none` | Rules are disabled | When you want to disable Roslynator entirely |
+| `silent` | Rules run but produce no diagnostics | Testing analyzers without affecting builds |
+| `suggestion` | IDE shows hints (no build impact) | Non-critical style preferences |
+| `warning` | Build produces warnings (recommended) | Code quality rules that should be addressed |
+| `error` | Build fails if violations exist | Critical rules that must be enforced |
+
+**Configuration Options:**
+
+The script configures these key Roslynator settings:
+- `roslynator_analyzers.enabled_by_default` - Enable analyzers globally
+- `dotnet_analyzer_diagnostic.category-roslynator.severity` - Global severity level
+- `roslynator_refactorings.enabled` - Enable code refactoring suggestions
+- `roslynator_compiler_diagnostic_fixes.enabled` - Enable compiler diagnostic fixes
+- Code style options (var usage, field prefixes, accessibility modifiers, etc.)
+- Individual rule overrides (e.g., RCS1036, RCS1037, RCS1163)
+
+**Output:**
+The script provides console output only (no JSON/Summary formats since it's a one-time configuration).
+
+**Exit codes:**
+- `0` - Success (configuration added successfully)
+- `1` - Failure (file exists with Roslynator config, or other error)
+
+**Key flags:**
+- `-Severity <level>` - Set global severity (none|silent|suggestion|warning|error) - default: warning
+- `-ConfigFile <path>` - Path to .editorconfig file - default: .editorconfig in current directory
+- `-CreateIfMissing <bool>` - Create new file if doesn't exist - default: true
+- `-ShowPreview` - Preview what would be added without making changes
+- `-WhatIf` - Preview changes without actually modifying the file (PowerShell ShouldProcess support)
+- `-EnableAnalyzers <bool>` - Enable/disable analyzers - default: true
+
+**Usage examples:**
+```pwsh
+# Set all rules to 'warning' (default, recommended)
+pwsh scripts/configure-roslynator-editorconfig.ps1
+
+# Set to 'error' for strict enforcement (build fails on violations)
+pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity error
+
+# Preview changes without applying them (two equivalent ways)
+pwsh scripts/configure-roslynator-editorconfig.ps1 -ShowPreview
+pwsh scripts/configure-roslynator-editorconfig.ps1 -WhatIf
+
+# Configure a specific .editorconfig file
+pwsh scripts/configure-roslynator-editorconfig.ps1 -ConfigFile "src\.editorconfig"
+
+# Set to 'suggestion' for non-blocking hints
+pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity suggestion
+
+# Disable analyzers (while keeping configuration for later)
+pwsh scripts/configure-roslynator-editorconfig.ps1 -EnableAnalyzers $false
+```
+
+**Note:** After running this script, you should:
+1. Review the generated .editorconfig and customize individual rules as needed
+2. Restart your IDE for changes to take effect
+3. Run `dotnet build` to see Roslynator warnings/errors
+4. Run `pwsh scripts/format-code.ps1` to auto-fix issues detected by analyzers
 
 ## Handling Build Warnings
 
@@ -339,6 +580,50 @@ git commit -m "message"
 
 **Note:** The `-Enforce` flag in step 1 automatically enables `EnforceCodeStyleInBuild` in any projects that are missing it. This ensures IDE0005 warnings are detected during the build check in step 4.
 
+### 8. Enable Roslynator Analyzers for Maximum Code Quality
+
+For the most comprehensive code quality enforcement, enable Roslynator analyzers in all your projects. This provides build-time analysis with 200+ code quality rules.
+
+**Why enable Roslynator analyzers:**
+- **Proactive detection:** Issues are caught during development, not just when you run format-code.ps1
+- **IDE integration:** Real-time feedback as you type code
+- **Build enforcement:** Prevents poor-quality code from being compiled
+- **Comprehensive rules:** Covers areas that standard compiler warnings miss
+- **Team consistency:** Everyone sees the same warnings in their IDE
+
+**How to enable (one-time setup):**
+```pwsh
+# Step 1: Add Roslynator.Analyzers to all projects
+pwsh scripts/enable-roslynator-analyzers.ps1
+
+# Step 2: Configure severity levels in .editorconfig
+pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity warning
+```
+
+**Recommended severity levels:**
+- **Most projects:** Use `warning` (default) - issues show as warnings but don't block builds
+- **Strict enforcement:** Use `error` - violations will fail the build
+- **Gradual adoption:** Use `suggestion` - issues show as IDE hints only
+
+**Best practice workflow:**
+1. Enable analyzers once during initial project setup
+2. Configure with `warning` severity for team visibility
+3. Run `build_and_group_errors_and_warnings.ps1` to see all Roslynator warnings
+4. Run `format-code.ps1` to automatically fix issues
+5. Review and customize .editorconfig to adjust specific rule severities
+
+**Benefits of build-time vs. format-time analysis:**
+
+| Aspect | Format-time (format-code.ps1) | Build-time (Roslynator.Analyzers) |
+|--------|-------------------------------|-------------------------------------|
+| When issues detected | Only when script runs | Every build, real-time in IDE |
+| What happens | Automatically fixes issues | Reports issues for you to fix |
+| Developer awareness | Only if they run the script | Immediate feedback while coding |
+| Team enforcement | Manual script execution | Automatic for everyone |
+| Coverage | Runs during formatting only | Continuous throughout development |
+
+**Recommendation:** Enable Roslynator analyzers for continuous enforcement and use format-code.ps1 to batch-fix issues.
+
 ## Bundled Scripts
 
 ### `scripts/validate-code-style-enforcement.ps1`
@@ -464,6 +749,73 @@ pwsh scripts/validate-package-versions.ps1 -SaveToFile version-report.json
 - `0` = Success (no critical issues found)
 - `1` = Failure (critical issues found - must fix)
 
+### `scripts/enable-roslynator-analyzers.ps1`
+
+Adds Roslynator.Analyzers NuGet package to all .NET projects for build-time code analysis.
+
+**Purpose:** Enable 200+ code quality analyzers to run during every build, providing immediate feedback on code quality issues.
+
+**Requirements:**
+- PowerShell 5+
+- .NET SDK with project files (.csproj)
+
+**Usage:**
+```pwsh
+# Add Roslynator.Analyzers to all projects
+pwsh scripts/enable-roslynator-analyzers.ps1
+
+# Check which projects need it (dry-run)
+pwsh scripts/enable-roslynator-analyzers.ps1 -CheckOnly
+
+# Install specific version
+pwsh scripts/enable-roslynator-analyzers.ps1 -RoslynatorVersion "4.12.0"
+
+# Remove from all projects
+pwsh scripts/enable-roslynator-analyzers.ps1 -RemoveAnalyzers
+
+# Export results to JSON
+pwsh scripts/enable-roslynator-analyzers.ps1 -OutputFormat Json -SaveToFile analyzers-report.json
+```
+
+**Exit codes:**
+- `0` = Success (projects processed successfully)
+- `1` = Failure (no projects found or modification failed)
+
+**Note:** This is a one-time setup script. After running, the analyzers will be part of your project files and will run during every build.
+
+### `scripts/configure-roslynator-editorconfig.ps1`
+
+Creates or updates .editorconfig file with Roslynator analyzer configuration, including severity settings and code style preferences.
+
+**Purpose:** Configure Roslynator rule severities and code style options in a centralized .editorconfig file for team-wide consistency.
+
+**Requirements:**
+- PowerShell 5+
+
+**Usage:**
+```pwsh
+# Set all rules to 'warning' (default, recommended)
+pwsh scripts/configure-roslynator-editorconfig.ps1
+
+# Set to 'error' for strict enforcement
+pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity error
+
+# Preview changes without applying
+pwsh scripts/configure-roslynator-editorconfig.ps1 -ShowPreview
+
+# Configure specific file
+pwsh scripts/configure-roslynator-editorconfig.ps1 -ConfigFile "src\.editorconfig"
+
+# Set to 'suggestion' for IDE hints only
+pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity suggestion
+```
+
+**Exit codes:**
+- `0` = Success (configuration added)
+- `1` = Failure (Roslynator config already exists or other error)
+
+**Note:** After running this script, restart your IDE and run `dotnet build` to see Roslynator warnings/errors.
+
 ## Troubleshooting
 
 ### Script Fails: "Tool not found"
@@ -512,6 +864,124 @@ If you're not seeing IDE0005 (unused imports) warnings during build:
    ```
 
 **Note:** This is a build-time enforcement feature, not a runtime issue. Adding `EnforceCodeStyleInBuild` enables static analysis during compilation.
+
+### Too Many Warnings After Enabling Roslynator
+
+If you get overwhelmed with warnings after enabling Roslynator analyzers:
+
+**Solution 1: Start with lower severity**
+```pwsh
+# Set to 'suggestion' so warnings don't block your workflow
+pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity suggestion
+
+# Review suggestions in IDE, fix what makes sense
+# Then gradually increase severity
+pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity warning
+```
+
+**Solution 2: Format code first to auto-fix issues**
+```pwsh
+# Run formatter to automatically fix many analyzer warnings
+pwsh scripts/format-code.ps1
+
+# Then rebuild to see remaining warnings
+pwsh scripts/build_and_group_errors_and_warnings.ps1
+```
+
+**Solution 3: Disable specific noisy rules**
+
+Edit `.editorconfig` to disable rules that are too noisy for your codebase:
+```ini
+# Disable specific rules that are too noisy
+dotnet_diagnostic.rcs1036.severity = none  # Remove unnecessary blank line
+dotnet_diagnostic.rcs1138.severity = none  # Add summary to documentation comment
+```
+
+To find which rules are producing the most warnings:
+```pwsh
+# Build and save to JSON to analyze warnings
+pwsh scripts/build_and_group_errors_and_warnings.ps1 -OutputFormat Json -SaveToFile warnings.json
+
+# Review the JSON to see which RCS codes appear most frequently
+```
+
+**Solution 4: Exclude submodules from analysis**
+
+If external dependencies are generating warnings:
+```pwsh
+# Remove Roslynator from submodules
+pwsh scripts/enable-roslynator-analyzers.ps1 -RemoveAnalyzers
+
+# Re-enable only for main projects
+pwsh scripts/enable-roslynator-analyzers.ps1 -ExcludeSubmodules
+```
+
+### Build Time Increased Significantly After Enabling Roslynator
+
+If builds become too slow after enabling Roslynator analyzers:
+
+**Solution 1: Exclude submodules**
+```pwsh
+# External code analysis adds overhead without providing value
+pwsh scripts/enable-roslynator-analyzers.ps1 -RemoveAnalyzers
+pwsh scripts/enable-roslynator-analyzers.ps1 -ExcludeSubmodules
+```
+
+**Solution 2: Disable analyzers in Debug builds**
+
+Edit your `.csproj` files to enable analyzers only for Release builds:
+```xml
+<PropertyGroup Condition="'$(Configuration)' == 'Release'">
+  <RunAnalyzers>true</RunAnalyzers>
+</PropertyGroup>
+<PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+  <RunAnalyzers>false</RunAnalyzers>
+</PropertyGroup>
+```
+
+**Solution 3: Review and disable non-essential rules**
+
+Disable entire categories of rules that aren't critical:
+```ini
+# In .editorconfig
+# Disable all documentation-related rules
+dotnet_diagnostic.rcs1138.severity = none
+dotnet_diagnostic.rcs1139.severity = none
+
+# Disable all formatting rules (handled by format-code.ps1)
+dotnet_diagnostic.rcs1036.severity = none
+dotnet_diagnostic.rcs1037.severity = none
+```
+
+**Solution 4: Use incremental builds**
+
+Ensure your build environment supports incremental compilation:
+```pwsh
+# Clean only when necessary, not before every build
+dotnet build  # Incremental build (fast)
+
+# vs
+dotnet clean && dotnet build  # Full rebuild (slow)
+```
+
+**Expected build time impact:**
+- Small projects (1-5 projects): +10-15%
+- Medium projects (10-20 projects): +15-25%
+- Large projects (30+ projects): +20-30%
+
+### Roslynator Warnings Differ from IDE Suggestions
+
+If Visual Studio/Rider shows different warnings than the build:
+
+**Cause:** IDE might be using different analyzer versions or .editorconfig settings.
+
+**Solution:**
+1. **Restart your IDE** after changing .editorconfig
+2. **Clear IDE caches**:
+   - Visual Studio: Delete `.vs` folder, restart
+   - Rider: File → Invalidate Caches / Restart
+3. **Verify .editorconfig is in solution root** and `root = true` is set
+4. **Check IDE analyzer settings** match .editorconfig severity levels
 
 ## References
 

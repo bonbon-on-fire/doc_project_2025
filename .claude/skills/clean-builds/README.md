@@ -11,7 +11,9 @@ clean-builds/
 │   ├── validate-code-style-enforcement.ps1           # Validate and enable IDE0005 detection
 │   ├── format-code.ps1                               # Code formatting with multiple tools
 │   ├── build_and_group_errors_and_warnings.ps1       # Clean build with error/warning analysis
-│   └── validate-package-versions.ps1                 # Package version consistency validator
+│   ├── validate-package-versions.ps1                 # Package version consistency validator
+│   ├── enable-roslynator-analyzers.ps1               # Add Roslynator.Analyzers to all projects
+│   └── configure-roslynator-editorconfig.ps1         # Configure Roslynator in .editorconfig
 ├── references/
 │   ├── warning-codes-guide.md                        # Detailed guide to common warning codes
 │   └── package-version-management.md                 # Complete package version management guide
@@ -27,7 +29,14 @@ clean-builds/
 
 2. **Or manually reference** `SKILL.md` for detailed instructions
 
-3. **Run the complete workflow**:
+3. **Optional: Enable Roslynator analyzers** (one-time setup, recommended):
+   ```pwsh
+   # Step 0: Enable 200+ code quality analyzers (one-time setup)
+   pwsh scripts/enable-roslynator-analyzers.ps1
+   pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity warning
+   ```
+
+4. **Run the complete workflow**:
    ```pwsh
    # Step 1: Validate and enable code style enforcement
    pwsh scripts/validate-code-style-enforcement.ps1 -Enforce
@@ -86,9 +95,53 @@ Scans all projects for NuGet package version inconsistencies and identifies:
 - Projects affected by each inconsistency
 - Recommended fixes
 
+### enable-roslynator-analyzers.ps1
+Adds the Roslynator.Analyzers NuGet package to all .csproj files in the solution, enabling 200+ code analyzers to run during build.
+
+**What it does:**
+- Scans all .csproj files
+- Adds Roslynator.Analyzers package with proper configuration
+- Supports check-only mode and removal mode
+- Multiple output formats (Console, Json, Summary)
+
+**Usage:**
+```pwsh
+# Add to all projects
+pwsh scripts/enable-roslynator-analyzers.ps1
+
+# Check which projects need it
+pwsh scripts/enable-roslynator-analyzers.ps1 -CheckOnly
+
+# Remove from all projects
+pwsh scripts/enable-roslynator-analyzers.ps1 -RemoveAnalyzers
+```
+
+### configure-roslynator-editorconfig.ps1
+Creates or updates .editorconfig file with Roslynator analyzer severity settings and code style preferences.
+
+**What it does:**
+- Creates/updates .editorconfig at solution root
+- Sets global severity for all Roslynator rules
+- Configures code style preferences (var usage, accessibility modifiers, etc.)
+- Supports preview mode to see changes before applying
+
+**Usage:**
+```pwsh
+# Set all rules to 'warning' (default)
+pwsh scripts/configure-roslynator-editorconfig.ps1
+
+# Set to 'error' for strict enforcement
+pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity error
+
+# Preview changes without applying
+pwsh scripts/configure-roslynator-editorconfig.ps1 -ShowPreview
+```
+
 ## When to Use
 
+- Setting up a new project for the first time (enable analyzers)
 - Before committing code changes
+- When you want build-time enforcement of code quality rules
 - When package versions need updating or validation
 - During code review to ensure quality
 - After significant refactoring
@@ -98,6 +151,8 @@ Scans all projects for NuGet package version inconsistencies and identifies:
 
 ## Key Features
 
+✓ **Roslynator analyzer integration** - 200+ analyzers enforced at build time
+✓ **EditorConfig management** - Automated .editorconfig setup for team consistency
 ✓ **Automated formatting** with multiple tools (ReSharper, Roslynator, dotnet format)
 ✓ **IDE0005 enforcement** - detect and fix unused imports during build
 ✓ **Code style enforcement** - optional `EnforceCodeStyleInBuild` for compile-time checks
