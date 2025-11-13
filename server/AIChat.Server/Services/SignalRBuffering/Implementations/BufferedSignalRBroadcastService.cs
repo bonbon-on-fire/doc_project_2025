@@ -244,13 +244,12 @@ public sealed class BufferedSignalRBroadcastService : ISignalRBroadcastService, 
         }
 
         // If inner service is unavailable, we must use buffering (if healthy)
+        // Default to buffering when enabled and healthy
         if (!_innerService.IsAvailable)
         {
             _logger.LogDebug("Inner service unavailable, forcing buffered delivery");
-            return true;
         }
 
-        // Default to buffering when enabled and healthy
         return true;
     }
 

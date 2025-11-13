@@ -61,9 +61,13 @@ public sealed partial class SqliteSnapshotStore : ISnapshotWriter
 
                 // Insert or update content record
                 if (!wasDeduplicated)
+                {
                     await InsertContentAsync(connection, (SqliteTransaction)transaction, contentHash, compressedData, cancellationToken);
+                }
                 else
+                {
                     await IncrementContentReferenceAsync(connection, (SqliteTransaction)transaction, contentHash, cancellationToken);
+                }
 
                 // Insert snapshot metadata
                 await InsertSnapshotAsync(

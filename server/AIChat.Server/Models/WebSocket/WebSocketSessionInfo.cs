@@ -185,9 +185,13 @@ public class WebSocketConnectionMetrics
         // Simple moving average calculation
         var totalMessages = MessagesSent + MessagesReceived;
         if (totalMessages > 1)
+        {
             AverageLatencyMs = ((AverageLatencyMs * (totalMessages - 1)) + latencyMs) / totalMessages;
+        }
         else
+        {
             AverageLatencyMs = latencyMs;
+        }
         LastUpdated = DateTime.UtcNow;
     }
 }

@@ -63,10 +63,8 @@ public class HealthController : ControllerBase
             {
                 return Ok(health);
             }
-            else
-            {
-                return StatusCode(StatusCodes.Status503ServiceUnavailable, health);
-            }
+
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, health);
         }
         catch (Exception ex)
         {

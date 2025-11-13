@@ -56,22 +56,24 @@ public static class OrleansClientExtensions
     )
     {
         // Basic client configuration
+        var clusterId = configuration.GetValue<string>("Orleans:ClusterId") ?? "doc-chat-cluster";
+        var serviceId = configuration.GetValue<string>("Orleans:ServiceId") ?? "doc-chat-service";
+
         _ = clientBuilder.Configure<ClusterOptions>(options =>
         {
-            options.ClusterId =
-                configuration.GetValue<string>("Orleans:ClusterId") ?? "doc-chat-cluster";
-            options.ServiceId =
-                configuration.GetValue<string>("Orleans:ServiceId") ?? "doc-chat-service";
+            options.ClusterId = clusterId;
+            options.ServiceId = serviceId;
         });
 
         // Environment-specific configuration
+        // Orleans will automatically log connection attempts and configuration details
         if (environment.IsDevelopment())
         {
-            ConfigureDevelopmentClient(clientBuilder, configuration);
+            ConfigureDevelopmentClient(clientBuilder, configuration, environment);
         }
         else
         {
-            ConfigureProductionClient(clientBuilder, configuration);
+            ConfigureProductionClient(clientBuilder, configuration, environment);
         }
 
         // Configure client connection
@@ -89,9 +91,11 @@ public static class OrleansClientExtensions
     /// </summary>
     /// <param name="clientBuilder">Orleans client builder</param>
     /// <param name="configuration">Configuration</param>
+    /// <param name="environment">Hosting environment</param>
     private static void ConfigureDevelopmentClient(
         IClientBuilder clientBuilder,
-        IConfiguration configuration
+        IConfiguration configuration,
+        IHostEnvironment environment
     )
     {
         var gatewayPort = configuration.GetValue("Orleans:GatewayPort", 30000);
@@ -104,9 +108,11 @@ public static class OrleansClientExtensions
     /// </summary>
     /// <param name="clientBuilder">Orleans client builder</param>
     /// <param name="configuration">Configuration</param>
+    /// <param name="environment">Hosting environment</param>
     private static void ConfigureProductionClient(
         IClientBuilder clientBuilder,
-        IConfiguration configuration
+        IConfiguration configuration,
+        IHostEnvironment environment
     )
     {
         var clusteringConnection = configuration.GetConnectionString("Orleans:ClusteringStorage");
@@ -115,6 +121,7 @@ public static class OrleansClientExtensions
         {
             // Fallback to localhost for testing
             var gatewayPort = configuration.GetValue("Orleans:GatewayPort", 30000);
+
             _ = clientBuilder.UseLocalhostClustering(gatewayPort);
         }
         else
@@ -182,20 +189,27 @@ public class OrleansClientHealthCheck : Microsoft.Extensions.Diagnostics.HealthC
                 data["Warnings"] = string.Join(", ", connectionStatus.Warnings);
             }
 
-            return isHealthy && connectionStatus.IsConnected
-                    ? Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy(
+            if (isHealthy && connectionStatus.IsConnected)
+            {
+                return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy(
                         "Orleans client is connected and responsive",
                         data
-                    )
-                : connectionStatus.ConnectionState == "Disabled"
-                    ? Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy(
+                    );
+            }
+            else if (connectionStatus.ConnectionState == "Disabled")
+            {
+                return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy(
                         "Orleans client is disabled via feature flags",
                         data
-                    )
-                : Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Unhealthy(
+                    );
+            }
+            else
+            {
+                return Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Unhealthy(
                     $"Orleans client is not healthy: {connectionStatus.ConnectionState}",
                     data: data
                 );
+            }
         }
         catch (Exception ex)
         {

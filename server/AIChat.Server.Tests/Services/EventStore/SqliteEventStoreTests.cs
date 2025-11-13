@@ -167,7 +167,8 @@ public class SqliteEventStoreTests : IDisposable
                 Content = "First message",
                 MessageType = "text",
                 ChatId = "chat-123"
-            }) with { EventId = eventId };
+            }) with
+        { EventId = eventId };
 
         var event2 = ChatMessageSentEvent.Create(
             "chat-123",
@@ -179,7 +180,8 @@ public class SqliteEventStoreTests : IDisposable
                 Content = "Second message",
                 MessageType = "text",
                 ChatId = "chat-123"
-            }) with { EventId = eventId };
+            }) with
+        { EventId = eventId };
 
         // Act
         await _eventStore.AppendAsync(event1);
@@ -564,7 +566,8 @@ public class SqliteEventStoreTests : IDisposable
                 Content = "Message 1",
                 MessageType = "text",
                 ChatId = "chat-123"
-            }) with { Timestamp = baseTime };
+            }) with
+        { Timestamp = baseTime };
 
         var event2 = ChatMessageSentEvent.Create(
             "stream-2",
@@ -576,7 +579,8 @@ public class SqliteEventStoreTests : IDisposable
                 Content = "Message 2",
                 MessageType = "text",
                 ChatId = "chat-456"
-            }) with { Timestamp = baseTime.AddMinutes(30) };
+            }) with
+        { Timestamp = baseTime.AddMinutes(30) };
 
         var event3 = ChatMessageSentEvent.Create(
             "stream-3",
@@ -588,7 +592,8 @@ public class SqliteEventStoreTests : IDisposable
                 Content = "Message 3",
                 MessageType = "text",
                 ChatId = "chat-789"
-            }) with { Timestamp = baseTime.AddHours(2) };
+            }) with
+        { Timestamp = baseTime.AddHours(2) };
 
         await _eventStore.AppendAsync([event1, event2, event3]);
 

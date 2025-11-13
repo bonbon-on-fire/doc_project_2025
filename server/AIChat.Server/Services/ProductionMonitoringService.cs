@@ -315,7 +315,7 @@ public class ProductionMonitoringService : IHostedService, IDisposable
                 {
                     memoryPressure = 40;
                 }
-                // Note: Gauge metrics are recorded differently - we'll store in our metrics instead
+                UpdateMetric("system.memory.pressure", memoryPressure, timestamp);
             }
             catch (Exception ex)
             {

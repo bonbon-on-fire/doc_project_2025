@@ -38,12 +38,7 @@ public class ExponentialBackoffReconnectionStrategy : ISseReconnectionStrategy
         }
 
         // Don't reconnect for certain types of errors
-        if (lastError is ObjectDisposedException or OperationCanceledException)
-        {
-            return false;
-        }
-
-        return true;
+        return lastError is not ObjectDisposedException and not OperationCanceledException;
     }
 
     /// <inheritdoc />

@@ -658,7 +658,6 @@ public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDispo
 
     private double CalculateErrorRate()
     {
-        
 
         // Simple hourly rate calculation
         return _deliveryStatusCounts

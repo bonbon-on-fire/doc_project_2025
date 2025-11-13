@@ -79,7 +79,7 @@ public class MemoryTranslationCache : ITranslationCache
     public async Task SetAsync<T>(string key, T value, TimeSpan expiration, CancellationToken cancellationToken = default)
     {
         await Task.CompletedTask; // Suppress CS1998
-        if (!_options.EnableCaching || EqualityComparer<T?>.Default.Equals(value, default(T?)))
+        if (!_options.EnableCaching || EqualityComparer<T?>.Default.Equals(value, default))
         {
             return;
         }
@@ -92,7 +92,8 @@ public class MemoryTranslationCache : ITranslationCache
         }
 
         var expiresAt = DateTime.UtcNow.Add(expiration);
-        var cacheItem = new CacheItem(value, expiresAt);
+        // Null-forgiving operator is safe here because we verified non-null at line 82
+        var cacheItem = new CacheItem(value!, expiresAt);
 
         _cache.AddOrUpdate(key, cacheItem, (_, _) => cacheItem);
         _logger.LogDebug("Cached value for key: {Key}, expires at: {ExpiresAt}", key, expiresAt);
@@ -191,7 +192,6 @@ public class MemoryTranslationCache : ITranslationCache
     {
         // Rough estimation: each cache item takes approximately 100 bytes plus content size
         const int overheadPerItem = 100;
-        
 
         // This is a very rough estimate since we can't easily calculate object sizes
         // In a production system, you might want to use a more sophisticated approach

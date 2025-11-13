@@ -136,10 +136,10 @@ public class Program
                         )
                         .WriteTo.File(
                             path: "logs/orleans-host-.log",
-                            rollingInterval: RollingInterval.Day,
                             outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {SourceContext} - {Message:lj}{NewLine}{Exception}",
                             formatProvider: CultureInfo.InvariantCulture
-                        );
+,
+                            rollingInterval: RollingInterval.Day);
 
                     // Add Application Insights if configured
                     var appInsightsKey = context.Configuration.GetConnectionString(
@@ -160,9 +160,9 @@ public class Program
                         var seqServerUrl = context.Configuration["Serilog:SeqServerUrl"] ?? "http://localhost:5341";
                         _ = configuration.WriteTo.Seq(
                             serverUrl: seqServerUrl,
-                            apiKey: context.Configuration["Serilog:SeqApiKey"],
                             restrictedToMinimumLevel: LogEventLevel.Debug
-                        );
+,
+                            apiKey: context.Configuration["Serilog:SeqApiKey"]);
                     }
 
                     // Add enrichers for better log context
@@ -249,9 +249,8 @@ public class Program
                         logger.LogInformation("[DIAGNOSTIC] API Key Length: {ApiKeyLength}", apiKey?.Length ?? 0);
                         logger.LogInformation(
                             "[DIAGNOSTIC] API Key Prefix: {ApiKeyPrefix}",
-                            apiKey?.Length > 10 ? string.Concat(apiKey.AsSpan(0, 10), "...") : "[EMPTY]"
+                            apiKey?.Length > 10 ? $"{apiKey.AsSpan(0, 10)}..." : "[EMPTY]"
                         );
-
 
                         // Create an OpenAI client with caching (non-Test environments)
                         if (string.IsNullOrEmpty(apiKey))

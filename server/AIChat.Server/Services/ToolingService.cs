@@ -15,7 +15,6 @@ namespace AIChat.Server.Services;
 /// </summary>
 public class ToolingService(
     IServiceProvider serviceProvider,
-    IMcpClientManager mcpClientManager,
     ITaskManagerService taskManagerService,
     IModeService modeService,
     IOptions<McpConfiguration> mcpConfiguration,

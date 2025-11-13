@@ -407,9 +407,13 @@ public class ConnectionStateTracker : IConnectionStateTracker, IDisposable
             {
                 case ConnectionStatus.Connected:
                     if (timeSinceLastActivity < _inactivityThreshold)
+                    {
                         healthyCount++;
+                    }
                     else
+                    {
                         unstableCount++;
+                    }
 
                     break;
                 case ConnectionStatus.Unstable:
@@ -422,9 +426,8 @@ public class ConnectionStateTracker : IConnectionStateTracker, IDisposable
                 case ConnectionStatus.Failed:
                     failedCount++;
                     break;
-                case ConnectionStatus.Unknown:
-                    break;
                 default:
+                    // No action needed for unknown or other states
                     break;
             }
         }

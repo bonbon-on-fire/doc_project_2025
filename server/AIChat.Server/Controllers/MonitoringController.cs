@@ -1,5 +1,4 @@
 using AIChat.Server.Services;
-using AIChat.Server.Services.Routing;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AIChat.Server.Controllers;
@@ -13,23 +12,19 @@ namespace AIChat.Server.Controllers;
 [Route("api/[controller]")]
 public class MonitoringController : ControllerBase
 {
-    private readonly IMonitoringRouter _router;
     private readonly ProductionMonitoringService _monitoringService;
     private readonly ILogger<MonitoringController> _logger;
 
     /// <summary>
     /// Initializes a new instance of the MonitoringController.
     /// </summary>
-    /// <param name="router">Monitoring router for Orleans/Direct service operations</param>
     /// <param name="monitoringService">Direct monitoring service for fallback operations</param>
     /// <param name="logger">Logger for structured logging</param>
     public MonitoringController(
-        IMonitoringRouter router,
         ProductionMonitoringService monitoringService,
         ILogger<MonitoringController> logger
     )
     {
-        _router = router ?? throw new ArgumentNullException(nameof(router));
         _monitoringService = monitoringService ?? throw new ArgumentNullException(nameof(monitoringService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -40,28 +35,11 @@ public class MonitoringController : ControllerBase
     [HttpGet("metrics")]
     public async Task<ActionResult<Dictionary<string, object>>> GetMetrics(CancellationToken cancellationToken = default)
     {
-        return await _router.ExecuteSystemOperationAsync<ActionResult<Dictionary<string, object>>>(
-            // Orleans operation - TODO: Map to appropriate grain method
-            async healthGrain =>
-            {
-                await Task.CompletedTask; // Suppress CS1998
-                // For now, use pass-through to direct service
-                // Future enhancement: Use grain.GetSystemMetricsAsync() when implemented
-                var metrics = _monitoringService.GetCurrentMetrics();
-                var alertStates = _monitoringService.GetAlertStates();
-                return CreateMetricsResponse(metrics, alertStates);
-            },
-            // Direct service operation
-            async service =>
-            {
-                await Task.CompletedTask; // Suppress CS1998
-                var metrics = service.GetCurrentMetrics();
-                var alertStates = service.GetAlertStates();
-                return CreateMetricsResponse(metrics, alertStates);
-            },
-            "GetMetrics",
-            cancellationToken
-        );
+        // Orleans-only mode: Use monitoring service directly
+        await Task.CompletedTask; // Keep method async
+        var metrics = _monitoringService.GetCurrentMetrics();
+        var alertStates = _monitoringService.GetAlertStates();
+        return CreateMetricsResponse(metrics, alertStates);
     }
 
     /// <summary>
@@ -122,28 +100,11 @@ public class MonitoringController : ControllerBase
     [HttpGet("metrics/{metricName}/history")]
     public async Task<ActionResult<object>> GetMetricHistory(string metricName, [FromQuery] int hours = 1, CancellationToken cancellationToken = default)
     {
-        return await _router.ExecuteSystemOperationAsync<ActionResult<object>>(
-            // Orleans operation - TODO: Map to appropriate grain method
-            async healthGrain =>
-            {
-                await Task.CompletedTask; // Suppress CS1998
-                // For now, use pass-through to direct service
-                // Future enhancement: Use grain.GetHistoricalMetricsAsync(metricName, timeRange) when implemented
-                var timeRange = TimeSpan.FromHours(Math.Min(hours, 24)); // Limit to 24 hours
-                var historicalData = _monitoringService.GetHistoricalMetrics(metricName, timeRange);
-                return CreateMetricHistoryResponse(metricName, timeRange, historicalData);
-            },
-            // Direct service operation
-            async service =>
-            {
-                await Task.CompletedTask; // Suppress CS1998
-                var timeRange = TimeSpan.FromHours(Math.Min(hours, 24)); // Limit to 24 hours
-                var historicalData = service.GetHistoricalMetrics(metricName, timeRange);
-                return CreateMetricHistoryResponse(metricName, timeRange, historicalData);
-            },
-            "GetMetricHistory",
-            cancellationToken
-        );
+        // Orleans-only mode: Use monitoring service directly
+        await Task.CompletedTask; // Keep method async
+        var timeRange = TimeSpan.FromHours(Math.Min(hours, 24)); // Limit to 24 hours
+        var historicalData = _monitoringService.GetHistoricalMetrics(metricName, timeRange);
+        return CreateMetricHistoryResponse(metricName, timeRange, historicalData);
     }
 
     /// <summary>
@@ -191,28 +152,11 @@ public class MonitoringController : ControllerBase
     [HttpGet("health")]
     public async Task<ActionResult<object>> GetSystemHealth(CancellationToken cancellationToken = default)
     {
-        return await _router.ExecuteSystemOperationAsync<ActionResult<object>>(
-            // Orleans operation - TODO: Map to appropriate grain method
-            async healthGrain =>
-            {
-                await Task.CompletedTask; // Suppress CS1998
-                // For now, use pass-through to direct service
-                // Future enhancement: Use grain.GetSystemHealthAsync() when implemented
-                var metrics = _monitoringService.GetCurrentMetrics();
-                var alertStates = _monitoringService.GetAlertStates();
-                return CreateSystemHealthResponse(metrics, alertStates);
-            },
-            // Direct service operation
-            async service =>
-            {
-                await Task.CompletedTask; // Suppress CS1998
-                var metrics = service.GetCurrentMetrics();
-                var alertStates = service.GetAlertStates();
-                return CreateSystemHealthResponse(metrics, alertStates);
-            },
-            "GetSystemHealth",
-            cancellationToken
-        );
+        // Orleans-only mode: Use monitoring service directly
+        await Task.CompletedTask; // Keep method async
+        var metrics = _monitoringService.GetCurrentMetrics();
+        var alertStates = _monitoringService.GetAlertStates();
+        return CreateSystemHealthResponse(metrics, alertStates);
     }
 
     /// <summary>
@@ -294,24 +238,9 @@ public class MonitoringController : ControllerBase
     [HttpGet("capacity")]
     public async Task<ActionResult<object>> GetCapacityMetrics(CancellationToken cancellationToken = default)
     {
-        return await _router.ExecuteSystemOperationAsync<ActionResult<object>>(
-            // Orleans operation - TODO: Map to appropriate grain method
-            async healthGrain =>
-            {
-                await Task.CompletedTask; // Suppress CS1998
-                // For now, use pass-through to direct service
-                // Future enhancement: Use grain.GetCapacityMetricsAsync() when implemented
-                return CreateCapacityMetricsResponse();
-            },
-            // Direct service operation
-            async service =>
-            {
-                await Task.CompletedTask; // Suppress CS1998
-                return CreateCapacityMetricsResponse();
-            },
-            "GetCapacityMetrics",
-            cancellationToken
-        );
+        // Orleans-only mode: Use direct response creation
+        await Task.CompletedTask; // Keep method async
+        return CreateCapacityMetricsResponse();
     }
 
     /// <summary>
@@ -397,24 +326,9 @@ public class MonitoringController : ControllerBase
     [HttpGet("dashboard/config")]
     public async Task<ActionResult<object>> GetDashboardConfig(CancellationToken cancellationToken = default)
     {
-        return await _router.ExecuteSystemOperationAsync<ActionResult<object>>(
-            // Orleans operation - TODO: Map to appropriate grain method
-            async healthGrain =>
-            {
-                await Task.CompletedTask; // Suppress CS1998
-                // For now, use pass-through to direct service
-                // Future enhancement: Use grain.GetDashboardConfigAsync() when implemented
-                return CreateDashboardConfigResponse();
-            },
-            // Direct service operation
-            async service =>
-            {
-                await Task.CompletedTask; // Suppress CS1998
-                return CreateDashboardConfigResponse();
-            },
-            "GetDashboardConfig",
-            cancellationToken
-        );
+        // Orleans-only mode: Use direct response creation
+        await Task.CompletedTask; // Keep method async
+        return CreateDashboardConfigResponse();
     }
 
     /// <summary>
@@ -526,24 +440,9 @@ public class MonitoringController : ControllerBase
     [HttpGet("export/prometheus")]
     public async Task<ActionResult<string>> ExportPrometheus(CancellationToken cancellationToken = default)
     {
-        return await _router.ExecuteSystemOperationAsync<ActionResult<string>>(
-            // Orleans operation - TODO: Map to appropriate grain method
-            async healthGrain =>
-            {
-                await Task.CompletedTask; // Suppress CS1998
-                // For now, use pass-through to direct service
-                // Future enhancement: Use grain.ExportPrometheusMetricsAsync() when implemented
-                return CreatePrometheusExportResponse();
-            },
-            // Direct service operation
-            async service =>
-            {
-                await Task.CompletedTask; // Suppress CS1998
-                return CreatePrometheusExportResponse();
-            },
-            "ExportPrometheus",
-            cancellationToken
-        );
+        // Orleans-only mode: Use direct response creation
+        await Task.CompletedTask; // Keep method async
+        return CreatePrometheusExportResponse();
     }
 
     /// <summary>

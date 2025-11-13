@@ -379,6 +379,7 @@ public class StateConsistencyVerificationException : RecoveryException
 
     public StateConsistencyVerificationException(string? message, string? grainId, string? correlationId) : base(message, grainId, correlationId)
     {
+        ConsistencyIssues = [];
     }
 #pragma warning restore SYSLIB0051
 

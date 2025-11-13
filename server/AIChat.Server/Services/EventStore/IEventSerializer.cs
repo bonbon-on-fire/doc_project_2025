@@ -253,7 +253,7 @@ public class JsonEventSerializer : IEventSerializer
                 parsedEvent = JsonSerializer.Deserialize<T>(eventData, _options)!;
             }
 
-            if (EqualityComparer<T>.Default.Equals(parsedEvent, default(T)))
+            if (EqualityComparer<T>.Default.Equals(parsedEvent, default))
             {
                 throw new EventDeserializationException(
                     $"Deserialization to type {typeof(T).Name} returned null",

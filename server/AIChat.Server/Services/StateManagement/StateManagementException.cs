@@ -66,7 +66,7 @@ public class StateManagementException : Exception
         CorrelationId = correlationId ?? Guid.NewGuid().ToString();
     }
 
-    public StateManagementException() : base()
+    public StateManagementException()
     {
     }
 

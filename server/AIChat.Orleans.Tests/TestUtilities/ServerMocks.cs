@@ -140,6 +140,9 @@ namespace AIChat.Orleans.Tests.TestUtilities.Mocks.SSE
 
     public static class SSEEventExtensions
     {
+        // RCS1224: These are factory methods for test helpers, not appropriate as extension methods on string.
+        // Making them extension methods would pollute the string type with domain-specific test factory methods.
+#pragma warning disable RCS1224 // Make method an extension method
         public static SSEEnvelope CreateInitEnvelope(
             string chatId,
             string messageId,
@@ -176,6 +179,7 @@ namespace AIChat.Orleans.Tests.TestUtilities.Mocks.SSE
             int sequenceNumber,
             string error
         )
+#pragma warning restore RCS1224
         {
             return new SSEEnvelope
             {

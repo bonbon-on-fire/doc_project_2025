@@ -217,7 +217,7 @@ public sealed class SnapshotManager : ISnapshotManager
                 ? await _snapshotStore.GetSnapshotAtVersionAsync<T>(streamId, targetVersion.Value, cancellationToken)
                 : await _snapshotStore.GetLatestSnapshotAsync<T>(streamId, cancellationToken);
 
-            if (!snapshotResult.Success || EqualityComparer<T?>.Default.Equals(snapshotResult.Data, default(T?)) || snapshotResult.Metadata == null)
+            if (!snapshotResult.Success || EqualityComparer<T?>.Default.Equals(snapshotResult.Data, default) || snapshotResult.Metadata == null)
             {
                 // No snapshot available, fall back to full event replay
                 _logger.LogDebug("No suitable snapshot found for stream {StreamId}, falling back to full event replay", streamId);
@@ -250,7 +250,8 @@ public sealed class SnapshotManager : ISnapshotManager
             var fromVersion = snapshotVersion + 1;
             var eventsReplayed = 0;
 
-            T currentState = snapshotResult.Data;
+            // Null-forgiving operator is safe here because we verified non-null at line 220
+            T currentState = snapshotResult.Data!;
 
             // Replay events from snapshot to target version
             if (targetVersion == null || targetVersion > snapshotVersion)
@@ -290,6 +291,7 @@ public sealed class SnapshotManager : ISnapshotManager
                 streamId, snapshotVersion, finalVersion, eventsReplayed,
                 stopwatch.Elapsed, estimatedTimeSaved);
 
+            // Null-forgiving operator is safe here because we verified non-null at line 220
             return SnapshotRestoreResult.CreateSuccess(
                 currentState,
                 finalVersion,
@@ -297,7 +299,7 @@ public sealed class SnapshotManager : ISnapshotManager
                 eventsReplayed,
                 stopwatch.Elapsed,
                 estimatedTimeSaved,
-                snapshotResult.Metadata);
+                snapshotResult.Metadata!);
         }
         catch (Exception ex)
         {

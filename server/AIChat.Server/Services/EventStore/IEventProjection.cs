@@ -128,7 +128,7 @@ public abstract class EventProjectionBase<T> : IEventProjection<T>
     /// <returns>True if the state is valid</returns>
     protected virtual bool ValidateState(T state)
     {
-        return !EqualityComparer<T?>.Default.Equals(state, default(T?));
+        return !EqualityComparer<T?>.Default.Equals(state, default);
     }
 }
 
@@ -321,7 +321,7 @@ public class EventProjectionException : EventStoreException
     {
     }
 
-    public EventProjectionException() : base()
+    public EventProjectionException()
     {
     }
 

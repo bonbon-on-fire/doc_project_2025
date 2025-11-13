@@ -285,8 +285,6 @@ public class ChatDirectDbStateManager : DirectDbStateManagerBase<Chat>
                 return StateResult<Chat>.FromError("Chat not found", StateErrorCode.NotFound);
             }
 
-            
-
             // Apply updates (simplified - in a real implementation you'd use reflection or a mapper)
             var updated = currentResult.Data;
             foreach (var update in updates)

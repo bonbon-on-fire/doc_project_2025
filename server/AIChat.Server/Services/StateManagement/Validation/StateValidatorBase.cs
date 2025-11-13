@@ -566,9 +566,13 @@ internal sealed class ValidationMetricsCollector
         {
             _totalValidations++;
             if (isSuccessful)
+            {
                 _successfulValidations++;
+            }
             else
+            {
                 _failedValidations++;
+            }
 
             var durationMs = duration.TotalMilliseconds;
             _totalDurationMs += durationMs;

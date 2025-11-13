@@ -25,7 +25,7 @@ public class McpException : Exception
         ServerName = serverName;
     }
 
-    public McpException() : base()
+    public McpException()
     {
     }
 }
@@ -56,7 +56,7 @@ public class McpConfigurationException : McpException
     {
     }
 
-    public McpConfigurationException() : base()
+    public McpConfigurationException()
     {
     }
 }
@@ -80,7 +80,7 @@ public class McpInitializationException : McpException
     {
     }
 
-    public McpInitializationException() : base()
+    public McpInitializationException()
     {
     }
 }
@@ -90,7 +90,7 @@ public class McpInitializationException : McpException
 /// </summary>
 public class McpTransportException : McpException
 {
-    public string TransportType { get; }
+    public string TransportType { get; init; } = null!;
 
     public McpTransportException(string message, string serverName, string transportType)
         : base(message, serverName)
@@ -125,7 +125,7 @@ public class McpTransportException : McpException
     {
     }
 
-    public McpTransportException() : base()
+    public McpTransportException()
     {
     }
 }
@@ -149,7 +149,7 @@ public class McpConnectionException : McpException
     {
     }
 
-    public McpConnectionException() : base()
+    public McpConnectionException()
     {
     }
 }

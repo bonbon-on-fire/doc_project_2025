@@ -224,7 +224,7 @@ public sealed class ProtocolTranslationService : IProtocolTranslationService, ID
 
     private TranslationResult<TTarget>? ValidateTranslationRequest<TSource, TTarget>(TSource source, TranslationContext context, Activity? activity)
     {
-        if (EqualityComparer<TSource?>.Default.Equals(source, default(TSource?)))
+        if (EqualityComparer<TSource?>.Default.Equals(source, default))
         {
             return TranslationResult.Failure<TTarget>("Source cannot be null", "NULL_SOURCE");
         }
@@ -310,7 +310,7 @@ public sealed class ProtocolTranslationService : IProtocolTranslationService, ID
         await RecordTranslationAsync(result, elapsed, context, translator.TranslatorName);
 
         // Cache successful results
-        if (result.Success && _options.EnableCaching && !EqualityComparer<TTarget?>.Default.Equals(result.Data, default(TTarget?)))
+        if (result.Success && _options.EnableCaching && !EqualityComparer<TTarget?>.Default.Equals(result.Data, default))
         {
             var cacheKey = GenerateCacheKey<TSource, TTarget>(source, context);
             var cacheExpiration = TimeSpan.FromMinutes(_options.CacheExpirationMinutes);

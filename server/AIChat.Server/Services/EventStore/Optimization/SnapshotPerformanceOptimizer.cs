@@ -307,18 +307,19 @@ public sealed class SnapshotPerformanceOptimizer : IDisposable
 
     private void CacheSnapshot<T>(string streamId, SnapshotResult<T> result, TimeSpan retrievalTime)
     {
-        if (EqualityComparer<T?>.Default.Equals(result.Data, default(T?)) || result.Metadata == null)
+        if (EqualityComparer<T?>.Default.Equals(result.Data, default) || result.Metadata == null)
         {
             return;
         }
 
+        // Null-forgiving operator is safe here because we verified non-null at line 310
         var cachedSnapshot = new CachedSnapshot
         {
-            Data = result.Data,
+            Data = result.Data!,
             Metadata = result.Metadata,
             CachedAt = DateTimeOffset.UtcNow,
             RetrievalTime = retrievalTime,
-            EstimatedSize = EstimateObjectSize(result.Data)
+            EstimatedSize = EstimateObjectSize(result.Data!)
         };
 
         _snapshotCache.AddOrUpdate(streamId, cachedSnapshot, (_, _) => cachedSnapshot);

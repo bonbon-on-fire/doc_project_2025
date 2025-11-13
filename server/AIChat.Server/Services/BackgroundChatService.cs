@@ -135,7 +135,6 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
             operation.QueuedAt = DateTime.UtcNow;
 
             // Create operation state
-            
 
             // Track the operation
             _activeOperations[operation.Id] = new OperationState

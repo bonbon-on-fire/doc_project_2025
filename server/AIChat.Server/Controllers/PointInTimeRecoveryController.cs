@@ -443,7 +443,9 @@ public class PointInTimeRecoveryController : ControllerBase
             var healthStatus = await _recoveryService.GetHealthStatusAsync(cancellationToken);
 
             if (healthStatus.IsHealthy)
+            {
                 return Ok(healthStatus);
+            }
 
             return StatusCode(StatusCodes.Status503ServiceUnavailable, healthStatus);
         }

@@ -52,14 +52,8 @@ internal static class OpenTelemetryExtensions
                     _ = tracing.SetSampler(new AlwaysOnSampler());
                 }
 
-                _ = tracing.AddAspNetCoreInstrumentation(options =>
-                    {
-                        options.RecordException = true;
-                    })
-                    .AddHttpClientInstrumentation(options =>
-                    {
-                        options.RecordException = true;
-                    })
+                _ = tracing.AddAspNetCoreInstrumentation(options => options.RecordException = true)
+                    .AddHttpClientInstrumentation(options => options.RecordException = true)
                     .AddSource("Orleans")
                     .AddSource("Orleans.*")
                     .AddSource("AIChat.*")

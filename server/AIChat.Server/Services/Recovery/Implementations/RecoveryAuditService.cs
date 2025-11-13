@@ -451,11 +451,17 @@ public class RecoveryAuditService : IRecoveryAuditService
 
                 // Check age-based retention
                 if (entry.Success && entry.StartedAt < cutoffTime)
+                {
                     shouldRemove = true;
+                }
                 else if (!entry.Success && retentionPolicy.RetainFailedRecoveries && entry.StartedAt < failedRecoveryCutoffTime)
+                {
                     shouldRemove = true;
+                }
                 else if (!entry.Success && !retentionPolicy.RetainFailedRecoveries && entry.StartedAt < cutoffTime)
+                {
                     shouldRemove = true;
+                }
 
                 if (shouldRemove)
                 {

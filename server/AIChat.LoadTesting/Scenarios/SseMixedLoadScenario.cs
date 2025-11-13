@@ -349,7 +349,6 @@ public class SseMixedLoadScenario : LoadTestScenarioBase
                         }
                         break;
 
-                    case ClientBehavior.Normal:
                     default:
                         // Normal processing with minimal delay
                         if (profile.ProcessingDelayMs > 0)

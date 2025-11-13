@@ -1,0 +1,1558 @@
+using System.Text.Json.Serialization;
+using AchieveAi.LmDotnetTools.Misc.Utils;
+using AIChat.Orleans.Contracts;
+using AIChat.Server.Extensions;
+using AIChat.Server.Hubs;
+using AIChat.Server.Services;
+using AIChat.Server.Services.Streaming;
+using AIChat.Server.Storage;
+using Lib.AspNetCore.ServerSentEvents;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using ChatDto = AIChat.Server.Services.ChatDto;
+
+namespace AIChat.Server.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class ChatController(
+    IChatService chatService,
+    ILogger<ChatController> logger,
+    Services.Routing.IDualModeRouter router,
+    ITaskStorage taskStorage,
+    IChatStorage chatStorage,
+    // Optional services for advanced features
+    IServerSentEventsService? serverSentEventsService = null,
+    IHubContext<ChatHub>? hubContext = null,
+    IBackgroundChatService? backgroundChatService = null,
+    IOperationTrackingService? operationTrackingService = null,
+    IStreamingBridge? streamingBridge = null,
+    IResilientStreamManager? resilientStreamManager = null
+) : ControllerBase
+{
+    /// <summary>
+    /// Core dependencies (required)
+    /// </summary>
+    private readonly IChatService _chatService = chatService;
+    private readonly ILogger<ChatController> _logger = logger;
+    private readonly Services.Routing.IDualModeRouter _router = router;
+    private readonly ITaskStorage _taskStorage = taskStorage;
+    private readonly IChatStorage _chatStorage = chatStorage;
+
+    /// <summary>
+    /// Optional dependencies for advanced features
+    /// </summary>
+    private readonly IServerSentEventsService? _serverSentEventsService = serverSentEventsService;
+    private readonly IHubContext<ChatHub>? _hubContext = hubContext;
+    private readonly IBackgroundChatService? _backgroundChatService = backgroundChatService;
+    private readonly IOperationTrackingService? _operationTrackingService = operationTrackingService;
+    private readonly IStreamingBridge? _streamingBridge = streamingBridge;
+    private readonly IResilientStreamManager? _resilientStreamManager = resilientStreamManager;
+
+    #region Router Pattern Helper Methods
+
+    /// <summary>
+    /// Executes an operation with distinct Orleans and Direct implementations.
+    /// Orleans path uses grains directly, Direct path uses ChatService.
+    /// </summary>
+    /// <typeparam name="T">The return type of the operation</typeparam>
+    /// <param name="orleansOperation">The Orleans grain-based operation</param>
+    /// <param name="directOperation">The direct service operation</param>
+    /// <param name="operationName">Name of the operation for logging and metrics</param>
+    /// <param name="chatId">The chat identifier</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The result of the operation</returns>
+    private async Task<ActionResult<T>> ExecuteWithOrleansAsync<T>(
+        Func<IChatGrain, Task<ActionResult<T>>> orleansOperation,
+        Func<IChatService, Task<ActionResult<T>>> directOperation,
+        string operationName,
+        string chatId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _router.ExecuteAsync<ActionResult<T>>(
+            // Orleans operation - use grain directly with chat ID
+            orleansOperation,
+            // Direct service operation
+            directOperation,
+            operationName,
+            chatId,
+            cancellationToken
+        );
+    }
+
+    /// <summary>
+    /// Executes a simple operation without return value with distinct Orleans and Direct implementations.
+    /// </summary>
+    /// <param name="orleansOperation">The Orleans grain-based operation</param>
+    /// <param name="directOperation">The direct service operation</param>
+    /// <param name="operationName">Name of the operation for logging and metrics</param>
+    /// <param name="chatId">The chat identifier</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The result of the operation</returns>
+    private async Task<ActionResult> ExecuteWithOrleansAsync(
+        Func<IChatGrain, Task<ActionResult>> orleansOperation,
+        Func<IChatService, Task<ActionResult>> directOperation,
+        string operationName,
+        string chatId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _router.ExecuteAsync(
+            // Orleans operation - use grain directly with chat ID
+            orleansOperation,
+            // Direct service operation
+            directOperation,
+            operationName,
+            chatId,
+            cancellationToken
+        );
+    }
+
+    /// <summary>
+    /// Creates a standardized error response for service operation failures.
+    /// </summary>
+    /// <param name="errorMessage">The error message from the failed operation</param>
+    /// <param name="operation">Name of the operation that failed</param>
+    /// <param name="id">Optional ID related to the operation</param>
+    /// <returns>Standardized error ActionResult</returns>
+    private ActionResult<T> CreateErrorResponse<T>(string? errorMessage, string operation, string? id = null)
+    {
+        var idLog = id != null ? $" {id}" : string.Empty;
+        _logger.LogError("Error {Operation}{Id}: {Error}", operation, idLog, errorMessage);
+
+        return errorMessage switch
+        {
+            "Chat not found" => NotFound(new { Error = "Chat not found" }),
+            "Operation not found" => NotFound(new { Error = "Operation not found" }),
+            _ => StatusCode(500, new { Error = errorMessage ?? $"Failed to {operation.ToLower(System.Globalization.CultureInfo.InvariantCulture)}" })
+        };
+    }
+
+    /// <summary>
+    /// Converts Orleans ChatState to API ChatDto.
+    /// </summary>
+    /// <param name="chatState">Orleans chat state</param>
+    /// <returns>API chat DTO</returns>
+    private static ChatDto ConvertChatStateToDto(AIChat.Orleans.Contracts.ChatState chatState)
+    {
+        return new ChatDto
+        {
+            Id = chatState.ChatId,
+            UserId = chatState.CreatedBy,
+            Title = chatState.Title,
+            CreatedAt = chatState.CreatedAt,
+            UpdatedAt = chatState.LastActivityAt,
+            Messages = [], // TODO: Implement message retrieval from Orleans grain
+            Tasks = null // TODO: Implement task retrieval if needed
+        };
+    }
+
+    #endregion Router Pattern Helper Methods
+
+    /// <summary>
+    /// Helper method for streaming operations through router.
+    /// Uses the router pattern to access chat grain streaming functionality.
+    /// </summary>
+    /// <param name="chatId">Chat ID for the streaming operation</param>
+    /// <param name="operation">Operation to execute on the chat grain</param>
+    /// <param name="operationName">Name of the operation for logging</param>
+    /// <param name="cancellationToken">Token to cancel the operation</param>
+    /// <returns>Result of the streaming operation</returns>
+    private async Task<T> ExecuteStreamingOperationAsync<T>(
+        string chatId,
+        Func<IChatGrain, Task<T>> operation,
+        string operationName,
+        CancellationToken cancellationToken = default)
+    {
+        return await _router.ExecuteAsync(
+            operation,
+            _ => Task.FromException<T>(new InvalidOperationException($"Direct service does not support {operationName}")),
+            operationName,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Simulates grain streaming by polling the grain for stream chunks.
+    /// This is a temporary implementation until full streaming is supported through the router.
+    /// </summary>
+    /// <param name="chatId">Chat ID for the stream</param>
+    /// <param name="streamHandle">Handle returned from StartStreamAsync</param>
+    /// <param name="cancellationToken">Token to cancel the operation</param>
+    /// <returns>Async enumerable of stream chunks</returns>
+    private async IAsyncEnumerable<StreamChunk> SimulateGrainStreamFromRouter(
+        string chatId,
+        StreamHandle streamHandle,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var chunkIndex = 0;
+        var isComplete = false;
+
+        while (!isComplete && !cancellationToken.IsCancellationRequested)
+        {
+            AIChat.Orleans.Contracts.StreamState? streamState = null;
+
+            // Poll for stream state to check if there are new chunks
+            try
+            {
+                streamState = await ExecuteStreamingOperationAsync(
+                    chatId,
+                    chatGrain => chatGrain.GetStreamStateAsync(streamHandle.StreamId, cancellationToken),
+                    "GetStreamState",
+                    cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error polling stream state for chat {ChatId}", chatId);
+                break;
+            }
+
+            if (streamState == null)
+            {
+                // Stream not found, complete
+                break;
+            }
+
+            // Simulate receiving chunks based on stream state
+            if (streamState.Status == StreamStatus.Active && streamState.ChunksSent > chunkIndex)
+            {
+                // Yield simulated chunks
+                for (var i = chunkIndex; i < streamState.ChunksSent; i++)
+                {
+                    yield return new StreamChunk
+                    {
+                        ChatId = chatId,
+                        MessageId = $"msg_{streamHandle.StreamId}",
+                        ChunkIndex = i,
+                        Content = $"Chunk {i} content", // Simulated content
+                        IsComplete = false,
+                        Timestamp = DateTime.UtcNow,
+                        Type = StreamChunkType.Text,
+                        OperationId = streamHandle.StreamId
+                    };
+                    chunkIndex = i + 1;
+                }
+            }
+
+            // Check if stream is complete
+            if (streamState.Status == StreamStatus.Completed)
+            {
+                // Yield final chunk
+                yield return new StreamChunk
+                {
+                    ChatId = chatId,
+                    MessageId = $"msg_{streamHandle.StreamId}",
+                    ChunkIndex = chunkIndex,
+                    Content = streamState.PartialMessage ?? string.Empty,
+                    IsComplete = true,
+                    Timestamp = DateTime.UtcNow,
+                    Type = StreamChunkType.Complete,
+                    OperationId = streamHandle.StreamId
+                };
+                isComplete = true;
+            }
+            else if (streamState.Status == StreamStatus.Failed || streamState.Status == StreamStatus.Cancelled)
+            {
+                // Stream failed or cancelled
+                break;
+            }
+
+            // Wait before polling again
+            if (!isComplete)
+            {
+                await Task.Delay(100, cancellationToken); // Poll every 100ms
+            }
+        }
+    }
+
+    /// <summary>
+    /// GET: api/chat/history?userId={userId}&page={page}&pageSize={pageSize}
+    /// </summary>
+    /// <param name="userId"></param>
+    /// <param name="page"></param>
+    /// <param name="pageSize"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    [HttpGet("history")]
+    public async Task<ActionResult<ChatHistoryResponse>> GetChatHistory(
+        [FromQuery] string userId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await ExecuteWithOrleansAsync<ChatHistoryResponse>(
+            // Orleans implementation - TODO: Implement user-specific chat history in Orleans grains
+            async grain =>
+            {
+                await Task.CompletedTask; // Suppress CS1998
+                try
+                {
+                    // For now, return empty chat history since user-specific operations
+                    // are not yet implemented in Orleans grain architecture
+                    // TODO: Implement user grain that manages chat history
+                    return Ok(new ChatHistoryResponse
+                    {
+                        Chats = [],
+                        TotalCount = 0,
+                        Page = page,
+                        PageSize = pageSize
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error retrieving chat history for user {UserId} via Orleans grain", userId);
+                    return CreateErrorResponse<ChatHistoryResponse>("Failed to retrieve chat history", "retrieving chat history", userId);
+                }
+            },
+            // Direct service implementation
+            async service =>
+            {
+                var result = await service.GetChatHistoryAsync(userId, page, pageSize);
+
+                if (!result.Success)
+                {
+                    return CreateErrorResponse<ChatHistoryResponse>(result.Error, "retrieving chat history", userId);
+                }
+
+                var response = new ChatHistoryResponse
+                {
+                    Chats = result.Chats,
+                    TotalCount = result.TotalCount,
+                    Page = result.Page,
+                    PageSize = result.PageSize,
+                };
+
+                return Ok(response);
+            },
+            "GetChatHistory",
+            userId, // Use userId as the routing key
+            cancellationToken
+        );
+    }
+
+    /// <summary>
+    /// GET: api/chat/{id}
+    /// </summary>
+    /// <param name="id"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    [HttpGet("{id}")]
+    public async Task<ActionResult<ChatDto>> GetChat(string id, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithOrleansAsync<ChatDto>(
+            // Orleans implementation - use grain directly
+            async grain =>
+            {
+                try
+                {
+                    var chatState = await grain.GetStateAsync();
+
+                    if (chatState == null)
+                    {
+                        return NotFound(new { Error = "Chat not found" });
+                    }
+
+                    // Convert Orleans ChatState to API ChatDto
+                    var chatDto = ConvertChatStateToDto(chatState);
+                    return Ok(chatDto);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error retrieving chat {ChatId} from Orleans grain", id);
+                    return CreateErrorResponse<ChatDto>("Failed to retrieve chat", "retrieving chat", id);
+                }
+            },
+            // Direct service implementation
+            async service =>
+            {
+                var result = await service.GetChatAsync(id);
+
+                if (!result.Success)
+                {
+                    return CreateErrorResponse<ChatDto>(result.Error, "retrieving chat", id);
+                }
+
+                return Ok(result.Chat);
+            },
+            "GetChat",
+            id, // Pass chat ID for Orleans grain routing
+            cancellationToken
+        );
+    }
+
+    /// <summary>
+    /// POST: api/chat
+    /// </summary>
+    /// <param name="request"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    [HttpPost]
+    public async Task<ActionResult<ChatDto>> CreateChat([FromBody] CreateChatRequest request, CancellationToken cancellationToken = default)
+    {
+        // If ChatId is provided, this is a continuation of an existing chat
+        if (!string.IsNullOrEmpty(request.ChatId))
+        {
+            // Send message to existing chat using router
+            var sendMessageRequest = new Services.SendMessageRequest
+            {
+                ChatId = request.ChatId,
+                UserId = request.UserId,
+                Message = request.Message,
+                ModeId = request.ModeId,
+            };
+
+            return await ExecuteWithOrleansAsync<ChatDto>(
+                // Orleans implementation - use grain directly
+                async grain =>
+                {
+                    try
+                    {
+                        // Create Orleans ChatMessage from request
+                        var chatMessage = new AIChat.Orleans.Contracts.ChatMessage
+                        {
+                            Id = Guid.NewGuid().ToString(),
+                            ChatId = request.ChatId,
+                            UserId = request.UserId,
+                            Content = request.Message,
+                            Role = "user",
+                            Timestamp = DateTime.UtcNow,
+                            Metadata = request.ModeId != null ? $"{{\"modeId\":\"{request.ModeId}\"}}" : null
+                        };
+
+                        // Process message through Orleans grain
+                        var messageResult = await grain.ProcessMessageAsync(chatMessage);
+
+                        if (!messageResult.Success)
+                        {
+                            _logger.LogError(
+                                "Error processing message in Orleans grain for ChatId: {ChatId}, Error: {Error}",
+                                request.ChatId,
+                                messageResult.ErrorMessage
+                            );
+                            return StatusCode(500, new { Error = messageResult.ErrorMessage ?? "Failed to process message" });
+                        }
+
+                        // Get updated chat state and convert to DTO
+                        var chatState = await grain.GetStateAsync();
+                        var chatDto = ConvertChatStateToDto(chatState);
+                        return Ok(chatDto);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error processing message via Orleans grain for ChatId: {ChatId}", request.ChatId);
+                        return CreateErrorResponse<ChatDto>("Failed to process message", "processing message", request.ChatId);
+                    }
+                },
+                // Direct service implementation
+                async service =>
+                {
+                    var result = await service.SendMessageAsync(sendMessageRequest);
+
+                    if (!result.Success)
+                    {
+                        _logger.LogError(
+                            "Error sending message to chat {ChatId}: {Error}",
+                            request.ChatId,
+                            result.Error
+                        );
+                        return StatusCode(500, new { Error = result.Error ?? "Failed to send message" });
+                    }
+
+                    // Get the updated chat after processing
+                    var chatResult = await service.GetChatAsync(request.ChatId);
+                    return Ok(chatResult.Chat);
+                },
+                "CreateChat_ExistingChat",
+                request.ChatId, // Pass chat ID for Orleans grain routing
+                cancellationToken
+            );
+        }
+
+        // Create new chat using router
+        // Generate new chat ID first for Orleans grain routing
+        var newChatId = Guid.NewGuid().ToString();
+
+        return await ExecuteWithOrleansAsync<ChatDto>(
+            // Orleans implementation - use grain directly
+            async grain =>
+            {
+                try
+                {
+                    // Create Orleans ChatInitRequest from API request
+                    var initRequest = new AIChat.Orleans.Contracts.ChatInitRequest
+                    {
+                        ChatId = newChatId,
+                        Title = $"Chat {DateTime.UtcNow:yyyy-MM-dd HH:mm}",
+                        CreatedBy = request.UserId,
+                        ChatType = "ai-assistant",
+                        ModeId = request.ModeId,
+                        SystemPrompt = request.SystemPrompt,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    // Initialize chat through Orleans grain
+                    var chatState = await grain.InitializeAsync(initRequest);
+
+                    // If there's an initial message, process it
+                    if (!string.IsNullOrEmpty(request.Message))
+                    {
+                        var initialMessage = new AIChat.Orleans.Contracts.ChatMessage
+                        {
+                            Id = Guid.NewGuid().ToString(),
+                            ChatId = newChatId,
+                            UserId = request.UserId,
+                            Content = request.Message,
+                            Role = "user",
+                            Timestamp = DateTime.UtcNow,
+                            Metadata = request.ModeId != null ? $"{{\"modeId\":\"{request.ModeId}\"}}" : null
+                        };
+
+                        var messageResult = await grain.ProcessMessageAsync(initialMessage);
+
+                        if (!messageResult.Success)
+                        {
+                            _logger.LogWarning(
+                                "Chat created but initial message processing failed for ChatId: {ChatId}, Error: {Error}",
+                                newChatId,
+                                messageResult.ErrorMessage
+                            );
+                        }
+
+                        // Get updated state after message processing
+                        chatState = await grain.GetStateAsync();
+                    }
+
+                    // Convert to DTO and return
+                    var chatDto = ConvertChatStateToDto(chatState);
+                    return CreatedAtAction(nameof(GetChat), new { id = chatDto.Id }, chatDto);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error creating chat via Orleans grain for ChatId: {ChatId}", newChatId);
+                    return CreateErrorResponse<ChatDto>("Failed to create chat", "creating chat");
+                }
+            },
+            // Direct service implementation
+            async service =>
+            {
+                var createRequest = new Services.CreateChatRequest
+                {
+                    UserId = request.UserId,
+                    Message = request.Message,
+                    SystemPrompt = request.SystemPrompt,
+                    ModeId = request.ModeId,
+                };
+
+                var result = await service.CreateChatAsync(createRequest);
+
+                if (!result.Success)
+                {
+                    _logger.LogError("Error creating chat: {Error}", result.Error);
+                    return StatusCode(500, new { Error = result.Error ?? "Failed to create chat" });
+                }
+
+                return CreatedAtAction(nameof(GetChat), new { id = result.Chat!.Id }, result.Chat);
+            },
+            "CreateChat_NewChat",
+            newChatId, // Pass new chat ID for Orleans grain routing
+            cancellationToken
+        );
+    }
+
+    /// <summary>
+    /// DELETE: api/chat/{id}
+    /// </summary>
+    /// <param name="id"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    [HttpDelete("{id}")]
+    public async Task<ActionResult> DeleteChat(string id, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithOrleansAsync(
+            // Orleans implementation - use grain directly
+            async grain =>
+            {
+                try
+                {
+                    // Archive the chat (logical deletion in Orleans)
+                    await grain.ArchiveAsync();
+                    return NoContent();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error archiving chat {ChatId} via Orleans grain", id);
+
+                    // Check if it's a chat not found scenario
+                    if (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase) ||
+                        ex.GetType().Name.Contains("NotFound"))
+                    {
+                        return NotFound(new { Error = "Chat not found" });
+                    }
+
+                    _logger.LogError("Error deleting chat {ChatId}: Failed to delete chat", id);
+                    return StatusCode(500, new { Error = "Failed to delete chat" });
+                }
+            },
+            // Direct service implementation
+            async service =>
+            {
+                var success = await service.DeleteChatAsync(id);
+                return !success ? NotFound(new { Error = "Chat not found" }) : NoContent();
+            },
+            "DeleteChat",
+            id, // Pass chat ID for Orleans grain routing
+            cancellationToken
+        );
+    }
+
+    /// <summary>
+    /// GET: api/chat/{chatId}/tasks
+    /// </summary>
+    /// <param name="chatId"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    [HttpGet("{chatId}/tasks")]
+    public async Task<ActionResult<GetTasksResponse>> GetTasks(string chatId, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithOrleansAsync<GetTasksResponse>(
+            // Orleans implementation - task functionality not yet implemented in grains
+            async grain =>
+            {
+                try
+                {
+                    // Verify chat exists by getting state
+                    var chatState = await grain.GetStateAsync();
+
+                    if (chatState == null)
+                    {
+                        return NotFound(new { Error = "Chat not found" });
+                    }
+
+                    // TODO: Implement task management functionality in Orleans grains
+                    // For now, return empty task list since tasks are not yet implemented in Orleans
+                    return Ok(new GetTasksResponse
+                    {
+                        ChatId = chatId,
+                        Tasks = [],
+                        Version = 0
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error retrieving tasks for chat {ChatId} via Orleans grain", chatId);
+
+                    // Check if it's a chat not found scenario
+                    if (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase) ||
+                        ex.GetType().Name.Contains("NotFound"))
+                    {
+                        return NotFound(new { Error = "Chat not found" });
+                    }
+
+                    return CreateErrorResponse<GetTasksResponse>("Failed to retrieve tasks", "retrieving tasks", chatId);
+                }
+            },
+            // Direct service implementation
+            async service =>
+            {
+                // Verify chat exists and user has access
+                var (Success, _, _) = await _chatStorage.GetChatByIdAsync(chatId);
+                if (!Success)
+                {
+                    return NotFound(new { Error = "Chat not found" });
+                }
+
+                // TODO: Add proper user authorization check here
+                // For now, we'll skip authorization in development
+
+                var taskState = await _taskStorage.GetTasksAsync(chatId);
+
+                if (taskState == null)
+                {
+                    // Return empty task list if no tasks exist
+                    return Ok(
+                        new GetTasksResponse
+                        {
+                            ChatId = chatId,
+                            Tasks = [],
+                            Version = 0,
+                        }
+                    );
+                }
+
+                return Ok(
+                    new GetTasksResponse
+                    {
+                        ChatId = taskState.ChatId,
+                        Tasks = taskState.TaskManager.GetTasks(),
+                        Version = taskState.Version,
+                    }
+                );
+            },
+            "GetTasks",
+            chatId, // Pass chat ID for Orleans grain routing
+            cancellationToken
+        );
+    }
+
+    // Note: Task updates are handled server-side only through LLM tool calls
+    // The client has read-only access to task state via the GET endpoint above
+
+    /// <summary>
+    /// POST: api/chat/stream-sse
+    /// Streams chat completions using Server-Sent Events (SSE).
+    /// Returns text/event-stream content-type with real-time streaming data.
+    /// </summary>
+    /// <param name="request"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    [HttpPost("stream-sse")]
+    public async Task<IActionResult> StreamChatCompletionSse(
+        [FromBody] CreateChatRequest request,
+        CancellationToken cancellationToken = default
+    )
+    {
+        // Validate request
+        if (string.IsNullOrWhiteSpace(request.UserId))
+        {
+            return BadRequest(new { error = "UserId is required and cannot be empty." });
+        }
+
+        // Check protocol preference from middleware
+        var protocol = HttpContext.Items["PreferredProtocol"] as string ?? "SSE";
+
+        // If SignalR is selected, handle differently
+        if (protocol.Equals("SignalR", StringComparison.OrdinalIgnoreCase))
+        {
+            return await HandleSignalRStreamingAsync(request, cancellationToken);
+        }
+
+        // Check if Orleans is available BEFORE setting SSE headers
+        var useOrleans = await _router.IsOrleansEnabledAsync(cancellationToken);
+
+        // Orleans is required for streaming (Phase 3 migration complete)
+        if (!useOrleans)
+        {
+            _logger.LogError("Orleans is required for streaming but is not available");
+            return StatusCode(503, new
+            {
+                error = "Streaming service unavailable",
+                message = "Orleans streaming backend is currently unavailable. Please try again later."
+            });
+        }
+
+        // Set response headers for SSE (only after Orleans check passes)
+        Response.Headers.Append("Content-Type", "text/event-stream");
+        Response.Headers.Append("Cache-Control", "no-cache");
+        Response.Headers.Append("Connection", "keep-alive");
+
+        // Set initial headers based on router decision
+        Response.Headers.Append("X-Orleans-Routed", "true");
+        Response.Headers.Append("X-Processing-Mode", "orleans");
+
+        // Use unified service method for both new and existing chats
+        var streamRequest = new StreamChatRequest
+        {
+            ChatId = request.ChatId, // null for new chats, populated for existing
+            UserId = request.UserId,
+            Message = request.Message,
+            SystemPrompt = request.SystemPrompt,
+            ModeId = request.ModeId,
+        };
+
+        // Get initialization metadata from service
+        var initResult = await _chatService.PrepareUnifiedStreamChatAsync(streamRequest);
+
+        try
+        {
+            _logger.LogInformation(
+                "Routing SSE stream through Orleans for chat {ChatId}",
+                initResult.ChatId
+            );
+            await ProcessStreamViaOrleansAsync(request, initResult, cancellationToken);
+            return new EmptyResult();
+        }
+        catch (Exception orleansEx)
+        {
+            _logger.LogError(
+                orleansEx,
+                "Orleans streaming failed for chat {ChatId}",
+                initResult.ChatId
+            );
+
+            // Send error event via SSE
+            var errorEnvelope = SSEEventExtensions.CreateErrorEnvelope(
+                initResult.ChatId,
+                null,
+                0,
+                $"Streaming failed: {orleansEx.Message}"
+            );
+            await SendSseEvent("error", errorEnvelope, $"{initResult.ChatId}<|>error");
+
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// DEPRECATED: Phase 3 migration complete - Direct service streaming removed.
+    /// This method is no longer used as Orleans ChatGrain handles all streaming.
+    /// Kept for reference only - will be removed in future cleanup.
+    /// </summary>
+    [Obsolete("Direct service streaming deprecated. Use Orleans ChatGrain via router.")]
+    private async Task<IActionResult> ProcessStreamDirectlyWithRouterAsync(
+        CreateChatRequest request,
+        CancellationToken cancellationToken = default
+    )
+    {
+        string? currentChatId = null;
+        const string? currentAssistantMessageId = null;
+        const int currentAssistantSequenceNumber = 0;
+
+        // Generic side-channel forwarder
+        async Task ForwardSideChannel(StreamChunkEvent ev)
+        {
+            var envelope = ev.ToSSEEnvelope();
+            var sid = $"{ev.ChatId}:{ev.MessageId}:{ev.SequenceNumber}:{ev.ChunkSequenceId}";
+            await SendSseEvent("messageupdate", envelope, sid);
+        }
+
+        async Task ForwardMessage(MessageEvent ev)
+        {
+            var envelope = ev.ToSSEEnvelope();
+            var sid = $"{ev.ChatId}:{ev.MessageId}:{ev.SequenceNumber}";
+            await SendSseEvent("message", envelope, sid);
+        }
+
+        try
+        {
+            // Use unified service method for both new and existing chats
+            var streamRequest = new StreamChatRequest
+            {
+                ChatId = request.ChatId, // null for new chats, populated for existing
+                UserId = request.UserId,
+                Message = request.Message,
+                SystemPrompt = request.SystemPrompt,
+                ModeId = request.ModeId,
+            };
+
+            // Get initialization metadata from service
+            var initResult = await _chatService.PrepareUnifiedStreamChatAsync(streamRequest);
+            currentChatId = initResult.ChatId;
+
+            // Direct processing path
+            _logger.LogDebug("Using direct SSE streaming for chat {ChatId}", currentChatId);
+
+            // Subscribe to side-channel after IDs are known
+            _chatService.MessageReceived += ForwardMessage;
+            _chatService.StreamChunkReceived += ForwardSideChannel;
+
+            // Send INIT event (envelope optional kind: 'meta')
+            var initEnvelope = SSEEventExtensions.CreateInitEnvelope(
+                initResult.ChatId,
+                initResult.UserMessageId,
+                initResult.UserTimestamp,
+                initResult.UserSequenceNumber
+            );
+
+            var initId = $"{initResult.ChatId}<|>{initResult.UserMessageId}";
+            await SendSseEvent("init", initEnvelope, initId);
+
+            // Stream the assistant response using the assistant message created during initialization
+            await _chatService.StreamAssistantResponseAsync(initResult.ChatId, cancellationToken);
+
+            // Send completion event with final content
+            var completeEnvelope = SSEEventExtensions.CreateStreamCompleteEnvelope(
+                initResult.ChatId
+            );
+            await SendSseEvent("complete", completeEnvelope, initId);
+        }
+        catch (Exception ex)
+        {
+            // Avoid passing exception object to logger in watch/Test to prevent formatter crashes
+            _logger.LogError(
+                "Error streaming chat completion: {Type}: {Message}",
+                ex.GetType().Name,
+                ex.Message
+            );
+            var errorEnvelope = SSEEventExtensions.CreateErrorEnvelope(
+                currentChatId ?? "unknown",
+                currentAssistantMessageId,
+                currentAssistantSequenceNumber,
+                ex.Message
+            );
+            await SendSseEvent(
+                "message",
+                errorEnvelope,
+                currentChatId != null && currentAssistantMessageId != null
+                    ? $"{currentChatId}<|>{currentAssistantMessageId}"
+                    : null
+            );
+        }
+        finally
+        {
+            _chatService.MessageReceived -= ForwardMessage;
+            _chatService.StreamChunkReceived -= ForwardSideChannel;
+        }
+
+        return new EmptyResult();
+    }
+
+    /// <summary>
+    /// Handle SignalR-based streaming with operation ID
+    /// </summary>
+    /// <param name="request"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    private async Task<IActionResult> HandleSignalRStreamingAsync(
+        CreateChatRequest request,
+        CancellationToken cancellationToken = default
+    )
+    {
+        // Generate unique operation ID
+        var operationId = $"op_{Guid.NewGuid():N}";
+        string? chatId = null;
+
+        try
+        {
+            // Prepare the chat stream (same as SSE)
+            var streamRequest = new StreamChatRequest
+            {
+                ChatId = request.ChatId,
+                UserId = request.UserId,
+                Message = request.Message,
+                SystemPrompt = request.SystemPrompt,
+                ModeId = request.ModeId,
+            };
+
+            // Get initialization metadata
+            var initResult = await _chatService.PrepareUnifiedStreamChatAsync(streamRequest);
+            ArgumentNullException.ThrowIfNull(initResult, "Failed to initialize chat stream");
+            chatId = initResult.ChatId;
+
+            // Return operation ID immediately to SignalR client
+            var responseData = new
+            {
+                OperationId = operationId,
+                ChatId = chatId,
+                MessageId = initResult.UserMessageId,
+                Protocol = "SignalR",
+                Status = "Processing",
+            };
+
+            // Check if Orleans is available (required for streaming)
+            var useOrleans = await _router.IsOrleansEnabledAsync(cancellationToken);
+            if (!useOrleans)
+            {
+                _logger.LogError("Orleans is required for SignalR streaming but is not available");
+                return StatusCode(503, new
+                {
+                    error = "Streaming service unavailable",
+                    message = "Orleans streaming backend is currently unavailable. Please try again later.",
+                    chatId = initResult.ChatId
+                });
+            }
+
+            // Process the assistant response asynchronously via Orleans
+            // Note: The ChatHub is subscribed to Orleans events and broadcasts to SignalR groups
+            _ = Task.Run(
+                async () =>
+                {
+                    try
+                    {
+                        // Send init event via SignalR
+                        var initEnvelope = SSEEventExtensions.CreateInitEnvelope(
+                            initResult.ChatId,
+                            initResult.UserMessageId,
+                            initResult.UserTimestamp,
+                            initResult.UserSequenceNumber
+                        );
+
+                        if (_hubContext != null)
+                        {
+                            await _hubContext
+                                .Clients.Group($"chat_{initResult.ChatId}")
+                                .SendAsync(
+                                    "ReceiveInit",
+                                    new { OperationId = operationId, Envelope = initEnvelope }
+                                );
+                        }
+
+                        // Stream through Orleans ChatGrain (Phase 3: direct service deprecated)
+                        await _router.ExecuteAsync(
+                            // Orleans operation
+                            async (grain) =>
+                            {
+                                var streamMessage = new StreamMessage
+                                {
+                                    ChatId = initResult.ChatId,
+                                    Content = request.Message,
+                                    UserId = request.UserId,
+                                    Timestamp = DateTime.UtcNow,
+                                    Role = "user",
+                                    ModeId = request.ModeId,
+                                    SystemPrompt = request.SystemPrompt
+                                };
+                                var streamHandle = await grain.StartStreamAsync(streamMessage, cancellationToken);
+                                _logger.LogInformation("Started Orleans stream {StreamId} for chat {ChatId}",
+                                    streamHandle.StreamId, initResult.ChatId);
+                            },
+                            // Direct service deprecated - throw error
+                            async (service) =>
+                            {
+                                throw new NotSupportedException(
+                                    "Direct service streaming is deprecated. Orleans is required for streaming operations.");
+                            },
+                            "SignalRStream",
+                            initResult.ChatId,
+                            cancellationToken
+                        );
+
+                        // Send completion event via SignalR
+                        var completeEnvelope = SSEEventExtensions.CreateStreamCompleteEnvelope(
+                            initResult.ChatId
+                        );
+                        if (_hubContext != null)
+                        {
+                            await _hubContext
+                                .Clients.Group($"chat_{initResult.ChatId}")
+                                .SendAsync(
+                                    "ReceiveComplete",
+                                    new { OperationId = operationId, Envelope = completeEnvelope }
+                                );
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(
+                            "Error processing SignalR stream for operation {OperationId}: {Error}",
+                            operationId,
+                            ex.Message
+                        );
+
+                        // Send error via SignalR
+                        if (initResult?.ChatId != null && _hubContext != null)
+                        {
+                            await _hubContext
+                                .Clients.Group($"chat_{initResult.ChatId}")
+                                .SendAsync(
+                                    "ReceiveError",
+                                new
+                                {
+                                    OperationId = operationId,
+                                    ChatId = initResult.ChatId,
+                                    Error = ex.Message,
+                                    Timestamp = DateTime.UtcNow,
+                                }
+                            );
+                        }
+                    }
+                },
+                cancellationToken
+            );
+
+            // Return the operation ID response
+            return Ok(responseData);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                "Error initiating SignalR stream for operation {OperationId}: {Error}",
+                operationId,
+                ex.Message
+            );
+
+            // Return error response
+            return StatusCode(
+                500,
+                new
+                {
+                    OperationId = operationId,
+                    Error = ex.Message,
+                    Status = "Failed",
+                }
+            );
+        }
+    }
+
+    /// <summary>
+    /// Processes chat stream through Orleans ChatGrain with StreamingBridge conversion.
+    /// </summary>
+    private async Task ProcessStreamViaOrleansAsync(
+        CreateChatRequest request,
+        StreamInitResult initResult,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var isOrleansAvailable = await _router.IsOrleansEnabledAsync(cancellationToken);
+        if (!isOrleansAvailable)
+        {
+            throw new InvalidOperationException("Orleans is not available for streaming operations");
+        }
+
+        // Check if we should use resilient streaming
+        var useResilientStreaming =
+            _resilientStreamManager != null
+            && await _router.IsOrleansEnabledAsync(cancellationToken);
+
+        if (!useResilientStreaming && _streamingBridge == null)
+        {
+            throw new InvalidOperationException(
+                "Neither ResilientStreamManager nor StreamingBridge is available"
+            );
+        }
+
+        // Validate request for Orleans processing
+        if (string.IsNullOrEmpty(request.UserId))
+        {
+            throw new ArgumentException(
+                "UserId is required for Orleans streaming",
+                nameof(request)
+            );
+        }
+
+        if (string.IsNullOrEmpty(initResult.ChatId))
+        {
+            throw new ArgumentException(
+                "ChatId is required for Orleans streaming",
+                nameof(initResult)
+            );
+        }
+
+        try
+        {
+            // Send INIT event before starting stream
+            var initEnvelope = SSEEventExtensions.CreateInitEnvelope(
+                initResult.ChatId,
+                initResult.UserMessageId,
+                initResult.UserTimestamp,
+                initResult.UserSequenceNumber
+            );
+
+            var initId = $"{initResult.ChatId}<|>{initResult.UserMessageId}";
+            await SendSseEvent("init", initEnvelope, initId);
+
+            // Create stream message for Orleans processing
+            var streamMessage = new StreamMessage
+            {
+                ChatId = initResult.ChatId,
+                Content = request.Message,
+                UserId = request.UserId,
+                Timestamp = DateTime.UtcNow,
+                Role = "user",
+                ModeId = request.ModeId,
+                SystemPrompt = request.SystemPrompt
+            };
+
+            // Start the stream via router
+            var streamHandle = await ExecuteStreamingOperationAsync(
+                initResult.ChatId,
+                chatGrain => chatGrain.StartStreamAsync(streamMessage, cancellationToken),
+                "StartStream",
+                cancellationToken);
+
+            // Create an async enumerable to simulate streaming from the grain
+            var grainStream = SimulateGrainStreamFromRouter(initResult.ChatId, streamHandle, cancellationToken);
+
+            // Convert Orleans stream chunks to SSE format
+            var formatter = new Func<StreamChunk, string>(chunk =>
+            {
+                // Convert Orleans StreamChunk to SSE envelope format
+                var envelope = new
+                {
+                    chatId = chunk.ChatId,
+                    messageId = chunk.MessageId ?? Guid.NewGuid().ToString(),
+                    sequenceNumber = chunk.ChunkIndex,
+                    kind = chunk.IsComplete ? "complete" : "content",
+                    content = chunk.Content,
+                    timestamp = chunk.Timestamp,
+                    metadata = new
+                    {
+                        chunkIndex = chunk.ChunkIndex,
+                        totalChunks = chunk.TotalChunks,
+                        operationId = chunk.OperationId,
+                        type = chunk.Type.ToString(),
+                    },
+                };
+                return System.Text.Json.JsonSerializer.Serialize(
+                    envelope,
+                    MessageSerializationOptions.Default
+                );
+            });
+
+            // Use resilient streaming if available
+            if (useResilientStreaming)
+            {
+                _logger.LogInformation(
+                    "Using ResilientStreamManager for stream {StreamId}",
+                    initResult.ChatId
+                );
+
+                // Generate a unique stream ID for this request
+                var streamId = $"{request.UserId}:{initResult.ChatId}:{streamHandle.StreamId}";
+
+                await _resilientStreamManager!.ProcessResilientStreamAsync(
+                    streamId,
+                    grainStream,
+                    Response,
+                    formatter,
+                    cancellationToken
+                );
+            }
+            else
+            {
+                _logger.LogInformation(
+                    "Using standard StreamingBridge for stream {StreamId}",
+                    initResult.ChatId
+                );
+
+                // Use standard StreamingBridge
+                await _streamingBridge!.ConvertGrainToHttpStreamAsync(
+                    grainStream,
+                    Response,
+                    formatter,
+                    cancellationToken
+                );
+            }
+
+            // Send completion event
+            var completeEnvelope = SSEEventExtensions.CreateStreamCompleteEnvelope(
+                initResult.ChatId
+            );
+            await SendSseEvent("complete", completeEnvelope, initId);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Orleans stream cancelled for chat {ChatId}", initResult.ChatId);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in Orleans streaming for chat {ChatId}", initResult.ChatId);
+
+            // Send error event
+            var errorEnvelope = SSEEventExtensions.CreateErrorEnvelope(
+                initResult.ChatId,
+                null, // Assistant message ID not available
+                0, // Sequence number not available
+                ex.Message
+            );
+            await SendSseEvent("message", errorEnvelope, $"{initResult.ChatId}<|>error");
+            throw;
+        }
+    }
+
+    private async Task SendSseEvent(string eventType, object data, string? id = null)
+    {
+        // Always stream to the current HTTP response (client fetch())
+        var json = System.Text.Json.JsonSerializer.Serialize(
+            data,
+            MessageSerializationOptions.Default
+        );
+        if (!string.IsNullOrEmpty(id))
+        {
+            await Response.WriteAsync($"id: {id}\n");
+        }
+        await Response.WriteAsync($"event: {eventType}\n");
+        await Response.WriteAsync($"data: {json}\n\n");
+        await Response.Body.FlushAsync();
+
+        // Additionally, broadcast via IServerSentEventsService if any listeners are connected
+        var clients = _serverSentEventsService?.GetClients();
+        var clientsList = clients?.ToList() ?? [];
+        if (clientsList.Count > 0)
+        {
+            var client = clientsList[0];
+            if (client != null)
+            {
+                var sse = new ServerSentEvent { Type = eventType, Data = [json] };
+                if (!string.IsNullOrEmpty(id))
+                {
+                    sse.Id = id;
+                }
+                await client.SendEventAsync(sse);
+            }
+        }
+    }
+
+    /// <summary>
+    /// POST: api/chat/operations/{operationId}/cancel
+    /// </summary>
+    /// <param name="operationId"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    [HttpPost("operations/{operationId}/cancel")]
+    public async Task<ActionResult> CancelOperation(string operationId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(operationId))
+        {
+            return BadRequest(new { Error = "Operation ID is required" });
+        }
+
+        try
+        {
+            var useBackground = await _router.IsOrleansEnabledAsync(cancellationToken);
+
+            if (useBackground && _backgroundChatService != null)
+            {
+                // Try to cancel through background service first
+                var cancelled = await _backgroundChatService.CancelOperationAsync(operationId, cancellationToken);
+
+                if (cancelled)
+                {
+                    _logger.LogInformation(
+                        "Successfully cancelled operation {OperationId} through background service",
+                        operationId
+                    );
+                    return Ok(
+                        new
+                        {
+                            Success = true,
+                            OperationId = operationId,
+                            Message = "Operation cancelled successfully",
+                            Method = "BackgroundService",
+                        }
+                    );
+                }
+            }
+
+            // If background service didn't handle it, try Orleans grain cancellation
+            var isOrleansAvailable = await _router.IsOrleansEnabledAsync(cancellationToken);
+            if (isOrleansAvailable && _operationTrackingService != null)
+            {
+                try
+                {
+                    // Get operation context to find the associated user
+                    var operationContext =
+                        await _operationTrackingService.GetOperationUserContextAsync(operationId);
+
+                    if (operationContext != null)
+                    {
+                        try
+                        {
+                            // Try to cancel stream via router if we have a chat ID
+                            if (!string.IsNullOrEmpty(operationContext.ChatId))
+                            {
+                                await ExecuteStreamingOperationAsync<Task>(
+                                    operationContext.ChatId,
+                                    async chatGrain => { await chatGrain.CancelStreamAsync(operationId, "User requested cancellation", cancellationToken); return Task.CompletedTask; },
+                                    "CancelStream",
+                                    cancellationToken);
+
+                                // Unregister the operation from tracking
+                                await _operationTrackingService.UnregisterOperationAsync(operationId);
+
+                                _logger.LogInformation(
+                                    "Successfully cancelled Orleans operation {OperationId} for user {UserId} via ChatGrain",
+                                    operationId,
+                                    operationContext.UserId
+                                );
+
+                                return Ok(
+                                    new
+                                    {
+                                        Success = true,
+                                        OperationId = operationId,
+                                        Message = "Operation cancelled successfully via Orleans ChatGrain",
+                                        Method = "ChatGrain",
+                                        operationContext.UserId,
+                                        operationContext.ChatId,
+                                    }
+                                );
+                            }
+                            _logger.LogWarning(
+                                "No ChatId available for Orleans operation cancellation {OperationId} (user {UserId})",
+                                operationId,
+                                operationContext.UserId
+                            );
+
+                            return BadRequest(
+                                new
+                                {
+                                    Error = "Operation could not be cancelled - no ChatId available",
+                                    OperationId = operationId,
+                                    UserId = operationContext.UserId,
+                                }
+                            );
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex,
+                                "Error during Orleans operation cancellation {OperationId} (user {UserId})",
+                                operationId,
+                                operationContext.UserId);
+
+                            return BadRequest(
+                                new
+                                {
+                                    Error = "Operation cancellation failed",
+                                    OperationId = operationId,
+                                    UserId = operationContext.UserId,
+                                    Details = ex.Message
+                                }
+                            );
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "No operation context found for {OperationId}",
+                            operationId
+                        );
+
+                        return NotFound(
+                            new
+                            {
+                                Error = "Operation not found in tracking system",
+                                OperationId = operationId,
+                            }
+                        );
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(
+                        ex,
+                        "Error during Orleans grain cancellation for operation {OperationId}",
+                        operationId
+                    );
+
+                    return StatusCode(
+                        500,
+                        new
+                        {
+                            Error = "Internal error during Orleans cancellation: " + ex.Message,
+                            OperationId = operationId,
+                        }
+                    );
+                }
+            }
+
+            return NotFound(
+                new
+                {
+                    Error = "Operation not found or cannot be cancelled",
+                    OperationId = operationId,
+                }
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Error cancelling operation {OperationId}: {Error}",
+                operationId,
+                ex.Message
+            );
+            return StatusCode(500, new { Error = ex.Message, OperationId = operationId });
+        }
+    }
+
+    /// <summary>
+    /// GET: api/chat/operations/{operationId}/status
+    /// </summary>
+    /// <param name="operationId"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    [HttpGet("operations/{operationId}/status")]
+    public async Task<ActionResult> GetOperationStatus(string operationId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(operationId))
+        {
+            return BadRequest(new { Error = "Operation ID is required" });
+        }
+
+        try
+        {
+            var useBackground = await _router.IsOrleansEnabledAsync(cancellationToken);
+
+            if (useBackground && _backgroundChatService != null)
+            {
+                var status = await _backgroundChatService.GetOperationStatusAsync(operationId, cancellationToken);
+
+                if (status != null)
+                {
+                    return Ok(
+                        new
+                        {
+                            OperationId = operationId,
+                            Status = status.Status.ToString(),
+                            status.QueuedAt,
+                            status.StartedAt,
+                            status.CompletedAt,
+                            status.Error,
+                            status.Progress,
+                            status.ProgressDescription,
+                            Method = "BackgroundService",
+                        }
+                    );
+                }
+            }
+
+            return NotFound(new { Error = "Operation not found", OperationId = operationId });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Error getting operation status {OperationId}: {Error}",
+                operationId,
+                ex.Message
+            );
+            return StatusCode(500, new { Error = ex.Message, OperationId = operationId });
+        }
+    }
+}
+
+/// <summary>
+/// Request DTOs for API endpoints
+/// </summary>
+/// <param name="ChatId"></param>
+/// <param name="UserId"></param>
+/// <param name="Message"></param>
+/// <param name="SystemPrompt"></param>
+/// <param name="ModeId"></param>
+public record CreateChatRequest(
+    string? ChatId,
+    string UserId,
+    string Message,
+    string? SystemPrompt,
+    string? ModeId
+);
+
+public class SendMessageRequest
+{
+    [JsonPropertyName("message")]
+    public string Message { get; set; } = string.Empty;
+
+    [JsonPropertyName("modeId")]
+    public string? ModeId { get; set; }
+}
+
+public class ChatHistoryResponse
+{
+    public List<ChatDto> Chats { get; set; } = [];
+    public int TotalCount { get; set; }
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+}
+
+/// <summary>
+/// Task-related DTOs
+/// </summary>
+public class GetTasksResponse
+{
+    public required string ChatId { get; set; }
+    public required IList<TaskManager.TaskItem> Tasks { get; set; } = [];
+    public required int Version { get; set; }
+}
+
+// Note: UpdateTasksRequest and UpdateTasksResponse removed - tasks are only updated server-side via LLM tool calls
+
+public class TaskErrorInfo
+{
+    public required string Code { get; set; }
+    public required string Message { get; set; }
+    public int? CurrentVersion { get; set; }
+}

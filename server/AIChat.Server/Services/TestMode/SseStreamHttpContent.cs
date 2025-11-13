@@ -194,7 +194,7 @@ public sealed class SseStreamHttpContent : HttpContent
         var maxMessageIdx = 0;
         if (_instructionPlan is not null)
         {
-            choices = SerializeInstructionPlanAsync(_instructionPlan);
+            choices = SerializeInstructionPlan(_instructionPlan);
             maxMessageIdx = _instructionPlan.Messages.Count - 1;
         }
         else
@@ -261,7 +261,7 @@ public sealed class SseStreamHttpContent : HttpContent
         };
     }
 
-    private IEnumerable<Choice> SerializeInstructionPlanAsync(InstructionPlan plan)
+    private IEnumerable<Choice> SerializeInstructionPlan(InstructionPlan plan)
     {
         var choices = Enumerable.Empty<Choice>();
 

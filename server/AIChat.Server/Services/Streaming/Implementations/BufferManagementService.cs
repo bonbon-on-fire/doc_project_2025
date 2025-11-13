@@ -625,9 +625,13 @@ public sealed class BufferManagementService : IBufferManagementService, IHostedS
                 .GetConnectionStateAsync(kvp.Key)
                 .ConfigureAwait(false);
             if (connectionState?.Status == ConnectionStatus.Connected)
+            {
                 connectedStreams++;
+            }
             else
+            {
                 disconnectedStreams++;
+            }
         }
 
         // Get persistence statistics

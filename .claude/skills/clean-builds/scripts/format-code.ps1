@@ -1,5 +1,6 @@
 # Format Code PowerShell Script for DOC_Project_2025
-# Formats the root project using ReSharper CLT, and submodules using CSharpier
+# Formats the root project with CSharpier first, then ReSharper CLT
+# Formats submodules using CSharpier only
 #
 # Roslynator CLI documentation: https://josefpihrt.github.io/docs/roslynator/cli/commands/fix/
 # Note: Roslynator requires the project to be built before running fixes
@@ -22,17 +23,18 @@ function Show-Help {
     Write-Host "  .\format-code.ps1 -Help        # Show this help"
     Write-Host ""
     Write-Host "TOOLS USED (Root Project):"
-    Write-Host "  1. dotnet format style         # Code style fixes (IDE0032, etc.)"
-    Write-Host "  2. Roslynator CLI (optional)   # Advanced code analysis fixes, fixes code styles e.g. using `[]` vs. `Array.Empty<T>()` "
-    Write-Host "  3. ReSharper CLT               # Comprehensive formatting"
+    Write-Host "  1. CSharpier                   # Fast baseline formatting (runs first)"
+    Write-Host "  2. dotnet format style         # Code style fixes (IDE0032, etc.)"
+    Write-Host "  3. Roslynator CLI (optional)   # Advanced code analysis fixes"
+    Write-Host "  4. ReSharper CLT               # Comprehensive formatting (final pass)"
     Write-Host ""
     Write-Host "TOOLS USED (Submodules):"
     Write-Host "  CSharpier                      # Fast, opinionated formatting"
     Write-Host ""
     Write-Host "PREREQUISITES:"
     Write-Host "  # Required:"
-    Write-Host "  dotnet tool install -g JetBrains.ReSharper.GlobalTools"
     Write-Host "  dotnet tool install -g csharpier"
+    Write-Host "  dotnet tool install -g JetBrains.ReSharper.GlobalTools"
     Write-Host ""
     Write-Host "  # Optional (for advanced code analysis):"
     Write-Host "  dotnet tool install -g Roslynator.DotNet.Cli"
@@ -80,13 +82,23 @@ function Format-RootProject {
             return $true
         }
         else {
-            # Step 1: Apply code style fixes (like IDE0032)
-            Write-Host "Step 1/4: Applying dotnet format style fixes (IDE0032, etc.)..." -ForegroundColor Cyan
+            # Step 1: Format with CSharpier first (opinionated baseline)
+            Write-Host "Step 1/5: Formatting with CSharpier (baseline formatting)..." -ForegroundColor Cyan
+            if (Test-ToolInstalled "csharpier" "CSharpier") {
+                csharpier server/
+            }
+            else {
+                Write-Host "  CSharpier not installed, skipping baseline formatting" -ForegroundColor Yellow
+                Write-Host "  Install with: dotnet tool install -g csharpier" -ForegroundColor Gray
+            }
+
+            # Step 2: Apply code style fixes (like IDE0032)
+            Write-Host "Step 2/5: Applying dotnet format style fixes (IDE0032, etc.)..." -ForegroundColor Cyan
             dotnet format style --diagnostics "IDE0032 IDE0017 IDE0028 IDE0025" --verbosity minimal
 
-            # Step 2: Apply Roslynator fixes (if available)
+            # Step 3: Apply Roslynator fixes (if available)
             if (Test-ToolInstalled "roslynator" "Roslynator CLI") {
-                Write-Host "Step 2/4: Applying Roslynator code analysis fixes..." -ForegroundColor Cyan
+                Write-Host "Step 3/5: Applying Roslynator code analysis fixes..." -ForegroundColor Cyan
 
                 # Build projects first (required for Roslynator)
                 Write-Host "  - Building projects (required for Roslynator)..."
@@ -102,16 +114,16 @@ function Format-RootProject {
                 roslynator fix server/AIChat.Server.Tests/AIChat.Server.Tests.csproj --severity-level info --verbosity minimal --ignore-compiler-errors --fix-scope project
             }
             else {
-                Write-Host "Step 2/4: Roslynator not installed, skipping advanced fixes" -ForegroundColor Yellow
+                Write-Host "Step 3/5: Roslynator not installed, skipping advanced fixes" -ForegroundColor Yellow
                 Write-Host "  Install with: dotnet tool install -g Roslynator.DotNet.Cli" -ForegroundColor Gray
             }
 
-            # Step 3: Format server project with ReSharper
-            Write-Host "Step 3/4: Formatting server project with ReSharper CLT..." -ForegroundColor Cyan
+            # Step 4: Format server project with ReSharper
+            Write-Host "Step 4/5: Formatting server project with ReSharper CLT..." -ForegroundColor Cyan
             jb cleanupcode server/AIChat.Server/AIChat.Server.csproj
 
-            # Step 4: Format test project with ReSharper
-            Write-Host "Step 4/4: Formatting test project with ReSharper CLT..." -ForegroundColor Cyan
+            # Step 5: Format test project with ReSharper
+            Write-Host "Step 5/5: Formatting test project with ReSharper CLT..." -ForegroundColor Cyan
             jb cleanupcode server/AIChat.Server.Tests/AIChat.Server.Tests.csproj
 
             Write-Host "Root project formatting completed!" -ForegroundColor Green

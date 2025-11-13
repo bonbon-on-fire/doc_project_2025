@@ -1,18 +1,14 @@
-using System.Collections.Immutable;
-using System.Runtime.CompilerServices;
 using System.Text.Json;
 using AchieveAi.LmDotnetTools.LmCore.Agents;
 using AchieveAi.LmDotnetTools.LmCore.Messages;
 using AchieveAi.LmDotnetTools.LmCore.Middleware;
 using AIChat.Orleans.Client.Services;
 using AIChat.Orleans.Contracts;
-using AIChat.Server.Models;
 using AIChat.Server.Storage;
-using Microsoft.Extensions.Options;
 
 namespace AIChat.Server.Services;
 
-public class ChatService(ILogger<ChatService> logger, IOptions<AiOptions> aiOptions)
+public class ChatService(ILogger<ChatService> logger)
     : IChatServiceStreaming,
         IToolResultCallback
 {
@@ -667,6 +663,11 @@ public class ChatService(ILogger<ChatService> logger, IOptions<AiOptions> aiOpti
         );
     }
 
+    /// <summary>
+    /// DEPRECATED: Phase 3 migration complete - Direct service streaming removed.
+    /// Use Orleans ChatGrain via router for streaming operations.
+    /// </summary>
+    [Obsolete("Phase 3: Direct service streaming deprecated. Use Orleans ChatGrain.StartStreamAsync() via router.")]
     public async Task StreamAssistantResponseAsync(
         string chatId,
         IChatStorage storage,
@@ -679,38 +680,9 @@ public class ChatService(ILogger<ChatService> logger, IOptions<AiOptions> aiOpti
         CancellationToken cancellationToken = default
     )
     {
-        var (_, _, messages) = await storage.ListChatMessagesOrderedAsync(
-            chatId,
-            cancellationToken
-        );
-        var history = messages
-            .Select(m =>
-                JsonSerializer.Deserialize<MessageDto>(
-                    m.MessageJson,
-                    MessageSerializationOptions.Default
-                )!
-            )
-            .Where(d =>
-                (d is TextMessageDto td && !string.IsNullOrWhiteSpace(td.Text))
-                || d is ReasoningMessageDto
-            ) // Include ALL reasoning messages for LLM context
-            .ToList();
-
-        // Note: This method doesn't have mode context, will use default behavior
-        await StreamChatCompletionAsync(
-            chatId,
-            history,
-            streamingAgent,
-            toolingService,
-            storage,
-            modeService,
-            orleansService,
-            null, // modeId - not available in this context
-            null, // userId - not available in this context
-            messageCallback,
-            chunkCallback,
-            cancellationToken
-        );
+        // Phase 3: This method is deprecated - Orleans ChatGrain handles streaming
+        throw new NotSupportedException(
+            "Phase 3: Direct service streaming deprecated. Use Orleans ChatGrain.StartStreamAsync() via router.");
     }
 
     /*
@@ -728,6 +700,7 @@ public class ChatService(ILogger<ChatService> logger, IOptions<AiOptions> aiOpti
      * Reference: server/AIChat.Orleans/Grains/ChatGrain.cs
      * ========================================
      */
+    [Obsolete("Phase 3: Direct service LLM operations removed. Use Orleans ChatGrain.ProcessMessageWithLLMAsync() instead.")]
     private Task StreamChatCompletionAsync(
         string chatId,
         List<MessageDto> history,
@@ -745,7 +718,7 @@ public class ChatService(ILogger<ChatService> logger, IOptions<AiOptions> aiOpti
     {
         // Method body removed in Phase 3
         // LLM operations now handled by Orleans ChatGrain
-        throw new NotImplementedException("Use Orleans ChatGrain instead. See comment above.");
+        throw new NotSupportedException("Phase 3: Direct service LLM operations deprecated. Use Orleans ChatGrain via router.");
     }
 
     /// <summary>
@@ -993,9 +966,10 @@ public class ChatService(ILogger<ChatService> logger, IOptions<AiOptions> aiOpti
      * ========================================
      */
     /// <summary>
-    /// Process a message with streaming callbacks for background services
-    /// This method is stateless and suitable for singleton services
+    /// DEPRECATED: Phase 3 migration complete - Direct service LLM operations removed.
+    /// Use Orleans ChatGrain.ProcessMessageWithLLMAsync() via router instead.
     /// </summary>
+    [Obsolete("Phase 3: Direct service LLM operations deprecated. Use Orleans ChatGrain.ProcessMessageWithLLMAsync() via router.")]
     public async Task ProcessMessageWithCallbackAsync(
         string chatId,
         string message,
@@ -1012,10 +986,9 @@ public class ChatService(ILogger<ChatService> logger, IOptions<AiOptions> aiOpti
         CancellationToken cancellationToken = default
     )
     {
-        // Method body removed in Phase 3
-        // LLM operations now handled by Orleans ChatGrain
+        // Phase 3: This method is deprecated - Orleans ChatGrain handles LLM operations
         await Task.CompletedTask;
-        throw new NotImplementedException("Use Orleans ChatGrain instead. See comment above.");
+        throw new NotSupportedException("Phase 3: Direct service LLM operations deprecated. Use Orleans ChatGrain.ProcessMessageWithLLMAsync() via router.");
     }
 
     #endregion IChatServiceStreaming Implementation
@@ -1030,6 +1003,7 @@ public class ChatService(ILogger<ChatService> logger, IOptions<AiOptions> aiOpti
     /// <param name="modeId"></param>
     /// <param name="userId"></param>
     /// <returns></returns>
+    [Obsolete("Phase 3: Direct service LLM operations deprecated. Use Orleans ChatGrain via router.")]
     private static async Task<string> GenerateAIResponseAsync(
         string chatId,
         IChatStorage storage,
@@ -1039,10 +1013,9 @@ public class ChatService(ILogger<ChatService> logger, IOptions<AiOptions> aiOpti
         string? userId = null
     )
     {
-        // Method body removed in Phase 3
-        // LLM operations now handled by Orleans ChatGrain
+        // Phase 3: This method is deprecated - Orleans ChatGrain handles LLM operations
         await Task.CompletedTask;
-        throw new NotImplementedException("Use Orleans ChatGrain instead. See comment above.");
+        throw new NotSupportedException("Phase 3: Direct service LLM operations deprecated. Use Orleans ChatGrain via router.");
     }
 
     private static string GenerateChatTitle(string firstMessage)

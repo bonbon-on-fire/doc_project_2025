@@ -21,7 +21,6 @@ namespace AIChat.Server.Handlers;
 public class WebSocketMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly IWebSocketHandler _webSocketHandler;
     private readonly ILogger<WebSocketMiddleware> _logger;
     private static readonly ActivitySource ActivitySource = new("AIChat.Server.WebSocketMiddleware");
 
@@ -34,17 +33,14 @@ public class WebSocketMiddleware
     /// Initializes a new instance of the WebSocketMiddleware.
     /// </summary>
     /// <param name="next">The next middleware in the pipeline</param>
-    /// <param name="webSocketHandler">WebSocket handler for connection management</param>
     /// <param name="logger">Logger instance</param>
     /// <param name="options">Middleware configuration options</param>
     public WebSocketMiddleware(
         RequestDelegate next,
-        IWebSocketHandler webSocketHandler,
         ILogger<WebSocketMiddleware> logger,
         WebSocketMiddlewareOptions? options = null)
     {
         _next = next ?? throw new ArgumentNullException(nameof(next));
-        _webSocketHandler = webSocketHandler ?? throw new ArgumentNullException(nameof(webSocketHandler));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _options = options ?? new WebSocketMiddlewareOptions();
     }
@@ -127,7 +123,8 @@ public class WebSocketMiddleware
             activity?.SetTag("operation.success", true);
 
             // Delegate to the WebSocket handler
-            await _webSocketHandler.HandleWebSocketAsync(context, webSocket, context.RequestAborted);
+            var webSocketHandler = context.RequestServices.GetRequiredService<IWebSocketHandler>();
+            await webSocketHandler.HandleWebSocketAsync(context, webSocket, context.RequestAborted);
         }
         catch (Exception ex)
         {

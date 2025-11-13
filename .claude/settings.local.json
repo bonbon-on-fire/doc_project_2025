@@ -144,6 +144,7 @@
     "playwright",
     "azure-devops-mcp",
     "clarify-doubt",
-    "azure-devops"
+    "azure-devops",
+    "seq"
   ]
 }

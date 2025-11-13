@@ -280,12 +280,11 @@ public sealed class FileBasedBufferStore : IPersistentBufferStore, IDisposable
                 return [];
             }
 
-            return Directory
+            return [.. Directory
                 .GetDirectories(_options.StoragePath)
                 .Select(Path.GetFileName)
                 .Where(name => !string.IsNullOrEmpty(name))
-                .Cast<string>()
-                .ToList();
+                .Cast<string>()];
         }
         catch (Exception ex)
         {

@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using AIChat.Orleans.Client.Services;
-using AIChat.Server.Services.Routing;
 
 namespace AIChat.Server.Services;
 
@@ -22,7 +21,6 @@ namespace AIChat.Server.Services;
 public class OrleansEventRelay : IOrleansEventRelay
 {
     private readonly IOrleansIntegrationService? _orleansService;
-    private readonly IDualModeRouter _dualModeRouter;
     private readonly ILogger<OrleansEventRelay> _logger;
     private static readonly ActivitySource ActivitySource = new("AIChat.Server.OrleansEventRelay");
 
@@ -39,15 +37,12 @@ public class OrleansEventRelay : IOrleansEventRelay
     /// Initializes a new instance of the OrleansEventRelay.
     /// </summary>
     /// <param name="orleansService">Orleans integration service (can be null if Orleans not available)</param>
-    /// <param name="dualModeRouter">Router for determining Orleans availability</param>
     /// <param name="logger">Logger instance</param>
     public OrleansEventRelay(
         IOrleansIntegrationService? orleansService,
-        IDualModeRouter dualModeRouter,
         ILogger<OrleansEventRelay> logger)
     {
         _orleansService = orleansService;
-        _dualModeRouter = dualModeRouter ?? throw new ArgumentNullException(nameof(dualModeRouter));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -63,8 +58,8 @@ public class OrleansEventRelay : IOrleansEventRelay
 
             _logger.LogTrace("Checking Orleans availability status");
 
-            // Use DualModeRouter to check Orleans health
-            var isEnabled = await _dualModeRouter.IsOrleansEnabledAsync(cancellationToken);
+            // Orleans is always enabled in this configuration (Orleans-only mode)
+            var isEnabled = _orleansService != null;
 
             stopwatch.Stop();
 
@@ -437,9 +432,13 @@ public class OrleansEventRelay : IOrleansEventRelay
         var diagnostics = $" | Uptime: {uptime.TotalHours:F1}h, Success Rate: {successRate:F1}%";
 
         if (subscriptionDetails.Count > 0 && subscriptionDetails.Count <= 5)
+        {
             diagnostics += $", Subscriptions: [{string.Join(", ", subscriptionDetails)}]";
+        }
         else if (subscriptionDetails.Count > 5)
+        {
             diagnostics += $", Subscriptions: {subscriptionDetails.Count} active (oldest: {subscriptionDetails[0]})";
+        }
 
         return baseMessage + diagnostics;
     }

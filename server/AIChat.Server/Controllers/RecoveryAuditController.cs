@@ -571,7 +571,9 @@ public class RecoveryAuditController : ControllerBase
             var healthStatus = await _auditService.GetHealthStatusAsync(cancellationToken);
 
             if (healthStatus.IsHealthy)
+            {
                 return Ok(healthStatus);
+            }
 
             return StatusCode(StatusCodes.Status503ServiceUnavailable, healthStatus);
         }

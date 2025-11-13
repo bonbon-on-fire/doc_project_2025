@@ -72,7 +72,7 @@ public interface IOrleansIntegrationService
     /// <returns>Task representing the async operation</returns>
     Task SubscribeToChatAsync(string userId, string connectionId, string chatId);
 
-    #endregion
+    #endregion Phase 2 Methods (Stubbed for Phase 1)
 
     #region Phase 3 Methods (Stubbed for Phase 1)
 
@@ -92,7 +92,7 @@ public interface IOrleansIntegrationService
     /// <returns>Task representing the async operation</returns>
     Task CancelOperationAsync(string userId, string operationId);
 
-    #endregion
+    #endregion Phase 3 Methods (Stubbed for Phase 1)
 }
 
 /// <summary>

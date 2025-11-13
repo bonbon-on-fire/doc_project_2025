@@ -50,7 +50,7 @@ public class SnapshotStoreException : Exception
         Context = context;
     }
 
-    public SnapshotStoreException() : base()
+    public SnapshotStoreException()
     {
     }
 
@@ -346,7 +346,7 @@ public class SnapshotManagerException : SnapshotStoreException
     /// <summary>
     /// Gets the operation that failed.
     /// </summary>
-    public string Operation { get; }
+    public string Operation { get; init; } = null!;
 
     /// <summary>
     /// Initializes a new instance of the SnapshotManagerException class.
@@ -375,7 +375,7 @@ public class SnapshotManagerException : SnapshotStoreException
     {
     }
 
-    public SnapshotManagerException() : base()
+    public SnapshotManagerException()
     {
     }
 
@@ -538,7 +538,7 @@ public class SnapshotConcurrencyException : SnapshotStoreException
     {
     }
 
-    public SnapshotConcurrencyException() : base()
+    public SnapshotConcurrencyException()
     {
     }
 
@@ -592,7 +592,7 @@ public class SnapshotCorruptionException : SnapshotStoreException
     {
     }
 
-    public SnapshotCorruptionException() : base()
+    public SnapshotCorruptionException()
     {
     }
 

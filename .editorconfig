@@ -752,3 +752,8 @@ dotnet_diagnostic.rcs1249.severity = suggestion
 dotnet_diagnostic.rcs1194.severity = suggestion
 
 # Add more specific rules here as needed...
+
+# Downgrade Roslynator rules that auto-fix creates problems
+dotnet_diagnostic.RCS1194.severity = suggestion # Exception constructors - auto-fix creates CS8618 errors
+dotnet_diagnostic.RCS1242.severity = suggestion # Readonly struct reference - not applicable for Orleans serialization
+

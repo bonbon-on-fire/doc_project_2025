@@ -8,6 +8,13 @@
         "dotnet-csharpier"
       ],
       "rollForward": false
+    },
+    "seqmcpserver": {
+      "version": "0.1.2",
+      "commands": [
+        "seq-mcp-server"
+      ],
+      "rollForward": false
     }
   }
 }

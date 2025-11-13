@@ -35,9 +35,13 @@ public static class ProtocolTranslationServiceExtensions
 
         // Register translation cache
         if (options.EnableCaching)
+        {
             services.AddSingleton<ITranslationCache, MemoryTranslationCache>();
+        }
         else
+        {
             services.AddSingleton<ITranslationCache, NullTranslationCache>();
+        }
 
         // Register all translators
         RegisterTranslators(services);

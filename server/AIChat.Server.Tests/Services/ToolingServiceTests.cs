@@ -98,7 +98,6 @@ public class ToolingServiceTests
 
         var toolingService = new ToolingService(
             _mockServiceProvider.Object,
-            _mockMcpClientManager.Object,
             _mockTaskManagerService.Object,
             _mockModeService.Object,
             _mockOptions.Object,
@@ -167,7 +166,6 @@ public class ToolingServiceTests
 
         var toolingService = new ToolingService(
             _mockServiceProvider.Object,
-            _mockMcpClientManager.Object,
             _mockTaskManagerService.Object,
             _mockModeService.Object,
             _mockOptions.Object,
@@ -222,7 +220,6 @@ public class ToolingServiceTests
 
         var toolingService = new ToolingService(
             _mockServiceProvider.Object,
-            _mockMcpClientManager.Object,
             _mockTaskManagerService.Object,
             _mockModeService.Object,
             _mockOptions.Object,
@@ -300,7 +297,6 @@ public class ToolingServiceTests
 
         var toolingService = new ToolingService(
             _mockServiceProvider.Object,
-            _mockMcpClientManager.Object,
             _mockTaskManagerService.Object,
             _mockModeService.Object,
             _mockOptions.Object,
@@ -359,7 +355,6 @@ public class ToolingServiceTests
 
         var toolingService = new ToolingService(
             _mockServiceProvider.Object,
-            _mockMcpClientManager.Object,
             _mockTaskManagerService.Object,
             _mockModeService.Object,
             _mockOptions.Object,
@@ -401,7 +396,6 @@ public class ToolingServiceTests
 
         var toolingService = new ToolingService(
             _mockServiceProvider.Object,
-            _mockMcpClientManager.Object,
             _mockTaskManagerService.Object,
             _mockModeService.Object,
             _mockOptions.Object,
@@ -438,7 +432,6 @@ public class ToolingServiceTests
 
         var toolingService = new ToolingService(
             _mockServiceProvider.Object,
-            _mockMcpClientManager.Object,
             _mockTaskManagerService.Object,
             _mockModeService.Object,
             _mockOptions.Object,

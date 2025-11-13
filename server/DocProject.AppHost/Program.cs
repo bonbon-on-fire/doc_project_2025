@@ -69,12 +69,12 @@ var orleansHost = builder.AddProject("orleans-host", "../AIChat.Orleans.Host/AIC
 // AIChat.Server - Now Orleans CLIENT only (silo code removed in Task 7)
 // Server connects to Orleans Host as a client, no longer hosts the silo
 // Ports are explicitly managed via unified configuration
-// Use environment variable to override launchSettings (avoids endpoint conflicts)
-var aspnetcoreUrls = $"http://localhost:{apiServerPort}";
-var apiServer = builder.AddProject("api-server", "../AIChat.Server/AIChat.Server.csproj")
+// AIChat.Server uses the DEV launch profile from launchSettings.json
+// The DEV profile defines applicationUrl which Aspire registers with DCP
+// This ensures proper service discovery and endpoint configuration
+var apiServer = builder.AddProject("api-server", "../AIChat.Server/AIChat.Server.csproj", "DEV")
     .WithReference(database)
     .WithReference(orleansHost)
-    .WithEnvironment("ASPNETCORE_URLS", aspnetcoreUrls)
     .WaitFor(orleansHost)               // Orleans must be ready for client connection
     .WaitFor(database);                 // Database must be ready for queries
 
@@ -85,11 +85,13 @@ var apiServer = builder.AddProject("api-server", "../AIChat.Server/AIChat.Server
 // SvelteKit client with automatic API URL configuration
 // API URL is now explicitly injected from unified port configuration
 // This replaces reliance on apiServer.GetEndpoint() which could fail
+// IMPORTANT: Must pass DATABASE_URL for SvelteKit SSR (hooks.server.ts needs it)
 var viteApiUrl = $"http://localhost:{apiServerPort}";
 var client = builder.AddNpmApp("client", "../../client", "dev")
     .WithReference(apiServer)
-    .WithHttpEndpoint(env: "PORT", port: clientPort)
+    .WithHttpEndpoint(port: clientPort, env: "PORT")
     .WithEnvironment("VITE_API_URL", viteApiUrl)
+    .WithEnvironment("DATABASE_URL", "local.db")           // Required for SvelteKit SSR
     .WithEnvironment("ASPIRE_ENVIRONMENT", "Development")  // Signal to client we're in AppHost
     .WaitFor(apiServer);                // API must be ready before client starts
 

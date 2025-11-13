@@ -25,10 +25,23 @@ param(
     [string]$SaveToFile = ""
 )
 
-# Ensure we're in the correct directory
-$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$projectRoot = Split-Path -Parent (Split-Path -Parent $scriptDir)
-Set-Location $projectRoot
+# Determine project root based on solution path
+if ([System.IO.Path]::IsPathRooted($SolutionPath)) {
+    # If absolute path provided, use its directory
+    $projectRoot = Split-Path -Parent $SolutionPath
+    Set-Location $projectRoot
+}
+elseif (Test-Path $SolutionPath) {
+    # If relative path exists from current location, use current directory
+    $projectRoot = (Get-Location).Path
+}
+else {
+    # Fall back to calculating from script directory
+    $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+    # Script is in .claude\skills\clean-builds\scripts, need to go up 4 levels
+    $projectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $scriptDir)))
+    Set-Location $projectRoot
+}
 
 # Colors for console output
 $ErrorColor = "Red"
@@ -181,25 +194,37 @@ function Format-ConsoleOutput {
     $errorGroups = $GroupedIssues | Where-Object { $_.Type -eq "error" }
     $warningGroups = $GroupedIssues | Where-Object { $_.Type -eq "warning" }
 
-    Write-ColorOutput ("=" * 80) $InfoColor
+    Write-ColorOutput ("-" * 3) $InfoColor
     Write-ColorOutput "BUILD ISSUES SUMMARY" $InfoColor
-    Write-ColorOutput ("=" * 80) $InfoColor
-    Write-ColorOutput ""
+    Write-ColorOutput ("-" * 3) $InfoColor
 
     $totalErrors = ($errorGroups | Measure-Object Count -Sum).Sum
     $totalWarnings = ($warningGroups | Measure-Object Count -Sum).Sum
 
-    Write-ColorOutput "Total Errors: $totalErrors" $ErrorColor
-    Write-ColorOutput "Total Warnings: $totalWarnings" $WarningColor
-    Write-ColorOutput "Unique Error Codes: $($errorGroups.Count)" $ErrorColor
-    Write-ColorOutput "Unique Warning Codes: $($warningGroups.Count)" $WarningColor
-    Write-ColorOutput ""
+    # Show what's being displayed with breakdown
+    if ($totalErrors -gt 0) {
+        $errorBreakdown = ($errorGroups | Sort-Object Count -Descending | ForEach-Object { "$($_.Code)($($_.Count))" }) -join ', '
+        Write-ColorOutput "Total Errors: $totalErrors - $errorBreakdown" $ErrorColor
+    }
 
+    if ($totalWarnings -gt 0) {
+        $warningBreakdown = ($warningGroups | Sort-Object Count -Descending | ForEach-Object { "$($_.Code)($($_.Count))" }) -join ', '
+        Write-ColorOutput "Total Warnings: $totalWarnings - $warningBreakdown" $WarningColor
+    }
+
+    # Additional context about what's shown
+    if ($totalErrors -gt 0 -and $totalWarnings -eq 0) {
+        Write-ColorOutput "(showing errors below)" $InfoColor
+    }
+    elseif ($totalErrors -eq 0 -and $totalWarnings -gt 0) {
+        Write-ColorOutput "(showing warnings below)" $InfoColor
+    }
+
+    # Only show errors if they exist
     if ($errorGroups.Count -gt 0) {
-        Write-ColorOutput ("=" * 80) $ErrorColor
+        Write-ColorOutput ("-" * 3) $ErrorColor
         Write-ColorOutput "ERRORS BY CODE" $ErrorColor
-        Write-ColorOutput ("=" * 80) $ErrorColor
-        Write-ColorOutput ""
+        Write-ColorOutput ("-" * 3) $ErrorColor
 
         foreach ($group in $errorGroups) {
             # Format: CODE (Count): Message + URL
@@ -209,26 +234,35 @@ function Format-ConsoleOutput {
             }
             Write-ColorOutput $header $ErrorColor
 
-            # Sort files by path for better readability
-            $sortedFiles = @($group.Files) | Sort-Object File, Line
-            foreach ($file in $sortedFiles) {
-                $relativePath = $file.File -replace [regex]::Escape($projectRoot), "."
-                if ($file.Line -gt 0) {
-                    Write-ColorOutput "  - $relativePath($($file.Line))" "Gray"
+            # Group files and their line numbers
+            $fileGroups = $group.Files | Group-Object File | Sort-Object Name
+            foreach ($fileGroup in $fileGroups) {
+                $relativePath = $fileGroup.Name -replace [regex]::Escape($projectRoot), "."
+                $lines = @($fileGroup.Group | Where-Object { $_.Line -gt 0 } | ForEach-Object { $_.Line } | Sort-Object -Unique)
+
+                if ($lines.Count -gt 0) {
+                    $linesList = $lines -join ', '
+                    Write-ColorOutput "  - file: $relativePath" "Gray"
+                    Write-ColorOutput "    lines: $linesList" "Gray"
                 }
                 else {
-                    Write-ColorOutput "  - $relativePath" "Gray"
+                    Write-ColorOutput "  - file: $relativePath" "Gray"
                 }
             }
-            Write-ColorOutput ""
+        }
+
+        # Add note about warnings if they exist
+        if ($totalWarnings -gt 0) {
+            Write-ColorOutput ("=" * 80) $InfoColor
+            Write-ColorOutput "Note: $totalWarnings warning(s) exist but are only shown when no errors are present" $InfoColor
+            Write-ColorOutput ("=" * 80) $InfoColor
         }
     }
-
-    if ($warningGroups.Count -gt 0) {
+    # Only show warnings if no errors exist
+    elseif ($warningGroups.Count -gt 0) {
         Write-ColorOutput ("=" * 80) $WarningColor
         Write-ColorOutput "WARNINGS BY CODE" $WarningColor
         Write-ColorOutput ("=" * 80) $WarningColor
-        Write-ColorOutput ""
 
         foreach ($group in $warningGroups) {
             # Format: CODE (Count): Message + URL
@@ -238,26 +272,35 @@ function Format-ConsoleOutput {
             }
             Write-ColorOutput $header $WarningColor
 
-            # Debug: Check how many files we have
-            # Write-ColorOutput "  [DEBUG: Files array count: $($group.Files.Count)]" "Cyan"
+            # Group files and their line numbers
+            $fileGroups = $group.Files | Group-Object File | Sort-Object Name
+            foreach ($fileGroup in $fileGroups) {
+                $relativePath = $fileGroup.Name -replace [regex]::Escape($projectRoot), "."
+                $lines = @($fileGroup.Group | Where-Object { $_.Line -gt 0 } | ForEach-Object { $_.Line } | Sort-Object -Unique)
 
-            # Sort files by path for better readability
-            $sortedFiles = @($group.Files) | Sort-Object File, Line
-            foreach ($file in $sortedFiles) {
-                $relativePath = $file.File -replace [regex]::Escape($projectRoot), "."
-                if ($file.Line -gt 0) {
-                    Write-ColorOutput "  - $relativePath($($file.Line))" "Gray"
+                if ($lines.Count -gt 0) {
+                    $linesList = $lines -join ', '
+                    Write-ColorOutput "  - file: $relativePath" "Gray"
+                    Write-ColorOutput "    lines: $linesList" "Gray"
                 }
                 else {
-                    Write-ColorOutput "  - $relativePath" "Gray"
+                    Write-ColorOutput "  - file: $relativePath" "Gray"
                 }
             }
-            Write-ColorOutput ""
         }
     }
 
+    # Success message only when both are zero
     if ($totalErrors -eq 0 -and $totalWarnings -eq 0) {
-        Write-ColorOutput "✅ No errors or warnings found!" $SuccessColor
+        Write-ColorOutput "[OK] No errors or warnings found!" $SuccessColor
+    }
+
+    # Add suggestion to fetch web references if any issues have URLs
+    $issuesWithUrls = $GroupedIssues | Where-Object { $_.Url }
+    if ($issuesWithUrls.Count -gt 0) {
+        Write-ColorOutput ""
+        Write-ColorOutput "TIP: You're encouraged to fetch web reference for warnings to understand how to address these warnings/errors" $InfoColor
+        Write-ColorOutput "Use: Task tool to fix single kind of warning/error esp. formatting warnings. It helps maintain conversation context quality." $InfoColor
     }
 }
 
@@ -302,7 +345,6 @@ function Export-ToCsv {
 # Main execution
 try {
     Write-ColorOutput "Starting clean build of $SolutionPath..." $InfoColor
-    Write-ColorOutput ""
 
     # Perform clean build and capture output
     Write-ColorOutput "Running: dotnet clean $SolutionPath" $InfoColor
@@ -315,13 +357,12 @@ try {
     $allOutput = @($cleanOutput) + @($buildOutput)
 
     Write-ColorOutput "Build completed. Analyzing output..." $InfoColor
-    Write-ColorOutput ""
 
     # Parse issues from build output
     $issues = Parse-BuildOutput -BuildOutput $allOutput
 
     if ($issues.Count -eq 0) {
-        Write-ColorOutput "✅ No issues found in build output!" $SuccessColor
+        Write-ColorOutput "[OK] No issues found in build output!" $SuccessColor
         return
     }
 
@@ -376,30 +417,26 @@ try {
 
     # Count submodule warnings for informational purposes
     $submoduleWarningCount = ($groupedIssues | Where-Object {
-        $_.Type -eq "warning" -and
-        ($_.Files | Where-Object { $_.File -like "*\submodules\*" }).Count -eq $_.Files.Count
-    } | Measure-Object Count -Sum).Sum
+            $_.Type -eq "warning" -and
+            ($_.Files | Where-Object { $_.File -like "*\submodules\*" }).Count -eq $_.Files.Count
+        } | Measure-Object Count -Sum).Sum
 
     if ($errorCount -gt 0) {
-        Write-ColorOutput ""
-        Write-ColorOutput "❌ VALIDATION FAILED: $errorCount error(s) found" $ErrorColor
+        Write-ColorOutput "[ERROR] VALIDATION FAILED: $errorCount error(s) found" $ErrorColor
         exit 1
     }
 
     if ($warningCount -gt 0) {
-        Write-ColorOutput ""
-        Write-ColorOutput "⚠️  VALIDATION FAILED: $warningCount warning(s) found in project code" $WarningColor
+        Write-ColorOutput "[WARNING] VALIDATION FAILED: $warningCount warning(s) found in project code" $WarningColor
         Write-ColorOutput "All warnings must be resolved before proceeding" $WarningColor
         exit 1
     }
 
     if ($submoduleWarningCount -gt 0) {
-        Write-ColorOutput ""
-        Write-ColorOutput "ℹ️  Note: $submoduleWarningCount warning(s) found in external submodules (not counted)" $InfoColor
+        Write-ColorOutput "[INFO] Note: $submoduleWarningCount warning(s) found in external submodules (not counted)" $InfoColor
     }
 
-    Write-ColorOutput ""
-    Write-ColorOutput "✅ VALIDATION PASSED: No errors or warnings found" $SuccessColor
+    Write-ColorOutput "[OK] VALIDATION PASSED: No errors or warnings found" $SuccessColor
     exit 0
 
 }

@@ -111,9 +111,13 @@ public sealed class TranslationMetricsCollector : ITranslationMetricsCollector
         Interlocked.Increment(ref _globalTotalTranslations);
 
         if (success)
+        {
             Interlocked.Increment(ref _globalSuccessfulTranslations);
+        }
         else
+        {
             Interlocked.Increment(ref _globalFailedTranslations);
+        }
 
         // Update duration tracking
         Interlocked.Add(ref _globalTotalDurationTicks, durationTicks);
@@ -328,9 +332,13 @@ internal sealed class TranslatorMetricsData
         Interlocked.Increment(ref _totalTranslations);
 
         if (success)
+        {
             Interlocked.Increment(ref _successfulTranslations);
+        }
         else
+        {
             Interlocked.Increment(ref _failedTranslations);
+        }
 
         Interlocked.Add(ref _totalDurationTicks, durationTicks);
 

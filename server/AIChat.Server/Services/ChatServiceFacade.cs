@@ -138,41 +138,20 @@ public class ChatServiceFacade(
         );
     }
 
+    /// <summary>
+    /// DEPRECATED: Phase 3 migration complete - Direct service streaming removed.
+    /// Use Orleans ChatGrain via router for streaming operations.
+    /// </summary>
+    [Obsolete("Phase 3: Direct service streaming deprecated. Use Orleans ChatGrain.StartStreamAsync() via router.")]
     public async Task StreamAssistantResponseAsync(
         string chatId,
         CancellationToken cancellationToken = default
     )
     {
-        logger.LogInformation("Streaming assistant response for chat {ChatId}", chatId);
-
-        // Create callbacks that fire events
-        async Task MessageEventCallback(MessageEvent evt)
-        {
-            if (MessageReceived != null)
-            {
-                await MessageReceived(evt);
-            }
-        }
-
-        async Task ChunkEventCallback(StreamChunkEvent evt)
-        {
-            if (StreamChunkReceived != null)
-            {
-                await StreamChunkReceived(evt);
-            }
-        }
-
-        await chatService.StreamAssistantResponseAsync(
-            chatId,
-            storage,
-            modeService,
-            streamingAgent,
-            toolingService,
-            orleansService,
-            MessageEventCallback,
-            ChunkEventCallback,
-            cancellationToken
-        );
+        // Phase 3: This method is deprecated - Orleans ChatGrain handles streaming
+        await Task.CompletedTask;
+        throw new NotSupportedException(
+            "Phase 3: Direct service streaming deprecated. Use Orleans ChatGrain.StartStreamAsync() via router.");
     }
 
     public async Task<int> GetNextSequenceNumberAsync(string chatId)

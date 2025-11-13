@@ -58,7 +58,7 @@ public class EventStoreException : Exception
         Context = context;
     }
 
-    public EventStoreException() : base()
+    public EventStoreException()
     {
     }
 
@@ -157,7 +157,7 @@ public class ConcurrencyException : EventStoreException
     {
     }
 
-    public ConcurrencyException() : base()
+    public ConcurrencyException()
     {
     }
 
@@ -209,7 +209,7 @@ public class EventSerializationException : EventStoreException
     {
     }
 
-    public EventSerializationException() : base()
+    public EventSerializationException()
     {
     }
 
@@ -273,7 +273,7 @@ public class EventDeserializationException : EventStoreException
     {
     }
 
-    public EventDeserializationException() : base()
+    public EventDeserializationException()
     {
     }
 
@@ -314,7 +314,7 @@ public class StreamNotFoundException : EventStoreException
     {
     }
 
-    public StreamNotFoundException() : base()
+    public StreamNotFoundException()
     {
     }
 
@@ -358,7 +358,7 @@ public class EventNotFoundException : EventStoreException
     {
     }
 
-    public EventNotFoundException() : base()
+    public EventNotFoundException()
     {
     }
 
@@ -398,7 +398,7 @@ public class StorageUnavailableException : EventStoreException
     {
     }
 
-    public StorageUnavailableException() : base()
+    public StorageUnavailableException()
     {
     }
 
@@ -419,7 +419,7 @@ public class EventValidationException : EventStoreException
     /// <summary>
     /// Gets the validation errors.
     /// </summary>
-    public IReadOnlyList<string> ValidationErrors { get; }
+    public IReadOnlyList<string> ValidationErrors { get; init; } = null!;
 
     /// <summary>
     /// Initializes a new instance of the EventValidationException class.
@@ -474,7 +474,7 @@ public class EventValidationException : EventStoreException
     {
     }
 
-    public EventValidationException() : base()
+    public EventValidationException()
     {
     }
 
@@ -518,7 +518,7 @@ public class DuplicateEventException : EventStoreException
     {
     }
 
-    public DuplicateEventException() : base()
+    public DuplicateEventException()
     {
     }
 

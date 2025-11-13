@@ -13,7 +13,7 @@ namespace AIChat.Server.Services.ResponseCaching;
 /// Leverages existing IStateCacheManager infrastructure while providing response-specific caching capabilities.
 /// Follows SOLID principles with comprehensive monitoring, metrics collection, and health checking.
 /// </summary>
-public class ResponseCacheManager : IResponseCacheManager, IDisposable
+public class ResponseCacheManager : IResponseCacheManager
 {
     private readonly IStateCacheManager<CachedResponse> _stateCacheManager;
     private readonly ICacheKeyGenerator _keyGenerator;
@@ -63,7 +63,7 @@ public class ResponseCacheManager : IResponseCacheManager, IDisposable
         if (_configuration.EnableMaintenance)
         {
             var cleanupInterval = _configuration.GetCleanupInterval();
-            _cleanupTimer = new Timer(PerformMaintenanceAsync, null, cleanupInterval, cleanupInterval);
+            _cleanupTimer = new Timer(PerformMaintenance, null, cleanupInterval, cleanupInterval);
             _logger.LogInformation("ResponseCacheManager initialized with cleanup timer (interval: {CleanupInterval})", cleanupInterval);
         }
         else
@@ -705,7 +705,7 @@ public class ResponseCacheManager : IResponseCacheManager, IDisposable
     /// <summary>
     /// Performs periodic maintenance operations.
     /// </summary>
-    private void PerformMaintenanceAsync(object? state)
+    private void PerformMaintenance(object? state)
     {
         // Execute maintenance on a background task to avoid blocking the timer
         _ = Task.Run(PerformMaintenanceInternalAsync);

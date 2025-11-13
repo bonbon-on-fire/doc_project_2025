@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using AIChat.Orleans.Contracts;
 using AIChat.Server.Services;
-using AIChat.Server.Services.Routing;
 using Microsoft.AspNetCore.SignalR;
 
 namespace AIChat.Server.Hubs;
@@ -9,20 +8,20 @@ namespace AIChat.Server.Hubs;
 /// <summary>
 /// <para>
 /// SignalR hub for real-time chat communication with Orleans integration.
-/// This hub routes operations through DualModeRouter to support both Orleans grains
-/// and direct service operations, providing seamless scalability and fallback capabilities.
+/// This hub uses Orleans grains directly for all operations, providing
+/// distributed state management and scalable real-time communication.
 /// </para>
 /// <para>
 /// Features:
 /// - Standardized error handling with categorized responses
 /// - Structured logging with performance metrics
-/// - Orleans-aware connection management
-/// - Backward compatibility with direct service mode
+/// - Orleans grain-based participant tracking and message processing
+/// - Real-time event relay through Orleans streams
 /// </para>
 /// </summary>
 public class ChatHub : Hub
 {
-    private readonly IDualModeRouter _dualModeRouter;
+    private readonly IClusterClient _clusterClient;
     private readonly IOrleansEventRelay _eventRelay;
     /// <summary>
     /// Kept for fallback compatibility
@@ -34,17 +33,17 @@ public class ChatHub : Hub
     /// <summary>
     /// Initializes a new instance of the ChatHub.
     /// </summary>
-    /// <param name="dualModeRouter">Router for Orleans/direct service operations</param>
+    /// <param name="clusterClient">Orleans cluster client for grain access</param>
     /// <param name="eventRelay">Service for Orleans event relay</param>
     /// <param name="chatService">Fallback chat service for direct operations</param>
     /// <param name="logger">Logger instance</param>
     public ChatHub(
-        IDualModeRouter dualModeRouter,
+        IClusterClient clusterClient,
         IOrleansEventRelay eventRelay,
         IChatService chatService,
         ILogger<ChatHub> logger)
     {
-        _dualModeRouter = dualModeRouter ?? throw new ArgumentNullException(nameof(dualModeRouter));
+        _clusterClient = clusterClient ?? throw new ArgumentNullException(nameof(clusterClient));
         _eventRelay = eventRelay ?? throw new ArgumentNullException(nameof(eventRelay));
         _chatService = chatService ?? throw new ArgumentNullException(nameof(chatService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -84,12 +83,9 @@ public class ChatHub : Hub
             // Always add to SignalR group first (fast, reliable)
             await Groups.AddToGroupAsync(Context.ConnectionId, $"chat_{chatId}");
 
-            // Use DualModeRouter for Orleans/direct participant tracking
-            await _dualModeRouter.ExecuteAsync(
-                orleansOperation: async grain => await ExecuteOrleansJoinAsync(grain, chatId),
-                directOperation: async service => await ExecuteDirectJoinAsync(chatId),
-                operationName: "JoinChatGroup"
-            );
+            // Use Orleans grain for participant tracking
+            var grain = _clusterClient.GetGrain<IChatGrain>(chatId);
+            await ExecuteOrleansJoinAsync(grain, chatId);
 
             // Subscribe to Orleans events if available
             if (await _eventRelay.IsOrleansEnabledAsync())
@@ -149,12 +145,9 @@ public class ChatHub : Hub
             // Always remove from SignalR group first
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"chat_{chatId}");
 
-            // Use DualModeRouter for Orleans/direct participant tracking
-            await _dualModeRouter.ExecuteAsync(
-                orleansOperation: async grain => await ExecuteOrleansLeaveAsync(grain, chatId),
-                directOperation: async service => await ExecuteDirectLeaveAsync(chatId),
-                operationName: "LeaveChatGroup"
-            );
+            // Use Orleans grain for participant tracking
+            var grain = _clusterClient.GetGrain<IChatGrain>(chatId);
+            await ExecuteOrleansLeaveAsync(grain, chatId);
 
             // Unsubscribe from Orleans events
             await _eventRelay.UnsubscribeFromGrainEventsAsync(chatId);
@@ -214,11 +207,9 @@ public class ChatHub : Hub
             _logger.LogInformation("Starting SendMessage operation for ChatId: {ChatId}, UserId: {UserId}, MessageLength: {MessageLength}",
                 chatId, userId, message.Length);
 
-            await _dualModeRouter.ExecuteAsync(
-                orleansOperation: async grain => await ExecuteOrleansSendMessageAsync(grain, chatId, userId, message),
-                directOperation: async service => await ExecuteDirectSendMessageAsync(service, chatId, userId, message),
-                operationName: "SendMessage"
-            );
+            // Use Orleans grain for message processing
+            var grain = _clusterClient.GetGrain<IChatGrain>(chatId);
+            await ExecuteOrleansSendMessageAsync(grain, chatId, userId, message);
 
             stopwatch.Stop();
             _logger.LogInformation(
@@ -333,20 +324,6 @@ public class ChatHub : Hub
     }
 
     /// <summary>
-    /// Executes direct service join chat group operation.
-    /// </summary>
-    private async Task ExecuteDirectJoinAsync(string chatId)
-    {
-        // SignalR group already handles this in direct mode
-        _logger.LogDebug(
-            "Direct: User {ConnectionId} joined chat group {ChatId}",
-            Context.ConnectionId,
-            chatId
-        );
-        await Task.CompletedTask; // No additional operation needed
-    }
-
-    /// <summary>
     /// Executes Orleans-specific leave chat group operation.
     /// </summary>
     private async Task ExecuteOrleansLeaveAsync(IChatGrain grain, string chatId)
@@ -358,20 +335,6 @@ public class ChatHub : Hub
             Context.ConnectionId,
             chatId
         );
-    }
-
-    /// <summary>
-    /// Executes direct service leave chat group operation.
-    /// </summary>
-    private async Task ExecuteDirectLeaveAsync(string chatId)
-    {
-        // SignalR group removal already handles this in direct mode
-        _logger.LogDebug(
-            "Direct: User {ConnectionId} left chat group {ChatId}",
-            Context.ConnectionId,
-            chatId
-        );
-        await Task.CompletedTask; // No additional operation needed
     }
 
     /// <summary>
@@ -410,45 +373,6 @@ public class ChatHub : Hub
                 chatId
             );
         }
-    }
-
-    /// <summary>
-    /// Executes direct service send message operation.
-    /// </summary>
-    private async Task ExecuteDirectSendMessageAsync(IChatService service, string chatId, string userId, string message)
-    {
-        // Use existing IChatService.SendMessageAsync logic
-        var sendRequest = new SendMessageRequest
-        {
-            ChatId = chatId,
-            UserId = userId,
-            Message = message
-        };
-
-        var result = await service.SendMessageAsync(sendRequest);
-
-        if (!result.Success)
-        {
-            _logger.LogError(
-                "Direct: Error sending message for chat {ChatId}: {Error}",
-                chatId,
-                result.Error
-            );
-
-            await SendErrorResponseAsync("SendMessage",
-                result.Error ?? "Failed to process message. Please try again.",
-                chatId, ErrorCategory.Service);
-        }
-        else
-        {
-            _logger.LogInformation(
-                "Direct: Message sent successfully for chat {ChatId}",
-                chatId
-            );
-        }
-
-        // Note: Real-time broadcasting is handled by ChatService events
-        // The OnMessageCreated event handler will broadcast messages to SignalR clients
     }
 
     /// <summary>

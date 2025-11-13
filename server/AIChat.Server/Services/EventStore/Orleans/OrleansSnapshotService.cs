@@ -416,7 +416,7 @@ internal sealed class OrleansGrainProjection<TState> : IEventProjection<TState>
     /// Orleans grains typically don't use event sourcing, so this is a no-op.
     /// The grain state is restored directly from the snapshot.
     /// </summary>
-    public static Task ApplyEventsAsync(IEnumerable<IEvent> events, CancellationToken cancellationToken = default)
+    public Task ApplyEventsAsync(IEnumerable<IEvent> events, CancellationToken cancellationToken = default)
     {
         // Orleans grains restore directly from snapshot state, no event replay needed
         return Task.CompletedTask;

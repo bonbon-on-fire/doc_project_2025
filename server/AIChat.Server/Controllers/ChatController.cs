@@ -18,9 +18,9 @@ namespace AIChat.Server.Controllers;
 public class ChatController(
     IChatService chatService,
     ILogger<ChatController> logger,
-    Services.Routing.IDualModeRouter router,
     ITaskStorage taskStorage,
     IChatStorage chatStorage,
+    IClusterClient clusterClient,
     // Optional services for advanced features
     IServerSentEventsService? serverSentEventsService = null,
     IHubContext<ChatHub>? hubContext = null,
@@ -35,9 +35,9 @@ public class ChatController(
     /// </summary>
     private readonly IChatService _chatService = chatService;
     private readonly ILogger<ChatController> _logger = logger;
-    private readonly Services.Routing.IDualModeRouter _router = router;
     private readonly ITaskStorage _taskStorage = taskStorage;
     private readonly IChatStorage _chatStorage = chatStorage;
+    private readonly IClusterClient _clusterClient = clusterClient;
 
     /// <summary>
     /// Optional dependencies for advanced features
@@ -69,15 +69,9 @@ public class ChatController(
         string chatId,
         CancellationToken cancellationToken = default)
     {
-        return await _router.ExecuteAsync<ActionResult<T>>(
-            // Orleans operation - use grain directly with chat ID
-            orleansOperation,
-            // Direct service operation
-            directOperation,
-            operationName,
-            chatId,
-            cancellationToken
-        );
+        // Orleans-only mode: Get grain and execute operation
+        var grain = _clusterClient.GetGrain<IChatGrain>(chatId);
+        return await orleansOperation(grain);
     }
 
     /// <summary>
@@ -96,15 +90,9 @@ public class ChatController(
         string chatId,
         CancellationToken cancellationToken = default)
     {
-        return await _router.ExecuteAsync(
-            // Orleans operation - use grain directly with chat ID
-            orleansOperation,
-            // Direct service operation
-            directOperation,
-            operationName,
-            chatId,
-            cancellationToken
-        );
+        // Orleans-only mode: Get grain and execute operation
+        var grain = _clusterClient.GetGrain<IChatGrain>(chatId);
+        return await orleansOperation(grain);
     }
 
     /// <summary>
@@ -163,11 +151,9 @@ public class ChatController(
         string operationName,
         CancellationToken cancellationToken = default)
     {
-        return await _router.ExecuteAsync(
-            operation,
-            _ => Task.FromException<T>(new InvalidOperationException($"Direct service does not support {operationName}")),
-            operationName,
-            cancellationToken);
+        // Orleans-only mode: Get grain and execute operation
+        var grain = _clusterClient.GetGrain<IChatGrain>(chatId);
+        return await operation(grain);
     }
 
     /// <summary>
@@ -268,7 +254,7 @@ public class ChatController(
     }
 
     /// <summary>
-    /// GET: api/chat/history?userId={userId}&page={page}&pageSize={pageSize}
+    /// GET: api/chat/history?userId={userId}&amp;page={page}&amp;pageSize={pageSize}
     /// </summary>
     /// <param name="userId"></param>
     /// <param name="page"></param>
@@ -702,6 +688,8 @@ public class ChatController(
 
     /// <summary>
     /// POST: api/chat/stream-sse
+    /// Streams chat completions using Server-Sent Events (SSE).
+    /// Returns text/event-stream content-type with real-time streaming data.
     /// </summary>
     /// <param name="request"></param>
     /// <param name="cancellationToken"></param>
@@ -727,20 +715,15 @@ public class ChatController(
             return await HandleSignalRStreamingAsync(request, cancellationToken);
         }
 
-        // Set response headers for SSE immediately
+        // Set response headers for SSE
+        // Orleans is now always available - no availability check needed
         Response.Headers.Append("Content-Type", "text/event-stream");
         Response.Headers.Append("Cache-Control", "no-cache");
         Response.Headers.Append("Connection", "keep-alive");
 
-        // Check if Orleans should be used via router health check
-        var useOrleans = await _router.IsOrleansEnabledAsync(cancellationToken);
-
         // Set initial headers based on router decision
-        Response.Headers.Append(
-            "X-Orleans-Routed",
-            useOrleans.ToString().ToLower(System.Globalization.CultureInfo.CurrentCulture)
-        );
-        Response.Headers.Append("X-Processing-Mode", useOrleans ? "orleans" : "direct");
+        Response.Headers.Append("X-Orleans-Routed", "true");
+        Response.Headers.Append("X-Processing-Mode", "orleans");
 
         // Use unified service method for both new and existing chats
         var streamRequest = new StreamChatRequest
@@ -755,134 +738,34 @@ public class ChatController(
         // Get initialization metadata from service
         var initResult = await _chatService.PrepareUnifiedStreamChatAsync(streamRequest);
 
-        // Route through Orleans if available
-        if (useOrleans)
-        {
-            try
-            {
-                _logger.LogInformation(
-                    "Routing SSE stream through Orleans for chat {ChatId}",
-                    initResult.ChatId
-                );
-                await ProcessStreamViaOrleansAsync(request, initResult, cancellationToken);
-                return new EmptyResult();
-            }
-            catch (Exception orleansEx)
-            {
-                _logger.LogWarning(
-                    orleansEx,
-                    "Orleans streaming failed for chat {ChatId}, falling back to direct processing",
-                    initResult.ChatId
-                );
-
-                // Update headers to reflect fallback to direct processing
-                Response.Headers["X-Orleans-Routed"] = "false";
-                Response.Headers["X-Processing-Mode"] = "direct";
-
-                // Fall through to direct processing
-            }
-        }
-
-        // Direct processing path
-        return await ProcessStreamDirectlyWithRouterAsync(request, cancellationToken);
-    }
-
-    private async Task<IActionResult> ProcessStreamDirectlyWithRouterAsync(
-        CreateChatRequest request,
-        CancellationToken cancellationToken = default
-    )
-    {
-        string? currentChatId = null;
-        const string? currentAssistantMessageId = null;
-        const int currentAssistantSequenceNumber = 0;
-
-        // Generic side-channel forwarder
-        async Task ForwardSideChannel(StreamChunkEvent ev)
-        {
-            var envelope = ev.ToSSEEnvelope();
-            var sid = $"{ev.ChatId}:{ev.MessageId}:{ev.SequenceNumber}:{ev.ChunkSequenceId}";
-            await SendSseEvent("messageupdate", envelope, sid);
-        }
-
-        async Task ForwardMessage(MessageEvent ev)
-        {
-            var envelope = ev.ToSSEEnvelope();
-            var sid = $"{ev.ChatId}:{ev.MessageId}:{ev.SequenceNumber}";
-            await SendSseEvent("message", envelope, sid);
-        }
-
         try
         {
-            // Use unified service method for both new and existing chats
-            var streamRequest = new StreamChatRequest
-            {
-                ChatId = request.ChatId, // null for new chats, populated for existing
-                UserId = request.UserId,
-                Message = request.Message,
-                SystemPrompt = request.SystemPrompt,
-                ModeId = request.ModeId,
-            };
-
-            // Get initialization metadata from service
-            var initResult = await _chatService.PrepareUnifiedStreamChatAsync(streamRequest);
-            currentChatId = initResult.ChatId;
-
-            // Direct processing path
-            _logger.LogDebug("Using direct SSE streaming for chat {ChatId}", currentChatId);
-
-            // Subscribe to side-channel after IDs are known
-            _chatService.MessageReceived += ForwardMessage;
-            _chatService.StreamChunkReceived += ForwardSideChannel;
-
-            // Send INIT event (envelope optional kind: 'meta')
-            var initEnvelope = SSEEventExtensions.CreateInitEnvelope(
-                initResult.ChatId,
-                initResult.UserMessageId,
-                initResult.UserTimestamp,
-                initResult.UserSequenceNumber
-            );
-
-            var initId = $"{initResult.ChatId}<|>{initResult.UserMessageId}";
-            await SendSseEvent("init", initEnvelope, initId);
-
-            // Stream the assistant response using the assistant message created during initialization
-            await _chatService.StreamAssistantResponseAsync(initResult.ChatId, cancellationToken);
-
-            // Send completion event with final content
-            var completeEnvelope = SSEEventExtensions.CreateStreamCompleteEnvelope(
+            _logger.LogInformation(
+                "Routing SSE stream through Orleans for chat {ChatId}",
                 initResult.ChatId
             );
-            await SendSseEvent("complete", completeEnvelope, initId);
+            await ProcessStreamViaOrleansAsync(request, initResult, cancellationToken);
+            return new EmptyResult();
         }
-        catch (Exception ex)
+        catch (Exception orleansEx)
         {
-            // Avoid passing exception object to logger in watch/Test to prevent formatter crashes
             _logger.LogError(
-                "Error streaming chat completion: {Type}: {Message}",
-                ex.GetType().Name,
-                ex.Message
+                orleansEx,
+                "Orleans streaming failed for chat {ChatId}",
+                initResult.ChatId
             );
-            var errorEnvelope = SSEEventExtensions.CreateErrorEnvelope(
-                currentChatId ?? "unknown",
-                currentAssistantMessageId,
-                currentAssistantSequenceNumber,
-                ex.Message
-            );
-            await SendSseEvent(
-                "message",
-                errorEnvelope,
-                currentChatId != null && currentAssistantMessageId != null
-                    ? $"{currentChatId}<|>{currentAssistantMessageId}"
-                    : null
-            );
-        }
-        finally
-        {
-            _chatService.MessageReceived -= ForwardMessage;
-            _chatService.StreamChunkReceived -= ForwardSideChannel;
-        }
 
-        return new EmptyResult();
+            // Send error event via SSE
+            var errorEnvelope = SSEEventExtensions.CreateErrorEnvelope(
+                initResult.ChatId,
+                null,
+                0,
+                $"Streaming failed: {orleansEx.Message}"
+            );
+            await SendSseEvent("error", errorEnvelope, $"{initResult.ChatId}<|>error");
+
+            throw;
+        }
     }
 
     /// <summary>
@@ -927,9 +810,21 @@ public class ChatController(
                 Status = "Processing",
             };
 
-            // Process the assistant response asynchronously
-            // Note: The ChatHub is already subscribed to ChatService events
-            // and will broadcast messages to the SignalR group automatically
+            // Check if Orleans is available (required for streaming)
+            var useOrleans = true;
+            if (!useOrleans)
+            {
+                _logger.LogError("Orleans is required for SignalR streaming but is not available");
+                return StatusCode(503, new
+                {
+                    error = "Streaming service unavailable",
+                    message = "Orleans streaming backend is currently unavailable. Please try again later.",
+                    chatId = initResult.ChatId
+                });
+            }
+
+            // Process the assistant response asynchronously via Orleans
+            // Note: The ChatHub is subscribed to Orleans events and broadcasts to SignalR groups
             _ = Task.Run(
                 async () =>
                 {
@@ -953,11 +848,21 @@ public class ChatController(
                                 );
                         }
 
-                        // Stream the assistant response
-                        await _chatService.StreamAssistantResponseAsync(
-                            initResult.ChatId,
-                            cancellationToken
-                        );
+                        // Stream through Orleans ChatGrain (Orleans-only mode)
+                        var grain = _clusterClient.GetGrain<IChatGrain>(initResult.ChatId);
+                        var streamMessage = new StreamMessage
+                        {
+                            ChatId = initResult.ChatId,
+                            Content = request.Message,
+                            UserId = request.UserId,
+                            Timestamp = DateTime.UtcNow,
+                            Role = "user",
+                            ModeId = request.ModeId,
+                            SystemPrompt = request.SystemPrompt
+                        };
+                        var streamHandle = await grain.StartStreamAsync(streamMessage, cancellationToken);
+                        _logger.LogInformation("Started Orleans stream {StreamId} for chat {ChatId}",
+                            streamHandle.StreamId, initResult.ChatId);
 
                         // Send completion event via SignalR
                         var completeEnvelope = SSEEventExtensions.CreateStreamCompleteEnvelope(
@@ -1035,16 +940,14 @@ public class ChatController(
         CancellationToken cancellationToken = default
     )
     {
-        var isOrleansAvailable = await _router.IsOrleansEnabledAsync(cancellationToken);
+        var isOrleansAvailable = true;
         if (!isOrleansAvailable)
         {
             throw new InvalidOperationException("Orleans is not available for streaming operations");
         }
 
         // Check if we should use resilient streaming
-        var useResilientStreaming =
-            _resilientStreamManager != null
-            && await _router.IsOrleansEnabledAsync(cancellationToken);
+        var useResilientStreaming = _resilientStreamManager != null;
 
         if (!useResilientStreaming && _streamingBridge == null)
         {
@@ -1242,7 +1145,7 @@ public class ChatController(
 
         try
         {
-            var useBackground = await _router.IsOrleansEnabledAsync(cancellationToken);
+            var useBackground = true;
 
             if (useBackground && _backgroundChatService != null)
             {
@@ -1268,7 +1171,7 @@ public class ChatController(
             }
 
             // If background service didn't handle it, try Orleans grain cancellation
-            var isOrleansAvailable = await _router.IsOrleansEnabledAsync(cancellationToken);
+            var isOrleansAvailable = true;
             if (isOrleansAvailable && _operationTrackingService != null)
             {
                 try
@@ -1415,7 +1318,7 @@ public class ChatController(
 
         try
         {
-            var useBackground = await _router.IsOrleansEnabledAsync(cancellationToken);
+            var useBackground = true;
 
             if (useBackground && _backgroundChatService != null)
             {

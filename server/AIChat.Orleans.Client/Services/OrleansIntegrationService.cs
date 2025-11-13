@@ -3,7 +3,6 @@ using AIChat.Orleans.Client.Configuration;
 using AIChat.Orleans.Contracts;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.FeatureManagement;
 using Polly;
 using Polly.CircuitBreaker;
 using Polly.Retry;
@@ -13,12 +12,11 @@ namespace AIChat.Orleans.Client.Services;
 
 /// <summary>
 /// Implementation of Orleans integration service.
-/// Provides resilient, feature-flag controlled access to Orleans grains.
+/// Provides resilient access to Orleans grains with circuit breaker, retry, and timeout policies.
 /// </summary>
 public sealed class OrleansIntegrationService : IOrleansIntegrationService
 {
     private readonly IGrainFactory _grainFactory;
-    private readonly IFeatureManager _featureManager;
     private readonly ILogger<OrleansIntegrationService> _logger;
     private readonly OrleansResilienceConfiguration _resilienceConfig;
     private readonly ResiliencePipeline _resiliencePipeline;
@@ -32,18 +30,15 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
     /// Initializes a new instance of the OrleansIntegrationService.
     /// </summary>
     /// <param name="grainFactory">Orleans grain factory</param>
-    /// <param name="featureManager">Feature flag manager</param>
     /// <param name="logger">Logger instance</param>
     /// <param name="resilienceOptions">Resilience configuration options</param>
     public OrleansIntegrationService(
         IGrainFactory grainFactory,
-        IFeatureManager featureManager,
         ILogger<OrleansIntegrationService> logger,
         IOptions<OrleansResilienceConfiguration> resilienceOptions
     )
     {
         _grainFactory = grainFactory ?? throw new ArgumentNullException(nameof(grainFactory));
-        _featureManager = featureManager ?? throw new ArgumentNullException(nameof(featureManager));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _resilienceConfig = resilienceOptions?.Value ?? new OrleansResilienceConfiguration();
 
@@ -64,16 +59,6 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
 
         try
         {
-            // Check if Orleans integration is enabled
-            if (!await _featureManager.IsEnabledAsync("OrleansIntegration"))
-            {
-                _logger.LogDebug(
-                    "Orleans integration disabled, skipping activity recording for {UserId}",
-                    userId
-                );
-                return;
-            }
-
             // Execute Orleans operation with resilience
             await ExecuteWithResilienceAsync(
                 async () =>
@@ -112,12 +97,6 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
 
         try
         {
-            if (!await _featureManager.IsEnabledAsync("OrleansIntegration"))
-            {
-                _logger.LogDebug("Orleans integration disabled");
-                return null;
-            }
-
             var state = await ExecuteWithResilienceAsync(
                 async () =>
                 {
@@ -153,11 +132,6 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
     {
         try
         {
-            if (!await _featureManager.IsEnabledAsync("OrleansIntegration"))
-            {
-                return false;
-            }
-
             // Try to activate a health check grain and verify it responds
             var healthCheckUserId = $"health-check-{DateTime.UtcNow.Ticks}";
             var healthResult = await ExecuteWithResilienceAsync(
@@ -199,17 +173,6 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
 
         try
         {
-            if (!await _featureManager.IsEnabledAsync("OrleansIntegration"))
-            {
-                return new HealthCheckResult
-                {
-                    IsHealthy = false,
-                    GrainId = userId,
-                    CheckedAt = DateTime.UtcNow,
-                    Warnings = ["Orleans integration disabled"],
-                };
-            }
-
             var grain = _grainFactory.GetGrain<IUserGrain>(userId);
             var healthResult = await grain.CheckHealth();
 
@@ -247,13 +210,6 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
 
         try
         {
-            if (!await _featureManager.IsEnabledAsync("OrleansIntegration"))
-            {
-                status.ConnectionState = "Disabled";
-                status.Warnings.Add("Orleans integration is disabled via feature flag");
-                return status;
-            }
-
             // Try to get management grain to check cluster status
             var managementGrain = _grainFactory.GetGrain<IManagementGrain>(0);
             var silos = await managementGrain.GetHosts();
@@ -289,7 +245,7 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
         return status;
     }
 
-    #endregion
+    #endregion Phase 1: Shadow Mode Operations
 
     #region Phase 2: SignalR Integration (Stubbed for Phase 1)
 
@@ -333,7 +289,7 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
         await Task.CompletedTask;
     }
 
-    #endregion
+    #endregion Phase 2: SignalR Integration (Stubbed for Phase 1)
 
     #region Phase 3: Background Processing (Stubbed for Phase 1)
 
@@ -364,7 +320,7 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
         await Task.CompletedTask;
     }
 
-    #endregion
+    #endregion Phase 3: Background Processing (Stubbed for Phase 1)
 
     #region Private Helper Methods
 
@@ -546,5 +502,5 @@ public sealed class OrleansIntegrationService : IOrleansIntegrationService
         }
     }
 
-    #endregion
+    #endregion Private Helper Methods
 }

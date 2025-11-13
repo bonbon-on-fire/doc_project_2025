@@ -83,7 +83,8 @@ public abstract class MessageTranslatorBase<TSource, TTarget> : IMessageTranslat
     /// <inheritdoc />
     public virtual bool CanTranslate(TSource source)
     {
-        return !EqualityComparer<TSource?>.Default.Equals(source, default(TSource?)) && source.GetType() == SourceType;
+        // Null-forgiving operator safe because we verify non-null in the first condition
+        return !EqualityComparer<TSource?>.Default.Equals(source, default) && source!.GetType() == SourceType;
     }
 
     /// <inheritdoc />
@@ -106,7 +107,7 @@ public abstract class MessageTranslatorBase<TSource, TTarget> : IMessageTranslat
     /// <returns>Validation result with error message if validation fails</returns>
     protected virtual TranslationResult<TTarget>? ValidateSource(TSource source, TranslationContext context)
     {
-        if (EqualityComparer<TSource?>.Default.Equals(source, default(TSource?)))
+        if (EqualityComparer<TSource?>.Default.Equals(source, default))
         {
             return TranslationResult.Failure<TTarget>("Source message cannot be null", "NULL_SOURCE");
         }
@@ -127,7 +128,7 @@ public abstract class MessageTranslatorBase<TSource, TTarget> : IMessageTranslat
     /// <returns>Validation result with error message if validation fails</returns>
     protected virtual TranslationResult<TTarget>? ValidateTarget(TTarget target, TranslationContext context)
     {
-        if (EqualityComparer<TTarget?>.Default.Equals(target, default(TTarget?)))
+        if (EqualityComparer<TTarget?>.Default.Equals(target, default))
         {
             return TranslationResult.Failure<TTarget>("Translation produced null result", "NULL_TARGET");
         }

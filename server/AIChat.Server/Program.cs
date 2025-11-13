@@ -11,8 +11,6 @@ using AIChat.Server.Models;
 using AIChat.Server.Services;
 using AIChat.Server.Services.EventStore;
 using AIChat.Server.Services.ResponseCaching;
-using AIChat.Server.Services.ResponseCaching.Decorators;
-using AIChat.Server.Services.WebSocket;
 using AIChat.Server.Storage;
 using AIChat.Server.Storage.Sqlite;
 using Lib.AspNetCore.ServerSentEvents;
@@ -82,9 +80,9 @@ builder.Host.UseSerilog((context, services, configuration) =>
         logFileName,
         restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Verbose,
         buffered: false,
-        shared: true
-,
+        shared: true,
         rollingInterval: RollingInterval.Day);
+
 
     // Add Seq sink for centralized structured logging (if enabled)
     var enableSeq = context.Configuration.GetValue("Serilog:EnableSeq", true);
@@ -93,8 +91,7 @@ builder.Host.UseSerilog((context, services, configuration) =>
         var seqServerUrl = context.Configuration["Serilog:SeqServerUrl"] ?? "http://localhost:5341";
         configuration.WriteTo.Seq(
             serverUrl: seqServerUrl,
-            restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Debug
-,
+            restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Debug,
             apiKey: context.Configuration["Serilog:SeqApiKey"]);
     }
 });
@@ -312,6 +309,7 @@ if (!orleansDisabled)
         // In Production: Orleans Host runs as independent service
         Log.Information("Configuring Orleans client for {Environment} environment", builder.Environment.EnvironmentName);
         _ = builder.Services.AddOrleansClient(builder.Configuration, builder.Environment);
+        Log.Information("Orleans client configured successfully. Connection will be established when services start.");
 
         // Register Orleans metrics collector (needed for client-side operations)
         // First register the base collector
@@ -455,37 +453,8 @@ builder.Services.AddScoped<IModeService, ModeService>();
 // Add Response Caching infrastructure (Phase 3 - ORL-ST-P3-004)
 builder.Services.AddIntelligentResponseCaching();
 
-// Add router services for Orleans integration with Response Caching (Phase 3 - ORL-ST-P3-003/004)
-// Register underlying routers as internal dependencies
-builder.Services.AddScoped<AIChat.Server.Services.Routing.ModeRouter>();
-builder.Services.AddScoped<AIChat.Server.Services.Routing.MonitoringRouter>();
-builder.Services.AddScoped<AIChat.Server.Services.Routing.LogsRouter>();
-
-// Register cached router decorators as primary implementations
-builder.Services.AddScoped<AIChat.Server.Services.Routing.IModeRouter>(serviceProvider =>
-    new CachedModeRouter(
-        serviceProvider.GetRequiredService<AIChat.Server.Services.Routing.ModeRouter>(),
-        serviceProvider.GetRequiredService<IResponseCacheManager>(),
-        serviceProvider.GetRequiredService<ICacheKeyGenerator>(),
-        serviceProvider.GetRequiredService<ILogger<CachedModeRouter>>()
-    ));
-builder.Services.AddScoped<AIChat.Server.Services.Routing.IMonitoringRouter>(serviceProvider =>
-    new CachedMonitoringRouter(
-        serviceProvider.GetRequiredService<AIChat.Server.Services.Routing.MonitoringRouter>(),
-        serviceProvider.GetRequiredService<IResponseCacheManager>(),
-        serviceProvider.GetRequiredService<ICacheKeyGenerator>(),
-        serviceProvider.GetRequiredService<ILogger<CachedMonitoringRouter>>()
-    ));
-builder.Services.AddScoped<AIChat.Server.Services.Routing.ILogsRouter>(serviceProvider =>
-    new CachedLogsRouter(
-        serviceProvider.GetRequiredService<AIChat.Server.Services.Routing.LogsRouter>(),
-        serviceProvider.GetRequiredService<IResponseCacheManager>(),
-        serviceProvider.GetRequiredService<ICacheKeyGenerator>(),
-        serviceProvider.GetRequiredService<ILogger<CachedLogsRouter>>()
-    ));
-
 // Add WebSocket services for Orleans integration (Phase 3 - ORL-ST-P3-005)
-builder.Services.AddWebSocketServices();
+// builder.Services.AddWebSocketServices();
 
 // Add SignalR broadcasting service for Orleans integration (Phase 2/3)
 builder.Services.AddScoped<
@@ -600,35 +569,6 @@ builder.Services.AddHostedService(provider =>
     provider.GetRequiredService<ProductionMonitoringService>()
 );
 
-// Configure DualModeRouter for Orleans/Direct service routing (Phase 1 - ORL-ST-P1-008)
-builder.Services.Configure<AIChat.Server.Services.Routing.DualModeRouterOptions>(
-    builder.Configuration.GetSection(AIChat.Server.Services.Routing.DualModeRouterOptions.SectionName)
-);
-
-// Configure Circuit Breaker options for Orleans resilience (Phase 3 - ORL-ST-P3-005)
-builder.Services.Configure<AIChat.Server.Services.Routing.CircuitBreakerOptions>(options =>
-{
-    options.FailureThreshold = builder.Configuration.GetValue<int>("CircuitBreaker:FailureThreshold", 5);
-    options.BreakDuration = TimeSpan.FromSeconds(
-        builder.Configuration.GetValue<int>("CircuitBreaker:BreakDurationSeconds", 30));
-    options.Enabled = builder.Configuration.GetValue<bool>("CircuitBreaker:Enabled", true);
-});
-
-// Register DualModeRouter with Circuit Breaker decorator
-builder.Services.AddSingleton<AIChat.Server.Services.Routing.DualModeRouter>();
-builder.Services.AddSingleton<AIChat.Server.Services.Routing.IDualModeRouter>(provider =>
-{
-    var innerRouter = provider.GetRequiredService<AIChat.Server.Services.Routing.DualModeRouter>();
-    var logger = provider.GetRequiredService<ILogger<AIChat.Server.Services.Routing.CircuitBreakerDualModeRouter>>();
-    var options = provider.GetService<IOptions<AIChat.Server.Services.Routing.CircuitBreakerOptions>>();
-
-    // Wrap with circuit breaker for resilience
-    return new AIChat.Server.Services.Routing.CircuitBreakerDualModeRouter(innerRouter, logger, options);
-});
-
-// Note: Cached router decorators are already registered above as scoped services
-// Removed duplicate router registrations - using cached decorators from lines above
-
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
@@ -720,7 +660,7 @@ app.UseHttpMetrics();
 app.UseProtocolNegotiation();
 
 // Add WebSocket handler middleware (Phase 3 - ORL-ST-P3-005)
-app.UseWebSocketHandler("/api/ws");
+// app.UseWebSocketHandler("/api/ws");
 
 // Skip HTTPS redirection in Test (HTTP-only)
 if (!app.Environment.IsEnvironment("Test"))
