@@ -1,4 +1,3 @@
-using AchieveAi.LmDotnetTools.LmConfig.Services;
 using AIChat.Orleans.Client.Configuration;
 using AIChat.Orleans.Client.Services;
 using AIChat.Orleans.Placement;
@@ -367,8 +366,13 @@ else
     _ = builder.Services.AddHealthChecks();
 }
 
-// Add LmConfig services
-builder.Services.AddLmConfig(builder.Configuration.GetSection("LmConfig"));
+// ========================================================================
+// ORLEANS MIGRATION COMPLETE: Server is Pure Proxy
+// ========================================================================
+// LmConfig removed - LLM configuration managed by Orleans.Host
+// MCP integration removed - Tool execution managed by Orleans grains
+// Server only proxies requests to Orleans - NO business logic
+// ========================================================================
 
 // Bind AI model selection options
 builder.Services.Configure<AiOptions>(builder.Configuration.GetSection("AI"));
@@ -383,13 +387,9 @@ builder.Services.Configure<OrleansResilienceConfiguration>(
     builder.Configuration.GetSection(OrleansResilienceConfiguration.SectionName)
 );
 
-// Configure MCP servers
-builder.Services.Configure<McpConfiguration>(builder.Configuration.GetSection("Mcp"));
-builder.Services.AddSingleton<IMcpConfigurationValidator, McpConfigurationValidator>();
-builder.Services.AddSingleton<IMcpClientManager, McpClientManager>();
-
 // Phase 3.3: IStreamingAgent registration removed - LLM operations now handled by Orleans ChatGrain
 // IStreamingAgent is injected at the Orleans grain level, not at the server application level
+// MCP integration removed - Tool execution now handled by Orleans grains
 
 // Add CORS for development and test
 builder.Services.AddCors(options =>
@@ -433,9 +433,6 @@ builder.Services.AddServerSentEvents();
 
 // Add task management services
 // Removed ChatTaskManager - using TaskManager from LmDotNet directly
-
-// Add tooling service
-builder.Services.AddScoped<IToolingService, ToolingService>();
 
 // Add chat service with facade
 // ChatService is singleton (stateless for background processing)
@@ -595,41 +592,6 @@ using (var scope = app.Services.CreateScope())
         await SchemaHelper.SeedUsersAsync(conn);
     }
 }
-
-// Validate MCP configuration at startup
-var mcpValidator = app.Services.GetRequiredService<IMcpConfigurationValidator>();
-var mcpLogger = app.Services.GetRequiredService<ILogger<Program>>();
-if (!mcpValidator.Validate(out var validationErrors))
-{
-    mcpLogger.LogWarning(
-        "MCP configuration validation failed with {ErrorCount} errors:",
-        validationErrors.Count
-    );
-    foreach (var error in validationErrors)
-    {
-        mcpLogger.LogWarning("  - {Error}", error);
-    }
-    // Don't fail startup, but log warnings about invalid configuration
-}
-
-// Initialize MCP clients at startup (non-blocking)
-var mcpClientManager = app.Services.GetRequiredService<IMcpClientManager>();
-_ = Task.Run(async () =>
-{
-    try
-    {
-        mcpLogger.LogInformation("Starting MCP client initialization...");
-        await mcpClientManager.InitializeClientsAsync();
-        mcpLogger.LogInformation("MCP client initialization completed");
-    }
-    catch (Exception ex)
-    {
-        mcpLogger.LogError(
-            ex,
-            "Failed to initialize MCP clients at startup. They will be initialized on first use."
-        );
-    }
-});
 
 app.UseCors("AllowSvelteApp");
 

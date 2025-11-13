@@ -1,4 +1,4 @@
-namespace AIChat.Server.Models;
+namespace AIChat.Orleans.Host.Models;
 
 public class McpConfiguration
 {

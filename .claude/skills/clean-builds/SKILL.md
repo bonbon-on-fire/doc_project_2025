@@ -47,18 +47,18 @@ Execute these commands in order to prepare your project:
 
 ```pwsh
 # Step 1: Enable code style enforcement in all projects
-pwsh scripts/validate-code-style-enforcement.ps1 -Enforce
+pwsh <clean_builds_skill_base_dir>/scripts/validate-code-style-enforcement.ps1 -Enforce
 
 # Step 2: Enable Roslynator analyzers (200+ code quality rules)
 # Use -ExcludeSubmodules to skip external dependencies
-pwsh scripts/enable-roslynator-analyzers.ps1 -ExcludeSubmodules
+pwsh <clean_builds_skill_base_dir>/scripts/enable-roslynator-analyzers.ps1 -ExcludeSubmodules
 
 # Step 3: Configure .editorconfig with Roslynator severity settings
 # Start with 'warning' severity (can escalate to 'error' later)
-pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity warning
+pwsh <clean_builds_skill_base_dir>/scripts/configure-roslynator-editorconfig.ps1 -Severity warning
 
 # Step 4: Validate package versions
-pwsh scripts/validate-package-versions.ps1
+pwsh <clean_builds_skill_base_dir>/scripts/validate-package-versions.ps1
 ```
 
 ### Verification
@@ -67,13 +67,13 @@ After setup, verify the configuration worked:
 
 ```pwsh
 # Check that analyzers are installed
-pwsh scripts/enable-roslynator-analyzers.ps1 -CheckOnly
+pwsh <clean_builds_skill_base_dir>/scripts/enable-roslynator-analyzers.ps1 -CheckOnly
 
 # Check that code style is enforced
-pwsh scripts/validate-code-style-enforcement.ps1
+pwsh <clean_builds_skill_base_dir>/scripts/validate-code-style-enforcement.ps1
 
 # Preview .editorconfig settings
-pwsh scripts/configure-roslynator-editorconfig.ps1 -ShowPreview
+pwsh <clean_builds_skill_base_dir>/scripts/configure-roslynator-editorconfig.ps1 -ShowPreview
 ```
 
 ### When to Re-Run Setup
@@ -96,19 +96,19 @@ Execute all steps in sequence before committing:
 
 1. **Validate package versions** to ensure no conflicts:
    ```pwsh
-   pwsh scripts/validate-package-versions.ps1
+   pwsh <clean_builds_skill_base_dir>/scripts/validate-package-versions.ps1
    ```
    - If critical issues found, see "Fixing Package Version Issues" below
    - Fix all CRITICAL issues before proceeding
 
 2. **Format the code** to fix style issues and apply code analysis fixes:
    ```pwsh
-   pwsh scripts/format-code.ps1
+   pwsh <clean_builds_skill_base_dir>/scripts/format-code.ps1
    ```
 
 3. **Build and check** for any remaining errors or warnings:
    ```pwsh
-   pwsh scripts/build_and_group_errors_and_warnings.ps1
+   pwsh <clean_builds_skill_base_dir>/scripts/build_and_group_errors_and_warnings.ps1
    ```
 
 4. **Review output** and fix any remaining issues:
@@ -121,21 +121,21 @@ Execute all steps in sequence before committing:
 
 Verify formatting without making changes:
 ```pwsh
-pwsh scripts/format-code.ps1 -CheckOnly
+pwsh <clean_builds_skill_base_dir>/scripts/format-code.ps1 -CheckOnly
 ```
 
 ### Option 3: Build Quality Check Only
 
 If you've already formatted, just check build quality:
 ```pwsh
-pwsh scripts/build_and_group_errors_and_warnings.ps1
+pwsh <clean_builds_skill_base_dir>/scripts/build_and_group_errors_and_warnings.ps1
 ```
 
 ### Option 4: Package Version Check Only
 
 Check for package version inconsistencies:
 ```pwsh
-pwsh scripts/validate-package-versions.ps1
+pwsh <clean_builds_skill_base_dir>/scripts/validate-package-versions.ps1
 ```
 
 ### Option 5: Enable Roslynator Analyzers (One-Time Setup)
@@ -144,10 +144,10 @@ Add 200+ code quality analyzers that run during build to catch issues early:
 
 ```pwsh
 # Step 1: Add Roslynator.Analyzers NuGet package to all projects
-pwsh scripts/enable-roslynator-analyzers.ps1
+pwsh <clean_builds_skill_base_dir>/scripts/enable-roslynator-analyzers.ps1
 
 # Step 2: Configure .editorconfig with Roslynator severity settings
-pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity warning
+pwsh <clean_builds_skill_base_dir>/scripts/configure-roslynator-editorconfig.ps1 -Severity warning
 ```
 
 **When to use:**
@@ -193,7 +193,7 @@ dotnet build 2>&1 | grep "error RCS" | grep -oP "RCS\d+" | sort | uniq -c
 # (e.g., RCS1141 for missing documentation comments)
 
 # Step 4: Verify clean build
-pwsh scripts/build_and_group_errors_and_warnings.ps1
+pwsh <clean_builds_skill_base_dir>/scripts/build_and_group_errors_and_warnings.ps1
 ```
 
 **Important Notes:**
@@ -265,28 +265,28 @@ Enable Roslynator analyzers when you want:
 **Best Practice Workflow:**
 ```pwsh
 # Step 1: Format code first to fix auto-fixable issues
-pwsh scripts/format-code.ps1
+pwsh <clean_builds_skill_base_dir>/scripts/format-code.ps1
 
 # Step 2: Enable analyzers (exclude submodules for faster builds)
-pwsh scripts/enable-roslynator-analyzers.ps1 -ExcludeSubmodules
+pwsh <clean_builds_skill_base_dir>/scripts/enable-roslynator-analyzers.ps1 -ExcludeSubmodules
 
 # Step 3: Configure with lower severity initially
-pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity suggestion
+pwsh <clean_builds_skill_base_dir>/scripts/configure-roslynator-editorconfig.ps1 -Severity suggestion
 
 # Step 4: Auto-fix Roslynator issues
 roslynator fix DOC_Project_2025.sln --ignore-compiler-errors --format
 
 # Step 5: Build and review remaining warnings
-pwsh scripts/build_and_group_errors_and_warnings.ps1
+pwsh <clean_builds_skill_base_dir>/scripts/build_and_group_errors_and_warnings.ps1
 
 # Step 6: Downgrade unfixable rules to suggestion in .editorconfig
 # (Review build output to identify which rules need downgrading)
 
 # Step 7: Verify clean build
-pwsh scripts/build_and_group_errors_and_warnings.ps1
+pwsh <clean_builds_skill_base_dir>/scripts/build_and_group_errors_and_warnings.ps1
 
 # Step 8: Gradually increase severity for critical rules
-pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity warning
+pwsh <clean_builds_skill_base_dir>/scripts/configure-roslynator-editorconfig.ps1 -Severity warning
 ```
 
 ## How the Scripts Work
@@ -417,25 +417,25 @@ This ensures the analyzers run during build but don't propagate to consuming pro
 **Usage examples:**
 ```pwsh
 # Add to all projects (default version 4.14.1)
-pwsh scripts/enable-roslynator-analyzers.ps1
+pwsh <clean_builds_skill_base_dir>/scripts/enable-roslynator-analyzers.ps1
 
 # Add only to main projects, excluding submodules (recommended)
-pwsh scripts/enable-roslynator-analyzers.ps1 -ExcludeSubmodules
+pwsh <clean_builds_skill_base_dir>/scripts/enable-roslynator-analyzers.ps1 -ExcludeSubmodules
 
 # Preview what would be changed
-pwsh scripts/enable-roslynator-analyzers.ps1 -WhatIf
+pwsh <clean_builds_skill_base_dir>/scripts/enable-roslynator-analyzers.ps1 -WhatIf
 
 # Check which projects need it
-pwsh scripts/enable-roslynator-analyzers.ps1 -CheckOnly
+pwsh <clean_builds_skill_base_dir>/scripts/enable-roslynator-analyzers.ps1 -CheckOnly
 
 # Install specific version
-pwsh scripts/enable-roslynator-analyzers.ps1 -RoslynatorVersion "4.12.0"
+pwsh <clean_builds_skill_base_dir>/scripts/enable-roslynator-analyzers.ps1 -RoslynatorVersion "4.12.0"
 
 # Remove from all projects
-pwsh scripts/enable-roslynator-analyzers.ps1 -RemoveAnalyzers
+pwsh <clean_builds_skill_base_dir>/scripts/enable-roslynator-analyzers.ps1 -RemoveAnalyzers
 
 # Export results to JSON
-pwsh scripts/enable-roslynator-analyzers.ps1 -OutputFormat Json -SaveToFile roslynator-status.json
+pwsh <clean_builds_skill_base_dir>/scripts/enable-roslynator-analyzers.ps1 -OutputFormat Json -SaveToFile roslynator-status.json
 ```
 
 ### configure-roslynator-editorconfig.ps1
@@ -490,23 +490,23 @@ The script provides console output only (no JSON/Summary formats since it's a on
 **Usage examples:**
 ```pwsh
 # Set all rules to 'warning' (default, recommended)
-pwsh scripts/configure-roslynator-editorconfig.ps1
+pwsh <clean_builds_skill_base_dir>/scripts/configure-roslynator-editorconfig.ps1
 
 # Set to 'error' for strict enforcement (build fails on violations)
-pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity error
+pwsh <clean_builds_skill_base_dir>/scripts/configure-roslynator-editorconfig.ps1 -Severity error
 
 # Preview changes without applying them (two equivalent ways)
-pwsh scripts/configure-roslynator-editorconfig.ps1 -ShowPreview
-pwsh scripts/configure-roslynator-editorconfig.ps1 -WhatIf
+pwsh <clean_builds_skill_base_dir>/scripts/configure-roslynator-editorconfig.ps1 -ShowPreview
+pwsh <clean_builds_skill_base_dir>/scripts/configure-roslynator-editorconfig.ps1 -WhatIf
 
 # Configure a specific .editorconfig file
-pwsh scripts/configure-roslynator-editorconfig.ps1 -ConfigFile "src\.editorconfig"
+pwsh <clean_builds_skill_base_dir>/scripts/configure-roslynator-editorconfig.ps1 -ConfigFile "src\.editorconfig"
 
 # Set to 'suggestion' for non-blocking hints
-pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity suggestion
+pwsh <clean_builds_skill_base_dir>/scripts/configure-roslynator-editorconfig.ps1 -Severity suggestion
 
 # Disable analyzers (while keeping configuration for later)
-pwsh scripts/configure-roslynator-editorconfig.ps1 -EnableAnalyzers $false
+pwsh <clean_builds_skill_base_dir>/scripts/configure-roslynator-editorconfig.ps1 -EnableAnalyzers $false
 ```
 
 **Note:** After running this script, you should:
@@ -619,10 +619,10 @@ Before using the clean-builds workflow for the first time, complete the [Prerequ
 **Check if setup is complete**:
 ```pwsh
 # Should report all projects have analyzers
-pwsh scripts/enable-roslynator-analyzers.ps1 -CheckOnly
+pwsh <clean_builds_skill_base_dir>/scripts/enable-roslynator-analyzers.ps1 -CheckOnly
 
 # Should report all projects have enforcement enabled
-pwsh scripts/validate-code-style-enforcement.ps1
+pwsh <clean_builds_skill_base_dir>/scripts/validate-code-style-enforcement.ps1
 ```
 
 ### 2. Format After Every Change
@@ -739,18 +739,18 @@ Get-ChildItem -Recurse -Filter "*.csproj" |
 Always run the full workflow before creating a commit:
 ```pwsh
 # Step 1: Validate and enable code style enforcement
-pwsh scripts/validate-code-style-enforcement.ps1 -Enforce
+pwsh <clean_builds_skill_base_dir>/scripts/validate-code-style-enforcement.ps1 -Enforce
 # This enables IDE0005 and style rule detection during build
 
 # Step 2: Validate packages
-pwsh scripts/validate-package-versions.ps1
+pwsh <clean_builds_skill_base_dir>/scripts/validate-package-versions.ps1
 # Fix any CRITICAL issues
 
 # Step 3: Format
-pwsh scripts/format-code.ps1
+pwsh <clean_builds_skill_base_dir>/scripts/format-code.ps1
 
 # Step 4: Build & Check
-pwsh scripts/build_and_group_errors_and_warnings.ps1
+pwsh <clean_builds_skill_base_dir>/scripts/build_and_group_errors_and_warnings.ps1
 
 # Only commit if all validations succeed
 git add .
@@ -773,10 +773,10 @@ For the most comprehensive code quality enforcement, enable Roslynator analyzers
 **How to enable (one-time setup):**
 ```pwsh
 # Step 1: Add Roslynator.Analyzers to all projects
-pwsh scripts/enable-roslynator-analyzers.ps1
+pwsh <clean_builds_skill_base_dir>/scripts/enable-roslynator-analyzers.ps1
 
 # Step 2: Configure severity levels in .editorconfig
-pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity warning
+pwsh <clean_builds_skill_base_dir>/scripts/configure-roslynator-editorconfig.ps1 -Severity warning
 ```
 
 **Recommended severity levels:**
@@ -805,7 +805,7 @@ pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity warning
 
 ## Bundled Scripts
 
-### `scripts/validate-code-style-enforcement.ps1`
+### `<clean_builds_skill_base_dir>/scripts/validate-code-style-enforcement.ps1`
 
 **Purpose:** Validates and enforces code style build settings (`EnforceCodeStyleInBuild`) across all projects to enable IDE0005 and other style violations during build.
 
@@ -835,23 +835,23 @@ pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity warning
 **Usage:**
 ```pwsh
 # Check which projects need EnforceCodeStyleInBuild
-pwsh scripts/validate-code-style-enforcement.ps1
+pwsh <clean_builds_skill_base_dir>/scripts/validate-code-style-enforcement.ps1
 
 # Automatically enable it in all projects
-pwsh scripts/validate-code-style-enforcement.ps1 -Enforce
+pwsh <clean_builds_skill_base_dir>/scripts/validate-code-style-enforcement.ps1 -Enforce
 
 # Export findings to JSON
-pwsh scripts/validate-code-style-enforcement.ps1 -OutputFormat Json -SaveToFile style-report.json
+pwsh <clean_builds_skill_base_dir>/scripts/validate-code-style-enforcement.ps1 -OutputFormat Json -SaveToFile style-report.json
 
 # Check only, don't enforce
-pwsh scripts/validate-code-style-enforcement.ps1 -CheckOnly
+pwsh <clean_builds_skill_base_dir>/scripts/validate-code-style-enforcement.ps1 -CheckOnly
 ```
 
 **Exit codes:**
 - `0` - Success (all projects have enforcement enabled)
 - `1` - Failure (projects missing enforcement and -Enforce not used)
 
-### `scripts/format-code.ps1`
+### `<clean_builds_skill_base_dir>/scripts/format-code.ps1`
 
 Complete code formatting workflow with multiple tools.
 
@@ -864,22 +864,22 @@ Complete code formatting workflow with multiple tools.
 **Usage:**
 ```pwsh
 # Full format (default)
-pwsh scripts/format-code.ps1
+pwsh <clean_builds_skill_base_dir>/scripts/format-code.ps1
 
 # Check only
-pwsh scripts/format-code.ps1 -CheckOnly
+pwsh <clean_builds_skill_base_dir>/scripts/format-code.ps1 -CheckOnly
 
 # Format root project only
-pwsh scripts/format-code.ps1 -RootOnly
+pwsh <clean_builds_skill_base_dir>/scripts/format-code.ps1 -RootOnly
 
 # Format submodules only
-pwsh scripts/format-code.ps1 -SubmodulesOnly
+pwsh <clean_builds_skill_base_dir>/scripts/format-code.ps1 -SubmodulesOnly
 
 # Show help
-pwsh scripts/format-code.ps1 -Help
+pwsh <clean_builds_skill_base_dir>/scripts/format-code.ps1 -Help
 ```
 
-### `scripts/build_and_group_errors_and_warnings.ps1`
+### `<clean_builds_skill_base_dir>/scripts/build_and_group_errors_and_warnings.ps1`
 
 Clean build with error/warning analysis and grouping.
 
@@ -889,16 +889,16 @@ Clean build with error/warning analysis and grouping.
 **Usage:**
 ```pwsh
 # Default console output
-pwsh scripts/build_and_group_errors_and_warnings.ps1
+pwsh <clean_builds_skill_base_dir>/scripts/build_and_group_errors_and_warnings.ps1
 
 # Export as JSON
-pwsh scripts/build_and_group_errors_and_warnings.ps1 -OutputFormat Json -SaveToFile results.json
+pwsh <clean_builds_skill_base_dir>/scripts/build_and_group_errors_and_warnings.ps1 -OutputFormat Json -SaveToFile results.json
 
 # Export as CSV
 pwsh scripts/build_and_group_errors_and_warnings.ps1 -OutputFormat Csv -SaveToFile results.csv
 
 # Custom solution path
-pwsh scripts/build_and_group_errors_and_warnings.ps1 -SolutionPath "path/to/solution.sln"
+pwsh <clean_builds_skill_base_dir>/scripts/build_and_group_errors_and_warnings.ps1 -SolutionPath "path/to/solution.sln"
 ```
 
 ### `scripts/validate-package-versions.ps1`
@@ -912,23 +912,23 @@ Validates NuGet package version consistency across all projects.
 **Usage:**
 ```pwsh
 # Default console output with colored severity levels
-pwsh scripts/validate-package-versions.ps1
+pwsh <clean_builds_skill_base_dir>/scripts/validate-package-versions.ps1
 
 # Export validation results to JSON
-pwsh scripts/validate-package-versions.ps1 -OutputFormat Json -SaveToFile version-report.json
+pwsh <clean_builds_skill_base_dir>/scripts/validate-package-versions.ps1 -OutputFormat Json -SaveToFile version-report.json
 
 # Quick summary statistics only
-pwsh scripts/validate-package-versions.ps1 -OutputFormat Summary
+pwsh <clean_builds_skill_base_dir>/scripts/validate-package-versions.ps1 -OutputFormat Summary
 
 # Export as JSON (alternative syntax)
-pwsh scripts/validate-package-versions.ps1 -SaveToFile version-report.json
+pwsh <clean_builds_skill_base_dir>/scripts/validate-package-versions.ps1 -SaveToFile version-report.json
 ```
 
 **Exit codes for CI/CD:**
 - `0` = Success (no critical issues found)
 - `1` = Failure (critical issues found - must fix)
 
-### `scripts/enable-roslynator-analyzers.ps1`
+### `<clean_builds_skill_base_dir>/scripts/enable-roslynator-analyzers.ps1`
 
 Adds Roslynator.Analyzers NuGet package to all .NET projects for build-time code analysis.
 
@@ -941,19 +941,19 @@ Adds Roslynator.Analyzers NuGet package to all .NET projects for build-time code
 **Usage:**
 ```pwsh
 # Add Roslynator.Analyzers to all projects
-pwsh scripts/enable-roslynator-analyzers.ps1
+pwsh <clean_builds_skill_base_dir>/scripts/enable-roslynator-analyzers.ps1
 
 # Check which projects need it (dry-run)
-pwsh scripts/enable-roslynator-analyzers.ps1 -CheckOnly
+pwsh <clean_builds_skill_base_dir>/scripts/enable-roslynator-analyzers.ps1 -CheckOnly
 
 # Install specific version
-pwsh scripts/enable-roslynator-analyzers.ps1 -RoslynatorVersion "4.12.0"
+pwsh <clean_builds_skill_base_dir>/scripts/enable-roslynator-analyzers.ps1 -RoslynatorVersion "4.12.0"
 
 # Remove from all projects
-pwsh scripts/enable-roslynator-analyzers.ps1 -RemoveAnalyzers
+pwsh <clean_builds_skill_base_dir>/scripts/enable-roslynator-analyzers.ps1 -RemoveAnalyzers
 
 # Export results to JSON
-pwsh scripts/enable-roslynator-analyzers.ps1 -OutputFormat Json -SaveToFile analyzers-report.json
+pwsh <clean_builds_skill_base_dir>/scripts/enable-roslynator-analyzers.ps1 -OutputFormat Json -SaveToFile analyzers-report.json
 ```
 
 **Exit codes:**
@@ -962,7 +962,7 @@ pwsh scripts/enable-roslynator-analyzers.ps1 -OutputFormat Json -SaveToFile anal
 
 **Note:** This is a one-time setup script. After running, the analyzers will be part of your project files and will run during every build.
 
-### `scripts/configure-roslynator-editorconfig.ps1`
+### `s<clean_builds_skill_base_dir>/cripts/configure-roslynator-editorconfig.ps1`
 
 Creates or updates .editorconfig file with Roslynator analyzer configuration, including severity settings and code style preferences.
 
@@ -974,19 +974,19 @@ Creates or updates .editorconfig file with Roslynator analyzer configuration, in
 **Usage:**
 ```pwsh
 # Set all rules to 'warning' (default, recommended)
-pwsh scripts/configure-roslynator-editorconfig.ps1
+pwsh <clean_builds_skill_base_dir>/scripts/configure-roslynator-editorconfig.ps1
 
 # Set to 'error' for strict enforcement
-pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity error
+pwsh <clean_builds_skill_base_dir>/scripts/configure-roslynator-editorconfig.ps1 -Severity error
 
 # Preview changes without applying
-pwsh scripts/configure-roslynator-editorconfig.ps1 -ShowPreview
+pwsh <clean_builds_skill_base_dir>/scripts/configure-roslynator-editorconfig.ps1 -ShowPreview
 
 # Configure specific file
-pwsh scripts/configure-roslynator-editorconfig.ps1 -ConfigFile "src\.editorconfig"
+pwsh <clean_builds_skill_base_dir>/scripts/configure-roslynator-editorconfig.ps1 -ConfigFile "src\.editorconfig"
 
 # Set to 'suggestion' for IDE hints only
-pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity suggestion
+pwsh <clean_builds_skill_base_dir>/scripts/configure-roslynator-editorconfig.ps1 -Severity suggestion
 ```
 
 **Exit codes:**
@@ -1034,12 +1034,12 @@ If you're not seeing IDE0005 (unused imports) warnings during build:
 
 4. **Run format to fix unused imports:**
    ```pwsh
-   pwsh scripts/format-code.ps1
+   pwsh <clean_builds_skill_base_dir>/scripts/format-code.ps1
    ```
 
 5. **Re-run build check to verify:**
    ```pwsh
-   pwsh scripts/build_and_group_errors_and_warnings.ps1
+   pwsh <clean_builds_skill_base_dir>/scripts/build_and_group_errors_and_warnings.ps1
    ```
 
 **Note:** This is a build-time enforcement feature, not a runtime issue. Adding `EnforceCodeStyleInBuild` enables static analysis during compilation.
@@ -1051,20 +1051,20 @@ If you get overwhelmed with warnings after enabling Roslynator analyzers:
 **Solution 1: Start with lower severity**
 ```pwsh
 # Set to 'suggestion' so warnings don't block your workflow
-pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity suggestion
+pwsh <clean_builds_skill_base_dir>/scripts/configure-roslynator-editorconfig.ps1 -Severity suggestion
 
 # Review suggestions in IDE, fix what makes sense
 # Then gradually increase severity
-pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity warning
+pwsh <clean_builds_skill_base_dir>/scripts/configure-roslynator-editorconfig.ps1 -Severity warning
 ```
 
 **Solution 2: Format code first to auto-fix issues**
 ```pwsh
 # Run formatter to automatically fix many analyzer warnings
-pwsh scripts/format-code.ps1
+pwsh <clean_builds_skill_base_dir>/scripts/format-code.ps1
 
 # Then rebuild to see remaining warnings
-pwsh scripts/build_and_group_errors_and_warnings.ps1
+pwsh <clean_builds_skill_base_dir>/scripts/build_and_group_errors_and_warnings.ps1
 ```
 
 **Solution 3: Disable specific noisy rules**
@@ -1079,7 +1079,7 @@ dotnet_diagnostic.rcs1138.severity = none  # Add summary to documentation commen
 To find which rules are producing the most warnings:
 ```pwsh
 # Build and save to JSON to analyze warnings
-pwsh scripts/build_and_group_errors_and_warnings.ps1 -OutputFormat Json -SaveToFile warnings.json
+pwsh <clean_builds_skill_base_dir>/scripts/build_and_group_errors_and_warnings.ps1 -OutputFormat Json -SaveToFile warnings.json
 
 # Review the JSON to see which RCS codes appear most frequently
 ```
@@ -1089,10 +1089,10 @@ pwsh scripts/build_and_group_errors_and_warnings.ps1 -OutputFormat Json -SaveToF
 If external dependencies are generating warnings:
 ```pwsh
 # Remove Roslynator from submodules
-pwsh scripts/enable-roslynator-analyzers.ps1 -RemoveAnalyzers
+pwsh <clean_builds_skill_base_dir>/scripts/enable-roslynator-analyzers.ps1 -RemoveAnalyzers
 
 # Re-enable only for main projects
-pwsh scripts/enable-roslynator-analyzers.ps1 -ExcludeSubmodules
+pwsh <clean_builds_skill_base_dir>/scripts/enable-roslynator-analyzers.ps1 -ExcludeSubmodules
 ```
 
 ### Build Time Increased Significantly After Enabling Roslynator
@@ -1102,8 +1102,8 @@ If builds become too slow after enabling Roslynator analyzers:
 **Solution 1: Exclude submodules**
 ```pwsh
 # External code analysis adds overhead without providing value
-pwsh scripts/enable-roslynator-analyzers.ps1 -RemoveAnalyzers
-pwsh scripts/enable-roslynator-analyzers.ps1 -ExcludeSubmodules
+pwsh <clean_builds_skill_base_dir>/scripts/enable-roslynator-analyzers.ps1 -RemoveAnalyzers
+pwsh <clean_builds_skill_base_dir>/scripts/enable-roslynator-analyzers.ps1 -ExcludeSubmodules
 ```
 
 **Solution 2: Disable analyzers in Debug builds**

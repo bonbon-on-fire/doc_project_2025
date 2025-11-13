@@ -1,26 +1,26 @@
 using AchieveAi.LmDotnetTools.LmCore.Middleware;
-// TODO: Re-enable when MCP middleware is available in LmDotnetTools
-// using AchieveAi.LmDotnetTools.McpMiddleware;
-// using AchieveAi.LmDotnetTools.McpMiddleware.Extensions;
-using AIChat.Server.Functions;
-using AIChat.Server.Models;
+using AchieveAi.LmDotnetTools.McpMiddleware;
+using AchieveAi.LmDotnetTools.McpMiddleware.Extensions;
+using AIChat.Orleans.Host.Models;
 using Microsoft.Extensions.Options;
 using LmCoreFunctionFilterConfig = AchieveAi.LmDotnetTools.LmCore.Configuration.FunctionFilterConfig;
 using LmCoreProviderFilterConfig = AchieveAi.LmDotnetTools.LmCore.Configuration.ProviderFilterConfig;
 
-namespace AIChat.Server.Services;
+namespace AIChat.Orleans.Services;
 
 /// <summary>
 /// Service responsible for managing tool registrations and creating function call middleware
+/// Simplified version for Orleans.Host - only handles MCP tools
 /// </summary>
 public class ToolingService(
     IServiceProvider serviceProvider,
-    ITaskManagerService taskManagerService,
-    IModeService modeService,
+    IMcpClientManager mcpClientManager,
     IOptions<McpConfiguration> mcpConfiguration,
     ILogger<ToolingService> logger
 ) : IToolingService
 {
+    private readonly IMcpClientManager _mcpClientManager = mcpClientManager;
+
     public async Task<FunctionCallMiddleware?> CreateChatSpecificFunctionCallMiddlewareAsync(
         string chatId,
         string? modeId = null,
@@ -32,9 +32,8 @@ public class ToolingService(
         try
         {
             logger.LogInformation(
-                "Creating chat-specific FunctionCallMiddleware for chat {ChatId} with mode {ModeId}",
-                chatId,
-                modeId ?? "default"
+                "Creating chat-specific FunctionCallMiddleware for chat {ChatId}",
+                chatId
             );
 
             // Create function registry
@@ -125,23 +124,7 @@ public class ToolingService(
                 }
             }
 
-            // Add weather function provider
-            var weatherLogger = serviceProvider.GetRequiredService<ILogger<WeatherFunction>>();
-            var weatherProvider = new WeatherFunction(weatherLogger);
-            _ = registry.AddProvider(weatherProvider);
-            logger.LogInformation("Added WeatherFunction provider to registry");
-
-            // Get or create TaskManager for this specific chat
-            var taskManager = await taskManagerService.GetTaskManagerAsync(
-                chatId,
-                cancellationToken
-            );
-            _ = registry.AddFunctionsFromObject(taskManager, "TaskManager");
-            logger.LogInformation("Added TaskManager functions for chat {ChatId}", chatId);
-
             // Add MCP clients to the registry
-            // TODO: Re-enable when MCP middleware (AddMcpClientsAsync, McpClientFunctionProvider) is available
-            /*
             try
             {
                 var mcpClients = await _mcpClientManager.GetActiveClientsAsync(cancellationToken);
@@ -176,62 +159,6 @@ public class ToolingService(
             {
                 logger.LogError(mcpEx, "Failed to add MCP clients to function registry");
             }
-            */
-            logger.LogInformation("MCP client integration is currently disabled (middleware not available)");
-
-            // Apply mode-based filtering if modeId and userId are provided
-            if (!string.IsNullOrEmpty(modeId) && !string.IsNullOrEmpty(userId))
-            {
-                // Get the list of all available function names before building
-                var allDescriptors = new List<FunctionDescriptor>();
-                foreach (var provider in registry.GetProviders())
-                {
-                    allDescriptors.AddRange(provider.GetFunctions());
-                }
-
-                var availableToolNames = allDescriptors.ConvertAll(d => d.Contract.Name);
-                var (Success, Error, FilteredTools) = await modeService.FilterToolsByModeAsync(
-                    modeId,
-                    userId,
-                    availableToolNames,
-                    cancellationToken
-                );
-
-                if (Success)
-                {
-                    // Update or create function filter config to include mode filtering
-                    if (functionFilterConfig == null)
-                    {
-                        functionFilterConfig = new LmCoreFunctionFilterConfig
-                        {
-                            EnableFiltering = true,
-                        };
-                    }
-                    else if (!functionFilterConfig.EnableFiltering)
-                    {
-                        functionFilterConfig.EnableFiltering = true;
-                    }
-
-                    // Set the global allowed functions based on mode
-                    functionFilterConfig.GlobalAllowedFunctions = [.. FilteredTools];
-                    _ = registry.WithFilterConfig(functionFilterConfig);
-
-                    logger.LogInformation(
-                        "Applied mode {ModeId} filtering: {FilteredCount} of {TotalCount} functions allowed",
-                        modeId,
-                        FilteredTools.Count,
-                        availableToolNames.Count
-                    );
-                }
-                else
-                {
-                    logger.LogWarning(
-                        "Failed to apply filtering for mode {ModeId}: {Error}",
-                        modeId,
-                        Error
-                    );
-                }
-            }
 
             // Build function contracts and handlers with conflict resolution
             _ = registry.WithConflictResolution(ConflictResolution.PreferMcp);
@@ -240,8 +167,8 @@ public class ToolingService(
             if (!contracts.Any())
             {
                 logger.LogWarning("No functions registered for FunctionCallMiddleware");
-                // Still create middleware even with no functions - it can be used for filtering validation
-                // return null;
+                // Return null if no MCP tools available
+                return null;
             }
 
             logger.LogInformation(
@@ -276,11 +203,6 @@ public class ToolingService(
             );
             return middleware;
         }
-        catch (OperationCanceledException)
-        {
-            // Rethrow cancellation exceptions
-            throw;
-        }
         catch (Exception ex)
         {
             logger.LogError(
@@ -288,7 +210,7 @@ public class ToolingService(
                 "Failed to initialize FunctionCallMiddleware for chat {ChatId}",
                 chatId
             );
-            return null;
+            throw;
         }
     }
 }

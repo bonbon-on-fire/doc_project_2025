@@ -1,7 +1,9 @@
 using System.Globalization;
 using AIChat.Orleans.Configuration;
+using AIChat.Orleans.Host.Models;
 using AIChat.Orleans.Metrics;
 using AIChat.Orleans.Placement;
+using AIChat.Orleans.Services;
 using Microsoft.ApplicationInsights.AspNetCore.Extensions;
 using Orleans.Configuration;
 using Serilog;
@@ -223,10 +225,21 @@ public class Program
                     _ = services.AddPlacementMetrics();
 
                     // ========================================================================
-                    // LLM Server Cleanup Phase 1: IStreamingAgent Registration
+                    // ✅ MIGRATION COMPLETE: Orleans Host owns ALL LLM and MCP integration
                     // ========================================================================
-                    // Moved from AIChat.Server to Orleans.Host
-                    // Orleans Host now owns LLM credential management and caching infrastructure
+                    // Architecture:
+                    // - AIChat.Server: Pure HTTP/SignalR/WebSocket proxy (no business logic)
+                    // - AIChat.Orleans.Host: ALL LLM calls, MCP tools, and business logic
+                    //
+                    // LLM Integration:
+                    // - IStreamingAgent registered below for ChatGrain to make LLM API calls
+                    // - Uses LLM_API_KEY environment variable
+                    // - Supports caching via LlmCache configuration
+                    //
+                    // MCP Integration:
+                    // - MCP servers configured in appsettings.json Mcp section
+                    // - IMcpClientManager and IToolingService registered for tool execution
+                    // - ChatGrain can access MCP tools through IToolingService injection
                     // ========================================================================
                     _ = services.AddTransient<AchieveAi.LmDotnetTools.LmCore.Agents.IStreamingAgent>(provider =>
                     {
@@ -294,6 +307,16 @@ public class Program
                         var openClient = new AchieveAi.LmDotnetTools.OpenAIProvider.Agents.OpenClient(httpClient, baseUrl, null, logger);
                         return new AchieveAi.LmDotnetTools.OpenAIProvider.Agents.OpenClientAgent("OpenAi", openClient);
                     });
+
+                    // ========================================================================
+                    // MCP Integration (Phase 3: Moved from AIChat.Server)
+                    // ========================================================================
+                    // Orleans Host now owns MCP tool integration
+                    // ChatGrain can access MCP tools through IToolingService
+                    // ========================================================================
+                    _ = services.Configure<McpConfiguration>(context.Configuration.GetSection("Mcp"));
+                    _ = services.AddSingleton<IMcpClientManager, McpClientManager>();
+                    _ = services.AddSingleton<IToolingService, ToolingService>();
 
                     // Add health checks
                     _ = services.AddHealthChecks();
@@ -406,6 +429,7 @@ public class Program
 
         _ = siloBuilder
             .UseLocalhostClustering()
+            .AddMemoryGrainStorageAsDefault()
             .AddMemoryGrainStorage("UserGrainStorage")
             .AddMemoryGrainStorage("PubSubStore");
     }
@@ -430,6 +454,7 @@ public class Program
         // TODO: Implement Azure storage configuration for Orleans 9.x in later phases
         Log.Information("Phase 1 configuration: Using localhost clustering and memory storage");
         _ = siloBuilder.UseLocalhostClustering();
+        _ = siloBuilder.AddMemoryGrainStorageAsDefault();
         _ = siloBuilder.AddMemoryGrainStorage("UserGrainStorage");
 
         // Always use memory for PubSub in this phase

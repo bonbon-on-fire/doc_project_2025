@@ -300,8 +300,8 @@ function Format-ConsoleOutput {
     if ($issuesWithUrls.Count -gt 0) {
         Write-ColorOutput ""
         Write-ColorOutput "TIP: You're encouraged to fetch web reference for warnings to understand how to address these warnings/errors" $InfoColor
-        Write-ColorOutput "Use: Task tool to fix single kind of warning/error esp. formatting warnings. It helps maintain conversation context quality." $InfoColor
     }
+    Write-ColorOutput "Use: Task tool to fix single kind of warning/error esp. formatting warnings. It helps maintain conversation context quality." $InfoColor
 }
 
 function Export-ToJson {

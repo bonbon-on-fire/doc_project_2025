@@ -1,9 +1,9 @@
-using AIChat.Server.Exceptions;
-using AIChat.Server.Models;
+using AIChat.Orleans.Host.Exceptions;
+using AIChat.Orleans.Host.Models;
 using Microsoft.Extensions.Options;
 using ModelContextProtocol.Client;
 
-namespace AIChat.Server.Services;
+namespace AIChat.Orleans.Services;
 
 public interface IMcpClientManager
 {
@@ -116,11 +116,7 @@ public class McpClientManager(
             default:
                 var errorMsg =
                     $"Transport type '{config.Type}' is not supported. Supported types: stdio, sse, http";
-                logger.LogError(
-                    "Transport type '{TransportType}' is not supported for server: {ServerName}. Supported types: stdio, sse, http",
-                    config.Type,
-                    serverName
-                );
+                logger.LogError("Transport type '{TransportType}' is not supported for server: {ServerName}. Supported types: stdio, sse, http", config.Type, serverName);
                 throw new McpTransportException(errorMsg, serverName, config.Type);
         }
 
@@ -176,7 +172,7 @@ public class McpClientManager(
     {
         if (string.IsNullOrEmpty(config.Command))
         {
-            const string errorMsg = "Command is required for stdio transport";
+            var errorMsg = "Command is required for stdio transport";
             logger.LogError("{Error} for server: {ServerName}", errorMsg, serverName);
             throw new McpConfigurationException(
                 $"{errorMsg} in server configuration for '{serverName}'",
@@ -210,7 +206,7 @@ public class McpClientManager(
     {
         // SSE/HTTP transport is not yet available in the current ModelContextProtocol.Client version
         // This is a placeholder for future implementation when the SDK supports it
-        const string errorMsg =
+        var errorMsg =
             "SSE/HTTP transport is not yet supported in the current ModelContextProtocol.Client version";
         logger.LogWarning("{Error}. Server {ServerName} will be skipped.", errorMsg, serverName);
         throw new McpTransportException(
@@ -237,10 +233,7 @@ public class McpClientManager(
                 if (inputConfig != null)
                 {
                     var envVarName =
-                        inputConfig.DefaultValue
-                        ?? inputId
-                            .ToUpper(System.Globalization.CultureInfo.CurrentCulture)
-                            .Replace("-", "_");
+                        inputConfig.DefaultValue ?? inputId.ToUpper(System.Globalization.CultureInfo.CurrentCulture).Replace("-", "_");
 
                     // Try User Secrets/IConfiguration first, then environment variable
                     expandedValue =

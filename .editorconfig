@@ -520,10 +520,6 @@ dotnet_diagnostic.IDE0052.severity = none
 [server/**/*Tests.cs]
 dotnet_diagnostic.IDE0055.severity = suggestion
 
-# IDE0055: Fix formatting - Specific performance-critical file
-[server/AIChat.Server/Services/EventStore/Optimization/SnapshotPerformanceOptimizer.cs]
-dotnet_diagnostic.IDE0055.severity = none
-
 # IDE0072: Add missing cases to switch (default handles remainder)
 [server/AIChat.LoadTesting/**/*.cs]
 dotnet_diagnostic.IDE0072.severity = none

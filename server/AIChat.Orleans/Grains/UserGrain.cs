@@ -4568,7 +4568,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             _metricsTimer?.Dispose();
             _metricsTimer = null;
 
-            _logger.LogDebug("UserGrain {UserId} disposed successfully", State.UserId);
+            _logger.LogDebug("UserGrain {UserId} disposed successfully", this.GetPrimaryKeyString());
         }
     }
 }

@@ -23,7 +23,7 @@
     <PackageReference Include="Microsoft.Orleans.Persistence.AzureStorage" Version="9.2.1" />
     <PackageReference Include="Microsoft.Orleans.Clustering.AzureStorage" Version="9.2.1" />
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.22.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.5" />
     <!-- Serilog and Logging -->
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
@@ -48,10 +48,12 @@
     <ProjectReference Include="../../submodules/LmDotnetTools/src/LmCore/AchieveAi.LmDotnetTools.LmCore.csproj" />
     <ProjectReference Include="../../submodules/LmDotnetTools/src/Misc/AchieveAi.LmDotnetTools.Misc.csproj" />
     <ProjectReference Include="../../submodules/LmDotnetTools/src/OpenAiProvider/AchieveAi.LmDotnetTools.OpenAiProvider.csproj" />
+    <ProjectReference Include="../../submodules/LmDotnetTools/src/McpMiddleware/AchieveAi.LmDotnetTools.McpMiddleware.csproj" />
   </ItemGroup>
   <ItemGroup Condition="!Exists('../../submodules/LmDotnetTools/src/LmCore/AchieveAi.LmDotnetTools.LmCore.csproj')">
     <PackageReference Include="AchieveAi.LmDotnetTools.LmCore" Version="1.0.20" />
     <PackageReference Include="AchieveAi.LmDotnetTools.Misc" Version="1.0.20" />
     <PackageReference Include="AchieveAi.LmDotnetTools.OpenAiProvider" Version="1.0.20" />
+    <PackageReference Include="AchieveAi.LmDotnetTools.McpMiddleware" Version="1.0.20" />
   </ItemGroup>
 </Project>

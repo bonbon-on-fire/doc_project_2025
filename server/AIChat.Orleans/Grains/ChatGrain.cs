@@ -28,6 +28,9 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
     private readonly IOrleansMetricsCollector _metricsCollector;
     private readonly ISignalRBroadcastService _signalRBroadcast;
     private readonly IStreamingAgent? _streamingAgent;
+#pragma warning disable IDE0052 // Remove unread private members - field reserved for future MCP integration
+    private readonly AIChat.Orleans.Services.IToolingService? _toolingService;
+#pragma warning restore IDE0052
 
     private IGrainTimer? _cleanupTimer;
     private IGrainTimer? _metricsTimer;
@@ -50,18 +53,21 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
     /// <param name="metricsCollector">Metrics collector for performance tracking</param>
     /// <param name="signalRBroadcast">SignalR broadcast service for real-time messaging (optional)</param>
     /// <param name="streamingAgent">LLM streaming agent for real-time AI responses (optional)</param>
+    /// <param name="toolingService">MCP tooling service for tool execution (optional)</param>
     public ChatGrain(
         ILogger<ChatGrain> logger,
         IOptionsSnapshot<OrleansGrainConfiguration> configuration,
         IOrleansMetricsCollector metricsCollector,
         ISignalRBroadcastService? signalRBroadcast = null,
-        IStreamingAgent? streamingAgent = null
+        IStreamingAgent? streamingAgent = null,
+        AIChat.Orleans.Services.IToolingService? toolingService = null
     )
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _configuration = configuration?.Value ?? new OrleansGrainConfiguration();
         _metricsCollector = metricsCollector ?? throw new ArgumentNullException(nameof(metricsCollector));
         _signalRBroadcast = signalRBroadcast ?? new NullSignalRBroadcastService();
+        _toolingService = toolingService;
         _streamingAgent = streamingAgent;
     }
 

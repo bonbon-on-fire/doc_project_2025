@@ -1,7 +1,7 @@
-using AIChat.Server.Models;
+using AIChat.Orleans.Host.Models;
 using Microsoft.Extensions.Options;
 
-namespace AIChat.Server.Services;
+namespace AIChat.Orleans.Host.Services;
 
 /// <summary>
 /// Validates MCP configuration at startup
@@ -47,7 +47,8 @@ public class McpConfigurationValidator(
 
         // Validate inputs if referenced by any server
         if (
-            _configuration.McpServers?.Any(s => s.Value.Env != null) == true
+            _configuration.McpServers != null
+            && _configuration.McpServers.Any(s => s.Value.Env != null)
         )
         {
             ValidateInputs(errors);
@@ -103,9 +104,12 @@ public class McpConfigurationValidator(
         }
 
         // Validate stdio-specific requirements
-        if (config.Type?.ToLowerInvariant() == "stdio" && string.IsNullOrWhiteSpace(config.Command))
+        if (config.Type?.ToLowerInvariant() == "stdio")
         {
-            errors.Add($"Server '{serverName}' with stdio transport requires a command");
+            if (string.IsNullOrWhiteSpace(config.Command))
+            {
+                errors.Add($"Server '{serverName}' with stdio transport requires a command");
+            }
         }
 
         // Validate SSE/HTTP-specific requirements (for future use)
@@ -130,14 +134,12 @@ public class McpConfigurationValidator(
                 }
 
                 // Check for input references
-                if (
-                    value?.StartsWith("${input:", StringComparison.Ordinal) == true
-                    && value.EndsWith('}')
-                )
+                if (value?.StartsWith("${input:", StringComparison.Ordinal) == true && value.EndsWith('}'))
                 {
                     var inputId = value[8..^1];
                     if (
-                        _configuration.Inputs?.Any(i => i.Id == inputId) != true
+                        _configuration.Inputs == null
+                        || !_configuration.Inputs.Any(i => i.Id == inputId)
                     )
                     {
                         errors.Add($"Server '{serverName}' references undefined input '{inputId}'");
