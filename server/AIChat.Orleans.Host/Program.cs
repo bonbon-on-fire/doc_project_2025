@@ -1,6 +1,8 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using AIChat.Orleans.Configuration;
 using AIChat.Orleans.Host.Models;
+using AIChat.Orleans.Logging;
 using AIChat.Orleans.Metrics;
 using AIChat.Orleans.Placement;
 using AIChat.Orleans.Services;
@@ -38,7 +40,7 @@ namespace AIChat.Orleans.Host;
 /// - Future-proof: Easy to separate into different processes later
 /// - Low overhead: In-process grain calls (no network serialization)
 /// </remarks>
-public class Program
+public partial class Program
 {
     /// <summary>
     /// Entry point for the Orleans silo host application.
@@ -257,13 +259,10 @@ public class Program
                             ?? "https://api.openai.com/v1";
 
                         // Diagnostic logging for API configuration
-                        logger.LogInformation("[DIAGNOSTIC] API Configuration:");
-                        logger.LogInformation("[DIAGNOSTIC] Base URL: {BaseUrl}", baseUrl);
-                        logger.LogInformation("[DIAGNOSTIC] API Key Length: {ApiKeyLength}", apiKey?.Length ?? 0);
-                        logger.LogInformation(
-                            "[DIAGNOSTIC] API Key Prefix: {ApiKeyPrefix}",
-                            apiKey?.Length > 10 ? $"{apiKey.AsSpan(0, 10)}..." : "[EMPTY]"
-                        );
+                        LogApiConfiguration(logger);
+                        LogBaseUrl(logger, baseUrl);
+                        LogApiKeyLength(logger, apiKey?.Length ?? 0);
+                        LogApiKeyPrefix(logger, apiKey?.Length > 10 ? $"{apiKey.AsSpan(0, 10)}..." : "[EMPTY]");
 
                         // Create an OpenAI client with caching (non-Test environments)
                         if (string.IsNullOrEmpty(apiKey))
@@ -404,7 +403,7 @@ public class Program
 
         // Add distributed logging filter for all grain calls
         // Provides entry/exit logging, performance tracking, and error diagnostics
-        _ = siloBuilder.AddIncomingGrainCallFilter<AIChat.Orleans.Logging.LoggingGrainCallFilter>();
+        _ = siloBuilder.AddIncomingGrainCallFilter<LoggingGrainCallFilter>();
 
         // Configure grain collection
         _ = siloBuilder.Configure<GrainCollectionOptions>(options =>
@@ -460,13 +459,28 @@ public class Program
         // Always use memory for PubSub in this phase
         _ = siloBuilder.AddMemoryGrainStorage("PubSubStore");
     }
+
+    // High-performance logging using LoggerMessage source generators
+    [LoggerMessage(Level = LogLevel.Information, Message = "[DIAGNOSTIC] API Configuration:")]
+    static partial void LogApiConfiguration(Microsoft.Extensions.Logging.ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "[DIAGNOSTIC] Base URL: {baseUrl}")]
+    static partial void LogBaseUrl(Microsoft.Extensions.Logging.ILogger logger, string baseUrl);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "[DIAGNOSTIC] API Key Length: {apiKeyLength}")]
+    static partial void LogApiKeyLength(Microsoft.Extensions.Logging.ILogger logger, int apiKeyLength);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "[DIAGNOSTIC] API Key Prefix: {apiKeyPrefix}")]
+    static partial void LogApiKeyPrefix(Microsoft.Extensions.Logging.ILogger logger, string apiKeyPrefix);
 }
 
 /// <summary>
 /// Startup task for Orleans initialization and validation.
 /// </summary>
-public class OrleansStartupTask : IStartupTask
+public partial class OrleansStartupTask : IStartupTask
 {
+    // Suppress warning: _logger is used by source-generated LoggerMessage methods
+    [SuppressMessage("CodeQuality", "IDE0052:Remove unread private members", Justification = "Used by source-generated LoggerMessage partial methods")]
     private readonly ILogger<OrleansStartupTask> _logger;
 
     /// <summary>
@@ -487,18 +501,24 @@ public class OrleansStartupTask : IStartupTask
     {
         try
         {
-            _logger.LogInformation("Orleans startup task beginning...");
-
-            _logger.LogInformation(
-                "Orleans startup validation successful. Silo is ready to accept requests"
-            );
-
+            LogStartupBeginning();
+            LogStartupSuccess();
             return Task.CompletedTask;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Orleans startup task failed");
+            LogStartupFailure(ex);
             throw; // Re-throw to prevent silo startup
         }
     }
+
+    // High-performance logging using LoggerMessage source generators
+    [LoggerMessage(Level = LogLevel.Information, Message = "Orleans startup task beginning...")]
+    partial void LogStartupBeginning();
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Orleans startup validation successful. Silo is ready to accept requests")]
+    partial void LogStartupSuccess();
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Orleans startup task failed")]
+    partial void LogStartupFailure(Exception ex);
 }

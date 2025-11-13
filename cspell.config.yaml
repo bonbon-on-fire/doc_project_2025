@@ -1,0 +1,7 @@
+version: "0.2"
+ignorePaths: ["./.claude/**", "./docs/**", "./third_party/**", "*.cs", ".editorconfig"]
+dictionaryDefinitions: []
+dictionaries: []
+words: []
+ignoreWords: []
+import: []
