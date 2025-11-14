@@ -350,7 +350,7 @@ public int Age
 
 4. **Re-run the build check**
    ```pwsh
-   pwsh scripts/build_and_group_errors_and_warnings.ps1
+   pwsh <clean_builds_base_directory>/scripts/build_and_group_errors_and_warnings.ps1
    ```
 
 5. **Verify** the warning is gone

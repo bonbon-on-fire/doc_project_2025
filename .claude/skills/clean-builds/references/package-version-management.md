@@ -117,7 +117,7 @@ These issues should be **reviewed and considered for consolidation**:
 
 4. **Validate**
    ```pwsh
-   pwsh scripts/validate-package-versions.ps1
+   pwsh <clean_builds_base_directory>/scripts/validate-package-versions.ps1
    ```
 
 5. **Rebuild** to ensure compatibility
@@ -194,7 +194,7 @@ Structured data suitable for:
 
 **Export to JSON:**
 ```pwsh
-pwsh scripts/validate-package-versions.ps1 -OutputFormat Json -SaveToFile version-report.json
+pwsh <clean_builds_base_directory>/scripts/validate-package-versions.ps1 -OutputFormat Json -SaveToFile version-report.json
 ```
 
 ### Summary Output
@@ -205,7 +205,7 @@ Compact statistics-only output for:
 - Dashboard integration
 
 ```pwsh
-pwsh scripts/validate-package-versions.ps1 -OutputFormat Summary
+pwsh <clean_builds_base_directory>/scripts/validate-package-versions.ps1 -OutputFormat Summary
 ```
 
 ## Integration with CI/CD
@@ -217,7 +217,7 @@ The validation script exits with codes suitable for CI/CD:
 **Add to CI/CD pipeline:**
 ```yaml
 - name: Validate Package Versions
-  run: pwsh scripts/validate-package-versions.ps1
+  run: pwsh <clean_builds_base_directory>/scripts/validate-package-versions.ps1
   # If validation fails, the pipeline stops here
 ```
 
@@ -330,7 +330,7 @@ As of last validation run:
 
 ## Next Steps
 
-1. **Run validation**: `pwsh scripts/validate-package-versions.ps1`
+1. **Run validation**: `pwsh <clean_builds_base_directory>/scripts/validate-package-versions.ps1`
 2. **Review output**: Understand critical vs. warning issues
 3. **Fix critical issues**: Update package versions as recommended
 4. **Re-validate**: Confirm fixes were successful

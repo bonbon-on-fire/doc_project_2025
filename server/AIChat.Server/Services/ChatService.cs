@@ -550,23 +550,6 @@ public class ChatService(ILogger<ChatService> logger)
         };
     }
 
-    public async Task StreamChatCompletionAsync(
-        StreamChatRequest request,
-        IChatStorage storage,
-        IModeService modeService,
-        IStreamingAgent? streamingAgent,
-        IToolingService? toolingService,
-        IOrleansIntegrationService? orleansService = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        // Phase 3: Streaming chat completion moved to Orleans - pure proxy doesn't stream LLM responses
-        // This method should route to Orleans ChatGrain for streaming operations
-        await Task.CompletedTask;
-        throw new NotSupportedException(
-            "Phase 3: Direct service streaming deprecated. Use Orleans ChatGrain.StartStreamAsync() via router."
-        );
-    }
 
     /// <summary>
     /// <para>IMPORTANT ARCHITECTURE NOTE:</para>
@@ -752,7 +735,6 @@ public class ChatService(ILogger<ChatService> logger)
             "Phase 3: Direct service streaming deprecated. Use Orleans ChatGrain.StartStreamAsync() via router."
         );
     }
-
 
     /// <summary>
     /// Helper methods

@@ -43,7 +43,6 @@ public class ToolingService(
             var mcpConfig = mcpConfiguration.Value;
             LmCoreFunctionFilterConfig? functionFilterConfig = null;
 
-            // Use new FunctionFiltering if available, otherwise fall back to legacy ToolFiltering
             if (mcpConfig?.FunctionFiltering != null)
             {
                 // Map server configuration to LmCore configuration
@@ -74,35 +73,6 @@ public class ToolingService(
                                 BlockedFunctions = providerConfig.BlockedFunctions,
                                 Enabled = providerConfig.Enabled,
                                 CustomPrefix = providerConfig.CustomPrefix,
-                            };
-                    }
-                }
-            }
-            else if (mcpConfig?.ToolFiltering != null)
-            {
-                // Map legacy configuration to new format
-#pragma warning disable CS0618 // Type or member is obsolete
-                functionFilterConfig = new LmCoreFunctionFilterConfig
-                {
-                    EnableFiltering = mcpConfig.ToolFiltering.EnableFiltering,
-                    GlobalAllowedFunctions = mcpConfig.ToolFiltering.GlobalAllowedTools,
-                    GlobalBlockedFunctions = mcpConfig.ToolFiltering.GlobalBlockedTools,
-                    UsePrefixOnlyForCollisions = mcpConfig.ToolFiltering.UsePrefixOnlyForCollisions,
-#pragma warning restore CS0618 // Type or member is obsolete
-                    ProviderConfigs = [],
-                };
-
-                // Map MCP server configs to provider configs
-                if (mcpConfig.McpServers != null)
-                {
-                    foreach (var (serverId, serverConfig) in mcpConfig.McpServers)
-                    {
-                        functionFilterConfig.ProviderConfigs[serverId] =
-                            new LmCoreProviderFilterConfig
-                            {
-                                AllowedFunctions = serverConfig.AllowedTools,
-                                BlockedFunctions = serverConfig.BlockedTools,
-                                Enabled = serverConfig.Enabled,
                             };
                     }
                 }

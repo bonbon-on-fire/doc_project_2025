@@ -19,7 +19,7 @@ The clean-builds skill requires four tools to be properly configured:
 
 **Command**:
 ```pwsh
-pwsh scripts/validate-code-style-enforcement.ps1 -Enforce
+pwsh <clean_builds_base_directory>/scripts/validate-code-style-enforcement.ps1 -Enforce
 ```
 
 **Expected output**:
@@ -39,7 +39,7 @@ Projects without enforcement: 0
 
 **Command**:
 ```pwsh
-pwsh scripts/enable-roslynator-analyzers.ps1 -ExcludeSubmodules
+pwsh <clean_builds_base_directory>/scripts/enable-roslynator-analyzers.ps1 -ExcludeSubmodules
 ```
 
 **Why `-ExcludeSubmodules`**: External submodule code has its own analyzer configuration. Adding Roslynator to submodules may conflict with upstream settings.
@@ -54,7 +54,7 @@ Added to: 9 project(s)
 **Verification**:
 ```pwsh
 # Check all projects have Roslynator
-pwsh scripts/enable-roslynator-analyzers.ps1 -CheckOnly
+pwsh <clean_builds_base_directory>/scripts/enable-roslynator-analyzers.ps1 -CheckOnly
 ```
 
 **Troubleshooting**:
@@ -67,7 +67,7 @@ pwsh scripts/enable-roslynator-analyzers.ps1 -CheckOnly
 
 **Command**:
 ```pwsh
-pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity warning
+pwsh <clean_builds_base_directory>/scripts/configure-roslynator-editorconfig.ps1 -Severity warning
 ```
 
 **Severity options**:
@@ -77,7 +77,7 @@ pwsh scripts/configure-roslynator-editorconfig.ps1 -Severity warning
 
 **Preview first**:
 ```pwsh
-pwsh scripts/configure-roslynator-editorconfig.ps1 -ShowPreview
+pwsh <clean_builds_base_directory>/scripts/configure-roslynator-editorconfig.ps1 -ShowPreview
 ```
 
 **Expected output**:
@@ -95,7 +95,7 @@ pwsh scripts/configure-roslynator-editorconfig.ps1 -ShowPreview
 
 **Command**:
 ```pwsh
-pwsh scripts/validate-package-versions.ps1
+pwsh <clean_builds_base_directory>/scripts/validate-package-versions.ps1
 ```
 
 **Expected output** (ideal):
@@ -113,16 +113,16 @@ After completing all setup steps, verify everything is configured:
 
 ```pwsh
 # 1. Check code style enforcement
-pwsh scripts/validate-code-style-enforcement.ps1
+pwsh <clean_builds_base_directory>/scripts/validate-code-style-enforcement.ps1
 
 # 2. Check Roslynator analyzers
-pwsh scripts/enable-roslynator-analyzers.ps1 -CheckOnly
+pwsh <clean_builds_base_directory>/scripts/enable-roslynator-analyzers.ps1 -CheckOnly
 
 # 3. Check .editorconfig
-pwsh scripts/configure-roslynator-editorconfig.ps1 -ShowPreview
+pwsh <clean_builds_base_directory>/scripts/configure-roslynator-editorconfig.ps1 -ShowPreview
 
 # 4. Check package versions
-pwsh scripts/validate-package-versions.ps1
+pwsh <clean_builds_base_directory>/scripts/validate-package-versions.ps1
 ```
 
 ## Commit the Changes
@@ -144,7 +144,7 @@ git commit -m "Configure clean-builds tooling: Roslynator, code style enforcemen
 **Expect many warnings** on the first build after enabling Roslynator:
 
 ```pwsh
-pwsh scripts/build_and_group_errors_and_warnings.ps1
+pwsh <clean_builds_base_directory>/scripts/build_and_group_errors_and_warnings.ps1
 ```
 
 This is normal! You're now detecting issues that were previously hidden. Follow the clean-builds workflow to fix them systematically.

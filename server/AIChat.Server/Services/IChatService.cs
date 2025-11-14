@@ -32,18 +32,10 @@ public interface IChatService
     );
     Task<StreamInitResult> PrepareStreamChatAsync(StreamChatRequest request);
     Task<StreamInitResult> PrepareUnifiedStreamChatAsync(StreamChatRequest request);
-    /// <summary>
-    /// REMOVED - Phase 3: LLM operations now handled by Orleans ChatGrain
-    /// Task StreamChatCompletionAsync(StreamChatRequest request, CancellationToken cancellationToken = default);
-    /// </summary>
-    /// <param name="request"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
     Task StreamUnifiedChatCompletionAsync(
         StreamChatRequest request,
         CancellationToken cancellationToken = default
     );
-    Task StreamAssistantResponseAsync(string chatId, CancellationToken cancellationToken = default);
     Task<int> GetNextSequenceNumberAsync(string chatId);
     Task<string> CreateAssistantMessageForStreamingAsync(string chatId, int sequenceNumber);
     Task<string> GetMessageContentAsync(string messageId);

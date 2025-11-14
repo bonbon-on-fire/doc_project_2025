@@ -1,4 +1,3 @@
-using AchieveAi.LmDotnetTools.LmCore.Agents;
 using AIChat.Orleans.Client.Services;
 using AIChat.Server.Storage;
 
@@ -115,39 +114,6 @@ public class ChatServiceFacade(
     {
         logger.LogInformation("Preparing stream chat for user {UserId}", request.UserId);
         return await chatService.PrepareStreamChatAsync(request, storage, modeService);
-    }
-
-    public async Task StreamChatCompletionAsync(
-        StreamChatRequest request,
-        CancellationToken cancellationToken = default
-    )
-    {
-        logger.LogInformation("Streaming chat completion for user {UserId}", request.UserId);
-        await chatService.StreamChatCompletionAsync(
-            request,
-            storage,
-            modeService,
-            null,
-            null,
-            orleansService,
-            cancellationToken
-        );
-    }
-
-    /// <summary>
-    /// DEPRECATED: Phase 3 migration complete - Direct service streaming removed.
-    /// Use Orleans ChatGrain via router for streaming operations.
-    /// </summary>
-    [Obsolete("Phase 3: Direct service streaming deprecated. Use Orleans ChatGrain.StartStreamAsync() via router.")]
-    public async Task StreamAssistantResponseAsync(
-        string chatId,
-        CancellationToken cancellationToken = default
-    )
-    {
-        // Phase 3: This method is deprecated - Orleans ChatGrain handles streaming
-        await Task.CompletedTask;
-        throw new NotSupportedException(
-            "Phase 3: Direct service streaming deprecated. Use Orleans ChatGrain.StartStreamAsync() via router.");
     }
 
     public async Task<int> GetNextSequenceNumberAsync(string chatId)
