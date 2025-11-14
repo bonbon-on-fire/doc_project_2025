@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
@@ -43,7 +43,6 @@
   <!-- Orleans client integration -->
   <ItemGroup>
     <ProjectReference Include="..\AIChat.Orleans.Client\AIChat.Orleans.Client.csproj" />
-    <ProjectReference Include="..\AIChat.Orleans.Host\AIChat.Orleans.Host.csproj" />
     <ProjectReference Include="..\DocProject.ServiceDefaults\DocProject.ServiceDefaults.csproj" />
   </ItemGroup>
   <!-- Orleans server for co-hosting in Development/Test -->

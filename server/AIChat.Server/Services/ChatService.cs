@@ -22,7 +22,6 @@ public class ChatService(ILogger<ChatService> logger)
     public async Task<ChatResult> CreateChatAsync(
         CreateChatRequest request,
         IChatStorage storage,
-        IStreamingAgent streamingAgent,
         IModeService modeService,
         IOrleansIntegrationService? orleansService = null
     )
@@ -141,14 +140,11 @@ public class ChatService(ILogger<ChatService> logger)
                 }
             }
 
-            // Generate AI response with mode configuration
-            var aiResponse = await GenerateAIResponseAsync(
-                chat.Id,
-                storage,
-                streamingAgent,
-                modeService,
-                request.ModeId,
-                request.UserId
+            // Phase 3: AI response generation moved to Orleans - pure proxy doesn't generate responses
+            // This method should route to Orleans ChatGrain for AI processing
+            logger.LogInformation(
+                "Chat {ChatId} created - AI response generation handled by Orleans ChatGrain",
+                chat.Id
             );
 
             _ = await storage.UpdateChatUpdatedAtAsync(chat.Id, DateTime.UtcNow);
@@ -351,7 +347,6 @@ public class ChatService(ILogger<ChatService> logger)
     public async Task<MessageResult> SendMessageAsync(
         SendMessageRequest request,
         IChatStorage storage,
-        IStreamingAgent streamingAgent,
         IModeService modeService,
         IOrleansIntegrationService? orleansService = null
     )
@@ -414,83 +409,21 @@ public class ChatService(ILogger<ChatService> logger)
             // NOTE: Event handling moved to ChatServiceFacade for controller scenarios
             // Background processing scenarios will use callbacks instead
 
-            var aiResponse = await GenerateAIResponseAsync(
-                request.ChatId,
-                storage,
-                streamingAgent,
-                modeService,
-                request.ModeId,
-                request.UserId
+            // Phase 3: AI response generation moved to Orleans - pure proxy doesn't generate responses
+            // This method should route to Orleans ChatGrain for AI processing
+            logger.LogInformation(
+                "User message added to chat {ChatId} - AI response generation handled by Orleans ChatGrain",
+                request.ChatId
             );
-
-            var asq = await storage.AllocateSequenceAsync(request.ChatId);
-            if (!asq.Success)
-            {
-                return new MessageResult { Success = false, Error = asq.Error };
-            }
-
-            var assistantDto = new TextMessageDto
-            {
-                Id = Guid.NewGuid().ToString(),
-                ChatId = request.ChatId,
-                Role = "assistant",
-                Timestamp = DateTime.UtcNow,
-                SequenceNumber = asq.NextSequence,
-                Text = aiResponse,
-            };
-            var assistantRecord = new MessageRecord
-            {
-                Id = assistantDto.Id,
-                ChatId = request.ChatId,
-                Role = assistantDto.Role,
-                Kind = "text",
-                TimestampUtc = assistantDto.Timestamp,
-                SequenceNumber = assistantDto.SequenceNumber,
-                MessageJson = JsonSerializer.Serialize<MessageDto>(
-                    assistantDto,
-                    MessageSerializationOptions.Default
-                ),
-            };
-            var insAsst = await storage.InsertMessageAsync(assistantRecord);
-            if (!insAsst.Success)
-            {
-                return new MessageResult { Success = false, Error = insAsst.Error };
-            }
 
             _ = await storage.UpdateChatUpdatedAtAsync(request.ChatId, DateTime.UtcNow);
 
-            // Phase 1: Orleans shadow mode - record message completion
-            if (orleansService != null && !string.IsNullOrEmpty(request.UserId))
-            {
-                _ = orleansService.RecordUserActivityAsync(
-                    request.UserId,
-                    ActivityType.MessageCompleted,
-                    new
-                    {
-                        request.ChatId,
-                        UserMessageId = userDto.Id,
-                        AssistantMessageId = assistantDto.Id,
-                        ResponseLength = aiResponse.Length,
-                        ProcessingTime = DateTime
-                            .UtcNow.Subtract(userDto.Timestamp)
-                            .TotalMilliseconds,
-                        SequenceNumbers = new
-                        {
-                            User = userDto.SequenceNumber,
-                            Assistant = assistantDto.SequenceNumber,
-                        },
-                    }
-                );
-            }
-
-            // NOTE: Event handling moved to ChatServiceFacade for controller scenarios
-            // Background processing scenarios will use callbacks instead
-
+            // Return only the user message - AI response is handled by streaming methods
             return new MessageResult
             {
                 Success = true,
                 UserMessage = userDto,
-                AssistantMessage = assistantDto,
+                AssistantMessage = null,
             };
         }
         catch (Exception ex)
@@ -621,104 +554,18 @@ public class ChatService(ILogger<ChatService> logger)
         StreamChatRequest request,
         IChatStorage storage,
         IModeService modeService,
-        IStreamingAgent streamingAgent,
-        IToolingService toolingService,
+        IStreamingAgent? streamingAgent,
+        IToolingService? toolingService,
         IOrleansIntegrationService? orleansService = null,
         CancellationToken cancellationToken = default
     )
     {
-        var init = await PrepareStreamChatAsync(request, storage, modeService);
-        var chatId = init.ChatId;
-
-        var (Success, Error, Messages) = await storage.ListChatMessagesOrderedAsync(
-            chatId,
-            cancellationToken
-        );
-        var history = Messages
-            .Select(m =>
-                JsonSerializer.Deserialize<MessageDto>(
-                    m.MessageJson,
-                    MessageSerializationOptions.Default
-                )!
-            )
-            .Where(d =>
-                (d is TextMessageDto td && !string.IsNullOrWhiteSpace(td.Text))
-                || d is ReasoningMessageDto
-            ) // Include ALL reasoning messages for LLM context
-            .ToList();
-
-        await StreamChatCompletionAsync(
-            chatId,
-            history,
-            streamingAgent,
-            toolingService,
-            storage,
-            modeService,
-            orleansService,
-            request.ModeId,
-            request.UserId,
-            null, // messageCallback - not provided at this level
-            null, // chunkCallback - not provided at this level
-            cancellationToken
-        );
-    }
-
-    /// <summary>
-    /// DEPRECATED: Phase 3 migration complete - Direct service streaming removed.
-    /// Use Orleans ChatGrain via router for streaming operations.
-    /// </summary>
-    [Obsolete("Phase 3: Direct service streaming deprecated. Use Orleans ChatGrain.StartStreamAsync() via router.")]
-    public async Task StreamAssistantResponseAsync(
-        string chatId,
-        IChatStorage storage,
-        IModeService modeService,
-        IStreamingAgent streamingAgent,
-        IToolingService toolingService,
-        IOrleansIntegrationService? orleansService = null,
-        Func<MessageEvent, Task>? messageCallback = null,
-        Func<StreamChunkEvent, Task>? chunkCallback = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        // Phase 3: This method is deprecated - Orleans ChatGrain handles streaming
+        // Phase 3: Streaming chat completion moved to Orleans - pure proxy doesn't stream LLM responses
+        // This method should route to Orleans ChatGrain for streaming operations
+        await Task.CompletedTask;
         throw new NotSupportedException(
-            "Phase 3: Direct service streaming deprecated. Use Orleans ChatGrain.StartStreamAsync() via router.");
-    }
-
-    /*
-     * ========================================
-     * PHASE 3 - LLM METHOD REMOVED
-     *
-     * This method previously called IStreamingAgent directly for LLM operations.
-     * LLM functionality has been moved to Orleans ChatGrain.
-     *
-     * MIGRATION PATH:
-     * Old: await StreamChatCompletionAsync(chatId, history, streamingAgent, ...)
-     * New: var grain = grainFactory.GetGrain<IChatGrain>(chatId);
-     *      await grain.ProcessMessageWithLLMAsync(message, userId, ...)
-     *
-     * Reference: server/AIChat.Orleans/Grains/ChatGrain.cs
-     * ========================================
-     */
-    [Obsolete("Phase 3: Direct service LLM operations removed. Use Orleans ChatGrain.ProcessMessageWithLLMAsync() instead.")]
-    private Task StreamChatCompletionAsync(
-        string chatId,
-        List<MessageDto> history,
-        IStreamingAgent streamingAgent,
-        IToolingService toolingService,
-        IChatStorage storage,
-        IModeService modeService,
-        IOrleansIntegrationService? orleansService = null,
-        string? modeId = null,
-        string? userId = null,
-        Func<MessageEvent, Task>? messageCallback = null,
-        Func<StreamChunkEvent, Task>? chunkCallback = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        // Method body removed in Phase 3
-        // LLM operations now handled by Orleans ChatGrain
-        throw new NotSupportedException("Phase 3: Direct service LLM operations deprecated. Use Orleans ChatGrain via router.");
+            "Phase 3: Direct service streaming deprecated. Use Orleans ChatGrain.StartStreamAsync() via router."
+        );
     }
 
     /// <summary>
@@ -892,132 +739,24 @@ public class ChatService(ILogger<ChatService> logger)
         StreamChatRequest request,
         IChatStorage storage,
         IModeService modeService,
-        IStreamingAgent streamingAgent,
-        IToolingService toolingService,
+        IStreamingAgent? streamingAgent,
+        IToolingService? toolingService,
         IOrleansIntegrationService? orleansService = null,
         CancellationToken cancellationToken = default
     )
     {
-        if (!string.IsNullOrEmpty(request.ChatId))
-        {
-            var assistantSeqNumber = await GetNextSequenceNumberAsync(request.ChatId, storage) - 1;
-            var (_, _, listMessages) = await storage.ListChatMessagesOrderedAsync(
-                request.ChatId,
-                cancellationToken
-            );
-            var lastAssistant = listMessages.FirstOrDefault(m =>
-            {
-                var dto = JsonSerializer.Deserialize<MessageDto>(
-                    m.MessageJson,
-                    MessageSerializationOptions.Default
-                )!;
-                return dto.Role == "assistant" && dto.SequenceNumber == assistantSeqNumber;
-            });
-            if (lastAssistant == null)
-            {
-                logger.LogError(
-                    "Assistant message not found for streaming in chat {ChatId}",
-                    request.ChatId
-                );
-                throw new InvalidOperationException("Assistant message not found for streaming");
-            }
-
-            await StreamAssistantResponseAsync(
-                request.ChatId,
-                storage,
-                modeService,
-                streamingAgent,
-                toolingService,
-                orleansService,
-                null, // messageCallback - not provided at this level
-                null, // chunkCallback - not provided at this level
-                cancellationToken
-            );
-        }
-        else
-        {
-            await StreamChatCompletionAsync(
-                request,
-                storage,
-                modeService,
-                streamingAgent,
-                toolingService,
-                orleansService,
-                cancellationToken
-            );
-        }
-    }
-
-    #region IChatServiceStreaming Implementation
-
-    /*
-     * ========================================
-     * PHASE 3 - LLM METHOD REMOVED
-     *
-     * This method previously called IStreamingAgent directly for LLM operations.
-     * LLM functionality has been moved to Orleans ChatGrain.
-     *
-     * MIGRATION PATH:
-     * Old: await chatService.ProcessMessageWithCallbackAsync(chatId, message, userId, ...)
-     * New: var grain = grainFactory.GetGrain<IChatGrain>(chatId);
-     *      await grain.ProcessMessageWithLLMAsync(message, userId, callbacks: ...)
-     *
-     * Reference: server/AIChat.Orleans/Grains/ChatGrain.cs
-     * ========================================
-     */
-    /// <summary>
-    /// DEPRECATED: Phase 3 migration complete - Direct service LLM operations removed.
-    /// Use Orleans ChatGrain.ProcessMessageWithLLMAsync() via router instead.
-    /// </summary>
-    [Obsolete("Phase 3: Direct service LLM operations deprecated. Use Orleans ChatGrain.ProcessMessageWithLLMAsync() via router.")]
-    public async Task ProcessMessageWithCallbackAsync(
-        string chatId,
-        string message,
-        string userId,
-        IChatStorage storage,
-        IStreamingAgent streamingAgent,
-        IToolingService toolingService,
-        IModeService modeService,
-        IOrleansIntegrationService? orleansService = null,
-        string? modeId = null,
-        string? systemPrompt = null,
-        Func<MessageEvent, Task>? messageCallback = null,
-        Func<StreamChunkEvent, Task>? chunkCallback = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        // Phase 3: This method is deprecated - Orleans ChatGrain handles LLM operations
+        // Phase 3: Unified streaming moved to Orleans - pure proxy doesn't stream LLM responses
+        // This method should route to Orleans ChatGrain for streaming operations
         await Task.CompletedTask;
-        throw new NotSupportedException("Phase 3: Direct service LLM operations deprecated. Use Orleans ChatGrain.ProcessMessageWithLLMAsync() via router.");
+        throw new NotSupportedException(
+            "Phase 3: Direct service streaming deprecated. Use Orleans ChatGrain.StartStreamAsync() via router."
+        );
     }
 
-    #endregion IChatServiceStreaming Implementation
 
     /// <summary>
     /// Helper methods
     /// </summary>
-    /// <param name="chatId"></param>
-    /// <param name="storage"></param>
-    /// <param name="streamingAgent"></param>
-    /// <param name="modeService"></param>
-    /// <param name="modeId"></param>
-    /// <param name="userId"></param>
-    /// <returns></returns>
-    [Obsolete("Phase 3: Direct service LLM operations deprecated. Use Orleans ChatGrain via router.")]
-    private static async Task<string> GenerateAIResponseAsync(
-        string chatId,
-        IChatStorage storage,
-        IStreamingAgent streamingAgent,
-        IModeService modeService,
-        string? modeId = null,
-        string? userId = null
-    )
-    {
-        // Phase 3: This method is deprecated - Orleans ChatGrain handles LLM operations
-        await Task.CompletedTask;
-        throw new NotSupportedException("Phase 3: Direct service LLM operations deprecated. Use Orleans ChatGrain via router.");
-    }
-
     private static string GenerateChatTitle(string firstMessage)
     {
         return firstMessage.Length > 50 ? firstMessage[..47] + "..." : firstMessage;

@@ -12,10 +12,8 @@ public class ChatServiceFacade(
     ChatService chatService,
     ILogger<ChatServiceFacade> logger,
     IChatStorage storage,
-    IStreamingAgent streamingAgent,
     IModeService modeService,
     ITaskManagerService taskManagerService,
-    IToolingService toolingService,
     IOrleansIntegrationService? orleansService = null
 ) : IChatServiceFacade, IChatService
 {
@@ -31,7 +29,6 @@ public class ChatServiceFacade(
         return await chatService.CreateChatAsync(
             request,
             storage,
-            streamingAgent,
             modeService,
             orleansService
         );
@@ -61,7 +58,6 @@ public class ChatServiceFacade(
         return await chatService.SendMessageAsync(
             request,
             storage,
-            streamingAgent,
             modeService,
             orleansService
         );
@@ -86,8 +82,8 @@ public class ChatServiceFacade(
             request,
             storage,
             modeService,
-            streamingAgent,
-            toolingService,
+            null,
+            null,
             orleansService,
             cancellationToken
         );
@@ -131,8 +127,8 @@ public class ChatServiceFacade(
             request,
             storage,
             modeService,
-            streamingAgent,
-            toolingService,
+            null,
+            null,
             orleansService,
             cancellationToken
         );

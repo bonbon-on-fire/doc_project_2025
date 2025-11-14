@@ -13,52 +13,16 @@ namespace AIChat.Server.Services;
 public interface IChatServiceStreaming
 {
     /// <summary>
-    /// Process a message with streaming callbacks for background services
-    /// This method is stateless and suitable for singleton services
-    /// </summary>
-    /// <param name="chatId">The chat ID to process the message for</param>
-    /// <param name="message">User message content</param>
-    /// <param name="userId">User ID for context and authorization</param>
-    /// <param name="storage">Chat storage service</param>
-    /// <param name="streamingAgent">Streaming agent for AI responses</param>
-    /// <param name="toolingService">Service for handling tool calls</param>
-    /// <param name="modeService">Service for handling mode-specific behavior</param>
-    /// <param name="orleansService">Optional Orleans integration service</param>
-    /// <param name="modeId">Optional mode ID for specialized behavior</param>
-    /// <param name="systemPrompt">Optional system prompt override</param>
-    /// <param name="messageCallback">Callback for complete messages (tool calls, text, reasoning)</param>
-    /// <param name="chunkCallback">Callback for streaming chunks (real-time updates)</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Task representing the completion of message processing</returns>
-    Task ProcessMessageWithCallbackAsync(
-        string chatId,
-        string message,
-        string userId,
-        IChatStorage storage,
-        IStreamingAgent streamingAgent,
-        IToolingService toolingService,
-        IModeService modeService,
-        IOrleansIntegrationService? orleansService = null,
-        string? modeId = null,
-        string? systemPrompt = null,
-        Func<MessageEvent, Task>? messageCallback = null,
-        Func<StreamChunkEvent, Task>? chunkCallback = null,
-        CancellationToken cancellationToken = default
-    );
-
-    /// <summary>
     /// Create a new chat (stateless version)
     /// </summary>
     /// <param name="request">Chat creation request</param>
     /// <param name="storage">Chat storage service</param>
-    /// <param name="streamingAgent">Streaming agent for AI responses</param>
     /// <param name="modeService">Mode service for system prompts</param>
     /// <param name="orleansService">Optional Orleans integration service</param>
     /// <returns>Result containing the created chat or error information</returns>
     Task<ChatResult> CreateChatAsync(
         CreateChatRequest request,
         IChatStorage storage,
-        IStreamingAgent streamingAgent,
         IModeService modeService,
         IOrleansIntegrationService? orleansService = null
     );

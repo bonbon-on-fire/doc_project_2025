@@ -56,44 +56,18 @@ Log.Logger = new LoggerConfiguration()
         shared: true)
     .CreateLogger();
 
-builder.Host.UseSerilog((context, services, configuration) =>
-{
-    configuration
-        .ReadFrom.Configuration(context.Configuration)
-        .Enrich.FromLogContext()
-        .Enrich.WithMachineName()
-        .Enrich.WithThreadId()
-        .Enrich.WithEnvironmentName()
-        .Enrich.WithProperty("Application", "AIChat.Server")
-        .Enrich.WithProperty("Environment", context.HostingEnvironment.EnvironmentName);
-
-    // Add console sink (Warning and above only - keep console clean)
-    configuration.WriteTo.Console(
-        restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Warning,
-        formatProvider: System.Globalization.CultureInfo.InvariantCulture
-    );
-
-    // Add file sink for all logs (Verbose level)
-    configuration.WriteTo.File(
-        new CompactJsonFormatter(),
-        logFileName,
-        restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Verbose,
-        buffered: false,
-        shared: true,
-        rollingInterval: RollingInterval.Day);
-
-
-    // Add Seq sink for centralized structured logging (if enabled)
-    var enableSeq = context.Configuration.GetValue("Serilog:EnableSeq", true);
-    if (enableSeq)
+builder.Host.ConfigureCommonSerilog(
+    "AIChat.Server",
+    (context, configuration) =>
     {
-        var seqServerUrl = context.Configuration["Serilog:SeqServerUrl"] ?? "http://localhost:5341";
-        configuration.WriteTo.Seq(
-            serverUrl: seqServerUrl,
-            restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Debug,
-            apiKey: context.Configuration["Serilog:SeqApiKey"]);
+        // Add compact JSON file logging for Server
+        _ = configuration.AddCompactJsonFileLogging(
+            context,
+            logFileName,
+            Serilog.Events.LogEventLevel.Verbose
+        );
     }
-});
+);
 
 // Add services to the container
 builder

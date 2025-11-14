@@ -67,7 +67,7 @@ public static class OrleansClientExtensions
 
         // Environment-specific configuration
         // Orleans will automatically log connection attempts and configuration details
-        if (environment.IsDevelopment())
+        if (environment.IsDevelopment() || environment.IsEnvironment("Test"))
         {
             ConfigureDevelopmentClient(clientBuilder, configuration, environment);
         }

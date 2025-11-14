@@ -711,29 +711,12 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
         state.ProgressDescription = "Processing message with AI";
         state.Progress = 0.3;
 
-        // Create callbacks for streaming updates (simplified for now)
-        var messageCallback = CreateMessageCallback(operation, state);
-        var chunkCallback = CreateChunkCallback(operation, state);
-
-        // Process the message using ChatService
-        await chatService.ProcessMessageWithCallbackAsync(
-            chatId: operation.ChatId,
-            message: message,
-            userId: operation.UserId,
-            storage: storage,
-            streamingAgent: streamingAgent,
-            toolingService: toolingService,
-            modeService: modeService,
-            orleansService: orleansService,
-            modeId: operation.ModeId,
-            systemPrompt: operation.SystemPrompt,
-            messageCallback: messageCallback,
-            chunkCallback: chunkCallback,
-            cancellationToken: cancellationToken
+        // Phase 3: Background chat processing moved to Orleans - pure proxy doesn't process LLM operations
+        // BackgroundChatService should route to Orleans ChatGrain for message processing
+        await Task.CompletedTask;
+        throw new NotSupportedException(
+            "Phase 3: Background chat processing deprecated. Use Orleans ChatGrain for message processing."
         );
-
-        state.ProgressDescription = "Message processing completed";
-        state.Progress = 0.9;
     }
 
     private Func<MessageEvent, Task>? CreateMessageCallback(
@@ -897,29 +880,12 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
         state.ProgressDescription = "Regenerating AI response";
         state.Progress = 0.4;
 
-        // Create callbacks for streaming updates
-        var messageCallback = CreateMessageCallback(operation, state);
-        var chunkCallback = CreateChunkCallback(operation, state);
-
-        // Process the user message again to regenerate response
-        await chatService.ProcessMessageWithCallbackAsync(
-            chatId: operation.ChatId,
-            message: userMessage,
-            userId: operation.UserId,
-            storage: storage,
-            streamingAgent: streamingAgent,
-            toolingService: toolingService,
-            modeService: modeService,
-            orleansService: orleansService,
-            modeId: operation.ModeId,
-            systemPrompt: operation.SystemPrompt,
-            messageCallback: messageCallback,
-            chunkCallback: chunkCallback,
-            cancellationToken: cancellationToken
+        // Phase 3: Background chat processing moved to Orleans - pure proxy doesn't process LLM operations
+        // BackgroundChatService should route to Orleans ChatGrain for regeneration
+        await Task.CompletedTask;
+        throw new NotSupportedException(
+            "Phase 3: Background chat processing deprecated. Use Orleans ChatGrain for regeneration."
         );
-
-        state.ProgressDescription = "Response regeneration completed";
-        state.Progress = 0.9;
     }
 
     private async Task ProcessEditMessageOperationAsync(
@@ -953,25 +919,12 @@ public class BackgroundChatService : BackgroundService, IBackgroundChatService
         state.ProgressDescription = "Processing edited message";
         state.Progress = 0.5;
 
-        // Process the edited message
-        await chatService.ProcessMessageWithCallbackAsync(
-            chatId: operation.ChatId,
-            message: editPayload.NewContent,
-            userId: operation.UserId,
-            storage: storage,
-            streamingAgent: streamingAgent,
-            toolingService: toolingService,
-            modeService: modeService,
-            orleansService: orleansService,
-            modeId: operation.ModeId,
-            systemPrompt: operation.SystemPrompt,
-            messageCallback: messageCallback,
-            chunkCallback: chunkCallback,
-            cancellationToken: cancellationToken
+        // Phase 3: Background chat processing moved to Orleans - pure proxy doesn't process LLM operations
+        // BackgroundChatService should route to Orleans ChatGrain for message editing
+        await Task.CompletedTask;
+        throw new NotSupportedException(
+            "Phase 3: Background chat processing deprecated. Use Orleans ChatGrain for message editing."
         );
-
-        state.ProgressDescription = "Message edit processing completed";
-        state.Progress = 0.9;
     }
 
     #endregion RegenerateResponse and EditMessage Operations

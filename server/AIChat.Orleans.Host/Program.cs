@@ -123,60 +123,27 @@ public partial class Program
                     });
                 })
             )
-            .UseSerilog(
+            .ConfigureCommonSerilog(
+                "AIChat.Orleans.Host",
                 (context, configuration) =>
                 {
-                    _ = configuration
-                        .ReadFrom.Configuration(context.Configuration)
-                        .MinimumLevel.Information()
-                        .MinimumLevel.Override("Orleans", LogEventLevel.Warning)
-                        .MinimumLevel.Override("Orleans.Runtime", LogEventLevel.Warning)
-                        .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
-                        .MinimumLevel.Override("AIChat.Orleans", LogEventLevel.Debug)
-                        .WriteTo.Console(
-                            restrictedToMinimumLevel: LogEventLevel.Warning,
-                            outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}",
-                            formatProvider: CultureInfo.InvariantCulture
-                        )
-                        .WriteTo.File(
-                            path: "logs/orleans-host-.log",
-                            outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {SourceContext} - {Message:lj}{NewLine}{Exception}",
-                            formatProvider: CultureInfo.InvariantCulture
-,
-                            rollingInterval: RollingInterval.Day);
+                    // Add Orleans-specific minimum level overrides
+                    _ = configuration.AddMinimumLevelOverrides(new Dictionary<string, LogEventLevel>
+                    {
+                        ["Orleans"] = LogEventLevel.Warning,
+                        ["Orleans.Runtime"] = LogEventLevel.Warning,
+                        ["Microsoft"] = LogEventLevel.Information,
+                        ["AIChat.Orleans"] = LogEventLevel.Debug
+                    });
+
+                    // Add text file logging for Orleans
+                    _ = configuration.AddTextFileLogging(
+                        "logs/orleans-host-.log",
+                        "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {SourceContext} - {Message:lj}{NewLine}{Exception}"
+                    );
 
                     // Add Application Insights if configured
-                    var appInsightsKey = context.Configuration.GetConnectionString(
-                        "ApplicationInsights"
-                    );
-                    if (!string.IsNullOrEmpty(appInsightsKey))
-                    {
-                        _ = configuration.WriteTo.ApplicationInsights(
-                            appInsightsKey,
-                            TelemetryConverter.Traces
-                        );
-                    }
-
-                    // Add Seq sink for centralized structured logging (if enabled)
-                    var enableSeq = context.Configuration.GetValue("Serilog:EnableSeq", true);
-                    if (enableSeq)
-                    {
-                        var seqServerUrl = context.Configuration["Serilog:SeqServerUrl"] ?? "http://localhost:5341";
-                        _ = configuration.WriteTo.Seq(
-                            serverUrl: seqServerUrl,
-                            restrictedToMinimumLevel: LogEventLevel.Debug
-,
-                            apiKey: context.Configuration["Serilog:SeqApiKey"]);
-                    }
-
-                    // Add enrichers for better log context
-                    _ = configuration
-                        .Enrich.FromLogContext()
-                        .Enrich.WithMachineName()
-                        .Enrich.WithThreadId()
-                        .Enrich.WithEnvironmentName()
-                        .Enrich.WithProperty("Application", "AIChat.Orleans.Host")
-                        .Enrich.WithProperty("Environment", context.HostingEnvironment.EnvironmentName);
+                    _ = configuration.AddApplicationInsights(context);
                 }
             )
             .UseOrleans(ConfigureOrleans)
@@ -256,7 +223,7 @@ public partial class Program
                         var baseUrl =
                             Environment.GetEnvironmentVariable("LLM_BASE_API_URL")
                             ?? configuration["OpenAI:BaseUrl"]
-                            ?? "https://api.openai.com/v1";
+                            ?? "https://openrouter.ai/api/v1";
 
                         // Diagnostic logging for API configuration
                         LogApiConfiguration(logger);
