@@ -55,19 +55,19 @@ public sealed class SystemTimer : ITimer
     public void Start(TimeSpan dueTime, TimeSpan period)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        _timer.Change(dueTime, period);
+        _ = _timer.Change(dueTime, period);
     }
 
     public void StopTimer()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        _timer.Change(Timeout.Infinite, Timeout.Infinite);
+        _ = _timer.Change(Timeout.Infinite, Timeout.Infinite);
     }
 
     public void Change(TimeSpan dueTime, TimeSpan period)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        _timer.Change(dueTime, period);
+        _ = _timer.Change(dueTime, period);
     }
 
     public void Dispose()

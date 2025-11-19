@@ -43,7 +43,7 @@ public class SessionGrainExceptionEnhancementsTests
         var exception = new SessionNotFoundException("test-session");
 
         // Act
-        exception
+        _ = exception
             .WithSeverity(ExceptionSeverity.Critical)
             .WithRetryPolicy(true, TimeSpan.FromSeconds(10), 5)
             .WithContext("Operation", "Connect");
@@ -95,7 +95,7 @@ public class SessionGrainExceptionEnhancementsTests
     {
         // Arrange & Act
         var exception = new SessionProtocolException("WebSocket", "Connection failed", "test-session");
-        exception.WithErrorCode("PROTOCOL_ERROR_001");
+        _ = exception.WithErrorCode("PROTOCOL_ERROR_001");
 
         // Assert
         Assert.Equal("PROTOCOL_ERROR_001", exception.ErrorCode);

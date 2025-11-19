@@ -43,10 +43,10 @@ public class WebSocketToOrleansTranslator : MessageTranslatorBase<WebSocketMessa
                 return validationError;
             }
 
-            activity?.SetTag("websocket.type", source.Type);
-            activity?.SetTag("websocket.session_id", source.SessionId);
-            activity?.SetTag("websocket.message_id", source.MessageId);
-            activity?.SetTag("correlation.id", context.CorrelationId);
+            _ = (activity?.SetTag("websocket.type", source.Type));
+            _ = (activity?.SetTag("websocket.session_id", source.SessionId));
+            _ = (activity?.SetTag("websocket.message_id", source.MessageId));
+            _ = (activity?.SetTag("correlation.id", context.CorrelationId));
 
             Logger.LogDebug(
                 "Translating WebSocket message {MessageId} of type {Type} from session {SessionId}",
@@ -82,9 +82,9 @@ public class WebSocketToOrleansTranslator : MessageTranslatorBase<WebSocketMessa
                 stopwatch.ElapsedMilliseconds
             );
 
-            activity?.SetTag("translation.success", true);
-            activity?.SetTag("orleans.message_id", chatMessage.Id);
-            activity?.SetTag("orleans.chat_id", chatMessage.ChatId);
+            _ = (activity?.SetTag("translation.success", true));
+            _ = (activity?.SetTag("orleans.message_id", chatMessage.Id));
+            _ = (activity?.SetTag("orleans.chat_id", chatMessage.ChatId));
 
             return TranslationResult.SuccessWithTypes<WebSocketMessage, ChatMessage>(chatMessage, stopwatch.Elapsed);
         }
@@ -94,8 +94,8 @@ public class WebSocketToOrleansTranslator : MessageTranslatorBase<WebSocketMessa
             var errorMessage = $"Unsupported message type: {ex.Message}";
             Logger.LogWarning(ex, "Unsupported message type: {ExceptionMessage}", ex.Message);
             UpdateFailureMetrics(stopwatch.Elapsed, "UNSUPPORTED_MESSAGE_TYPE", context);
-            activity?.SetTag("translation.success", false);
-            activity?.SetTag("error.type", "UnsupportedMessageType");
+            _ = (activity?.SetTag("translation.success", false));
+            _ = (activity?.SetTag("error.type", "UnsupportedMessageType"));
             return TranslationResult.Failure<ChatMessage>(errorMessage, "UNSUPPORTED_MESSAGE_TYPE", stopwatch.Elapsed);
         }
         catch (JsonException ex)
@@ -104,8 +104,8 @@ public class WebSocketToOrleansTranslator : MessageTranslatorBase<WebSocketMessa
             var errorMessage = $"Invalid JSON in WebSocket payload: {ex.Message}";
             Logger.LogWarning(ex, "Invalid JSON in WebSocket payload: {ExceptionMessage}", ex.Message);
             UpdateFailureMetrics(stopwatch.Elapsed, "INVALID_JSON_PAYLOAD", context);
-            activity?.SetTag("translation.success", false);
-            activity?.SetTag("error.type", "JsonException");
+            _ = (activity?.SetTag("translation.success", false));
+            _ = (activity?.SetTag("error.type", "JsonException"));
             return TranslationResult.Failure<ChatMessage>(errorMessage, "INVALID_JSON_PAYLOAD", stopwatch.Elapsed);
         }
         catch (Exception ex)
@@ -114,8 +114,8 @@ public class WebSocketToOrleansTranslator : MessageTranslatorBase<WebSocketMessa
             var errorMessage = $"Translation failed: {ex.Message}";
             Logger.LogError(ex, "Translation failed: {ExceptionMessage}", ex.Message);
             UpdateFailureMetrics(stopwatch.Elapsed, "TRANSLATION_ERROR", context);
-            activity?.SetTag("translation.success", false);
-            activity?.SetTag("error.type", ex.GetType().Name);
+            _ = (activity?.SetTag("translation.success", false));
+            _ = (activity?.SetTag("error.type", ex.GetType().Name));
             return TranslationResult.Failure<ChatMessage>(errorMessage, "TRANSLATION_ERROR", stopwatch.Elapsed);
         }
     }

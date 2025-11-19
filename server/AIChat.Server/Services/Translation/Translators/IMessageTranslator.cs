@@ -165,13 +165,13 @@ public abstract class MessageTranslatorBase<TSource, TTarget> : IMessageTranslat
         // Update protocol metrics
         if (!string.IsNullOrEmpty(context.SourceProtocol))
         {
-            Metrics.TranslationsBySourceProtocol.TryGetValue(context.SourceProtocol, out var sourceCount);
+            _ = Metrics.TranslationsBySourceProtocol.TryGetValue(context.SourceProtocol, out var sourceCount);
             Metrics.TranslationsBySourceProtocol[context.SourceProtocol] = sourceCount + 1;
         }
 
         if (!string.IsNullOrEmpty(context.TargetProtocol))
         {
-            Metrics.TranslationsByTargetProtocol.TryGetValue(context.TargetProtocol, out var targetCount);
+            _ = Metrics.TranslationsByTargetProtocol.TryGetValue(context.TargetProtocol, out var targetCount);
             Metrics.TranslationsByTargetProtocol[context.TargetProtocol] = targetCount + 1;
         }
     }

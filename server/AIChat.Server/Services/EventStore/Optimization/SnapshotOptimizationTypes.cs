@@ -258,7 +258,7 @@ public class PerformanceMetrics
     /// <param name="time">The retrieval time</param>
     public void RecordRetrievalTime(TimeSpan time)
     {
-        Interlocked.Add(ref _totalRetrievalTimeMs, (long)time.TotalMilliseconds);
+        _ = Interlocked.Add(ref _totalRetrievalTimeMs, (long)time.TotalMilliseconds);
     }
 
     /// <summary>
@@ -267,7 +267,7 @@ public class PerformanceMetrics
     /// <param name="time">The creation time</param>
     public void RecordCreationTime(TimeSpan time)
     {
-        Interlocked.Add(ref _totalCreationTimeMs, (long)time.TotalMilliseconds);
+        _ = Interlocked.Add(ref _totalCreationTimeMs, (long)time.TotalMilliseconds);
     }
 }
 

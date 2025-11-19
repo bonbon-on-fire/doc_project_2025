@@ -74,8 +74,8 @@ public class ChatHub : Hub
                 return;
             }
 
-            activity?.SetTag("chat.id", chatId);
-            activity?.SetTag("connection.id", Context.ConnectionId);
+            _ = (activity?.SetTag("chat.id", chatId));
+            _ = (activity?.SetTag("connection.id", Context.ConnectionId));
 
             _logger.LogInformation("Starting JoinChatGroup operation for ChatId: {ChatId}, Connection: {ConnectionId}",
                 chatId, Context.ConnectionId);
@@ -104,15 +104,15 @@ public class ChatHub : Hub
                 Context.ConnectionId, chatId, stopwatch.ElapsedMilliseconds
             );
 
-            activity?.SetTag("operation.success", true);
-            activity?.SetTag("operation.duration_ms", stopwatch.ElapsedMilliseconds);
+            _ = (activity?.SetTag("operation.success", true));
+            _ = (activity?.SetTag("operation.duration_ms", stopwatch.ElapsedMilliseconds));
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
             await HandleOperationErrorAsync(ex, "JoinChatGroup", chatId, stopwatch.ElapsedMilliseconds);
-            activity?.SetTag("operation.success", false);
-            activity?.SetTag("error.type", ex.GetType().Name);
+            _ = (activity?.SetTag("operation.success", false));
+            _ = (activity?.SetTag("error.type", ex.GetType().Name));
         }
     }
 
@@ -136,8 +136,8 @@ public class ChatHub : Hub
                 return;
             }
 
-            activity?.SetTag("chat.id", chatId);
-            activity?.SetTag("connection.id", Context.ConnectionId);
+            _ = (activity?.SetTag("chat.id", chatId));
+            _ = (activity?.SetTag("connection.id", Context.ConnectionId));
 
             _logger.LogInformation("Starting LeaveChatGroup operation for ChatId: {ChatId}, Connection: {ConnectionId}",
                 chatId, Context.ConnectionId);
@@ -158,15 +158,15 @@ public class ChatHub : Hub
                 Context.ConnectionId, chatId, stopwatch.ElapsedMilliseconds
             );
 
-            activity?.SetTag("operation.success", true);
-            activity?.SetTag("operation.duration_ms", stopwatch.ElapsedMilliseconds);
+            _ = (activity?.SetTag("operation.success", true));
+            _ = (activity?.SetTag("operation.duration_ms", stopwatch.ElapsedMilliseconds));
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
             await HandleOperationErrorAsync(ex, "LeaveChatGroup", chatId, stopwatch.ElapsedMilliseconds);
-            activity?.SetTag("operation.success", false);
-            activity?.SetTag("error.type", ex.GetType().Name);
+            _ = (activity?.SetTag("operation.success", false));
+            _ = (activity?.SetTag("error.type", ex.GetType().Name));
         }
     }
 
@@ -199,10 +199,10 @@ public class ChatHub : Hub
                 return;
             }
 
-            activity?.SetTag("chat.id", chatId);
-            activity?.SetTag("user.id", userId);
-            activity?.SetTag("connection.id", Context.ConnectionId);
-            activity?.SetTag("message.length", message.Length);
+            _ = (activity?.SetTag("chat.id", chatId));
+            _ = (activity?.SetTag("user.id", userId));
+            _ = (activity?.SetTag("connection.id", Context.ConnectionId));
+            _ = (activity?.SetTag("message.length", message.Length));
 
             _logger.LogInformation("Starting SendMessage operation for ChatId: {ChatId}, UserId: {UserId}, MessageLength: {MessageLength}",
                 chatId, userId, message.Length);
@@ -217,15 +217,15 @@ public class ChatHub : Hub
                 chatId, stopwatch.ElapsedMilliseconds
             );
 
-            activity?.SetTag("operation.success", true);
-            activity?.SetTag("operation.duration_ms", stopwatch.ElapsedMilliseconds);
+            _ = (activity?.SetTag("operation.success", true));
+            _ = (activity?.SetTag("operation.duration_ms", stopwatch.ElapsedMilliseconds));
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
             await HandleOperationErrorAsync(ex, "SendMessage", chatId, stopwatch.ElapsedMilliseconds);
-            activity?.SetTag("operation.success", false);
-            activity?.SetTag("error.type", ex.GetType().Name);
+            _ = (activity?.SetTag("operation.success", false));
+            _ = (activity?.SetTag("error.type", ex.GetType().Name));
         }
     }
 
@@ -329,7 +329,7 @@ public class ChatHub : Hub
     private async Task ExecuteOrleansLeaveAsync(IChatGrain grain, string chatId)
     {
         var participantId = Context.UserIdentifier ?? Context.ConnectionId;
-        await grain.RemoveParticipantAsync(participantId);
+        _ = await grain.RemoveParticipantAsync(participantId);
         _logger.LogInformation(
             "Orleans: User {ConnectionId} left chat {ChatId} via grain",
             Context.ConnectionId,

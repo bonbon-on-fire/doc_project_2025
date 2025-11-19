@@ -42,7 +42,7 @@ public class ChatValidatorTests
         Assert.True(result.IsValid);
         Assert.Empty(result.Errors);
         // Should have one warning about referential integrity check not implemented
-        Assert.Single(result.Warnings);
+        _ = Assert.Single(result.Warnings);
         Assert.Contains("Referential integrity check", result.Warnings[0].Message);
     }
 
@@ -64,7 +64,7 @@ public class ChatValidatorTests
 
         // Assert
         Assert.False(result.IsValid);
-        Assert.Single(result.Errors);
+        _ = Assert.Single(result.Errors);
         Assert.Equal(ValidationErrorCode.InvalidFormat, result.Errors[0].ErrorCode);
         Assert.Contains("GUID format", result.Errors[0].ErrorMessage);
     }
@@ -87,7 +87,7 @@ public class ChatValidatorTests
 
         // Assert
         Assert.False(result.IsValid);
-        Assert.Single(result.Errors);
+        _ = Assert.Single(result.Errors);
         Assert.Equal(ValidationErrorCode.BusinessRuleViolation, result.Errors[0].ErrorCode);
         Assert.Contains("unsafe content", result.Errors[0].ErrorMessage);
     }
@@ -178,7 +178,7 @@ public class ChatValidatorTests
 
         // Assert
         Assert.False(result.IsValid);
-        Assert.Single(result.Errors);
+        _ = Assert.Single(result.Errors);
         Assert.Equal(ValidationErrorCode.BusinessRuleViolation, result.Errors[0].ErrorCode);
         Assert.Contains("Archive the chat instead", result.Errors[0].ErrorMessage);
     }

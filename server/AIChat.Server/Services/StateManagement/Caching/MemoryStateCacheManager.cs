@@ -209,21 +209,21 @@ public class MemoryStateCacheManager<T> : IStateCacheManager<T>, IDisposable whe
                 {
                     if (string.IsNullOrEmpty(key))
                     {
-                        Interlocked.Increment(ref failedCount);
+                        _ = Interlocked.Increment(ref failedCount);
                         return;
                     }
 
                     var cacheKey = GetCacheKey(key);
                     _memoryCache.Remove(cacheKey);
-                    _keyTracker.TryRemove(key, out _);
+                    _ = _keyTracker.TryRemove(key, out _);
 
-                    Interlocked.Increment(ref removedCount);
+                    _ = Interlocked.Increment(ref removedCount);
                     await Task.CompletedTask;
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Failed to remove {EntityType} cache entry with key {Key}", typeof(T).Name, key);
-                    Interlocked.Increment(ref failedCount);
+                    _ = Interlocked.Increment(ref failedCount);
                 }
             });
 
@@ -569,7 +569,7 @@ public class CacheMetricsCollector
     /// </summary>
     public void RecordHit()
     {
-        Interlocked.Increment(ref _hitCount);
+        _ = Interlocked.Increment(ref _hitCount);
     }
 
     /// <summary>
@@ -577,7 +577,7 @@ public class CacheMetricsCollector
     /// </summary>
     public void RecordMiss()
     {
-        Interlocked.Increment(ref _missCount);
+        _ = Interlocked.Increment(ref _missCount);
     }
 
     /// <summary>
@@ -585,7 +585,7 @@ public class CacheMetricsCollector
     /// </summary>
     public void Reset()
     {
-        Interlocked.Exchange(ref _hitCount, 0);
-        Interlocked.Exchange(ref _missCount, 0);
+        _ = Interlocked.Exchange(ref _hitCount, 0);
+        _ = Interlocked.Exchange(ref _missCount, 0);
     }
 }

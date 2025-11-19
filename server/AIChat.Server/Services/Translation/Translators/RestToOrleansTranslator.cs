@@ -43,10 +43,10 @@ public class RestToOrleansTranslator : MessageTranslatorBase<RestMessage, ChatMe
                 return validationError;
             }
 
-            activity?.SetTag("rest.method", source.Method);
-            activity?.SetTag("rest.path", source.Path);
-            activity?.SetTag("rest.operation", source.GetOperationType());
-            activity?.SetTag("correlation.id", context.CorrelationId);
+            _ = (activity?.SetTag("rest.method", source.Method));
+            _ = (activity?.SetTag("rest.path", source.Path));
+            _ = (activity?.SetTag("rest.operation", source.GetOperationType()));
+            _ = (activity?.SetTag("correlation.id", context.CorrelationId));
 
             Logger.LogDebug(
                 "Translating REST {Method} {Path} operation {Operation}",
@@ -95,9 +95,9 @@ public class RestToOrleansTranslator : MessageTranslatorBase<RestMessage, ChatMe
                 stopwatch.ElapsedMilliseconds
             );
 
-            activity?.SetTag("translation.success", true);
-            activity?.SetTag("orleans.message_id", chatMessage.Id);
-            activity?.SetTag("orleans.chat_id", chatMessage.ChatId);
+            _ = (activity?.SetTag("translation.success", true));
+            _ = (activity?.SetTag("orleans.message_id", chatMessage.Id));
+            _ = (activity?.SetTag("orleans.chat_id", chatMessage.ChatId));
 
             return TranslationResult.SuccessWithTypes<RestMessage, ChatMessage>(chatMessage, stopwatch.Elapsed);
         }
@@ -107,8 +107,8 @@ public class RestToOrleansTranslator : MessageTranslatorBase<RestMessage, ChatMe
             var errorMessage = $"Invalid JSON in REST body: {ex.Message}";
             Logger.LogWarning(ex, "Invalid JSON in REST body: {ExceptionMessage}", ex.Message);
             UpdateFailureMetrics(stopwatch.Elapsed, "INVALID_JSON_BODY", context);
-            activity?.SetTag("translation.success", false);
-            activity?.SetTag("error.type", "JsonException");
+            _ = (activity?.SetTag("translation.success", false));
+            _ = (activity?.SetTag("error.type", "JsonException"));
             return TranslationResult.Failure<ChatMessage>(errorMessage, "INVALID_JSON_BODY", stopwatch.Elapsed);
         }
         catch (Exception ex)
@@ -117,8 +117,8 @@ public class RestToOrleansTranslator : MessageTranslatorBase<RestMessage, ChatMe
             var errorMessage = $"Translation failed: {ex.Message}";
             Logger.LogError(ex, "Translation failed: {ExceptionMessage}", ex.Message);
             UpdateFailureMetrics(stopwatch.Elapsed, "TRANSLATION_ERROR", context);
-            activity?.SetTag("translation.success", false);
-            activity?.SetTag("error.type", ex.GetType().Name);
+            _ = (activity?.SetTag("translation.success", false));
+            _ = (activity?.SetTag("error.type", ex.GetType().Name));
             return TranslationResult.Failure<ChatMessage>(errorMessage, "TRANSLATION_ERROR", stopwatch.Elapsed);
         }
     }

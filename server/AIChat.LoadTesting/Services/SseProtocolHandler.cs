@@ -165,9 +165,9 @@ public class SseProtocolHandler : ISseProtocolHandler
                 case "data":
                     if (hasData)
                     {
-                        dataBuilder.AppendLine();
+                        _ = dataBuilder.AppendLine();
                     }
-                    dataBuilder.Append(value);
+                    _ = dataBuilder.Append(value);
                     hasData = true;
                     break;
 

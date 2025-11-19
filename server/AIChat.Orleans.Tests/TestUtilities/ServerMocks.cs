@@ -212,7 +212,7 @@ namespace AIChat.Orleans.Tests.TestUtilities.Mocks
 
         public StreamingBridge(
             ILogger<StreamingBridge> logger,
-            IOptions<Mocks.StreamingConfiguration> configuration
+            IOptions<StreamingConfiguration> configuration
         )
         {
             _logger = logger;
@@ -270,7 +270,7 @@ namespace AIChat.Orleans.Tests.TestUtilities.Mocks
         public IStreamingBridge CreateBridge()
         {
             var logger = _serviceProvider.GetService<ILogger<StreamingBridge>>()!;
-            var config = _serviceProvider.GetService<IOptions<Mocks.StreamingConfiguration>>()!;
+            var config = _serviceProvider.GetService<IOptions<StreamingConfiguration>>()!;
             return new StreamingBridge(logger, config);
         }
     }
@@ -286,7 +286,7 @@ namespace AIChat.Orleans.Tests.TestUtilities.Mocks
         public ResilientStreamManager(
             ILogger<ResilientStreamManager> logger,
             IStreamingBridgeFactory bridgeFactory,
-            IOptions<Mocks.ResilientStreamingConfiguration> configuration
+            IOptions<ResilientStreamingConfiguration> configuration
         )
         {
             _logger = logger;

@@ -581,14 +581,14 @@ internal sealed class ValidationMetricsCollector
                 _maxDurationMs = durationMs;
             }
 
-            _operationCounts.TryGetValue(operationType, out var count);
+            _ = _operationCounts.TryGetValue(operationType, out var count);
             _operationCounts[operationType] = count + 1;
 
             if (errors != null)
             {
                 foreach (var error in errors)
                 {
-                    _errorCounts.TryGetValue(error.ErrorCode, out var errorCount);
+                    _ = _errorCounts.TryGetValue(error.ErrorCode, out var errorCount);
                     _errorCounts[error.ErrorCode] = errorCount + 1;
                 }
             }

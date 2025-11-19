@@ -286,7 +286,7 @@ public class RecoveryAuditService : IRecoveryAuditService
     {
         ArgumentNullException.ThrowIfNull(auditId);
 
-        _auditEntries.TryGetValue(auditId, out var entry);
+        _ = _auditEntries.TryGetValue(auditId, out var entry);
         return Task.FromResult(entry);
     }
 
@@ -299,7 +299,7 @@ public class RecoveryAuditService : IRecoveryAuditService
 
         if (_operationToAuditMap.TryGetValue(operationId, out var auditId))
         {
-            _auditEntries.TryGetValue(auditId, out var entry);
+            _ = _auditEntries.TryGetValue(auditId, out var entry);
             return Task.FromResult(entry);
         }
 
@@ -502,8 +502,8 @@ public class RecoveryAuditService : IRecoveryAuditService
                 if (_auditEntries.TryRemove(auditId, out var removedEntry))
                 {
                     // Also remove from operation mapping
-                    _operationToAuditMap.TryRemove(removedEntry.OperationId, out _);
-                    _progressUpdates.TryRemove(auditId, out _);
+                    _ = _operationToAuditMap.TryRemove(removedEntry.OperationId, out _);
+                    _ = _progressUpdates.TryRemove(auditId, out _);
                     removedCount++;
                 }
             }
@@ -593,12 +593,12 @@ public class RecoveryAuditService : IRecoveryAuditService
         var csv = new StringBuilder();
 
         // Header
-        csv.AppendLine("AuditId,OperationId,GrainId,GrainType,InitiatedBy,StartedAt,CompletedAt,TargetTimestamp,ActualTimestamp,Success,StrategyUsed,EventsReplayed,RecoveryDuration,SnapshotUsed,ValidationPassed,ErrorMessage,CorrelationId");
+        _ = csv.AppendLine("AuditId,OperationId,GrainId,GrainType,InitiatedBy,StartedAt,CompletedAt,TargetTimestamp,ActualTimestamp,Success,StrategyUsed,EventsReplayed,RecoveryDuration,SnapshotUsed,ValidationPassed,ErrorMessage,CorrelationId");
 
         // Data rows
         foreach (var entry in entries)
         {
-            csv.AppendLine(CultureInfo.InvariantCulture, $"{EscapeCsv(entry.AuditId)},{EscapeCsv(entry.OperationId)},{EscapeCsv(entry.GrainId)},{EscapeCsv(entry.GrainType)},{EscapeCsv(entry.InitiatedBy)}," +
+            _ = csv.AppendLine(CultureInfo.InvariantCulture, $"{EscapeCsv(entry.AuditId)},{EscapeCsv(entry.OperationId)},{EscapeCsv(entry.GrainId)},{EscapeCsv(entry.GrainType)},{EscapeCsv(entry.InitiatedBy)}," +
                           $"{entry.StartedAt:O},{entry.CompletedAt?.ToString("O", CultureInfo.InvariantCulture)}," +
                           $"{entry.TargetTimestamp?.ToString("O", CultureInfo.InvariantCulture)},{entry.ActualTimestamp?.ToString("O", CultureInfo.InvariantCulture)}," +
                           $"{entry.Success},{entry.StrategyUsed},{entry.EventsReplayed},{entry.RecoveryDuration.TotalMilliseconds}," +
@@ -623,12 +623,12 @@ public class RecoveryAuditService : IRecoveryAuditService
     private static byte[] ExportToXml(IReadOnlyList<RecoveryAuditEntry> entries)
     {
         var xml = new StringBuilder();
-        xml.AppendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
+        _ = xml.AppendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
             .AppendLine("<RecoveryAuditEntries>");
 
         foreach (var entry in entries)
         {
-            xml.AppendLine("  <Entry>")
+            _ = xml.AppendLine("  <Entry>")
                 .AppendLine(CultureInfo.InvariantCulture, $"    <AuditId>{System.Security.SecurityElement.Escape(entry.AuditId)}</AuditId>")
                 .AppendLine(CultureInfo.InvariantCulture, $"    <OperationId>{System.Security.SecurityElement.Escape(entry.OperationId)}</OperationId>")
                 .AppendLine(CultureInfo.InvariantCulture, $"    <GrainId>{System.Security.SecurityElement.Escape(entry.GrainId)}</GrainId>")
@@ -637,10 +637,10 @@ public class RecoveryAuditService : IRecoveryAuditService
                 .AppendLine(CultureInfo.InvariantCulture, $"    <StartedAt>{entry.StartedAt:O}</StartedAt>");
             if (entry.CompletedAt.HasValue)
             {
-                xml.AppendLine(CultureInfo.InvariantCulture, $"    <CompletedAt>{entry.CompletedAt:O}</CompletedAt>");
+                _ = xml.AppendLine(CultureInfo.InvariantCulture, $"    <CompletedAt>{entry.CompletedAt:O}</CompletedAt>");
             }
 
-            xml.AppendLine(CultureInfo.InvariantCulture, $"    <Success>{entry.Success}</Success>")
+            _ = xml.AppendLine(CultureInfo.InvariantCulture, $"    <Success>{entry.Success}</Success>")
                 .AppendLine(CultureInfo.InvariantCulture, $"    <StrategyUsed>{entry.StrategyUsed}</StrategyUsed>")
                 .AppendLine(CultureInfo.InvariantCulture, $"    <EventsReplayed>{entry.EventsReplayed}</EventsReplayed>")
                 .AppendLine(CultureInfo.InvariantCulture, $"    <RecoveryDuration>{entry.RecoveryDuration}</RecoveryDuration>")
@@ -648,7 +648,7 @@ public class RecoveryAuditService : IRecoveryAuditService
                 .AppendLine("  </Entry>");
         }
 
-        xml.AppendLine("</RecoveryAuditEntries>");
+        _ = xml.AppendLine("</RecoveryAuditEntries>");
         return Encoding.UTF8.GetBytes(xml.ToString());
     }
 

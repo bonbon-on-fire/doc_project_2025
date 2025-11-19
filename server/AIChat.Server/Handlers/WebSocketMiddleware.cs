@@ -67,9 +67,9 @@ public class WebSocketMiddleware
                 "WebSocket upgrade request received from {RemoteIP} for path {Path}",
                 context.Connection.RemoteIpAddress, context.Request.Path);
 
-            activity?.SetTag("request.path", context.Request.Path.Value);
-            activity?.SetTag("request.method", context.Request.Method);
-            activity?.SetTag("remote.ip", context.Connection.RemoteIpAddress?.ToString());
+            _ = (activity?.SetTag("request.path", context.Request.Path.Value));
+            _ = (activity?.SetTag("request.method", context.Request.Method));
+            _ = (activity?.SetTag("remote.ip", context.Connection.RemoteIpAddress?.ToString()));
 
             // Validate the request
             var validationResult = await ValidateWebSocketRequestAsync(context);
@@ -82,8 +82,8 @@ public class WebSocketMiddleware
                 context.Response.StatusCode = validationResult.StatusCode;
                 await context.Response.WriteAsync(validationResult.ErrorMessage ?? "Invalid WebSocket request");
 
-                activity?.SetTag("operation.success", false);
-                activity?.SetTag("error.reason", "validation_failed");
+                _ = (activity?.SetTag("operation.success", false));
+                _ = (activity?.SetTag("error.reason", "validation_failed"));
                 return;
             }
 
@@ -95,8 +95,8 @@ public class WebSocketMiddleware
                 context.Response.StatusCode = 401;
                 await context.Response.WriteAsync("Authentication required");
 
-                activity?.SetTag("operation.success", false);
-                activity?.SetTag("error.reason", "authentication_required");
+                _ = (activity?.SetTag("operation.success", false));
+                _ = (activity?.SetTag("error.reason", "authentication_required"));
                 return;
             }
 
@@ -109,8 +109,8 @@ public class WebSocketMiddleware
                 context.Response.StatusCode = 403;
                 await context.Response.WriteAsync("Insufficient permissions");
 
-                activity?.SetTag("operation.success", false);
-                activity?.SetTag("error.reason", "authorization_failed");
+                _ = (activity?.SetTag("operation.success", false));
+                _ = (activity?.SetTag("error.reason", "authorization_failed"));
                 return;
             }
 
@@ -119,8 +119,8 @@ public class WebSocketMiddleware
 
             _logger.LogDebug("WebSocket connection accepted for {ConnectionId}", context.Connection.Id);
 
-            activity?.SetTag("websocket.accepted", true);
-            activity?.SetTag("operation.success", true);
+            _ = (activity?.SetTag("websocket.accepted", true));
+            _ = (activity?.SetTag("operation.success", true));
 
             // Delegate to the WebSocket handler
             var webSocketHandler = context.RequestServices.GetRequiredService<IWebSocketHandler>();
@@ -130,8 +130,8 @@ public class WebSocketMiddleware
         {
             _logger.LogError(ex, "WebSocket middleware error for request {Path}", context.Request.Path);
 
-            activity?.SetTag("operation.success", false);
-            activity?.SetTag("error.type", ex.GetType().Name);
+            _ = (activity?.SetTag("operation.success", false));
+            _ = (activity?.SetTag("error.type", ex.GetType().Name));
 
             // Try to return an error response if headers haven't been sent
             if (!context.Response.HasStarted)

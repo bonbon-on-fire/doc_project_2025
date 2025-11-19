@@ -158,7 +158,7 @@ public class SessionGrainExceptionTests
         var exception = new SessionProtocolException("SignalR", "Connection failed", "session-123");
 
         // Act
-        exception.WithErrorCode("ERR_CONN_001");
+        _ = exception.WithErrorCode("ERR_CONN_001");
 
         // Assert
         Assert.Equal("ERR_CONN_001", exception.ErrorCode);
@@ -293,7 +293,7 @@ public class SessionGrainExceptionTests
 
         // Assert
         Assert.Equal("Username", exception.FailedField);
-        Assert.Single(exception.ValidationErrors);
+        _ = Assert.Single(exception.ValidationErrors);
         Assert.Contains("Username", exception.Message);
         Assert.Contains("Username is required", exception.Message);
     }
@@ -305,8 +305,8 @@ public class SessionGrainExceptionTests
         var exception = new SessionValidationException("Initial error", "session-123");
 
         // Act
-        exception.AddError("Additional error 1");
-        exception.AddError("Additional error 2");
+        _ = exception.AddError("Additional error 1");
+        _ = exception.AddError("Additional error 2");
 
         // Assert
         Assert.Equal(2, exception.ValidationErrors.Count);
@@ -407,7 +407,7 @@ public class SessionGrainExceptionTests
         var exception = new SessionNotFoundException("session-123");
 
         // Act
-        exception.WithContext("Key1", "Value1")
+        _ = exception.WithContext("Key1", "Value1")
                 .WithContext("Key2", 123)
                 .WithContext("Key3", true);
 

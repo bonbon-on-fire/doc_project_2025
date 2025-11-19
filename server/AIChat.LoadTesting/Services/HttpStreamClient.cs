@@ -42,7 +42,7 @@ public class HttpStreamClient : IHttpStreamClient
             {
                 foreach (var header in headers)
                 {
-                    request.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                    _ = request.Headers.TryAddWithoutValidation(header.Key, header.Value);
                 }
             }
 
@@ -53,7 +53,7 @@ public class HttpStreamClient : IHttpStreamClient
                 cancellationToken).ConfigureAwait(false);
 
             // Validate response
-            response.EnsureSuccessStatusCode();
+            _ = response.EnsureSuccessStatusCode();
 
             // Validate content type
             var contentType = response.Content.Headers.ContentType?.MediaType;

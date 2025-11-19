@@ -148,8 +148,8 @@ builder.Services.AddSnapshotStoreHealthChecks();
 // Register Point-in-Time Recovery services (Phase 4 - ORL-ST-P4-006)
 builder.Services.AddScoped<AIChat.Server.Services.Recovery.IPointInTimeRecoveryService>(provider =>
 {
-    var eventStore = provider.GetRequiredService<AIChat.Server.Services.EventStore.IEventStore>();
-    var snapshotStore = provider.GetRequiredService<AIChat.Server.Services.EventStore.ISnapshotStore>();
+    var eventStore = provider.GetRequiredService<IEventStore>();
+    var snapshotStore = provider.GetRequiredService<ISnapshotStore>();
     var recoveryOrchestrator = provider.GetRequiredService<AIChat.Server.Services.Recovery.IStateRecoveryOrchestrator>();
     var logger = provider.GetRequiredService<ILogger<AIChat.Server.Services.Recovery.Implementations.PointInTimeRecoveryService>>();
 
@@ -286,10 +286,10 @@ if (!orleansDisabled)
 
         // Register Orleans metrics collector (needed for client-side operations)
         // First register the base collector
-        builder.Services.AddSingleton<AIChat.Orleans.Metrics.OrleansMetricsCollector>();
+        _ = builder.Services.AddSingleton<AIChat.Orleans.Metrics.OrleansMetricsCollector>();
 
         // Then wrap it with resilient decorator for circuit breaker protection
-        builder.Services.AddSingleton<AIChat.Orleans.Metrics.IOrleansMetricsCollector>(sp =>
+        _ = builder.Services.AddSingleton<AIChat.Orleans.Metrics.IOrleansMetricsCollector>(sp =>
         {
             var baseCollector = sp.GetRequiredService<AIChat.Orleans.Metrics.OrleansMetricsCollector>();
             var logger = sp.GetRequiredService<ILogger<AIChat.Server.Services.Metrics.ResilientMetricsCollectorDecorator>>();
@@ -297,13 +297,13 @@ if (!orleansDisabled)
         });
 
         // Register Prometheus metrics exporter for Orleans metrics
-        builder.Services.AddSingleton<
+        _ = builder.Services.AddSingleton<
             AIChat.Server.Services.Metrics.IPrometheusMetricsExporter,
             AIChat.Server.Services.Metrics.PrometheusMetricsExporter
         >();
 
         // Phase 5: Add placement metrics collection (ORL-ST-P5-001)
-        builder.Services.AddPlacementMetrics();
+        _ = builder.Services.AddPlacementMetrics();
 
         Log.Information("Orleans configured successfully");
 
@@ -435,8 +435,8 @@ builder.Services.AddScoped<
 
 // Add Orleans event relay service for ChatHub integration (Phase 3 - ORL-ST-P3-001)
 builder.Services.AddScoped<
-    AIChat.Server.Services.IOrleansEventRelay,
-    AIChat.Server.Services.OrleansEventRelay
+    IOrleansEventRelay,
+    OrleansEventRelay
 >();
 
 // Add operation tracking service for Orleans background processing (Phase 3)

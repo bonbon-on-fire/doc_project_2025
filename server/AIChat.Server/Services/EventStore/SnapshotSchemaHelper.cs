@@ -142,9 +142,9 @@ public static class SnapshotSchemaHelper
         var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = setVersionSql;
-        command.Parameters.AddWithValue("@version", version.ToString(CultureInfo.InvariantCulture));
+        _ = command.Parameters.AddWithValue("@version", version.ToString(CultureInfo.InvariantCulture));
 
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        _ = await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     /// <summary>
@@ -172,7 +172,7 @@ public static class SnapshotSchemaHelper
             var command = connection.CreateCommand();
             command.Transaction = transaction;
             command.CommandText = sql;
-            await command.ExecuteNonQueryAsync(cancellationToken);
+            _ = await command.ExecuteNonQueryAsync(cancellationToken);
         }
     }
 
@@ -217,7 +217,7 @@ public static class SnapshotSchemaHelper
         var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = createSchemaInfoSql;
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        _ = await command.ExecuteNonQueryAsync(cancellationToken);
 
         // Create snapshot content table (for content-addressable storage)
         command.CommandText = @"
@@ -227,7 +227,7 @@ public static class SnapshotSchemaHelper
                 ReferenceCount INTEGER NOT NULL DEFAULT 1,
                 CreatedAt TEXT NOT NULL DEFAULT (datetime('now'))
             )";
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        _ = await command.ExecuteNonQueryAsync(cancellationToken);
 
         // Create snapshots metadata table
         command.CommandText = @"
@@ -246,7 +246,7 @@ public static class SnapshotSchemaHelper
                 FOREIGN KEY (ContentHash) REFERENCES SnapshotContent(ContentHash),
                 UNIQUE(StreamId, Version)
             )";
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        _ = await command.ExecuteNonQueryAsync(cancellationToken);
 
         // Create indexes for optimal query performance
         var indexCommands = new[]
@@ -262,7 +262,7 @@ public static class SnapshotSchemaHelper
         foreach (var indexSql in indexCommands)
         {
             command.CommandText = indexSql;
-            await command.ExecuteNonQueryAsync(cancellationToken);
+            _ = await command.ExecuteNonQueryAsync(cancellationToken);
         }
 
         // Insert initial schema metadata
@@ -280,9 +280,9 @@ public static class SnapshotSchemaHelper
                 INSERT OR REPLACE INTO SnapshotSchemaInfo (Key, Value)
                 VALUES (@key, @value)";
             command.Parameters.Clear();
-            command.Parameters.AddWithValue("@key", key);
-            command.Parameters.AddWithValue("@value", value);
-            await command.ExecuteNonQueryAsync(cancellationToken);
+            _ = command.Parameters.AddWithValue("@key", key);
+            _ = command.Parameters.AddWithValue("@value", value);
+            _ = await command.ExecuteNonQueryAsync(cancellationToken);
         }
     }
 
@@ -307,7 +307,7 @@ public static class SnapshotSchemaHelper
 
                 var command = connection.CreateCommand();
                 command.CommandText = checkTableSql;
-                command.Parameters.AddWithValue("@tableName", tableName);
+                _ = command.Parameters.AddWithValue("@tableName", tableName);
 
                 var exists = (long)(await command.ExecuteScalarAsync(cancellationToken) ?? 0L) > 0;
                 if (!exists)
@@ -327,7 +327,7 @@ public static class SnapshotSchemaHelper
             const string testQuery = "SELECT COUNT(*) FROM Snapshots LIMIT 1";
             var testCommand = connection.CreateCommand();
             testCommand.CommandText = testQuery;
-            await testCommand.ExecuteScalarAsync(cancellationToken);
+            _ = await testCommand.ExecuteScalarAsync(cancellationToken);
 
             return true;
         }

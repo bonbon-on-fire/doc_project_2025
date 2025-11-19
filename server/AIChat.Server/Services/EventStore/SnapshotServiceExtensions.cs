@@ -18,24 +18,24 @@ public static class SnapshotServiceExtensions
     public static IServiceCollection AddSnapshotStore(this IServiceCollection services)
     {
         // Register metrics collector
-        services.AddSingleton<SnapshotMetricsCollector>();
+        _ = services.AddSingleton<SnapshotMetricsCollector>();
 
         // Register SQLite implementation
-        services.AddSingleton<ISnapshotStore, SqliteSnapshotStore>();
+        _ = services.AddSingleton<ISnapshotStore, SqliteSnapshotStore>();
 
         // Register individual interfaces for segregated access
-        services.AddSingleton<ISnapshotReader>(provider => provider.GetRequiredService<ISnapshotStore>());
-        services.AddSingleton<ISnapshotWriter>(provider => provider.GetRequiredService<ISnapshotStore>());
-        services.AddSingleton<ISnapshotQuery>(provider => provider.GetRequiredService<ISnapshotStore>());
+        _ = services.AddSingleton<ISnapshotReader>(provider => provider.GetRequiredService<ISnapshotStore>());
+        _ = services.AddSingleton<ISnapshotWriter>(provider => provider.GetRequiredService<ISnapshotStore>());
+        _ = services.AddSingleton<ISnapshotQuery>(provider => provider.GetRequiredService<ISnapshotStore>());
 
         // Register the snapshot manager orchestration layer
-        services.AddSingleton<ISnapshotManager, SnapshotManager>();
+        _ = services.AddSingleton<ISnapshotManager, SnapshotManager>();
 
         // Register Orleans integration service
-        services.AddSingleton<IOrleansSnapshotService, OrleansSnapshotService>();
+        _ = services.AddSingleton<IOrleansSnapshotService, OrleansSnapshotService>();
 
         // Register the initialization service
-        services.AddSingleton<IHostedService, SnapshotStoreInitializationService>();
+        _ = services.AddSingleton<IHostedService, SnapshotStoreInitializationService>();
 
         return services;
     }
@@ -50,7 +50,7 @@ public static class SnapshotServiceExtensions
         this IServiceCollection services,
         Action<SnapshotStoreOptions> configureOptions)
     {
-        services.Configure(configureOptions);
+        _ = services.Configure(configureOptions);
         return services.AddSnapshotStore();
     }
 }
@@ -355,7 +355,7 @@ public static class SnapshotStoreHealthCheckExtensions
         string name = "snapshot_store",
         params string[] tags)
     {
-        services.AddHealthChecks()
+        _ = services.AddHealthChecks()
             .AddCheck<SnapshotStoreHealthCheck>(name, tags: tags);
 
         return services;

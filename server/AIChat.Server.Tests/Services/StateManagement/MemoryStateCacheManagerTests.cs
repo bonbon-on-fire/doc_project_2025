@@ -39,7 +39,7 @@ public class MemoryStateCacheManagerTests : IDisposable
         };
 
         _mockConfiguration = new Mock<IOptions<MemoryStateCacheConfiguration>>();
-        _mockConfiguration.Setup(x => x.Value).Returns(config);
+        _ = _mockConfiguration.Setup(x => x.Value).Returns(config);
 
         _cacheManager = new MemoryStateCacheManager<TestEntity>(_memoryCache, _mockLogger.Object, _mockConfiguration.Object);
     }

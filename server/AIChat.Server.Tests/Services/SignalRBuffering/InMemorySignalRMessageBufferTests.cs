@@ -47,11 +47,11 @@ public class InMemorySignalRMessageBufferTests : IDisposable
         _buffer = new InMemorySignalRMessageBuffer(configOptions, _overflowStrategy, _mockLogger.Object);
 
         // Setup mock delivery service
-        _mockDeliveryService
+        _ = _mockDeliveryService
             .Setup(x => x.IsAvailable)
             .Returns(true);
 
-        _mockDeliveryService
+        _ = _mockDeliveryService
             .Setup(x => x.DeliverMessageAsync(It.IsAny<SignalRMessage>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((SignalRMessage msg, CancellationToken ct) =>
                 DeliveryResult.CreateSuccess(msg.Id, TimeSpan.FromMilliseconds(10)));
@@ -77,7 +77,7 @@ public class InMemorySignalRMessageBufferTests : IDisposable
     public async Task EnqueueAsync_WithNullMessage_ShouldThrowArgumentNullException()
     {
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => _buffer.EnqueueAsync(null!));
+        _ = await Assert.ThrowsAsync<ArgumentNullException>(() => _buffer.EnqueueAsync(null!));
     }
 
     [Fact]
@@ -120,7 +120,7 @@ public class InMemorySignalRMessageBufferTests : IDisposable
         // Arrange - Fill buffer to capacity
         for (int i = 0; i < _config.MaxBufferSize; i++)
         {
-            await _buffer.EnqueueAsync(CreateTestMessage($"msg-{i}"));
+            _ = await _buffer.EnqueueAsync(CreateTestMessage($"msg-{i}"));
         }
 
         // Act - Add one more message to trigger overflow
@@ -146,7 +146,7 @@ public class InMemorySignalRMessageBufferTests : IDisposable
 
         foreach (var msg in messages)
         {
-            await _buffer.EnqueueAsync(msg);
+            _ = await _buffer.EnqueueAsync(msg);
         }
 
         // Act
@@ -166,7 +166,7 @@ public class InMemorySignalRMessageBufferTests : IDisposable
     public async Task ProcessBufferAsync_WithNullDeliveryService_ShouldThrowArgumentNullException()
     {
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => _buffer.ProcessBufferAsync(null!));
+        _ = await Assert.ThrowsAsync<ArgumentNullException>(() => _buffer.ProcessBufferAsync(null!));
     }
 
     [Fact]
@@ -190,7 +190,7 @@ public class InMemorySignalRMessageBufferTests : IDisposable
     {
         // Arrange
         var message = CreateTestMessage();
-        await _buffer.EnqueueAsync(message);
+        _ = await _buffer.EnqueueAsync(message);
 
         // Act
         var metrics = await _buffer.GetMetricsAsync();
@@ -208,8 +208,8 @@ public class InMemorySignalRMessageBufferTests : IDisposable
     public async Task GetHealthAsync_WithLowUtilization_ShouldReturnHealthy()
     {
         // Arrange - Add a few messages but stay well below capacity
-        await _buffer.EnqueueAsync(CreateTestMessage("msg-1"));
-        await _buffer.EnqueueAsync(CreateTestMessage("msg-2"));
+        _ = await _buffer.EnqueueAsync(CreateTestMessage("msg-1"));
+        _ = await _buffer.EnqueueAsync(CreateTestMessage("msg-2"));
 
         // Act
         var health = await _buffer.GetHealthAsync();
@@ -228,10 +228,10 @@ public class InMemorySignalRMessageBufferTests : IDisposable
         Assert.Equal(0, _buffer.GetCurrentSize());
 
         // Act & Assert - Add messages and verify size increases
-        await _buffer.EnqueueAsync(CreateTestMessage("msg-1"));
+        _ = await _buffer.EnqueueAsync(CreateTestMessage("msg-1"));
         Assert.Equal(1, _buffer.GetCurrentSize());
 
-        await _buffer.EnqueueAsync(CreateTestMessage("msg-2"));
+        _ = await _buffer.EnqueueAsync(CreateTestMessage("msg-2"));
         Assert.Equal(2, _buffer.GetCurrentSize());
     }
 
@@ -246,9 +246,9 @@ public class InMemorySignalRMessageBufferTests : IDisposable
     public async Task ClearAsync_ShouldRemoveAllMessages()
     {
         // Arrange
-        await _buffer.EnqueueAsync(CreateTestMessage("msg-1"));
-        await _buffer.EnqueueAsync(CreateTestMessage("msg-2"));
-        await _buffer.EnqueueAsync(CreateTestMessage("msg-3"));
+        _ = await _buffer.EnqueueAsync(CreateTestMessage("msg-1"));
+        _ = await _buffer.EnqueueAsync(CreateTestMessage("msg-2"));
+        _ = await _buffer.EnqueueAsync(CreateTestMessage("msg-3"));
         Assert.Equal(3, _buffer.GetCurrentSize());
 
         // Act
@@ -275,7 +275,7 @@ public class InMemorySignalRMessageBufferTests : IDisposable
         var message = CreateTestMessage();
 
         // Act
-        await _buffer.EnqueueAsync(message);
+        _ = await _buffer.EnqueueAsync(message);
 
         // Assert
         Assert.True(eventRaised);
@@ -300,11 +300,11 @@ public class InMemorySignalRMessageBufferTests : IDisposable
         // Fill buffer to capacity
         for (int i = 0; i < _config.MaxBufferSize; i++)
         {
-            await _buffer.EnqueueAsync(CreateTestMessage($"msg-{i}"));
+            _ = await _buffer.EnqueueAsync(CreateTestMessage($"msg-{i}"));
         }
 
         // Act - Trigger overflow
-        await _buffer.EnqueueAsync(CreateTestMessage("overflow-msg"));
+        _ = await _buffer.EnqueueAsync(CreateTestMessage("overflow-msg"));
 
         // Assert
         Assert.True(eventRaised);
@@ -317,7 +317,7 @@ public class InMemorySignalRMessageBufferTests : IDisposable
     public async Task CleanupAsync_ShouldCompleteSuccessfully()
     {
         // Arrange
-        await _buffer.EnqueueAsync(CreateTestMessage("msg-1"));
+        _ = await _buffer.EnqueueAsync(CreateTestMessage("msg-1"));
 
         // Act & Assert - Should not throw
         await _buffer.CleanupAsync();

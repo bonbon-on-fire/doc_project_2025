@@ -38,7 +38,7 @@ public class ChatGrainSequencingTests
             ]
         };
 
-        await _chatGrain!.InitializeAsync(initRequest);
+        _ = await _chatGrain!.InitializeAsync(initRequest);
     }
 
     [TearDown]

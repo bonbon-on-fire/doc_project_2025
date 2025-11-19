@@ -165,16 +165,16 @@ public sealed class StateRecoveryOrchestrator : IStateRecoveryOrchestrator
 
             return strategy switch
             {
-                RecoveryStrategy.SnapshotFirst => await RecoverFromSnapshotFirstAsync<T>(
+                RecoveryStrategy.SnapshotFirst => await RecoverFromSnapshotFirstAsync(
                     request, projection, streamId, stopwatch, cancellationToken),
 
-                RecoveryStrategy.FullReplay => await RecoverFromFullReplayAsync<T>(
+                RecoveryStrategy.FullReplay => await RecoverFromFullReplayAsync(
                     request, projection, streamId, stopwatch, cancellationToken),
 
-                RecoveryStrategy.HybridRecovery => await RecoverWithHybridStrategyAsync<T>(
+                RecoveryStrategy.HybridRecovery => await RecoverWithHybridStrategyAsync(
                     request, projection, streamId, stopwatch, cancellationToken),
 
-                RecoveryStrategy.EmptyState => RecoverWithEmptyState<T>(
+                RecoveryStrategy.EmptyState => RecoverWithEmptyState(
                     request, projection, stopwatch),
 
                 _ => throw new ArgumentException($"Unsupported recovery strategy: {strategy}", nameof(strategy))
@@ -477,7 +477,7 @@ public sealed class StateRecoveryOrchestrator : IStateRecoveryOrchestrator
             var snapshotStats = await _snapshotManager.GetStreamStatisticsAsync(streamId, cancellationToken);
             if (snapshotStats.TotalSnapshots > 0)
             {
-                return await RecoverFromSnapshotFirstAsync<T>(request, projection, streamId, stopwatch, cancellationToken);
+                return await RecoverFromSnapshotFirstAsync(request, projection, streamId, stopwatch, cancellationToken);
             }
         }
         catch (Exception ex)
@@ -486,7 +486,7 @@ public sealed class StateRecoveryOrchestrator : IStateRecoveryOrchestrator
         }
 
         // Fallback to full replay
-        return await RecoverFromFullReplayAsync<T>(request, projection, streamId, stopwatch, cancellationToken);
+        return await RecoverFromFullReplayAsync(request, projection, streamId, stopwatch, cancellationToken);
     }
 
     /// <summary>

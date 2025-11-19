@@ -135,7 +135,7 @@ public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDispo
                 if (!overflowResult.Success || !overflowResult.NewMessageAccepted)
                 {
                     IncrementOperationResult(BufferOperationResult.Overflow);
-                    Interlocked.Add(ref _totalDropped, overflowResult.NewMessageAccepted ? 0 : 1);
+                    _ = Interlocked.Add(ref _totalDropped, overflowResult.NewMessageAccepted ? 0 : 1);
 
                     RaiseBufferOverflowEvent(overflowResult.StrategyUsed, overflowResult.RemovedCount, currentSize, message);
 
@@ -155,7 +155,7 @@ public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDispo
                     // Remove from message index first
                     foreach (var messageId in messagesToRemoveIds)
                     {
-                        _messageIndex.TryRemove(messageId, out _);
+                        _ = _messageIndex.TryRemove(messageId, out _);
                     }
 
                     // Rebuild the queue without the removed messages
@@ -186,7 +186,7 @@ public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDispo
                 droppedMessageCount = overflowResult.RemovedCount;
 
                 // Update metrics for removed messages
-                Interlocked.Add(ref _totalDropped, overflowResult.RemovedCount);
+                _ = Interlocked.Add(ref _totalDropped, overflowResult.RemovedCount);
                 if (overflowResult.RemovedCount > 0)
                 {
                     RaiseBufferOverflowEvent(overflowResult.StrategyUsed, overflowResult.RemovedCount, currentSize, message);
@@ -195,11 +195,11 @@ public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDispo
 
             // Add message to buffer
             _messageQueue.Enqueue(message);
-            _messageIndex.TryAdd(message.Id, message);
+            _ = _messageIndex.TryAdd(message.Id, message);
 
             // Update metrics
             var enqueueTime = stopwatch.Elapsed;
-            Interlocked.Increment(ref _totalEnqueued);
+            _ = Interlocked.Increment(ref _totalEnqueued);
             IncrementOperationResult(BufferOperationResult.Enqueued);
             RecordQueueTime(enqueueTime);
             RecordOperation();
@@ -263,7 +263,7 @@ public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDispo
             // Dequeue messages for processing (up to batch size)
             while (batchMessages.Count < _config.BatchSize && _messageQueue.TryDequeue(out var message))
             {
-                _messageIndex.TryRemove(message.Id, out _);
+                _ = _messageIndex.TryRemove(message.Id, out _);
                 batchMessages.Add(message);
             }
 
@@ -288,8 +288,8 @@ public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDispo
                     if (deliveryResult.Success)
                     {
                         // Mark as delivered
-                        Interlocked.Increment(ref _totalDelivered);
-                        Interlocked.Increment(ref successCount);
+                        _ = Interlocked.Increment(ref _totalDelivered);
+                        _ = Interlocked.Increment(ref successCount);
                         IncrementDeliveryStatus(DeliveryStatus.Delivered);
                         _lastDeliveryTime = DateTime.UtcNow;
 
@@ -309,8 +309,8 @@ public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDispo
                 }
                 catch (Exception ex)
                 {
-                    Interlocked.Increment(ref _totalFailed);
-                    Interlocked.Increment(ref failureCount);
+                    _ = Interlocked.Increment(ref _totalFailed);
+                    _ = Interlocked.Increment(ref failureCount);
                     IncrementDeliveryStatus(DeliveryStatus.Failed);
 
                     // Handle retry logic
@@ -322,7 +322,7 @@ public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDispo
                         message.LastError = ex.Message;
 
                         _messageQueue.Enqueue(message);
-                        _messageIndex.TryAdd(message.Id, message);
+                        _ = _messageIndex.TryAdd(message.Id, message);
 
                         _logger.LogWarning(ex,
                             "Message delivery failed, will retry: ID={MessageId}, Attempt={RetryCount}/{MaxRetries}",
@@ -364,7 +364,7 @@ public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDispo
             foreach (var message in batchMessages.Skip(processedCount))
             {
                 _messageQueue.Enqueue(message);
-                _messageIndex.TryAdd(message.Id, message);
+                _ = _messageIndex.TryAdd(message.Id, message);
             }
 
             return DeliveryResult.Failed("Batch", DeliveryStatus.Failed, ex.Message);
@@ -489,7 +489,7 @@ public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDispo
         var clearedCount = 0;
         while (_messageQueue.TryDequeue(out var message))
         {
-            _messageIndex.TryRemove(message.Id, out _);
+            _ = _messageIndex.TryRemove(message.Id, out _);
             clearedCount++;
         }
 
@@ -545,13 +545,13 @@ public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDispo
         // Initialize delivery status counters
         foreach (DeliveryStatus status in Enum.GetValues<DeliveryStatus>())
         {
-            _deliveryStatusCounts.TryAdd(status, 0);
+            _ = _deliveryStatusCounts.TryAdd(status, 0);
         }
 
         // Initialize operation result counters
         foreach (BufferOperationResult result in Enum.GetValues<BufferOperationResult>())
         {
-            _operationResultCounts.TryAdd(result, 0);
+            _ = _operationResultCounts.TryAdd(result, 0);
         }
     }
 
@@ -565,7 +565,7 @@ public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDispo
     {
         try
         {
-            await GetHealthAsync();
+            _ = await GetHealthAsync();
         }
         catch (Exception ex)
         {
@@ -575,12 +575,12 @@ public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDispo
 
     private void IncrementOperationResult(BufferOperationResult result)
     {
-        _operationResultCounts.AddOrUpdate(result, 1, (_, count) => count + 1);
+        _ = _operationResultCounts.AddOrUpdate(result, 1, (_, count) => count + 1);
     }
 
     private void IncrementDeliveryStatus(DeliveryStatus status)
     {
-        _deliveryStatusCounts.AddOrUpdate(status, 1, (_, count) => count + 1);
+        _ = _deliveryStatusCounts.AddOrUpdate(status, 1, (_, count) => count + 1);
     }
 
     private void RecordQueueTime(TimeSpan queueTime)
@@ -589,7 +589,7 @@ public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDispo
         // Keep only recent times (last 1000 operations)
         while (_recentQueueTimes.Count > 1000)
         {
-            _recentQueueTimes.TryDequeue(out _);
+            _ = _recentQueueTimes.TryDequeue(out _);
         }
     }
 
@@ -599,7 +599,7 @@ public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDispo
         // Keep only recent times (last 1000 operations)
         while (_recentDeliveryTimes.Count > 1000)
         {
-            _recentDeliveryTimes.TryDequeue(out _);
+            _ = _recentDeliveryTimes.TryDequeue(out _);
         }
     }
 
@@ -610,7 +610,7 @@ public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDispo
         var cutoffTime = DateTime.UtcNow.AddHours(-1);
         while (_recentOperations.TryPeek(out var oldest) && oldest < cutoffTime)
         {
-            _recentOperations.TryDequeue(out _);
+            _ = _recentOperations.TryDequeue(out _);
         }
     }
 
@@ -680,20 +680,20 @@ public sealed class InMemorySignalRMessageBuffer : ISignalRMessageBuffer, IDispo
         // Clean up old queue times
         while (_recentQueueTimes.Count > 500)
         {
-            _recentQueueTimes.TryDequeue(out _);
+            _ = _recentQueueTimes.TryDequeue(out _);
         }
 
         // Clean up old delivery times
         while (_recentDeliveryTimes.Count > 500)
         {
-            _recentDeliveryTimes.TryDequeue(out _);
+            _ = _recentDeliveryTimes.TryDequeue(out _);
         }
 
         // Clean up old operations
         var cutoffTime = DateTime.UtcNow.AddHours(-1);
         while (_recentOperations.TryPeek(out var oldest) && oldest < cutoffTime)
         {
-            _recentOperations.TryDequeue(out _);
+            _ = _recentOperations.TryDequeue(out _);
         }
     }
 

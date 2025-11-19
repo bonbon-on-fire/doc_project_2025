@@ -148,7 +148,7 @@ public sealed partial class SqliteSnapshotStore : ISnapshotWriter
                 var deleteSnapshotCommand = connection.CreateCommand();
                 deleteSnapshotCommand.Transaction = (SqliteTransaction)transaction;
                 deleteSnapshotCommand.CommandText = "DELETE FROM Snapshots WHERE Id = @snapshotId";
-                deleteSnapshotCommand.Parameters.AddWithValue("@snapshotId", snapshotId);
+                _ = deleteSnapshotCommand.Parameters.AddWithValue("@snapshotId", snapshotId);
 
                 var deletedCount = await deleteSnapshotCommand.ExecuteNonQueryAsync(cancellationToken);
                 if (deletedCount == 0)
@@ -212,7 +212,7 @@ public sealed partial class SqliteSnapshotStore : ISnapshotWriter
                 var getContentHashesCommand = connection.CreateCommand();
                 getContentHashesCommand.Transaction = (SqliteTransaction)transaction;
                 getContentHashesCommand.CommandText = "SELECT ContentHash FROM Snapshots WHERE StreamId = @streamId";
-                getContentHashesCommand.Parameters.AddWithValue("@streamId", streamId);
+                _ = getContentHashesCommand.Parameters.AddWithValue("@streamId", streamId);
 
                 var contentHashes = new List<string>();
                 await using (var reader = await getContentHashesCommand.ExecuteReaderAsync(cancellationToken))
@@ -227,7 +227,7 @@ public sealed partial class SqliteSnapshotStore : ISnapshotWriter
                 var deleteSnapshotsCommand = connection.CreateCommand();
                 deleteSnapshotsCommand.Transaction = (SqliteTransaction)transaction;
                 deleteSnapshotsCommand.CommandText = "DELETE FROM Snapshots WHERE StreamId = @streamId";
-                deleteSnapshotsCommand.Parameters.AddWithValue("@streamId", streamId);
+                _ = deleteSnapshotsCommand.Parameters.AddWithValue("@streamId", streamId);
 
                 var deletedCount = await deleteSnapshotsCommand.ExecuteNonQueryAsync(cancellationToken);
 
@@ -293,7 +293,7 @@ public sealed partial class SqliteSnapshotStore : ISnapshotWriter
                 var existsCommand = connection.CreateCommand();
                 existsCommand.Transaction = (SqliteTransaction)transaction;
                 existsCommand.CommandText = "SELECT 1 FROM Snapshots WHERE Id = @snapshotId";
-                existsCommand.Parameters.AddWithValue("@snapshotId", snapshotId);
+                _ = existsCommand.Parameters.AddWithValue("@snapshotId", snapshotId);
 
                 var exists = await existsCommand.ExecuteScalarAsync(cancellationToken) ?? throw SnapshotStoreException.SnapshotNotFound(snapshotId);
 
@@ -303,10 +303,10 @@ public sealed partial class SqliteSnapshotStore : ISnapshotWriter
                 var updateCommand = connection.CreateCommand();
                 updateCommand.Transaction = (SqliteTransaction)transaction;
                 updateCommand.CommandText = "UPDATE Snapshots SET Metadata = @metadata WHERE Id = @snapshotId";
-                updateCommand.Parameters.AddWithValue("@snapshotId", snapshotId);
-                updateCommand.Parameters.AddWithValue("@metadata", metadataJson);
+                _ = updateCommand.Parameters.AddWithValue("@snapshotId", snapshotId);
+                _ = updateCommand.Parameters.AddWithValue("@metadata", metadataJson);
 
-                await updateCommand.ExecuteNonQueryAsync(cancellationToken);
+                _ = await updateCommand.ExecuteNonQueryAsync(cancellationToken);
 
                 await transaction.CommitAsync(cancellationToken);
 
@@ -356,8 +356,8 @@ public sealed partial class SqliteSnapshotStore : ISnapshotWriter
         var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = "SELECT 1 FROM Snapshots WHERE StreamId = @streamId AND Version = @version LIMIT 1";
-        command.Parameters.AddWithValue("@streamId", streamId);
-        command.Parameters.AddWithValue("@version", version);
+        _ = command.Parameters.AddWithValue("@streamId", streamId);
+        _ = command.Parameters.AddWithValue("@version", version);
 
         var result = await command.ExecuteScalarAsync(cancellationToken);
         return result != null;
@@ -375,7 +375,7 @@ public sealed partial class SqliteSnapshotStore : ISnapshotWriter
         var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = "SELECT 1 FROM SnapshotContent WHERE ContentHash = @contentHash LIMIT 1";
-        command.Parameters.AddWithValue("@contentHash", contentHash);
+        _ = command.Parameters.AddWithValue("@contentHash", contentHash);
 
         var result = await command.ExecuteScalarAsync(cancellationToken);
         return result != null;
@@ -397,10 +397,10 @@ public sealed partial class SqliteSnapshotStore : ISnapshotWriter
             INSERT INTO SnapshotContent (ContentHash, CompressedData, ReferenceCount)
             VALUES (@contentHash, @compressedData, 1)";
 
-        command.Parameters.AddWithValue("@contentHash", contentHash);
-        command.Parameters.AddWithValue("@compressedData", compressedData);
+        _ = command.Parameters.AddWithValue("@contentHash", contentHash);
+        _ = command.Parameters.AddWithValue("@compressedData", compressedData);
 
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        _ = await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     /// <summary>
@@ -419,8 +419,8 @@ public sealed partial class SqliteSnapshotStore : ISnapshotWriter
             SET ReferenceCount = ReferenceCount + 1
             WHERE ContentHash = @contentHash";
 
-        command.Parameters.AddWithValue("@contentHash", contentHash);
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        _ = command.Parameters.AddWithValue("@contentHash", contentHash);
+        _ = await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     /// <summary>
@@ -440,8 +440,8 @@ public sealed partial class SqliteSnapshotStore : ISnapshotWriter
             SET ReferenceCount = ReferenceCount - 1
             WHERE ContentHash = @contentHash";
 
-        decrementCommand.Parameters.AddWithValue("@contentHash", contentHash);
-        await decrementCommand.ExecuteNonQueryAsync(cancellationToken);
+        _ = decrementCommand.Parameters.AddWithValue("@contentHash", contentHash);
+        _ = await decrementCommand.ExecuteNonQueryAsync(cancellationToken);
 
         // Delete if no longer referenced
         var deleteCommand = connection.CreateCommand();
@@ -450,8 +450,8 @@ public sealed partial class SqliteSnapshotStore : ISnapshotWriter
             DELETE FROM SnapshotContent
             WHERE ContentHash = @contentHash AND ReferenceCount <= 0";
 
-        deleteCommand.Parameters.AddWithValue("@contentHash", contentHash);
-        await deleteCommand.ExecuteNonQueryAsync(cancellationToken);
+        _ = deleteCommand.Parameters.AddWithValue("@contentHash", contentHash);
+        _ = await deleteCommand.ExecuteNonQueryAsync(cancellationToken);
     }
 
     /// <summary>
@@ -484,18 +484,18 @@ public sealed partial class SqliteSnapshotStore : ISnapshotWriter
                 @compressedSize, @uncompressedSize, @compressionType, @stateType, @metadata
             )";
 
-        command.Parameters.AddWithValue("@id", snapshotId);
-        command.Parameters.AddWithValue("@streamId", streamId);
-        command.Parameters.AddWithValue("@version", version);
-        command.Parameters.AddWithValue("@contentHash", contentHash);
-        command.Parameters.AddWithValue("@timestamp", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture));
-        command.Parameters.AddWithValue("@compressedSize", compressedSize);
-        command.Parameters.AddWithValue("@uncompressedSize", uncompressedSize);
-        command.Parameters.AddWithValue("@compressionType", compressionType);
-        command.Parameters.AddWithValue("@stateType", stateType);
-        command.Parameters.AddWithValue("@metadata", (object?)metadataJson ?? DBNull.Value);
+        _ = command.Parameters.AddWithValue("@id", snapshotId);
+        _ = command.Parameters.AddWithValue("@streamId", streamId);
+        _ = command.Parameters.AddWithValue("@version", version);
+        _ = command.Parameters.AddWithValue("@contentHash", contentHash);
+        _ = command.Parameters.AddWithValue("@timestamp", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+        _ = command.Parameters.AddWithValue("@compressedSize", compressedSize);
+        _ = command.Parameters.AddWithValue("@uncompressedSize", uncompressedSize);
+        _ = command.Parameters.AddWithValue("@compressionType", compressionType);
+        _ = command.Parameters.AddWithValue("@stateType", stateType);
+        _ = command.Parameters.AddWithValue("@metadata", (object?)metadataJson ?? DBNull.Value);
 
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        _ = await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     /// <summary>
@@ -515,7 +515,7 @@ public sealed partial class SqliteSnapshotStore : ISnapshotWriter
             FROM Snapshots
             WHERE Id = @snapshotId";
 
-        command.Parameters.AddWithValue("@snapshotId", snapshotId);
+        _ = command.Parameters.AddWithValue("@snapshotId", snapshotId);
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         if (await reader.ReadAsync(cancellationToken))

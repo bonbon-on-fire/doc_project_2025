@@ -126,7 +126,7 @@ public class CapabilitiesController : ControllerBase
         var protocols = new List<string> { "SSE" }; // Always support SSE
 
         // Check if SignalR is configured
-        if (_configuration.GetValue<bool>("SignalR:Enabled", true))
+        if (_configuration.GetValue("SignalR:Enabled", true))
         {
             protocols.Add("SignalR");
         }

@@ -360,7 +360,7 @@ public sealed partial class SqliteEventStore : IEventStore
 
             await using var command = connection.CreateCommand();
             command.CommandText = sql;
-            command.Parameters.AddWithValue("$streamId", streamId);
+            _ = command.Parameters.AddWithValue("$streamId", streamId);
 
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
             while (await reader.ReadAsync(cancellationToken))
@@ -418,8 +418,8 @@ public sealed partial class SqliteEventStore : IEventStore
 
             await using var command = connection.CreateCommand();
             command.CommandText = sql;
-            command.Parameters.AddWithValue("$streamId", streamId);
-            command.Parameters.AddWithValue("$fromVersion", fromVersion);
+            _ = command.Parameters.AddWithValue("$streamId", streamId);
+            _ = command.Parameters.AddWithValue("$fromVersion", fromVersion);
 
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
             while (await reader.ReadAsync(cancellationToken))
@@ -486,9 +486,9 @@ public sealed partial class SqliteEventStore : IEventStore
 
             await using var command = connection.CreateCommand();
             command.CommandText = sql;
-            command.Parameters.AddWithValue("$streamId", streamId);
-            command.Parameters.AddWithValue("$fromVersion", fromVersion);
-            command.Parameters.AddWithValue("$toVersion", toVersion);
+            _ = command.Parameters.AddWithValue("$streamId", streamId);
+            _ = command.Parameters.AddWithValue("$fromVersion", fromVersion);
+            _ = command.Parameters.AddWithValue("$toVersion", toVersion);
 
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
             while (await reader.ReadAsync(cancellationToken))
@@ -554,7 +554,7 @@ public sealed partial class SqliteEventStore : IEventStore
 
             await using var command = connection.CreateCommand();
             command.CommandText = sql;
-            command.Parameters.AddWithValue("$streamId", streamId);
+            _ = command.Parameters.AddWithValue("$streamId", streamId);
 
             var result = await command.ExecuteScalarAsync(cancellationToken);
             return result != null;
@@ -593,18 +593,18 @@ public sealed partial class SqliteEventStore : IEventStore
         command.Transaction = transaction;
         command.CommandText = sql;
 
-        command.Parameters.AddWithValue("$eventId", eventData.EventId);
-        command.Parameters.AddWithValue("$streamId", eventData.StreamId);
-        command.Parameters.AddWithValue("$eventType", eventData.EventType);
-        command.Parameters.AddWithValue("$version", eventData.Version);
-        command.Parameters.AddWithValue("$timestamp", eventData.Timestamp.ToString("O"));
-        command.Parameters.AddWithValue("$correlationId", (object?)eventData.CorrelationId ?? DBNull.Value);
-        command.Parameters.AddWithValue("$causationId", (object?)eventData.CausationId ?? DBNull.Value);
-        command.Parameters.AddWithValue("$eventData", serializedEventData);
-        command.Parameters.AddWithValue("$metadata", (object?)metadataJson ?? DBNull.Value);
-        command.Parameters.AddWithValue("$createdAt", DateTimeOffset.UtcNow.ToString("O"));
+        _ = command.Parameters.AddWithValue("$eventId", eventData.EventId);
+        _ = command.Parameters.AddWithValue("$streamId", eventData.StreamId);
+        _ = command.Parameters.AddWithValue("$eventType", eventData.EventType);
+        _ = command.Parameters.AddWithValue("$version", eventData.Version);
+        _ = command.Parameters.AddWithValue("$timestamp", eventData.Timestamp.ToString("O"));
+        _ = command.Parameters.AddWithValue("$correlationId", (object?)eventData.CorrelationId ?? DBNull.Value);
+        _ = command.Parameters.AddWithValue("$causationId", (object?)eventData.CausationId ?? DBNull.Value);
+        _ = command.Parameters.AddWithValue("$eventData", serializedEventData);
+        _ = command.Parameters.AddWithValue("$metadata", (object?)metadataJson ?? DBNull.Value);
+        _ = command.Parameters.AddWithValue("$createdAt", DateTimeOffset.UtcNow.ToString("O"));
 
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        _ = await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     /// <summary>
@@ -621,7 +621,7 @@ public sealed partial class SqliteEventStore : IEventStore
         await using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = sql;
-        command.Parameters.AddWithValue("$eventId", eventId);
+        _ = command.Parameters.AddWithValue("$eventId", eventId);
 
         var result = await command.ExecuteScalarAsync(cancellationToken);
         return result != null;
@@ -644,7 +644,7 @@ public sealed partial class SqliteEventStore : IEventStore
             command.Transaction = transaction;
         }
         command.CommandText = sql;
-        command.Parameters.AddWithValue("$streamId", streamId);
+        _ = command.Parameters.AddWithValue("$streamId", streamId);
 
         var result = await command.ExecuteScalarAsync(cancellationToken);
         return Convert.ToInt64(result, CultureInfo.InvariantCulture);
@@ -699,7 +699,7 @@ public sealed partial class SqliteEventStore : IEventStore
             const string sql = "SELECT COUNT(*) FROM Events LIMIT 1";
             await using var command = connection.CreateCommand();
             command.CommandText = sql;
-            await command.ExecuteScalarAsync(cancellationToken);
+            _ = await command.ExecuteScalarAsync(cancellationToken);
 
             // Test serialization
             var testEvent = ChatMessageSentEvent.Create(
@@ -714,7 +714,7 @@ public sealed partial class SqliteEventStore : IEventStore
                     ChatId = "test-chat"
                 });
 
-            _serializer.Serialize(testEvent);
+            _ = _serializer.Serialize(testEvent);
 
             return EventStoreHealthStatus.Healthy(Name, new Dictionary<string, object>
             {
@@ -802,7 +802,7 @@ public sealed partial class SqliteEventStore : IEventStore
                 await using var command = connection.CreateCommand();
                 command.CommandText = commandText;
                 command.CommandTimeout = 300; // 5 minutes for VACUUM
-                await command.ExecuteNonQueryAsync(cancellationToken);
+                _ = await command.ExecuteNonQueryAsync(cancellationToken);
             }
 
             _logger.LogInformation("Event store optimization completed successfully");

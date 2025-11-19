@@ -98,7 +98,7 @@ public class EventSerializerTests
     public void JsonEventSerializer_Serialize_WithNullEvent_ShouldThrowArgumentNullException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => _serializer.Serialize(null!));
+        _ = Assert.Throws<ArgumentNullException>(() => _serializer.Serialize(null!));
     }
 
     #endregion Basic Serialization Tests
@@ -129,7 +129,7 @@ public class EventSerializerTests
 
         // Assert
         Assert.NotNull(deserializedEvent);
-        Assert.IsType<ChatMessageSentEvent>(deserializedEvent);
+        _ = Assert.IsType<ChatMessageSentEvent>(deserializedEvent);
 
         var chatEvent = (ChatMessageSentEvent)deserializedEvent;
         Assert.Equal(originalEvent.EventId, chatEvent.EventId);
@@ -177,7 +177,7 @@ public class EventSerializerTests
         const string json = "{\"eventType\":\"UnknownEvent\",\"eventId\":\"test\"}";
 
         // Act & Assert
-        Assert.Throws<EventDeserializationException>(() =>
+        _ = Assert.Throws<EventDeserializationException>(() =>
             _serializer.Deserialize("UnknownEventType", json));
     }
 
@@ -188,7 +188,7 @@ public class EventSerializerTests
         const string malformedJson = "{\"eventType\":\"ChatMessageSentEvent\""; // Missing closing brace
 
         // Act & Assert
-        Assert.Throws<EventDeserializationException>(() =>
+        _ = Assert.Throws<EventDeserializationException>(() =>
             _serializer.Deserialize("ChatMessageSentEvent", malformedJson));
     }
 
@@ -196,7 +196,7 @@ public class EventSerializerTests
     public void JsonEventSerializer_Deserialize_WithNullEventType_ShouldThrowArgumentNullException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() =>
+        _ = Assert.Throws<ArgumentNullException>(() =>
             _serializer.Deserialize(null!, "{}"));
     }
 
@@ -204,7 +204,7 @@ public class EventSerializerTests
     public void JsonEventSerializer_Deserialize_WithNullEventData_ShouldThrowArgumentNullException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() =>
+        _ = Assert.Throws<ArgumentNullException>(() =>
             _serializer.Deserialize("ChatMessageSentEvent", null!));
     }
 
@@ -307,7 +307,7 @@ public class EventSerializerTests
         const string malformedJson = "{\"key\":\"value\""; // Missing closing brace
 
         // Act & Assert
-        Assert.Throws<EventDeserializationException>(() =>
+        _ = Assert.Throws<EventDeserializationException>(() =>
             _serializer.DeserializeMetadata(malformedJson));
     }
 
@@ -339,7 +339,7 @@ public class EventSerializerTests
     public void JsonEventSerializer_SupportsEventType_WithNullType_ShouldThrowArgumentNullException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() =>
+        _ = Assert.Throws<ArgumentNullException>(() =>
             _serializer.SupportsEventType(null!));
     }
 
@@ -364,7 +364,7 @@ public class EventSerializerTests
         var customSerializer = new JsonEventSerializer();
 
         // Act & Assert
-        Assert.Throws<ArgumentException>(() =>
+        _ = Assert.Throws<ArgumentException>(() =>
             customSerializer.RegisterEventType("InvalidType", typeof(string)));
     }
 

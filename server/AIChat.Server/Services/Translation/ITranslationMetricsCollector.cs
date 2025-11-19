@@ -108,19 +108,19 @@ public sealed class TranslationMetricsCollector : ITranslationMetricsCollector
         var durationTicks = duration.Ticks;
 
         // Update global metrics atomically
-        Interlocked.Increment(ref _globalTotalTranslations);
+        _ = Interlocked.Increment(ref _globalTotalTranslations);
 
         if (success)
         {
-            Interlocked.Increment(ref _globalSuccessfulTranslations);
+            _ = Interlocked.Increment(ref _globalSuccessfulTranslations);
         }
         else
         {
-            Interlocked.Increment(ref _globalFailedTranslations);
+            _ = Interlocked.Increment(ref _globalFailedTranslations);
         }
 
         // Update duration tracking
-        Interlocked.Add(ref _globalTotalDurationTicks, durationTicks);
+        _ = Interlocked.Add(ref _globalTotalDurationTicks, durationTicks);
 
         // Update min duration (thread-safe)
         UpdateMinDuration(durationTicks);
@@ -208,12 +208,12 @@ public sealed class TranslationMetricsCollector : ITranslationMetricsCollector
         _logger.LogInformation("Resetting all translation metrics");
 
         // Reset global metrics
-        Interlocked.Exchange(ref _globalTotalTranslations, 0);
-        Interlocked.Exchange(ref _globalSuccessfulTranslations, 0);
-        Interlocked.Exchange(ref _globalFailedTranslations, 0);
-        Interlocked.Exchange(ref _globalTotalDurationTicks, 0);
-        Interlocked.Exchange(ref _globalMinDurationTicks, long.MaxValue);
-        Interlocked.Exchange(ref _globalMaxDurationTicks, 0);
+        _ = Interlocked.Exchange(ref _globalTotalTranslations, 0);
+        _ = Interlocked.Exchange(ref _globalSuccessfulTranslations, 0);
+        _ = Interlocked.Exchange(ref _globalFailedTranslations, 0);
+        _ = Interlocked.Exchange(ref _globalTotalDurationTicks, 0);
+        _ = Interlocked.Exchange(ref _globalMinDurationTicks, long.MaxValue);
+        _ = Interlocked.Exchange(ref _globalMaxDurationTicks, 0);
 
         // Clear collections
         _translatorMetrics.Clear();
@@ -266,7 +266,7 @@ public sealed class TranslationMetricsCollector : ITranslationMetricsCollector
     {
         if (!string.IsNullOrEmpty(context.SourceProtocol))
         {
-            _translationsBySourceProtocol.AddOrUpdate(
+            _ = _translationsBySourceProtocol.AddOrUpdate(
                 context.SourceProtocol,
                 1,
                 (key, value) => value + 1
@@ -275,7 +275,7 @@ public sealed class TranslationMetricsCollector : ITranslationMetricsCollector
 
         if (!string.IsNullOrEmpty(context.TargetProtocol))
         {
-            _translationsByTargetProtocol.AddOrUpdate(
+            _ = _translationsByTargetProtocol.AddOrUpdate(
                 context.TargetProtocol,
                 1,
                 (key, value) => value + 1
@@ -329,18 +329,18 @@ internal sealed class TranslatorMetricsData
     {
         var durationTicks = duration.Ticks;
 
-        Interlocked.Increment(ref _totalTranslations);
+        _ = Interlocked.Increment(ref _totalTranslations);
 
         if (success)
         {
-            Interlocked.Increment(ref _successfulTranslations);
+            _ = Interlocked.Increment(ref _successfulTranslations);
         }
         else
         {
-            Interlocked.Increment(ref _failedTranslations);
+            _ = Interlocked.Increment(ref _failedTranslations);
         }
 
-        Interlocked.Add(ref _totalDurationTicks, durationTicks);
+        _ = Interlocked.Add(ref _totalDurationTicks, durationTicks);
 
         // Update min duration
         long currentMin;

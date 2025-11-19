@@ -86,8 +86,8 @@ public class SseLoadTestMetricsCollector : ISseLoadTestMetricsCollector
 
     public void RecordConnectionEstablished(string connectionId, double latencyMs)
     {
-        Interlocked.Increment(ref _totalConnections);
-        Interlocked.Increment(ref _successfulConnections);
+        _ = Interlocked.Increment(ref _totalConnections);
+        _ = Interlocked.Increment(ref _successfulConnections);
         _connectionLatencies.Add(latencyMs);
 
         var metrics = _connectionMetrics.GetOrAdd(
@@ -106,8 +106,8 @@ public class SseLoadTestMetricsCollector : ISseLoadTestMetricsCollector
 
     public void RecordConnectionFailed(string connectionId, string reason)
     {
-        Interlocked.Increment(ref _totalConnections);
-        Interlocked.Increment(ref _failedConnections);
+        _ = Interlocked.Increment(ref _totalConnections);
+        _ = Interlocked.Increment(ref _failedConnections);
 
         var metrics = _connectionMetrics.GetOrAdd(
             connectionId,
@@ -129,7 +129,7 @@ public class SseLoadTestMetricsCollector : ISseLoadTestMetricsCollector
         TimeSpan connectionDuration
     )
     {
-        Interlocked.Increment(ref _droppedConnections);
+        _ = Interlocked.Increment(ref _droppedConnections);
 
         if (_connectionMetrics.TryGetValue(connectionId, out var metrics))
         {
@@ -153,14 +153,14 @@ public class SseLoadTestMetricsCollector : ISseLoadTestMetricsCollector
         double latencyMs
     )
     {
-        Interlocked.Increment(ref _totalChunks);
-        Interlocked.Add(ref _totalBytes, sizeBytes);
+        _ = Interlocked.Increment(ref _totalChunks);
+        _ = Interlocked.Add(ref _totalBytes, sizeBytes);
         _chunkLatencies.Add(latencyMs);
 
         if (_connectionMetrics.TryGetValue(connectionId, out var metrics))
         {
-            Interlocked.Increment(ref metrics.ChunksReceived);
-            Interlocked.Add(ref metrics.BytesReceived, sizeBytes);
+            _ = Interlocked.Increment(ref metrics.ChunksReceived);
+            _ = Interlocked.Add(ref metrics.BytesReceived, sizeBytes);
             metrics.ChunkLatencies.Add(latencyMs);
         }
 
@@ -168,8 +168,8 @@ public class SseLoadTestMetricsCollector : ISseLoadTestMetricsCollector
             chunkType,
             _ => new ChunkTypeStats { Type = chunkType }
         );
-        Interlocked.Increment(ref typeStats.Count);
-        Interlocked.Add(ref typeStats.TotalBytes, sizeBytes);
+        _ = Interlocked.Increment(ref typeStats.Count);
+        _ = Interlocked.Add(ref typeStats.TotalBytes, sizeBytes);
         typeStats.Latencies.Add(latencyMs);
 
         _logger.LogTrace(
@@ -190,8 +190,8 @@ public class SseLoadTestMetricsCollector : ISseLoadTestMetricsCollector
 
             if (bufferSize >= bufferCapacity)
             {
-                Interlocked.Increment(ref _bufferOverflows);
-                Interlocked.Increment(ref metrics.BufferOverflows);
+                _ = Interlocked.Increment(ref _bufferOverflows);
+                _ = Interlocked.Increment(ref metrics.BufferOverflows);
 
                 _logger.LogWarning(
                     "Buffer overflow on connection {ConnectionId}: {Size}/{Capacity}",
@@ -205,19 +205,19 @@ public class SseLoadTestMetricsCollector : ISseLoadTestMetricsCollector
 
     public void RecordReconnectionAttempt(string connectionId, bool success, double latencyMs)
     {
-        Interlocked.Increment(ref _reconnectionAttempts);
+        _ = Interlocked.Increment(ref _reconnectionAttempts);
 
         if (success)
         {
-            Interlocked.Increment(ref _successfulReconnections);
+            _ = Interlocked.Increment(ref _successfulReconnections);
         }
 
         if (_connectionMetrics.TryGetValue(connectionId, out var metrics))
         {
-            Interlocked.Increment(ref metrics.ReconnectionAttempts);
+            _ = Interlocked.Increment(ref metrics.ReconnectionAttempts);
             if (success)
             {
-                Interlocked.Increment(ref metrics.SuccessfulReconnections);
+                _ = Interlocked.Increment(ref metrics.SuccessfulReconnections);
             }
             metrics.ReconnectionLatencies.Add(latencyMs);
         }

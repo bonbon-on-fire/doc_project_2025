@@ -150,7 +150,7 @@ public class TestWebApplicationManager : IDisposable
 
         if (_configuration.ResilientStreamingEnabled)
         {
-            _ = services.AddScoped<AIChat.Server.Services.Streaming.IResilientStreamManager, AIChat.Server.Services.Streaming.ResilientStreamManager>();
+            _ = services.AddScoped<IResilientStreamManager, ResilientStreamManager>();
         }
     }
 

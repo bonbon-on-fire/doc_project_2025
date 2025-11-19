@@ -540,7 +540,7 @@ public class DictionaryStringObjectConverter : JsonConverter<Dictionary<string, 
             }
 
             var propertyName = reader.GetString()!;
-            reader.Read();
+            _ = reader.Read();
 
             dictionary[propertyName] = ReadValue(ref reader);
         }
@@ -598,7 +598,7 @@ public class DictionaryStringObjectConverter : JsonConverter<Dictionary<string, 
             }
 
             var propertyName = reader.GetString()!;
-            reader.Read();
+            _ = reader.Read();
             obj[propertyName] = ReadValue(ref reader);
         }
 

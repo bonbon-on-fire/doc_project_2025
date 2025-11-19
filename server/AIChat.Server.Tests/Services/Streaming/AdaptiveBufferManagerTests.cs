@@ -14,7 +14,7 @@ public class AdaptiveBufferManagerTests
     private readonly Mock<ITrendAnalyzer> _trendAnalyzerMock;
     private readonly Mock<ISystemTime> _systemTimeMock;
     private readonly Mock<ITimerFactory> _timerFactoryMock;
-    private readonly Mock<AIChat.Server.Services.Abstractions.ITimer> _timerMock;
+    private readonly Mock<Server.Services.Abstractions.ITimer> _timerMock;
     private readonly StreamingConfiguration _configuration;
     private readonly IOptions<StreamingConfiguration> _options;
     private readonly DateTime _testTime = new(2024, 1, 1, 12, 0, 0, DateTimeKind.Utc);
@@ -25,13 +25,13 @@ public class AdaptiveBufferManagerTests
         _trendAnalyzerMock = new Mock<ITrendAnalyzer>();
         _systemTimeMock = new Mock<ISystemTime>();
         _timerFactoryMock = new Mock<ITimerFactory>();
-        _timerMock = new Mock<AIChat.Server.Services.Abstractions.ITimer>();
+        _timerMock = new Mock<Server.Services.Abstractions.ITimer>();
 
         // Setup system time mock
-        _systemTimeMock.Setup(x => x.UtcNow).Returns(_testTime);
+        _ = _systemTimeMock.Setup(x => x.UtcNow).Returns(_testTime);
 
         // Setup timer factory mock
-        _timerFactoryMock.Setup(x => x.CreateTimer(It.IsAny<TimerCallback>(), It.IsAny<object?>()))
+        _ = _timerFactoryMock.Setup(x => x.CreateTimer(It.IsAny<TimerCallback>(), It.IsAny<object?>()))
             .Returns(_timerMock.Object);
 
         _configuration = new StreamingConfiguration
@@ -122,9 +122,9 @@ public class AdaptiveBufferManagerTests
     public void ScaleUpTriggeredOnHighUtilization()
     {
         // Arrange
-        _trendAnalyzerMock.Setup(x => x.CalculateTrend(It.IsAny<IEnumerable<UsageDataPoint>>()))
+        _ = _trendAnalyzerMock.Setup(x => x.CalculateTrend(It.IsAny<IEnumerable<UsageDataPoint>>()))
             .Returns(UsageTrend.Stable);
-        _trendAnalyzerMock.Setup(x => x.GetScalingRecommendation(
+        _ = _trendAnalyzerMock.Setup(x => x.GetScalingRecommendation(
                 It.IsAny<float>(),
                 It.IsAny<float>(),
                 It.IsAny<UsageTrend>(),
@@ -138,7 +138,7 @@ public class AdaptiveBufferManagerTests
             });
 
         TimerCallback? capturedCallback = null;
-        _timerFactoryMock.Setup(x => x.CreateTimer(It.IsAny<TimerCallback>(), It.IsAny<object?>()))
+        _ = _timerFactoryMock.Setup(x => x.CreateTimer(It.IsAny<TimerCallback>(), It.IsAny<object?>()))
             .Callback<TimerCallback, object?>((callback, state) => capturedCallback = callback)
             .Returns(_timerMock.Object);
 
@@ -178,9 +178,9 @@ public class AdaptiveBufferManagerTests
     public void ScaleDownTriggeredOnLowUtilization()
     {
         // Arrange
-        _trendAnalyzerMock.Setup(x => x.CalculateTrend(It.IsAny<IEnumerable<UsageDataPoint>>()))
+        _ = _trendAnalyzerMock.Setup(x => x.CalculateTrend(It.IsAny<IEnumerable<UsageDataPoint>>()))
             .Returns(UsageTrend.Stable);
-        _trendAnalyzerMock.Setup(x => x.GetScalingRecommendation(
+        _ = _trendAnalyzerMock.Setup(x => x.GetScalingRecommendation(
                 It.IsAny<float>(),
                 It.IsAny<float>(),
                 It.IsAny<UsageTrend>(),
@@ -194,7 +194,7 @@ public class AdaptiveBufferManagerTests
             });
 
         TimerCallback? capturedCallback = null;
-        _timerFactoryMock.Setup(x => x.CreateTimer(It.IsAny<TimerCallback>(), It.IsAny<object?>()))
+        _ = _timerFactoryMock.Setup(x => x.CreateTimer(It.IsAny<TimerCallback>(), It.IsAny<object?>()))
             .Callback<TimerCallback, object?>((callback, state) => capturedCallback = callback)
             .Returns(_timerMock.Object);
 

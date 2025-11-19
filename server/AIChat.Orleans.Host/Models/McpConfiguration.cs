@@ -6,6 +6,12 @@ public class McpConfiguration
     public List<McpInputConfig>? Inputs { get; set; }
 
     /// <summary>
+    /// Configuration for tool filtering and collision handling (legacy name)
+    /// </summary>
+    [Obsolete("Use FunctionFiltering instead")]
+    public McpToolFilterConfig? ToolFiltering { get; set; }
+
+    /// <summary>
     /// Configuration for function filtering and collision handling across all providers
     /// </summary>
     public FunctionFilterConfig? FunctionFiltering { get; set; }
@@ -42,6 +48,37 @@ public class McpInputConfig
     public string? Description { get; set; }
     public bool Password { get; set; }
     public string? DefaultValue { get; set; }
+}
+
+/// <summary>
+/// Configuration for MCP tool filtering and collision handling (legacy, use FunctionFilterConfig)
+/// </summary>
+[Obsolete("Use FunctionFilterConfig instead")]
+public class McpToolFilterConfig
+{
+    /// <summary>
+    /// Whether to enable tool filtering based on configuration
+    /// </summary>
+    public bool EnableFiltering { get; set; }
+
+    /// <summary>
+    /// Global list of allowed tool names (supports wildcards)
+    /// If specified, only these tools will be available across all servers
+    /// </summary>
+    public List<string>? GlobalAllowedTools { get; set; }
+
+    /// <summary>
+    /// Global list of blocked tool names (supports wildcards)
+    /// These tools will be blocked across all servers
+    /// </summary>
+    public List<string>? GlobalBlockedTools { get; set; }
+
+    /// <summary>
+    /// Whether to use prefixes only for tools with name collisions
+    /// When true: Only colliding tools get prefixed with server ID
+    /// When false: All tools get prefixed with server ID
+    /// </summary>
+    public bool UsePrefixOnlyForCollisions { get; set; } = true;
 }
 
 /// <summary>

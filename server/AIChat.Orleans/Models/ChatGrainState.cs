@@ -163,7 +163,7 @@ public sealed class ChatGrainState
         // Maintain buffer size limit (default 100 messages)
         while (RecentMessages.Count > Configuration.RecentMessageBufferSize)
         {
-            RecentMessages.Dequeue();
+            _ = RecentMessages.Dequeue();
         }
     }
 
@@ -213,12 +213,12 @@ public sealed class ChatGrainState
             // Check if the next expected message is in the queue
             if (OutOfOrderMessageQueue.TryGetValue(nextExpectedSequence, out var message))
             {
-                OutOfOrderMessageQueue.Remove(nextExpectedSequence);
+                _ = OutOfOrderMessageQueue.Remove(nextExpectedSequence);
                 processedMessages.Add(message);
                 LastProcessedSequenceNumber = nextExpectedSequence;
 
                 // Remove any corresponding gap timeout
-                SequenceGapTimeouts.Remove(nextExpectedSequence);
+                _ = SequenceGapTimeouts.Remove(nextExpectedSequence);
             }
             else
             {
@@ -259,7 +259,7 @@ public sealed class ChatGrainState
         {
             // Remove oldest queued message (lowest sequence number)
             var oldestKey = OutOfOrderMessageQueue.Keys.First();
-            OutOfOrderMessageQueue.Remove(oldestKey);
+            _ = OutOfOrderMessageQueue.Remove(oldestKey);
         }
     }
 
@@ -277,7 +277,7 @@ public sealed class ChatGrainState
             if (now > gap.Value)
             {
                 timedOut.Add(gap.Key);
-                SequenceGapTimeouts.Remove(gap.Key);
+                _ = SequenceGapTimeouts.Remove(gap.Key);
             }
         }
 
@@ -298,7 +298,7 @@ public sealed class ChatGrainState
             var keysToRemove = SequenceGapTimeouts.Keys.Where(k => k <= skipToSequence).ToList();
             foreach (var key in keysToRemove)
             {
-                SequenceGapTimeouts.Remove(key);
+                _ = SequenceGapTimeouts.Remove(key);
             }
         }
     }

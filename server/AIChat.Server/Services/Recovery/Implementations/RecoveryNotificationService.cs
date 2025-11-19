@@ -49,8 +49,8 @@ public class RecoveryNotificationService : IRecoveryNotificationService
         ArgumentNullException.ThrowIfNull(request);
 
         using var activity = ActivitySource.StartActivity("NotifyRecoveryStarted");
-        activity?.SetTag("operationId", operationId);
-        activity?.SetTag("grainId", request.GrainId);
+        _ = (activity?.SetTag("operationId", operationId));
+        _ = (activity?.SetTag("grainId", request.GrainId));
 
         var stopwatch = Stopwatch.StartNew();
 
@@ -61,7 +61,7 @@ public class RecoveryNotificationService : IRecoveryNotificationService
             await _hubContext.Clients.Client(connectionId)
                 .SendAsync("RecoveryStarted", notification, cancellationToken);
 
-            Interlocked.Increment(ref _totalNotificationsSent);
+            _ = Interlocked.Increment(ref _totalNotificationsSent);
             stopwatch.Stop();
             _deliveryTimes.Add(stopwatch.Elapsed);
 
@@ -71,7 +71,7 @@ public class RecoveryNotificationService : IRecoveryNotificationService
         }
         catch (Exception ex)
         {
-            Interlocked.Increment(ref _failedDeliveries);
+            _ = Interlocked.Increment(ref _failedDeliveries);
             _logger.LogError(ex,
                 "Failed to notify connection {ConnectionId} about recovery start for operation {OperationId}",
                 connectionId, operationId);
@@ -94,8 +94,8 @@ public class RecoveryNotificationService : IRecoveryNotificationService
         ArgumentOutOfRangeException.ThrowIfGreaterThan(progressPercentage, 100);
 
         using var activity = ActivitySource.StartActivity("NotifyRecoveryProgress");
-        activity?.SetTag("operationId", operationId);
-        activity?.SetTag("progressPercentage", progressPercentage);
+        _ = (activity?.SetTag("operationId", operationId));
+        _ = (activity?.SetTag("progressPercentage", progressPercentage));
 
         var stopwatch = Stopwatch.StartNew();
 
@@ -113,7 +113,7 @@ public class RecoveryNotificationService : IRecoveryNotificationService
             await _hubContext.Clients.Client(connectionId)
                 .SendAsync("RecoveryProgress", notification, cancellationToken);
 
-            Interlocked.Increment(ref _totalNotificationsSent);
+            _ = Interlocked.Increment(ref _totalNotificationsSent);
             stopwatch.Stop();
             _deliveryTimes.Add(stopwatch.Elapsed);
 
@@ -123,7 +123,7 @@ public class RecoveryNotificationService : IRecoveryNotificationService
         }
         catch (Exception ex)
         {
-            Interlocked.Increment(ref _failedDeliveries);
+            _ = Interlocked.Increment(ref _failedDeliveries);
             _logger.LogError(ex,
                 "Failed to notify connection {ConnectionId} about recovery progress for operation {OperationId}",
                 connectionId, operationId);
@@ -144,8 +144,8 @@ public class RecoveryNotificationService : IRecoveryNotificationService
         ArgumentNullException.ThrowIfNull(operationId);
 
         using var activity = ActivitySource.StartActivity("NotifyRecoveryCompleted");
-        activity?.SetTag("operationId", operationId);
-        activity?.SetTag("status", status.ToString());
+        _ = (activity?.SetTag("operationId", operationId));
+        _ = (activity?.SetTag("status", status.ToString()));
 
         var stopwatch = Stopwatch.StartNew();
 
@@ -163,7 +163,7 @@ public class RecoveryNotificationService : IRecoveryNotificationService
             await _hubContext.Clients.Client(connectionId)
                 .SendAsync("RecoveryCompleted", notification, cancellationToken);
 
-            Interlocked.Increment(ref _totalNotificationsSent);
+            _ = Interlocked.Increment(ref _totalNotificationsSent);
             stopwatch.Stop();
             _deliveryTimes.Add(stopwatch.Elapsed);
 
@@ -173,7 +173,7 @@ public class RecoveryNotificationService : IRecoveryNotificationService
         }
         catch (Exception ex)
         {
-            Interlocked.Increment(ref _failedDeliveries);
+            _ = Interlocked.Increment(ref _failedDeliveries);
             _logger.LogError(ex,
                 "Failed to notify connection {ConnectionId} about recovery completion for operation {OperationId}",
                 connectionId, operationId);
@@ -191,9 +191,9 @@ public class RecoveryNotificationService : IRecoveryNotificationService
         ArgumentNullException.ThrowIfNull(notification);
 
         using var activity = ActivitySource.StartActivity("BroadcastRecoveryToGroup");
-        activity?.SetTag("groupName", groupName);
-        activity?.SetTag("operationId", notification.OperationId);
-        activity?.SetTag("notificationType", notification.Type.ToString());
+        _ = (activity?.SetTag("groupName", groupName));
+        _ = (activity?.SetTag("operationId", notification.OperationId));
+        _ = (activity?.SetTag("notificationType", notification.Type.ToString()));
 
         var stopwatch = Stopwatch.StartNew();
 
@@ -213,7 +213,7 @@ public class RecoveryNotificationService : IRecoveryNotificationService
 
             // Estimate number of connections in group for metrics
             var groupSize = _groupMemberships.TryGetValue(groupName, out var members) ? members.Count : 1;
-            Interlocked.Add(ref _totalNotificationsSent, groupSize);
+            _ = Interlocked.Add(ref _totalNotificationsSent, groupSize);
 
             stopwatch.Stop();
             _deliveryTimes.Add(stopwatch.Elapsed);
@@ -224,7 +224,7 @@ public class RecoveryNotificationService : IRecoveryNotificationService
         }
         catch (Exception ex)
         {
-            Interlocked.Increment(ref _failedDeliveries);
+            _ = Interlocked.Increment(ref _failedDeliveries);
             _logger.LogError(ex,
                 "Failed to broadcast recovery notification to group {GroupName} for operation {OperationId}",
                 groupName, notification.OperationId);
@@ -242,15 +242,15 @@ public class RecoveryNotificationService : IRecoveryNotificationService
         ArgumentNullException.ThrowIfNull(groupName);
 
         using var activity = ActivitySource.StartActivity("JoinRecoveryGroup");
-        activity?.SetTag("connectionId", connectionId);
-        activity?.SetTag("groupName", groupName);
+        _ = (activity?.SetTag("connectionId", connectionId));
+        _ = (activity?.SetTag("groupName", groupName));
 
         try
         {
             await _hubContext.Groups.AddToGroupAsync(connectionId, groupName, cancellationToken);
 
             // Track group membership for metrics
-            _groupMemberships.AddOrUpdate(
+            _ = _groupMemberships.AddOrUpdate(
                 groupName,
                 _ => [connectionId],
                 (_, members) =>
@@ -285,8 +285,8 @@ public class RecoveryNotificationService : IRecoveryNotificationService
         ArgumentNullException.ThrowIfNull(groupName);
 
         using var activity = ActivitySource.StartActivity("LeaveRecoveryGroup");
-        activity?.SetTag("connectionId", connectionId);
-        activity?.SetTag("groupName", groupName);
+        _ = (activity?.SetTag("connectionId", connectionId));
+        _ = (activity?.SetTag("groupName", groupName));
 
         try
         {
@@ -295,10 +295,10 @@ public class RecoveryNotificationService : IRecoveryNotificationService
             // Update group membership tracking
             if (_groupMemberships.TryGetValue(groupName, out var members))
             {
-                members.Remove(connectionId);
+                _ = members.Remove(connectionId);
                 if (members.Count == 0)
                 {
-                    _groupMemberships.TryRemove(groupName, out _);
+                    _ = _groupMemberships.TryRemove(groupName, out _);
                 }
             }
 
@@ -332,7 +332,7 @@ public class RecoveryNotificationService : IRecoveryNotificationService
 
             foreach (var connectionId in expiredConnections)
             {
-                _activeConnections.TryRemove(connectionId, out _);
+                _ = _activeConnections.TryRemove(connectionId, out _);
             }
 
             var healthStatus = RecoveryNotificationHealthStatus.Healthy(
@@ -415,14 +415,14 @@ public class RecoveryNotificationService : IRecoveryNotificationService
     /// <param name="connectionId">The disconnected connection ID</param>
     public void HandleConnectionDisconnected(string connectionId)
     {
-        _activeConnections.TryRemove(connectionId, out _);
+        _ = _activeConnections.TryRemove(connectionId, out _);
 
         // Remove from all groups
         foreach (var groupMembership in _groupMemberships.ToList())
         {
             if (groupMembership.Value.Remove(connectionId) && groupMembership.Value.Count == 0)
             {
-                _groupMemberships.TryRemove(groupMembership.Key, out _);
+                _ = _groupMemberships.TryRemove(groupMembership.Key, out _);
             }
         }
 

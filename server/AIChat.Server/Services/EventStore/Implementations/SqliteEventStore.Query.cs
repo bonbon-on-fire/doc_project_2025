@@ -92,7 +92,7 @@ public sealed partial class SqliteEventStore : IEventQuery, IEventReplay
 
             await using var command = connection.CreateCommand();
             command.CommandText = sql;
-            command.Parameters.AddWithValue("$correlationId", correlationId);
+            _ = command.Parameters.AddWithValue("$correlationId", correlationId);
 
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
             while (await reader.ReadAsync(cancellationToken))
@@ -145,7 +145,7 @@ public sealed partial class SqliteEventStore : IEventQuery, IEventReplay
 
             await using var command = connection.CreateCommand();
             command.CommandText = sql;
-            command.Parameters.AddWithValue("$eventType", eventType);
+            _ = command.Parameters.AddWithValue("$eventType", eventType);
 
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
             while (await reader.ReadAsync(cancellationToken))
@@ -201,8 +201,8 @@ public sealed partial class SqliteEventStore : IEventQuery, IEventReplay
 
             await using var command = connection.CreateCommand();
             command.CommandText = sql;
-            command.Parameters.AddWithValue("$fromTimestamp", fromTimestamp.ToString("O"));
-            command.Parameters.AddWithValue("$toTimestamp", toTimestamp.ToString("O"));
+            _ = command.Parameters.AddWithValue("$fromTimestamp", fromTimestamp.ToString("O"));
+            _ = command.Parameters.AddWithValue("$toTimestamp", toTimestamp.ToString("O"));
 
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
             while (await reader.ReadAsync(cancellationToken))
@@ -276,7 +276,7 @@ public sealed partial class SqliteEventStore : IEventQuery, IEventReplay
                     {
                         _logger.LogError(ex, "Failed to apply event {EventId} during replay", @event.EventId);
                         _metrics.RecordReplayFailure();
-                        return EventReplayResultFactory.CreateFailure<T>(
+                        return EventReplayResultFactory.CreateFailure(
                             $"Failed to apply event {@event.EventId}: {ex.Message}",
                             state,
                             version,
@@ -299,7 +299,7 @@ public sealed partial class SqliteEventStore : IEventQuery, IEventReplay
                 streamId, eventsProcessed, events.Count, version);
 
             _metrics.RecordReplaySuccess();
-            return EventReplayResultFactory.CreateSuccess<T>(
+            return EventReplayResultFactory.CreateSuccess(
                 state,
                 version,
                 eventsProcessed,
@@ -372,7 +372,7 @@ public sealed partial class SqliteEventStore : IEventQuery, IEventReplay
                     {
                         _logger.LogError(ex, "Failed to apply event {EventId} during point-in-time replay", @event.EventId);
                         _metrics.RecordReplayFailure();
-                        return EventReplayResultFactory.CreateFailure<T>(
+                        return EventReplayResultFactory.CreateFailure(
                             $"Failed to apply event {@event.EventId}: {ex.Message}",
                             state,
                             version,
@@ -391,7 +391,7 @@ public sealed partial class SqliteEventStore : IEventQuery, IEventReplay
                 streamId, toVersion, eventsProcessed, events.Count);
 
             _metrics.RecordReplaySuccess();
-            return EventReplayResultFactory.CreateSuccess<T>(
+            return EventReplayResultFactory.CreateSuccess(
                 state,
                 version,
                 eventsProcessed,
@@ -472,7 +472,7 @@ public sealed partial class SqliteEventStore : IEventQuery, IEventReplay
                     {
                         _logger.LogError(ex, "Failed to apply event {EventId} during multi-stream replay", @event.EventId);
                         _metrics.RecordReplayFailure();
-                        return EventReplayResultFactory.CreateFailure<T>(
+                        return EventReplayResultFactory.CreateFailure(
                             $"Failed to apply event {@event.EventId}: {ex.Message}",
                             state,
                             lastVersion,
@@ -491,7 +491,7 @@ public sealed partial class SqliteEventStore : IEventQuery, IEventReplay
                 streamIdList.Count, eventsProcessed, allEvents.Count);
 
             _metrics.RecordReplaySuccess();
-            return EventReplayResultFactory.CreateSuccess<T>(
+            return EventReplayResultFactory.CreateSuccess(
                 state,
                 lastVersion,
                 eventsProcessed,

@@ -53,7 +53,7 @@ public class ChatGrainLLMTests
             ]
         };
 
-        await _chatGrain.InitializeAsync(initRequest);
+        _ = await _chatGrain.InitializeAsync(initRequest);
 
         // Setup mock streaming agent
         _mockStreamingAgent = new Mock<IStreamingAgent>();
@@ -105,7 +105,7 @@ public class ChatGrainLLMTests
         };
 
         var mockTokens = new[] { "Hello", " there", "!" };
-        _mockStreamingAgent!
+        _ = _mockStreamingAgent!
             .Setup(agent => agent.GenerateReplyStreamingAsync(
                 It.IsAny<IEnumerable<IMessage>>(),
                 It.IsAny<GenerateReplyOptions?>(),
@@ -164,7 +164,7 @@ public class ChatGrainLLMTests
         // Act
         try
         {
-            await _chatGrain!.ProcessMessageWithLLMAsync(userMessage);
+            _ = await _chatGrain!.ProcessMessageWithLLMAsync(userMessage);
         }
         catch (InvalidOperationException)
         {
@@ -193,7 +193,7 @@ public class ChatGrainLLMTests
         };
 
         // Act & Assert
-        Assert.ThrowsAsync<ChatArchivedException>(async () =>
+        _ = Assert.ThrowsAsync<ChatArchivedException>(async () =>
             await _chatGrain.ProcessMessageWithLLMAsync(userMessage));
     }
 
@@ -276,7 +276,7 @@ public class ChatGrainLLMTests
         // Act & Assert
         try
         {
-            await _chatGrain!.ProcessMessageWithLLMAsync(userMessage, cts.Token);
+            _ = await _chatGrain!.ProcessMessageWithLLMAsync(userMessage, cts.Token);
 
             // If we reach here, operation completed before cancellation
             Assert.Pass("Operation completed before cancellation");
@@ -348,7 +348,7 @@ public class ChatGrainLLMTests
         // Act
         try
         {
-            await _chatGrain.ProcessMessageWithLLMAsync(userMessage);
+            _ = await _chatGrain.ProcessMessageWithLLMAsync(userMessage);
 
             // Give time for state update
             await Task.Delay(100);
@@ -381,7 +381,7 @@ public class ChatGrainLLMTests
         // Act
         try
         {
-            await _chatGrain.ProcessMessageWithLLMAsync(userMessage);
+            _ = await _chatGrain.ProcessMessageWithLLMAsync(userMessage);
 
             // Give time for background processing
             await Task.Delay(2000);

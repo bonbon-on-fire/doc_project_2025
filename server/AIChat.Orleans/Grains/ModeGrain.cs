@@ -2539,16 +2539,16 @@ public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDi
         if (State.CurrentState?.Configuration != null)
         {
             var configHash = ComputeConfigurationHash(State.CurrentState.Configuration);
-            keyBuilder.Append(CultureInfo.InvariantCulture, $"_{configHash}");
+            _ = keyBuilder.Append(CultureInfo.InvariantCulture, $"_{configHash}");
         }
 
         if (parameters != null && parameters.Count > 0)
         {
             var paramHash = ComputeParametersHash(parameters);
-            keyBuilder.Append(CultureInfo.InvariantCulture, $"_{paramHash}");
+            _ = keyBuilder.Append(CultureInfo.InvariantCulture, $"_{paramHash}");
         }
 
-        keyBuilder.Append(CultureInfo.InvariantCulture, $"_v{State.Version}");
+        _ = keyBuilder.Append(CultureInfo.InvariantCulture, $"_v{State.Version}");
         return keyBuilder.ToString();
     }
 
@@ -2565,7 +2565,7 @@ public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDi
         if (parameters != null && parameters.Count > 0)
         {
             var paramHash = ComputeParametersHash(parameters);
-            keyBuilder.Append(CultureInfo.InvariantCulture, $"_{paramHash}");
+            _ = keyBuilder.Append(CultureInfo.InvariantCulture, $"_{paramHash}");
         }
 
         return keyBuilder.ToString();
@@ -2579,9 +2579,9 @@ public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDi
         var keyBuilder = new StringBuilder($"validation_{validationType}");
 
         var targetHash = ComputeObjectHash(validationTarget);
-        keyBuilder.Append(CultureInfo.InvariantCulture, $"_{targetHash}");
+        _ = keyBuilder.Append(CultureInfo.InvariantCulture, $"_{targetHash}");
 
-        keyBuilder.Append(CultureInfo.InvariantCulture, $"_v{State.Version}");
+        _ = keyBuilder.Append(CultureInfo.InvariantCulture, $"_v{State.Version}");
         return keyBuilder.ToString();
     }
 
@@ -4399,7 +4399,7 @@ public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDi
         // Check if cache entry has expired
         if (cachedItem.ExpiresAtUtc < DateTime.UtcNow)
         {
-            State.ConfigurationCache.Remove(cacheKey);
+            _ = State.ConfigurationCache.Remove(cacheKey);
             return Task.FromResult<ModeConfiguration?>(null);
         }
 
@@ -4412,7 +4412,7 @@ public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDi
         catch (JsonException ex)
         {
             _logger.LogWarning(ex, "Failed to deserialize cached configuration for key {CacheKey}", cacheKey);
-            State.ConfigurationCache.Remove(cacheKey);
+            _ = State.ConfigurationCache.Remove(cacheKey);
             return Task.FromResult<ModeConfiguration?>(null);
         }
     }
@@ -4587,7 +4587,7 @@ public sealed class ModeGrain : TracedGrainBase<ModeGrainState>, IModeGrain, IDi
 
                 foreach (var key in itemsToRemove)
                 {
-                    State.ConfigurationCache.Remove(key);
+                    _ = State.ConfigurationCache.Remove(key);
                 }
             }
 

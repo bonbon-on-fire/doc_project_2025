@@ -114,7 +114,7 @@ public sealed class SignalRBufferProcessorService : BackgroundService
                 }
                 catch (Exception ex)
                 {
-                    Interlocked.Increment(ref _totalProcessingErrors);
+                    _ = Interlocked.Increment(ref _totalProcessingErrors);
                     _logger.LogError(ex, "Error during buffer processing cycle");
 
                     // Continue processing after error - don't let single failures stop the service
@@ -177,7 +177,7 @@ public sealed class SignalRBufferProcessorService : BackgroundService
         _logger.LogDebug("Starting buffer processing cycle: BufferSize={BufferSize}", bufferSize);
 
         var cycleStartTime = DateTime.UtcNow;
-        Interlocked.Increment(ref _totalProcessingCycles);
+        _ = Interlocked.Increment(ref _totalProcessingCycles);
 
         try
         {
@@ -191,7 +191,7 @@ public sealed class SignalRBufferProcessorService : BackgroundService
 
                 // Extract message count from the result (this could be improved with better result structure)
                 var messagesProcessed = EstimateMessagesProcessedFromResult(result);
-                Interlocked.Add(ref _totalMessagesProcessed, messagesProcessed);
+                _ = Interlocked.Add(ref _totalMessagesProcessed, messagesProcessed);
 
                 _logger.LogDebug(
                     "Buffer processing cycle completed successfully: " +
@@ -269,7 +269,7 @@ public sealed class SignalRBufferProcessorService : BackgroundService
                            finalProcessingAttempts < maxFinalAttempts &&
                            !shutdownCts.Token.IsCancellationRequested)
                     {
-                        await _messageBuffer.ProcessBufferAsync(_deliveryService, shutdownCts.Token);
+                        _ = await _messageBuffer.ProcessBufferAsync(_deliveryService, shutdownCts.Token);
                         finalProcessingAttempts++;
 
                         if (_messageBuffer.GetCurrentSize() > 0)

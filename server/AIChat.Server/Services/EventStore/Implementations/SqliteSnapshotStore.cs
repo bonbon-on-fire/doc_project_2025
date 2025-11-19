@@ -71,7 +71,7 @@ public sealed partial class SqliteSnapshotStore : ISnapshotStore
             // Test basic connectivity and schema
             var command = connection.CreateCommand();
             command.CommandText = "SELECT COUNT(*) FROM Snapshots LIMIT 1";
-            await command.ExecuteScalarAsync(cancellationToken);
+            _ = await command.ExecuteScalarAsync(cancellationToken);
 
             // Test compression functionality
             var testData = Encoding.UTF8.GetBytes("Health check test data");
@@ -172,13 +172,13 @@ public sealed partial class SqliteSnapshotStore : ISnapshotStore
                 var vacuumCommand = connection.CreateCommand();
                 vacuumCommand.Transaction = (SqliteTransaction)transaction;
                 vacuumCommand.CommandText = "VACUUM";
-                await vacuumCommand.ExecuteNonQueryAsync(cancellationToken);
+                _ = await vacuumCommand.ExecuteNonQueryAsync(cancellationToken);
 
                 // Analyze tables for query optimization
                 var analyzeCommand = connection.CreateCommand();
                 analyzeCommand.Transaction = (SqliteTransaction)transaction;
                 analyzeCommand.CommandText = "ANALYZE";
-                await analyzeCommand.ExecuteNonQueryAsync(cancellationToken);
+                _ = await analyzeCommand.ExecuteNonQueryAsync(cancellationToken);
 
                 // Clean up orphaned content records
                 await CleanupOrphanedContentAsync(connection, (SqliteTransaction)transaction, cancellationToken);
@@ -231,7 +231,7 @@ public sealed partial class SqliteSnapshotStore : ISnapshotStore
                 ORDER BY s.Version DESC
                 LIMIT 1";
 
-            command.Parameters.AddWithValue("@streamId", streamId);
+            _ = command.Parameters.AddWithValue("@streamId", streamId);
 
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
             if (await reader.ReadAsync(cancellationToken))
@@ -293,8 +293,8 @@ public sealed partial class SqliteSnapshotStore : ISnapshotStore
                 ORDER BY s.Version DESC
                 LIMIT 1";
 
-            command.Parameters.AddWithValue("@streamId", streamId);
-            command.Parameters.AddWithValue("@maxVersion", maxVersion);
+            _ = command.Parameters.AddWithValue("@streamId", streamId);
+            _ = command.Parameters.AddWithValue("@maxVersion", maxVersion);
 
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
             if (await reader.ReadAsync(cancellationToken))
@@ -350,7 +350,7 @@ public sealed partial class SqliteSnapshotStore : ISnapshotStore
                 INNER JOIN SnapshotContent sc ON s.ContentHash = sc.ContentHash
                 WHERE s.Id = @snapshotId";
 
-            command.Parameters.AddWithValue("@snapshotId", snapshotId);
+            _ = command.Parameters.AddWithValue("@snapshotId", snapshotId);
 
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
             if (await reader.ReadAsync(cancellationToken))
@@ -395,7 +395,7 @@ public sealed partial class SqliteSnapshotStore : ISnapshotStore
 
             var command = connection.CreateCommand();
             command.CommandText = "SELECT 1 FROM Snapshots WHERE StreamId = @streamId LIMIT 1";
-            command.Parameters.AddWithValue("@streamId", streamId);
+            _ = command.Parameters.AddWithValue("@streamId", streamId);
 
             var result = await command.ExecuteScalarAsync(cancellationToken);
             return result != null;
@@ -424,7 +424,7 @@ public sealed partial class SqliteSnapshotStore : ISnapshotStore
 
             var command = connection.CreateCommand();
             command.CommandText = "SELECT MAX(Version) FROM Snapshots WHERE StreamId = @streamId";
-            command.Parameters.AddWithValue("@streamId", streamId);
+            _ = command.Parameters.AddWithValue("@streamId", streamId);
 
             var result = await command.ExecuteScalarAsync(cancellationToken);
             return result is long version ? version : -1;

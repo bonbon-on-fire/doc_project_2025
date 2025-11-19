@@ -96,7 +96,7 @@ public sealed class TranslatorRegistry : ITranslatorRegistry
     /// <summary>
     /// Cached translator lookup by name (initialized once)
     /// </summary>
-    private readonly Lazy<System.Collections.ObjectModel.ReadOnlyDictionary<string, object>> _translatorsByName;
+    private readonly Lazy<ReadOnlyDictionary<string, object>> _translatorsByName;
 
     /// <summary>
     /// Statistics tracking
@@ -118,7 +118,7 @@ public sealed class TranslatorRegistry : ITranslatorRegistry
         // Initialize lazy cached collections
         _supportedTranslations = new Lazy<ReadOnlyCollection<(Type, Type)>>(DiscoverSupportedTranslations);
         _translatorNames = new Lazy<ReadOnlyCollection<string>>(DiscoverTranslatorNames);
-        _translatorsByName = new Lazy<System.Collections.ObjectModel.ReadOnlyDictionary<string, object>>(DiscoverTranslatorsByName);
+        _translatorsByName = new Lazy<ReadOnlyDictionary<string, object>>(DiscoverTranslatorsByName);
 
         _logger.LogInformation("TranslatorRegistry initialized with lazy discovery");
     }
@@ -130,17 +130,17 @@ public sealed class TranslatorRegistry : ITranslatorRegistry
 
         if (_translatorCache.TryGetValue(key, out var cachedTranslator))
         {
-            Interlocked.Increment(ref _cacheHits);
+            _ = Interlocked.Increment(ref _cacheHits);
             return cachedTranslator as IMessageTranslator<TSource, TTarget>;
         }
 
-        Interlocked.Increment(ref _cacheMisses);
+        _ = Interlocked.Increment(ref _cacheMisses);
 
         // Resolve from service provider
         var translator = _serviceProvider.GetService<IMessageTranslator<TSource, TTarget>>();
 
         // Cache the result (even if null to avoid repeated lookups)
-        _translatorCache.TryAdd(key, translator);
+        _ = _translatorCache.TryAdd(key, translator);
 
         if (translator != null)
         {
@@ -317,7 +317,7 @@ public sealed class TranslatorRegistry : ITranslatorRegistry
         }
     }
 
-    private System.Collections.ObjectModel.ReadOnlyDictionary<string, object> DiscoverTranslatorsByName()
+    private ReadOnlyDictionary<string, object> DiscoverTranslatorsByName()
     {
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         var translatorsByName = new Dictionary<string, object>();
@@ -332,7 +332,7 @@ public sealed class TranslatorRegistry : ITranslatorRegistry
                     var nameProperty = translator.GetType().GetProperty("TranslatorName");
                     if (nameProperty?.GetValue(translator) is string name && !string.IsNullOrEmpty(name))
                     {
-                        translatorsByName.TryAdd(name, translator);
+                        _ = translatorsByName.TryAdd(name, translator);
                     }
                 }
             }
@@ -344,12 +344,12 @@ public sealed class TranslatorRegistry : ITranslatorRegistry
                 stopwatch.ElapsedMilliseconds
             );
 
-            return new System.Collections.ObjectModel.ReadOnlyDictionary<string, object>(translatorsByName);
+            return new ReadOnlyDictionary<string, object>(translatorsByName);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to build translator lookup dictionary");
-            return new System.Collections.ObjectModel.ReadOnlyDictionary<string, object>(new Dictionary<string, object>());
+            return new ReadOnlyDictionary<string, object>(new Dictionary<string, object>());
         }
     }
 

@@ -74,7 +74,7 @@ public class SseConnectionManager : ISseConnectionManager
         }
         catch (Exception ex)
         {
-            _connections.TryRemove(connectionId, out var failedConnection);
+            _ = _connections.TryRemove(connectionId, out var failedConnection);
 
             // Raise connection error event
             if (failedConnection != null)

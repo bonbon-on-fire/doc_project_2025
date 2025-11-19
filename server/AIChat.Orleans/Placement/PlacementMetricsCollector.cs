@@ -83,10 +83,10 @@ public class PlacementMetricsCollector : IPlacementMetricsCollector
         try
         {
             var key = $"{grainType}:{placementStrategy}";
-            _placementCounts.AddOrUpdate(key, 1, (_, count) => count + 1);
-            _siloLoadCounts.AddOrUpdate(selectedSilo, 1, (_, count) => count + 1);
+            _ = _placementCounts.AddOrUpdate(key, 1, (_, count) => count + 1);
+            _ = _siloLoadCounts.AddOrUpdate(selectedSilo, 1, (_, count) => count + 1);
 
-            Interlocked.Increment(ref _totalPlacements);
+            _ = Interlocked.Increment(ref _totalPlacements);
 
             _logger.LogDebug(
                 "Recorded placement: {GrainType} grain {GrainId} -> {Silo} using {Strategy} ({AvailableSilos} silos available)",
@@ -104,7 +104,7 @@ public class PlacementMetricsCollector : IPlacementMetricsCollector
         try
         {
             var key = $"{sourceGrainType}->{targetGrainType}";
-            _crossSiloCommCounts.AddOrUpdate(key, 1, (_, count) => count + 1);
+            _ = _crossSiloCommCounts.AddOrUpdate(key, 1, (_, count) => count + 1);
 
             _logger.LogDebug(
                 "Recorded cross-silo communication: {SourceType}@{SourceSilo} -> {TargetType}@{TargetSilo}",
@@ -128,7 +128,7 @@ public class PlacementMetricsCollector : IPlacementMetricsCollector
                 ? $"{grainType1}+{grainType2}"
                 : $"{grainType2}+{grainType1}";
 
-            _affinitySuccessCounts.AddOrUpdate(key, 1, (_, count) => count + 1);
+            _ = _affinitySuccessCounts.AddOrUpdate(key, 1, (_, count) => count + 1);
 
             _logger.LogDebug(
                 "Recorded affinity success: {GrainType1} and {GrainType2} co-located on {Silo}",
@@ -230,7 +230,7 @@ public class PlacementMetricsCollector : IPlacementMetricsCollector
                 _siloLoadCounts.Clear();
 
                 // Reset total placements atomically
-                Interlocked.Exchange(ref _totalPlacements, 0);
+                _ = Interlocked.Exchange(ref _totalPlacements, 0);
                 _metricsStartTime = newStartTime;
 
                 _logger.LogInformation("Placement metrics have been reset at {ResetTime}", newStartTime);

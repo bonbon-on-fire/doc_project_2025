@@ -117,7 +117,7 @@ public class SessionGrainEnhancementsTests
         Assert.NotNull(request);
         Assert.Equal(SessionStateTransition.Connect, request.Transition);
         Assert.Equal("User initiated", request.Reason);
-        Assert.Single(request.Metadata);
+        _ = Assert.Single(request.Metadata);
     }
 
     [Fact]
@@ -140,7 +140,7 @@ public class SessionGrainEnhancementsTests
         Assert.Null(result.ErrorMessage);
         Assert.Null(result.ErrorCode);
         Assert.Equal(TimeSpan.FromMilliseconds(100), result.Duration);
-        Assert.Single(result.Context);
+        _ = Assert.Single(result.Context);
         Assert.NotEmpty(result.CorrelationId);
         Assert.NotEqual(default, result.Timestamp);
     }

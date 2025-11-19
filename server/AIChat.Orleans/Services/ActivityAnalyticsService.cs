@@ -53,9 +53,9 @@ public sealed class ActivityAnalyticsService : IActivityAnalyticsService
                 userId
             );
 
-            traceActivity?.SetTag("activity.type", activity.Type.ToString());
-            traceActivity?.SetTag("user.id", userId);
-            traceActivity?.SetTag("correlation.id", activity.CorrelationId);
+            _ = (traceActivity?.SetTag("activity.type", activity.Type.ToString()));
+            _ = (traceActivity?.SetTag("user.id", userId));
+            _ = (traceActivity?.SetTag("correlation.id", activity.CorrelationId));
 
             // Export to IChatTelemetry based on activity type
             await ExportToChatTelemetryAsync(userId, activity, exportedSystems);
@@ -203,16 +203,16 @@ public sealed class ActivityAnalyticsService : IActivityAnalyticsService
 
         if (activity != null)
         {
-            activity.SetTag("activity.type", activityType.ToString());
-            activity.SetTag("user.id", userId);
-            activity.SetTag("tracking.enhanced", true);
-            activity.SetTag("privacy.compliant", true);
+            _ = activity.SetTag("activity.type", activityType.ToString());
+            _ = activity.SetTag("user.id", userId);
+            _ = activity.SetTag("tracking.enhanced", true);
+            _ = activity.SetTag("privacy.compliant", true);
 
             if (tags != null)
             {
                 foreach (var (key, value) in tags)
                 {
-                    activity.SetTag(key, value);
+                    _ = activity.SetTag(key, value);
                 }
             }
 

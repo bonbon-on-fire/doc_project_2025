@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using AIChat.Orleans.Configuration;
 using AIChat.Orleans.Host.Models;
+using AIChat.Orleans.Host.Services;
 using AIChat.Orleans.Logging;
 using AIChat.Orleans.Metrics;
 using AIChat.Orleans.Placement;

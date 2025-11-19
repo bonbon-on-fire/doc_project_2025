@@ -683,7 +683,7 @@ public sealed class StateConsistencyVerifier : IStateConsistencyVerifier
         try
         {
             // Simple check by attempting JSON serialization without circular reference handling
-            System.Text.Json.JsonSerializer.Serialize(state, CachedJsonOptions);
+            _ = System.Text.Json.JsonSerializer.Serialize(state, CachedJsonOptions);
             return false;
         }
         catch (System.Text.Json.JsonException)

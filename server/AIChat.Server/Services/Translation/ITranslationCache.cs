@@ -39,13 +39,13 @@ public class MemoryTranslationCache : ITranslationCache
             return default;
         }
 
-        Interlocked.Increment(ref _totalRequests);
+        _ = Interlocked.Increment(ref _totalRequests);
 
         if (_cache.TryGetValue(key, out var item))
         {
             if (item.ExpiresAt > DateTime.UtcNow)
             {
-                Interlocked.Increment(ref _cacheHits);
+                _ = Interlocked.Increment(ref _cacheHits);
                 _logger.LogDebug("Cache hit for key: {Key}", key);
 
                 if (item.Value is T typedValue)
@@ -65,12 +65,12 @@ public class MemoryTranslationCache : ITranslationCache
             else
             {
                 // Item expired, remove it
-                _cache.TryRemove(key, out _);
+                _ = _cache.TryRemove(key, out _);
                 _logger.LogDebug("Cache item expired and removed for key: {Key}", key);
             }
         }
 
-        Interlocked.Increment(ref _cacheMisses);
+        _ = Interlocked.Increment(ref _cacheMisses);
         _logger.LogDebug("Cache miss for key: {Key}", key);
         return default;
     }
@@ -95,7 +95,7 @@ public class MemoryTranslationCache : ITranslationCache
         // Null-forgiving operator is safe here because we verified non-null at line 82
         var cacheItem = new CacheItem(value!, expiresAt);
 
-        _cache.AddOrUpdate(key, cacheItem, (_, _) => cacheItem);
+        _ = _cache.AddOrUpdate(key, cacheItem, (_, _) => cacheItem);
         _logger.LogDebug("Cached value for key: {Key}, expires at: {ExpiresAt}", key, expiresAt);
     }
 
@@ -115,7 +115,7 @@ public class MemoryTranslationCache : ITranslationCache
 
         foreach (var key in keysToRemove)
         {
-            _cache.TryRemove(key, out _);
+            _ = _cache.TryRemove(key, out _);
         }
 
         _logger.LogInformation("Invalidated {Count} cache entries matching pattern: {Pattern}", keysToRemove.Count, pattern);
@@ -151,7 +151,7 @@ public class MemoryTranslationCache : ITranslationCache
 
         foreach (var key in keysToRemove)
         {
-            _cache.TryRemove(key, out _);
+            _ = _cache.TryRemove(key, out _);
         }
 
         if (keysToRemove.Count > 0)
@@ -170,7 +170,7 @@ public class MemoryTranslationCache : ITranslationCache
 
         foreach (var key in itemsToRemove)
         {
-            _cache.TryRemove(key, out _);
+            _ = _cache.TryRemove(key, out _);
         }
 
         _logger.LogDebug("Removed {Count} oldest cache entries to make room", itemsToRemove.Count);

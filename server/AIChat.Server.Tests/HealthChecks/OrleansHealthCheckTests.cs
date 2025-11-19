@@ -35,11 +35,11 @@ public class OrleansHealthCheckTests
             { SiloAddress.New(new System.Net.IPEndPoint(System.Net.IPAddress.Parse("127.0.0.1"), 11112), 12346), SiloStatus.Active }
         };
 
-        mockManagementGrain
+        _ = mockManagementGrain
             .Setup(g => g.GetHosts(true))
             .ReturnsAsync(activeSilos);
 
-        _mockGrainFactory
+        _ = _mockGrainFactory
             .Setup(gf => gf.GetGrain<IManagementGrain>(0, null))
             .Returns(mockManagementGrain.Object);
 
@@ -75,11 +75,11 @@ public class OrleansHealthCheckTests
         // Empty list of silos
         var activeSilos = new Dictionary<SiloAddress, SiloStatus>();
 
-        mockManagementGrain
+        _ = mockManagementGrain
             .Setup(g => g.GetHosts(true))
             .ReturnsAsync(activeSilos);
 
-        _mockGrainFactory
+        _ = _mockGrainFactory
             .Setup(gf => gf.GetGrain<IManagementGrain>(0, null))
             .Returns(mockManagementGrain.Object);
 
@@ -103,7 +103,7 @@ public class OrleansHealthCheckTests
     public async Task CheckHealthAsync_OrleansUnavailable_ReturnsUnhealthy()
     {
         // Arrange
-        _mockGrainFactory
+        _ = _mockGrainFactory
             .Setup(gf => gf.GetGrain<IManagementGrain>(0, null))
             .Throws(new OrleansException("Orleans cluster unavailable"));
 
@@ -130,11 +130,11 @@ public class OrleansHealthCheckTests
         // Arrange
         var mockManagementGrain = new Mock<IManagementGrain>();
 
-        mockManagementGrain
+        _ = mockManagementGrain
             .Setup(g => g.GetHosts(true))
             .ThrowsAsync(new TimeoutException("Request timeout"));
 
-        _mockGrainFactory
+        _ = _mockGrainFactory
             .Setup(gf => gf.GetGrain<IManagementGrain>(0, null))
             .Returns(mockManagementGrain.Object);
 
@@ -147,7 +147,7 @@ public class OrleansHealthCheckTests
         Assert.Equal(HealthStatus.Unhealthy, result.Status);
         Assert.Contains("unavailable", result.Description, StringComparison.OrdinalIgnoreCase);
         Assert.NotNull(result.Exception);
-        Assert.IsType<TimeoutException>(result.Exception);
+        _ = Assert.IsType<TimeoutException>(result.Exception);
     }
 
     [Fact]
@@ -161,11 +161,11 @@ public class OrleansHealthCheckTests
             { SiloAddress.New(new System.Net.IPEndPoint(System.Net.IPAddress.Parse("127.0.0.1"), 11111), 12345), SiloStatus.Active }
         };
 
-        mockManagementGrain
+        _ = mockManagementGrain
             .Setup(g => g.GetHosts(true))
             .ReturnsAsync(activeSilos);
 
-        _mockGrainFactory
+        _ = _mockGrainFactory
             .Setup(gf => gf.GetGrain<IManagementGrain>(0, null))
             .Returns(mockManagementGrain.Object);
 

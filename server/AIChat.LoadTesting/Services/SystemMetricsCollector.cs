@@ -262,17 +262,17 @@ public class SystemMetricsCollector : IDisposable
 
                 if (metricsData != null)
                 {
-                    orleansMetrics.SiloHealthy = GetMetricValue<bool>(
+                    orleansMetrics.SiloHealthy = GetMetricValue(
                         metricsData,
                         "orleans.silo.healthy",
                         false
                     );
-                    orleansMetrics.ActiveGrainCount = GetMetricValue<int>(
+                    orleansMetrics.ActiveGrainCount = GetMetricValue(
                         metricsData,
                         "orleans.grains.active",
                         0
                     );
-                    orleansMetrics.BackgroundQueueDepth = GetMetricValue<int>(
+                    orleansMetrics.BackgroundQueueDepth = GetMetricValue(
                         metricsData,
                         "background.queue.depth",
                         0
@@ -282,7 +282,7 @@ public class SystemMetricsCollector : IDisposable
                         "orleans.message.relay.latency_ms",
                         0
                     );
-                    orleansMetrics.ErrorCount = GetMetricValue<int>(metricsData, "errors.total", 0);
+                    orleansMetrics.ErrorCount = GetMetricValue(metricsData, "errors.total", 0);
                 }
             }
         }

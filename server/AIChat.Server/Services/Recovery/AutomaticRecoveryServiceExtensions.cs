@@ -38,7 +38,7 @@ public static class AutomaticRecoveryServiceExtensions
         ArgumentNullException.ThrowIfNull(configureOptions);
 
         // Configure options
-        services.Configure(configureOptions);
+        _ = services.Configure(configureOptions);
 
         // Register core recovery components - implementations will be created
         // services.AddSingleton<IStateRecoveryDetector, StateRecoveryDetector>();
@@ -78,11 +78,11 @@ public static class AutomaticRecoveryServiceExtensions
         // Add base recovery services
         if (configureOptions != null)
         {
-            services.AddAutomaticRecoveryServices(configureOptions);
+            _ = services.AddAutomaticRecoveryServices(configureOptions);
         }
         else
         {
-            services.AddAutomaticRecoveryServices();
+            _ = services.AddAutomaticRecoveryServices();
         }
 
         // Add Orleans-specific services - implementations will be created
@@ -110,11 +110,11 @@ public static class AutomaticRecoveryServiceExtensions
         // Configure options
         if (configureOptions != null)
         {
-            services.Configure(configureOptions);
+            _ = services.Configure(configureOptions);
         }
 
         // Register custom detector
-        services.AddSingleton<IStateRecoveryDetector, TDetector>();
+        _ = services.AddSingleton<IStateRecoveryDetector, TDetector>();
 
         // Register other core components - implementations will be created
         // services.AddSingleton<IStateRecoveryOrchestrator, StateRecoveryOrchestrator>();
@@ -145,12 +145,12 @@ public static class AutomaticRecoveryServiceExtensions
         // Configure options
         if (configureOptions != null)
         {
-            services.Configure(configureOptions);
+            _ = services.Configure(configureOptions);
         }
 
         // Register core components with custom orchestrator
         // services.AddSingleton<IStateRecoveryDetector, StateRecoveryDetector>();
-        services.AddSingleton<IStateRecoveryOrchestrator, TOrchestrator>();
+        _ = services.AddSingleton<IStateRecoveryOrchestrator, TOrchestrator>();
         // services.AddSingleton<IStateConsistencyVerifier, StateConsistencyVerifier>();
         // services.AddSingleton<IAutomaticRecoveryService, AutomaticRecoveryService>();
 
@@ -178,13 +178,13 @@ public static class AutomaticRecoveryServiceExtensions
         // Configure options
         if (configureOptions != null)
         {
-            services.Configure(configureOptions);
+            _ = services.Configure(configureOptions);
         }
 
         // Register core components with custom verifier
         // services.AddSingleton<IStateRecoveryDetector, StateRecoveryDetector>();
         // services.AddSingleton<IStateRecoveryOrchestrator, StateRecoveryOrchestrator>();
-        services.AddSingleton<IStateConsistencyVerifier, TVerifier>();
+        _ = services.AddSingleton<IStateConsistencyVerifier, TVerifier>();
         // services.AddSingleton<IAutomaticRecoveryService, AutomaticRecoveryService>();
 
         // Register background services

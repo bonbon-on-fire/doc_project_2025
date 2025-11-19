@@ -28,7 +28,7 @@ public class ChatControllerOrleansOnlyTests
         var chatId = Guid.NewGuid().ToString();
 
         // Mock grain factory to throw OrleansException (simulating cluster unavailable)
-        _mockGrainFactory
+        _ = _mockGrainFactory
             .Setup(gf => gf.GetGrain<IChatGrain>(It.IsAny<string>(), null))
             .Throws(new OrleansException("Orleans cluster unavailable"));
 
@@ -51,7 +51,7 @@ public class ChatControllerOrleansOnlyTests
         };
 
         // Mock grain factory to throw exception
-        _mockGrainFactory
+        _ = _mockGrainFactory
             .Setup(gf => gf.GetGrain<IChatGrain>(It.IsAny<string>(), null))
             .Throws(new OrleansException("Orleans cluster unavailable"));
 
@@ -67,7 +67,7 @@ public class ChatControllerOrleansOnlyTests
         var chatId = Guid.NewGuid().ToString();
 
         // Mock grain factory to throw exception
-        _mockGrainFactory
+        _ = _mockGrainFactory
             .Setup(gf => gf.GetGrain<IChatGrain>(It.IsAny<string>(), null))
             .Throws(new OrleansException("Orleans cluster unavailable"));
 
@@ -84,7 +84,7 @@ public class ChatControllerOrleansOnlyTests
         var streamRequest = new object(); // Placeholder for stream request
 
         // Mock grain factory to throw exception
-        _mockGrainFactory
+        _ = _mockGrainFactory
             .Setup(gf => gf.GetGrain<IChatGrain>(It.IsAny<string>(), null))
             .Throws(new OrleansException("Orleans cluster unavailable"));
 
@@ -110,11 +110,11 @@ public class ChatControllerOrleansOnlyTests
             LastActivityAt = DateTime.UtcNow
         };
 
-        mockChatGrain
+        _ = mockChatGrain
             .Setup(g => g.GetStateAsync(default))
             .ReturnsAsync(chatState);
 
-        _mockGrainFactory
+        _ = _mockGrainFactory
             .Setup(gf => gf.GetGrain<IChatGrain>(chatId, null))
             .Returns(mockChatGrain.Object);
 
@@ -147,11 +147,11 @@ public class ChatControllerOrleansOnlyTests
 
         // Note: CreateChatAsync doesn't exist on IChatGrain, but this is a placeholder test
         // Will be updated to use InitializeAsync when implemented in Phase 4
-        mockChatGrain
+        _ = mockChatGrain
             .Setup(g => g.InitializeAsync(It.IsAny<ChatInitRequest>(), default))
             .ReturnsAsync(chatState);
 
-        _mockGrainFactory
+        _ = _mockGrainFactory
             .Setup(gf => gf.GetGrain<IChatGrain>(It.IsAny<string>(), null))
             .Returns(mockChatGrain.Object);
 
@@ -176,7 +176,7 @@ public class ChatControllerOrleansOnlyTests
         //     .Setup(g => g.StreamResponseAsync(It.IsAny<object>()))
         //     .Returns(asyncEnumerable);
 
-        _mockGrainFactory
+        _ = _mockGrainFactory
             .Setup(gf => gf.GetGrain<IChatGrain>(chatId, null))
             .Returns(mockChatGrain.Object);
 

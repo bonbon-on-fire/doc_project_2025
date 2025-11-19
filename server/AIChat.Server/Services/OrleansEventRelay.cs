@@ -54,7 +54,7 @@ public class OrleansEventRelay : IOrleansEventRelay
 
         try
         {
-            Interlocked.Increment(ref _totalOperationsCounter);
+            _ = Interlocked.Increment(ref _totalOperationsCounter);
 
             _logger.LogTrace("Checking Orleans availability status");
 
@@ -68,24 +68,24 @@ public class OrleansEventRelay : IOrleansEventRelay
                 isEnabled, stopwatch.ElapsedMilliseconds, _orleansService != null
             );
 
-            activity?.SetTag("orleans.enabled", isEnabled);
-            activity?.SetTag("duration_ms", stopwatch.ElapsedMilliseconds);
+            _ = (activity?.SetTag("orleans.enabled", isEnabled));
+            _ = (activity?.SetTag("duration_ms", stopwatch.ElapsedMilliseconds));
 
             return isEnabled;
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
-            Interlocked.Increment(ref _failedOperationsCounter);
+            _ = Interlocked.Increment(ref _failedOperationsCounter);
 
             _logger.LogWarning(ex,
                 "Failed to check Orleans availability after {ElapsedMs}ms, assuming disabled (OrleansService: {HasOrleansService})",
                 stopwatch.ElapsedMilliseconds, _orleansService != null
             );
 
-            activity?.SetTag("orleans.enabled", false);
-            activity?.SetTag("error", true);
-            activity?.SetTag("error.type", ex.GetType().Name);
+            _ = (activity?.SetTag("orleans.enabled", false));
+            _ = (activity?.SetTag("error", true));
+            _ = (activity?.SetTag("error.type", ex.GetType().Name));
 
             return false;
         }
@@ -113,9 +113,9 @@ public class OrleansEventRelay : IOrleansEventRelay
 
         try
         {
-            Interlocked.Increment(ref _totalOperationsCounter);
+            _ = Interlocked.Increment(ref _totalOperationsCounter);
 
-            activity?.SetTag("chat.id", chatId);
+            _ = (activity?.SetTag("chat.id", chatId));
 
             _logger.LogInformation(
                 "Starting Orleans event subscription for ChatId: {ChatId} (TotalSubscriptions: {CurrentSubscriptions})",
@@ -129,8 +129,8 @@ public class OrleansEventRelay : IOrleansEventRelay
                     "Orleans not available, skipping grain event subscription for ChatId: {ChatId} (OrleansService: {HasOrleansService})",
                     chatId, _orleansService != null
                 );
-                activity?.SetTag("subscription.skipped", true);
-                activity?.SetTag("skip.reason", "orleans_disabled");
+                _ = (activity?.SetTag("subscription.skipped", true));
+                _ = (activity?.SetTag("skip.reason", "orleans_disabled"));
                 return;
             }
 
@@ -140,8 +140,8 @@ public class OrleansEventRelay : IOrleansEventRelay
                     "Orleans integration service not available for ChatId: {ChatId}, subscription will be inactive",
                     chatId
                 );
-                activity?.SetTag("subscription.inactive", true);
-                activity?.SetTag("inactive.reason", "service_unavailable");
+                _ = (activity?.SetTag("subscription.inactive", true));
+                _ = (activity?.SetTag("inactive.reason", "service_unavailable"));
                 return;
             }
 
@@ -156,7 +156,7 @@ public class OrleansEventRelay : IOrleansEventRelay
                         "Already subscribed to events for ChatId: {ChatId} (SubscribedAt: {SubscribedAt})",
                         chatId, _activeSubscriptions[chatId].SubscribedAt
                     );
-                    activity?.SetTag("subscription.duplicate", true);
+                    _ = (activity?.SetTag("subscription.duplicate", true));
                     return;
                 }
                 wasAlreadySubscribed = false;
@@ -183,14 +183,14 @@ public class OrleansEventRelay : IOrleansEventRelay
                 chatId, stopwatch.ElapsedMilliseconds, _activeSubscriptions.Count, wasAlreadySubscribed
             );
 
-            activity?.SetTag("subscription.success", true);
-            activity?.SetTag("duration_ms", stopwatch.ElapsedMilliseconds);
-            activity?.SetTag("total.subscriptions", _activeSubscriptions.Count);
+            _ = (activity?.SetTag("subscription.success", true));
+            _ = (activity?.SetTag("duration_ms", stopwatch.ElapsedMilliseconds));
+            _ = (activity?.SetTag("total.subscriptions", _activeSubscriptions.Count));
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
-            Interlocked.Increment(ref _failedOperationsCounter);
+            _ = Interlocked.Increment(ref _failedOperationsCounter);
 
             _logger.LogError(ex,
                 "Failed to subscribe to Orleans events for ChatId: {ChatId} after {ElapsedMs}ms (TotalSubscriptions: {TotalSubscriptions}, OrleansService: {HasOrleansService})",
@@ -200,12 +200,12 @@ public class OrleansEventRelay : IOrleansEventRelay
             // Clean up failed subscription
             lock (_subscriptionLock)
             {
-                _activeSubscriptions.Remove(chatId);
+                _ = _activeSubscriptions.Remove(chatId);
             }
 
-            activity?.SetTag("subscription.success", false);
-            activity?.SetTag("error.type", ex.GetType().Name);
-            activity?.SetTag("duration_ms", stopwatch.ElapsedMilliseconds);
+            _ = (activity?.SetTag("subscription.success", false));
+            _ = (activity?.SetTag("error.type", ex.GetType().Name));
+            _ = (activity?.SetTag("duration_ms", stopwatch.ElapsedMilliseconds));
 
             throw;
         }
@@ -224,9 +224,9 @@ public class OrleansEventRelay : IOrleansEventRelay
 
         try
         {
-            Interlocked.Increment(ref _totalOperationsCounter);
+            _ = Interlocked.Increment(ref _totalOperationsCounter);
 
-            activity?.SetTag("chat.id", chatId);
+            _ = (activity?.SetTag("chat.id", chatId));
 
             _logger.LogInformation(
                 "Starting Orleans event unsubscription for ChatId: {ChatId} (TotalSubscriptions: {CurrentSubscriptions})",
@@ -243,11 +243,11 @@ public class OrleansEventRelay : IOrleansEventRelay
                         "No active subscription found for ChatId: {ChatId} (TotalSubscriptions: {TotalSubscriptions})",
                         chatId, _activeSubscriptions.Count
                     );
-                    activity?.SetTag("subscription.found", false);
+                    _ = (activity?.SetTag("subscription.found", false));
                     return;
                 }
 
-                _activeSubscriptions.Remove(chatId);
+                _ = _activeSubscriptions.Remove(chatId);
             }
 
             // TODO: Implement Orleans stream unsubscription when grain streaming is available
@@ -267,24 +267,24 @@ public class OrleansEventRelay : IOrleansEventRelay
                 chatId, stopwatch.ElapsedMilliseconds, subscriptionDuration.TotalMilliseconds, _activeSubscriptions.Count
             );
 
-            activity?.SetTag("unsubscription.success", true);
-            activity?.SetTag("duration_ms", stopwatch.ElapsedMilliseconds);
-            activity?.SetTag("subscription.duration_ms", subscriptionDuration.TotalMilliseconds);
-            activity?.SetTag("remaining.subscriptions", _activeSubscriptions.Count);
+            _ = (activity?.SetTag("unsubscription.success", true));
+            _ = (activity?.SetTag("duration_ms", stopwatch.ElapsedMilliseconds));
+            _ = (activity?.SetTag("subscription.duration_ms", subscriptionDuration.TotalMilliseconds));
+            _ = (activity?.SetTag("remaining.subscriptions", _activeSubscriptions.Count));
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
-            Interlocked.Increment(ref _failedOperationsCounter);
+            _ = Interlocked.Increment(ref _failedOperationsCounter);
 
             _logger.LogError(ex,
                 "Failed to unsubscribe from Orleans events for ChatId: {ChatId} after {ElapsedMs}ms (TotalSubscriptions: {TotalSubscriptions})",
                 chatId, stopwatch.ElapsedMilliseconds, _activeSubscriptions.Count
             );
 
-            activity?.SetTag("unsubscription.success", false);
-            activity?.SetTag("error.type", ex.GetType().Name);
-            activity?.SetTag("duration_ms", stopwatch.ElapsedMilliseconds);
+            _ = (activity?.SetTag("unsubscription.success", false));
+            _ = (activity?.SetTag("error.type", ex.GetType().Name));
+            _ = (activity?.SetTag("duration_ms", stopwatch.ElapsedMilliseconds));
 
             throw;
         }
@@ -298,9 +298,9 @@ public class OrleansEventRelay : IOrleansEventRelay
 
         try
         {
-            Interlocked.Increment(ref _totalOperationsCounter);
+            _ = Interlocked.Increment(ref _totalOperationsCounter);
 
-            activity?.SetTag("chat.id", chatId);
+            _ = (activity?.SetTag("chat.id", chatId));
 
             _logger.LogTrace(
                 "Checking real-time events support for ChatId: {ChatId} (TotalSubscriptions: {TotalSubscriptions})",
@@ -317,24 +317,24 @@ public class OrleansEventRelay : IOrleansEventRelay
                 chatId, isOrleansEnabled, stopwatch.ElapsedMilliseconds, _orleansService != null
             );
 
-            activity?.SetTag("realtime.supported", isOrleansEnabled);
-            activity?.SetTag("duration_ms", stopwatch.ElapsedMilliseconds);
+            _ = (activity?.SetTag("realtime.supported", isOrleansEnabled));
+            _ = (activity?.SetTag("duration_ms", stopwatch.ElapsedMilliseconds));
 
             return isOrleansEnabled;
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
-            Interlocked.Increment(ref _failedOperationsCounter);
+            _ = Interlocked.Increment(ref _failedOperationsCounter);
 
             _logger.LogWarning(ex,
                 "Failed to check real-time events support for ChatId: {ChatId} after {ElapsedMs}ms, assuming not supported (OrleansService: {HasOrleansService})",
                 chatId, stopwatch.ElapsedMilliseconds, _orleansService != null
             );
 
-            activity?.SetTag("realtime.supported", false);
-            activity?.SetTag("error", true);
-            activity?.SetTag("error.type", ex.GetType().Name);
+            _ = (activity?.SetTag("realtime.supported", false));
+            _ = (activity?.SetTag("error", true));
+            _ = (activity?.SetTag("error.type", ex.GetType().Name));
 
             return false;
         }
@@ -348,7 +348,7 @@ public class OrleansEventRelay : IOrleansEventRelay
 
         try
         {
-            Interlocked.Increment(ref _totalOperationsCounter);
+            _ = Interlocked.Increment(ref _totalOperationsCounter);
 
             _logger.LogTrace("Performing Orleans event relay health check");
 
@@ -388,27 +388,27 @@ public class OrleansEventRelay : IOrleansEventRelay
                 health.IsHealthy, health.IsOrleansAvailable, health.ActiveSubscriptions, successRate, serviceUptime.TotalHours, stopwatch.ElapsedMilliseconds
             );
 
-            activity?.SetTag("health.healthy", health.IsHealthy);
-            activity?.SetTag("health.orleans_available", health.IsOrleansAvailable);
-            activity?.SetTag("health.active_subscriptions", health.ActiveSubscriptions);
-            activity?.SetTag("health.success_rate", successRate);
-            activity?.SetTag("duration_ms", stopwatch.ElapsedMilliseconds);
+            _ = (activity?.SetTag("health.healthy", health.IsHealthy));
+            _ = (activity?.SetTag("health.orleans_available", health.IsOrleansAvailable));
+            _ = (activity?.SetTag("health.active_subscriptions", health.ActiveSubscriptions));
+            _ = (activity?.SetTag("health.success_rate", successRate));
+            _ = (activity?.SetTag("duration_ms", stopwatch.ElapsedMilliseconds));
 
             return health;
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
-            Interlocked.Increment(ref _failedOperationsCounter);
+            _ = Interlocked.Increment(ref _failedOperationsCounter);
 
             _logger.LogError(ex,
                 "Failed to perform health check for Orleans event relay after {ElapsedMs}ms (OrleansService: {HasOrleansService})",
                 stopwatch.ElapsedMilliseconds, _orleansService != null
             );
 
-            activity?.SetTag("health.healthy", false);
-            activity?.SetTag("error.type", ex.GetType().Name);
-            activity?.SetTag("duration_ms", stopwatch.ElapsedMilliseconds);
+            _ = (activity?.SetTag("health.healthy", false));
+            _ = (activity?.SetTag("error.type", ex.GetType().Name));
+            _ = (activity?.SetTag("duration_ms", stopwatch.ElapsedMilliseconds));
 
             return new OrleansEventRelayHealth
             {

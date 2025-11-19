@@ -22,7 +22,7 @@ public class ServiceRegistrationTests : IClassFixture<WebApplicationFactory<Prog
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
-            builder.UseSetting("ASPNETCORE_ENVIRONMENT", "Test");
+            _ = builder.UseSetting("ASPNETCORE_ENVIRONMENT", "Test");
         });
 
         _serviceProvider = _factory.Services;

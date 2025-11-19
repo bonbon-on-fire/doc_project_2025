@@ -47,7 +47,7 @@ public class OverflowStrategyTests
         // Assert
         Assert.True(result.Success);
         Assert.Equal(OverflowAction.BackpressureApplied, result.Action);
-        Assert.NotNull(result.DelayApplied);
+        _ = Assert.NotNull(result.DelayApplied);
         Assert.True(result.DelayApplied.Value.TotalMilliseconds > 0);
         Assert.True(elapsed.TotalMilliseconds >= 50); // Should apply some delay
         Assert.True(result.ShouldRetry);
@@ -69,8 +69,8 @@ public class OverflowStrategyTests
         };
 
         // Act
-        await strategy.HandleOverflowAsync(context);
-        await strategy.HandleOverflowAsync(context);
+        _ = await strategy.HandleOverflowAsync(context);
+        _ = await strategy.HandleOverflowAsync(context);
         var stats = strategy.GetStatistics();
 
         // Assert
@@ -139,7 +139,7 @@ public class OverflowStrategyTests
         // Arrange
         var loggerMock = new Mock<ILogger<OverflowStrategyFactory>>();
         var serviceProviderMock = new Mock<IServiceProvider>();
-        serviceProviderMock.Setup(x => x.GetService(typeof(ILogger<HybridStrategy>)))
+        _ = serviceProviderMock.Setup(x => x.GetService(typeof(ILogger<HybridStrategy>)))
             .Returns(new Mock<ILogger<HybridStrategy>>().Object);
         var factory = new OverflowStrategyFactory(loggerMock.Object, serviceProviderMock.Object);
 
@@ -162,7 +162,7 @@ public class OverflowStrategyTests
         // Arrange
         var loggerMock = new Mock<ILogger<OverflowStrategyFactory>>();
         var serviceProviderMock = new Mock<IServiceProvider>();
-        serviceProviderMock.Setup(x => x.GetService(typeof(ILogger<HybridStrategy>)))
+        _ = serviceProviderMock.Setup(x => x.GetService(typeof(ILogger<HybridStrategy>)))
             .Returns(new Mock<ILogger<HybridStrategy>>().Object);
         var factory = new OverflowStrategyFactory(loggerMock.Object, serviceProviderMock.Object);
 
@@ -183,7 +183,7 @@ public class OverflowStrategyTests
         // Arrange
         var loggerMock = new Mock<ILogger<OverflowStrategyFactory>>();
         var serviceProviderMock = new Mock<IServiceProvider>();
-        serviceProviderMock.Setup(x => x.GetService(typeof(ILogger<HybridStrategy>)))
+        _ = serviceProviderMock.Setup(x => x.GetService(typeof(ILogger<HybridStrategy>)))
             .Returns(new Mock<ILogger<HybridStrategy>>().Object);
         var factory = new OverflowStrategyFactory(loggerMock.Object, serviceProviderMock.Object);
         var hybrid = factory.GetStrategy(OverflowStrategy.Hybrid);
@@ -206,7 +206,7 @@ public class OverflowStrategyTests
         // Assert
         Assert.True(result.Success);
         Assert.Equal(OverflowAction.HybridAction, result.Action);
-        Assert.NotNull(result.DelayApplied); // Should apply delay (backpressure)
+        _ = Assert.NotNull(result.DelayApplied); // Should apply delay (backpressure)
         Assert.True(elapsed.TotalMilliseconds > 0);
     }
 
@@ -216,7 +216,7 @@ public class OverflowStrategyTests
         // Arrange
         var loggerMock = new Mock<ILogger<OverflowStrategyFactory>>();
         var serviceProviderMock = new Mock<IServiceProvider>();
-        serviceProviderMock.Setup(x => x.GetService(typeof(ILogger<HybridStrategy>)))
+        _ = serviceProviderMock.Setup(x => x.GetService(typeof(ILogger<HybridStrategy>)))
             .Returns(new Mock<ILogger<HybridStrategy>>().Object);
         var factory = new OverflowStrategyFactory(loggerMock.Object, serviceProviderMock.Object);
         var hybrid = factory.GetStrategy(OverflowStrategy.Hybrid);

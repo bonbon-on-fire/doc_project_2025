@@ -87,26 +87,26 @@ public class WebSocketSessionManager : IWebSocketSessionManager
             };
 
             // Add to session collections
-            _sessionsBySessionId.TryAdd(sessionId, sessionInfo);
-            _sessionsByConnectionId.TryAdd(connectionId, sessionInfo);
+            _ = _sessionsBySessionId.TryAdd(sessionId, sessionInfo);
+            _ = _sessionsByConnectionId.TryAdd(connectionId, sessionInfo);
 
             // Add to user sessions mapping (thread-safe without locks)
             var userSessions = _sessionsByUserId.GetOrAdd(userId, _ => new ConcurrentDictionary<string, bool>());
-            userSessions.TryAdd(sessionId, true);
+            _ = userSessions.TryAdd(sessionId, true);
 
-            Interlocked.Increment(ref _totalSessionsCreated);
+            _ = Interlocked.Increment(ref _totalSessionsCreated);
             stopwatch.Stop();
 
             _logger.LogInformation(
                 "Created WebSocket session {SessionId} for user {UserId} with protocol {Protocol} (Connection: {ConnectionId}) in {ElapsedMs}ms",
                 sessionId, userId, protocol, connectionId, stopwatch.ElapsedMilliseconds);
 
-            activity?.SetTag("session.id", sessionId);
-            activity?.SetTag("user.id", userId);
-            activity?.SetTag("protocol", protocol);
-            activity?.SetTag("connection.id", connectionId);
-            activity?.SetTag("operation.success", true);
-            activity?.SetTag("operation.duration_ms", stopwatch.ElapsedMilliseconds);
+            _ = (activity?.SetTag("session.id", sessionId));
+            _ = (activity?.SetTag("user.id", userId));
+            _ = (activity?.SetTag("protocol", protocol));
+            _ = (activity?.SetTag("connection.id", connectionId));
+            _ = (activity?.SetTag("operation.success", true));
+            _ = (activity?.SetTag("operation.duration_ms", stopwatch.ElapsedMilliseconds));
 
             return Task.FromResult(sessionInfo);
         }
@@ -117,8 +117,8 @@ public class WebSocketSessionManager : IWebSocketSessionManager
                 "Failed to create WebSocket session for user {UserId} with protocol {Protocol} (Connection: {ConnectionId}) after {ElapsedMs}ms",
                 userId, protocol, connectionId, stopwatch.ElapsedMilliseconds);
 
-            activity?.SetTag("operation.success", false);
-            activity?.SetTag("error.type", ex.GetType().Name);
+            _ = (activity?.SetTag("operation.success", false));
+            _ = (activity?.SetTag("error.type", ex.GetType().Name));
             throw;
         }
     }
@@ -130,7 +130,7 @@ public class WebSocketSessionManager : IWebSocketSessionManager
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sessionId);
 
-        _sessionsBySessionId.TryGetValue(sessionId, out var sessionInfo);
+        _ = _sessionsBySessionId.TryGetValue(sessionId, out var sessionInfo);
         return Task.FromResult(sessionInfo);
     }
 
@@ -141,7 +141,7 @@ public class WebSocketSessionManager : IWebSocketSessionManager
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionId);
 
-        _sessionsByConnectionId.TryGetValue(connectionId, out var sessionInfo);
+        _ = _sessionsByConnectionId.TryGetValue(connectionId, out var sessionInfo);
         return Task.FromResult(sessionInfo);
     }
 
@@ -183,18 +183,18 @@ public class WebSocketSessionManager : IWebSocketSessionManager
             if (_sessionsBySessionId.TryGetValue(sessionInfo.SessionId, out var existingSession))
             {
                 // Update the session in all collections
-                _sessionsBySessionId.TryUpdate(sessionInfo.SessionId, sessionInfo, existingSession);
-                _sessionsByConnectionId.TryUpdate(sessionInfo.ConnectionId, sessionInfo, existingSession);
+                _ = _sessionsBySessionId.TryUpdate(sessionInfo.SessionId, sessionInfo, existingSession);
+                _ = _sessionsByConnectionId.TryUpdate(sessionInfo.ConnectionId, sessionInfo, existingSession);
 
                 _logger.LogDebug("Updated WebSocket session {SessionId}", sessionInfo.SessionId);
-                activity?.SetTag("session.id", sessionInfo.SessionId);
-                activity?.SetTag("operation.success", true);
+                _ = (activity?.SetTag("session.id", sessionInfo.SessionId));
+                _ = (activity?.SetTag("operation.success", true));
             }
             else
             {
                 _logger.LogWarning("Attempted to update non-existent session {SessionId}", sessionInfo.SessionId);
-                activity?.SetTag("operation.success", false);
-                activity?.SetTag("error.reason", "session_not_found");
+                _ = (activity?.SetTag("operation.success", false));
+                _ = (activity?.SetTag("error.reason", "session_not_found"));
             }
 
             return Task.CompletedTask;
@@ -202,8 +202,8 @@ public class WebSocketSessionManager : IWebSocketSessionManager
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to update session {SessionId}", sessionInfo.SessionId);
-            activity?.SetTag("operation.success", false);
-            activity?.SetTag("error.type", ex.GetType().Name);
+            _ = (activity?.SetTag("operation.success", false));
+            _ = (activity?.SetTag("error.type", ex.GetType().Name));
             throw;
         }
     }
@@ -220,7 +220,7 @@ public class WebSocketSessionManager : IWebSocketSessionManager
             sessionInfo.LastHeartbeat = DateTime.UtcNow;
             sessionInfo.LastActivity = DateTime.UtcNow;
 
-            Interlocked.Increment(ref _totalHeartbeats);
+            _ = Interlocked.Increment(ref _totalHeartbeats);
 
             _logger.LogTrace("Recorded heartbeat for session {SessionId}", sessionId);
         }
@@ -238,7 +238,7 @@ public class WebSocketSessionManager : IWebSocketSessionManager
         if (_sessionsBySessionId.TryGetValue(sessionId, out var sessionInfo))
         {
             sessionInfo.LastActivity = DateTime.UtcNow;
-            Interlocked.Increment(ref _totalActivityUpdates);
+            _ = Interlocked.Increment(ref _totalActivityUpdates);
 
             _logger.LogTrace("Updated activity for session {SessionId}", sessionId);
         }
@@ -260,18 +260,18 @@ public class WebSocketSessionManager : IWebSocketSessionManager
             if (!_sessionsBySessionId.TryRemove(sessionId, out var sessionInfo))
             {
                 _logger.LogDebug("Session {SessionId} not found for removal", sessionId);
-                activity?.SetTag("operation.success", false);
-                activity?.SetTag("error.reason", "session_not_found");
+                _ = (activity?.SetTag("operation.success", false));
+                _ = (activity?.SetTag("error.reason", "session_not_found"));
                 return Task.FromResult(false);
             }
 
             // Remove from connection mapping
-            _sessionsByConnectionId.TryRemove(sessionInfo.ConnectionId, out _);
+            _ = _sessionsByConnectionId.TryRemove(sessionInfo.ConnectionId, out _);
 
             // Remove from user sessions mapping (thread-safe without locks)
             if (_sessionsByUserId.TryGetValue(sessionInfo.UserId, out var userSessions))
             {
-                userSessions.TryRemove(sessionId, out _);
+                _ = userSessions.TryRemove(sessionId, out _);
 
                 // Clean up empty user entries
                 if (userSessions.IsEmpty)
@@ -279,27 +279,27 @@ public class WebSocketSessionManager : IWebSocketSessionManager
                     // Try to remove the user entry if it's still empty
                     // Note: There's a small race condition here but it's benign - worst case
                     // the empty dictionary stays until the next cleanup
-                    _sessionsByUserId.TryRemove(sessionInfo.UserId, out _);
+                    _ = _sessionsByUserId.TryRemove(sessionInfo.UserId, out _);
                 }
             }
 
-            Interlocked.Increment(ref _totalSessionsRemoved);
+            _ = Interlocked.Increment(ref _totalSessionsRemoved);
 
             _logger.LogInformation(
                 "Removed WebSocket session {SessionId} for user {UserId} (Connection: {ConnectionId})",
                 sessionId, sessionInfo.UserId, sessionInfo.ConnectionId);
 
-            activity?.SetTag("session.id", sessionId);
-            activity?.SetTag("user.id", sessionInfo.UserId);
-            activity?.SetTag("operation.success", true);
+            _ = (activity?.SetTag("session.id", sessionId));
+            _ = (activity?.SetTag("user.id", sessionInfo.UserId));
+            _ = (activity?.SetTag("operation.success", true));
 
             return Task.FromResult(true);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to remove session {SessionId}", sessionId);
-            activity?.SetTag("operation.success", false);
-            activity?.SetTag("error.type", ex.GetType().Name);
+            _ = (activity?.SetTag("operation.success", false));
+            _ = (activity?.SetTag("error.type", ex.GetType().Name));
             throw;
         }
     }
@@ -352,17 +352,17 @@ public class WebSocketSessionManager : IWebSocketSessionManager
                 "Cleaned up {RemovedCount} stale WebSocket sessions (threshold: {ThresholdMinutes} minutes)",
                 removedCount, inactivityThreshold.TotalMinutes);
 
-            activity?.SetTag("removed.count", removedCount);
-            activity?.SetTag("threshold.minutes", inactivityThreshold.TotalMinutes);
-            activity?.SetTag("operation.success", true);
+            _ = (activity?.SetTag("removed.count", removedCount));
+            _ = (activity?.SetTag("threshold.minutes", inactivityThreshold.TotalMinutes));
+            _ = (activity?.SetTag("operation.success", true));
 
             return removedCount;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to cleanup stale sessions");
-            activity?.SetTag("operation.success", false);
-            activity?.SetTag("error.type", ex.GetType().Name);
+            _ = (activity?.SetTag("operation.success", false));
+            _ = (activity?.SetTag("error.type", ex.GetType().Name));
             throw;
         }
     }

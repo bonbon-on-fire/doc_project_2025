@@ -184,10 +184,10 @@ public class SqliteEventStoreTests : IDisposable
         { EventId = eventId };
 
         // Act
-        await _eventStore.AppendAsync(event1);
+        _ = await _eventStore.AppendAsync(event1);
 
         // Assert
-        await Assert.ThrowsAsync<DuplicateEventException>(() =>
+        _ = await Assert.ThrowsAsync<DuplicateEventException>(() =>
             _eventStore.AppendAsync(event2));
     }
 
@@ -195,7 +195,7 @@ public class SqliteEventStoreTests : IDisposable
     public async Task AppendAsync_WithNullEvent_ShouldThrowArgumentNullException()
     {
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+        _ = await Assert.ThrowsAsync<ArgumentNullException>(() =>
             _eventStore.AppendAsync((IEvent)null!));
     }
 
@@ -203,7 +203,7 @@ public class SqliteEventStoreTests : IDisposable
     public async Task AppendAsync_WithEmptyEventCollection_ShouldThrowArgumentException()
     {
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() =>
+        _ = await Assert.ThrowsAsync<ArgumentException>(() =>
             _eventStore.AppendAsync([]));
     }
 
@@ -260,7 +260,7 @@ public class SqliteEventStoreTests : IDisposable
                 ChatId = streamId
             });
 
-        await _eventStore.AppendAsync(firstEvent);
+        _ = await _eventStore.AppendAsync(firstEvent);
 
         // Now try to append with wrong expected version
         var secondEvent = ChatMessageSentEvent.Create(
@@ -276,7 +276,7 @@ public class SqliteEventStoreTests : IDisposable
             });
 
         // Act & Assert
-        await Assert.ThrowsAsync<ConcurrencyException>(() =>
+        _ = await Assert.ThrowsAsync<ConcurrencyException>(() =>
             _eventStore.AppendToStreamAsync(streamId, -1, [secondEvent]));
     }
 
@@ -315,7 +315,7 @@ public class SqliteEventStoreTests : IDisposable
                 })
         };
 
-        await _eventStore.AppendAsync(events);
+        _ = await _eventStore.AppendAsync(events);
 
         // Act
         var result = await _eventStore.GetEventsAsync(streamId);
@@ -365,7 +365,7 @@ public class SqliteEventStoreTests : IDisposable
                 }))
             .ToArray();
 
-        await _eventStore.AppendAsync(events);
+        _ = await _eventStore.AppendAsync(events);
 
         // Act
         var result = await _eventStore.GetEventsAsync(streamId, 2, 4);
@@ -397,7 +397,7 @@ public class SqliteEventStoreTests : IDisposable
                 }))
             .ToArray();
 
-        await _eventStore.AppendAsync(events);
+        _ = await _eventStore.AppendAsync(events);
 
         // Act
         var version = await _eventStore.GetStreamVersionAsync(streamId);
@@ -433,7 +433,7 @@ public class SqliteEventStoreTests : IDisposable
                 ChatId = streamId
             });
 
-        await _eventStore.AppendAsync(chatEvent);
+        _ = await _eventStore.AppendAsync(chatEvent);
 
         // Act
         var exists = await _eventStore.StreamExistsAsync(streamId);
@@ -483,7 +483,7 @@ public class SqliteEventStoreTests : IDisposable
                 StateData = "{}"
             });
 
-        await _eventStore.AppendAsync([chatEvent, stateEvent]);
+        _ = await _eventStore.AppendAsync([chatEvent, stateEvent]);
 
         var query = EventQuery.ForEventType("ChatMessageSentEvent");
 
@@ -491,8 +491,8 @@ public class SqliteEventStoreTests : IDisposable
         var result = await _eventStore.QueryEventsAsync(query);
 
         // Assert
-        Assert.Single(result.Events);
-        Assert.IsType<ChatMessageSentEvent>(result.Events[0]);
+        _ = Assert.Single(result.Events);
+        _ = Assert.IsType<ChatMessageSentEvent>(result.Events[0]);
     }
 
     [Fact]
@@ -540,7 +540,7 @@ public class SqliteEventStoreTests : IDisposable
             },
             correlationId: "different-correlation");
 
-        await _eventStore.AppendAsync([event1, event2, event3]);
+        _ = await _eventStore.AppendAsync([event1, event2, event3]);
 
         // Act
         var result = await _eventStore.GetEventsByCorrelationIdAsync(correlationId);
@@ -595,7 +595,7 @@ public class SqliteEventStoreTests : IDisposable
             }) with
         { Timestamp = baseTime.AddHours(2) };
 
-        await _eventStore.AppendAsync([event1, event2, event3]);
+        _ = await _eventStore.AppendAsync([event1, event2, event3]);
 
         // Act
         var result = await _eventStore.GetEventsByTimeRangeAsync(
@@ -644,7 +644,7 @@ public class SqliteEventStoreTests : IDisposable
                 })
         };
 
-        await _eventStore.AppendAsync(events);
+        _ = await _eventStore.AppendAsync(events);
 
         var projection = new ChatStateProjection();
 
@@ -683,7 +683,7 @@ public class SqliteEventStoreTests : IDisposable
                 }))
             .ToArray();
 
-        await _eventStore.AppendAsync(events);
+        _ = await _eventStore.AppendAsync(events);
 
         var projection = new ChatStateProjection();
 
@@ -737,8 +737,8 @@ public class SqliteEventStoreTests : IDisposable
                 })
         };
 
-        await _eventStore.AppendAsync(events1);
-        await _eventStore.AppendAsync(events2);
+        _ = await _eventStore.AppendAsync(events1);
+        _ = await _eventStore.AppendAsync(events2);
 
         var projection = new DelegateEventProjection<int>("MessageCounter", () => 0)
             .Handle<ChatMessageSentEvent>((count, @event) => count + 1);
@@ -786,8 +786,8 @@ public class SqliteEventStoreTests : IDisposable
                 ChatId = "chat-123"
             });
 
-        await _eventStore.AppendAsync(chatEvent);
-        await _eventStore.GetEventsAsync(chatEvent.StreamId);
+        _ = await _eventStore.AppendAsync(chatEvent);
+        _ = await _eventStore.GetEventsAsync(chatEvent.StreamId);
 
         // Act
         var metrics = await _eventStore.GetMetricsAsync();
@@ -816,7 +816,7 @@ public class SqliteEventStoreTests : IDisposable
     public async Task GetEventsAsync_WithNullStreamId_ShouldThrowArgumentNullException()
     {
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+        _ = await Assert.ThrowsAsync<ArgumentNullException>(() =>
             _eventStore.GetEventsAsync(null!));
     }
 
@@ -824,7 +824,7 @@ public class SqliteEventStoreTests : IDisposable
     public async Task QueryEventsAsync_WithNullQuery_ShouldThrowArgumentNullException()
     {
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+        _ = await Assert.ThrowsAsync<ArgumentNullException>(() =>
             _eventStore.QueryEventsAsync(null!));
     }
 
@@ -838,7 +838,7 @@ public class SqliteEventStoreTests : IDisposable
         };
 
         // Act & Assert
-        await Assert.ThrowsAsync<EventValidationException>(() =>
+        _ = await Assert.ThrowsAsync<EventValidationException>(() =>
             _eventStore.QueryEventsAsync(invalidQuery));
     }
 
@@ -846,7 +846,7 @@ public class SqliteEventStoreTests : IDisposable
     public async Task ReplayAsync_WithNullProjection_ShouldThrowArgumentNullException()
     {
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+        _ = await Assert.ThrowsAsync<ArgumentNullException>(() =>
             _eventStore.ReplayAsync<ChatProjectionState>("stream-1", null!));
     }
 

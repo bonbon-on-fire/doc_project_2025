@@ -90,7 +90,7 @@ public static class SerilogExtensions
         var directory = Path.GetDirectoryName(logFileName);
         if (!string.IsNullOrEmpty(directory))
         {
-            Directory.CreateDirectory(directory);
+            _ = Directory.CreateDirectory(directory);
         }
 
         return configuration.WriteTo.File(

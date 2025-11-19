@@ -120,7 +120,7 @@ public class ChatController(
     /// </summary>
     /// <param name="chatState">Orleans chat state</param>
     /// <returns>API chat DTO</returns>
-    private static ChatDto ConvertChatStateToDto(AIChat.Orleans.Contracts.ChatState chatState)
+    private static ChatDto ConvertChatStateToDto(ChatState chatState)
     {
         return new ChatDto
         {
@@ -174,7 +174,7 @@ public class ChatController(
 
         while (!isComplete && !cancellationToken.IsCancellationRequested)
         {
-            AIChat.Orleans.Contracts.StreamState? streamState = null;
+            Orleans.Contracts.StreamState? streamState = null;
 
             // Poll for stream state to check if there are new chunks
             try
@@ -269,7 +269,7 @@ public class ChatController(
         CancellationToken cancellationToken = default
     )
     {
-        return await ExecuteWithOrleansAsync<ChatHistoryResponse>(
+        return await ExecuteWithOrleansAsync(
             // Orleans implementation - TODO: Implement user-specific chat history in Orleans grains
             async grain =>
             {
@@ -328,7 +328,7 @@ public class ChatController(
     [HttpGet("{id}")]
     public async Task<ActionResult<ChatDto>> GetChat(string id, CancellationToken cancellationToken = default)
     {
-        return await ExecuteWithOrleansAsync<ChatDto>(
+        return await ExecuteWithOrleansAsync(
             // Orleans implementation - use grain directly
             async grain =>
             {
@@ -390,14 +390,14 @@ public class ChatController(
                 ModeId = request.ModeId,
             };
 
-            return await ExecuteWithOrleansAsync<ChatDto>(
+            return await ExecuteWithOrleansAsync(
                 // Orleans implementation - use grain directly
                 async grain =>
                 {
                     try
                     {
                         // Create Orleans ChatMessage from request
-                        var chatMessage = new AIChat.Orleans.Contracts.ChatMessage
+                        var chatMessage = new ChatMessage
                         {
                             Id = Guid.NewGuid().ToString(),
                             ChatId = request.ChatId,
@@ -461,14 +461,14 @@ public class ChatController(
         // Generate new chat ID first for Orleans grain routing
         var newChatId = Guid.NewGuid().ToString();
 
-        return await ExecuteWithOrleansAsync<ChatDto>(
+        return await ExecuteWithOrleansAsync(
             // Orleans implementation - use grain directly
             async grain =>
             {
                 try
                 {
                     // Create Orleans ChatInitRequest from API request
-                    var initRequest = new AIChat.Orleans.Contracts.ChatInitRequest
+                    var initRequest = new ChatInitRequest
                     {
                         ChatId = newChatId,
                         Title = $"Chat {DateTime.UtcNow:yyyy-MM-dd HH:mm}",
@@ -485,7 +485,7 @@ public class ChatController(
                     // If there's an initial message, process it
                     if (!string.IsNullOrEmpty(request.Message))
                     {
-                        var initialMessage = new AIChat.Orleans.Contracts.ChatMessage
+                        var initialMessage = new ChatMessage
                         {
                             Id = Guid.NewGuid().ToString(),
                             ChatId = newChatId,
@@ -603,7 +603,7 @@ public class ChatController(
     [HttpGet("{chatId}/tasks")]
     public async Task<ActionResult<GetTasksResponse>> GetTasks(string chatId, CancellationToken cancellationToken = default)
     {
-        return await ExecuteWithOrleansAsync<GetTasksResponse>(
+        return await ExecuteWithOrleansAsync(
             // Orleans implementation - task functionality not yet implemented in grains
             async grain =>
             {
@@ -1187,7 +1187,7 @@ public class ChatController(
                             // Try to cancel stream via router if we have a chat ID
                             if (!string.IsNullOrEmpty(operationContext.ChatId))
                             {
-                                await ExecuteStreamingOperationAsync<Task>(
+                                _ = await ExecuteStreamingOperationAsync(
                                     operationContext.ChatId,
                                     async chatGrain => { await chatGrain.CancelStreamAsync(operationId, "User requested cancellation", cancellationToken); return Task.CompletedTask; },
                                     "CancelStream",

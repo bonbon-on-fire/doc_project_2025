@@ -29,7 +29,7 @@ public static class SignalRBufferingServiceExtensions
         string configurationSection = "SignalRBuffer")
     {
         // Register configuration
-        services.AddOptions<SignalRBufferConfiguration>()
+        _ = services.AddOptions<SignalRBufferConfiguration>()
             .BindConfiguration(configurationSection)
             .ValidateDataAnnotations()
             .ValidateOnStart();
@@ -40,7 +40,7 @@ public static class SignalRBufferingServiceExtensions
         services.TryAddSingleton<ISignalRDeliveryService, SignalRDeliveryService>();
 
         // Register background processor as hosted service
-        services.AddHostedService<SignalRBufferProcessorService>();
+        _ = services.AddHostedService<SignalRBufferProcessorService>();
 
         // Register the buffered broadcast service as a decorator
         services.Add(ServiceDescriptor.Scoped<ISignalRBroadcastService>(provider =>
@@ -72,10 +72,10 @@ public static class SignalRBufferingServiceExtensions
         Action<SignalRBufferConfiguration> configureOptions)
     {
         // Register configuration with custom action
-        services.Configure<SignalRBufferConfiguration>(configureOptions);
+        _ = services.Configure(configureOptions);
 
         // Validate configuration
-        services.AddOptions<SignalRBufferConfiguration>()
+        _ = services.AddOptions<SignalRBufferConfiguration>()
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
@@ -85,7 +85,7 @@ public static class SignalRBufferingServiceExtensions
         services.TryAddSingleton<ISignalRDeliveryService, SignalRDeliveryService>();
 
         // Register background processor as hosted service
-        services.AddHostedService<SignalRBufferProcessorService>();
+        _ = services.AddHostedService<SignalRBufferProcessorService>();
 
         // Register the buffered broadcast service as a decorator
         services.Add(ServiceDescriptor.Scoped<ISignalRBroadcastService>(provider =>
@@ -119,7 +119,7 @@ public static class SignalRBufferingServiceExtensions
         where TStrategy : class, IBufferOverflowStrategy
     {
         // Register configuration
-        services.AddOptions<SignalRBufferConfiguration>()
+        _ = services.AddOptions<SignalRBufferConfiguration>()
             .BindConfiguration(configurationSection)
             .ValidateDataAnnotations()
             .ValidateOnStart();
@@ -130,7 +130,7 @@ public static class SignalRBufferingServiceExtensions
         services.TryAddSingleton<ISignalRDeliveryService, SignalRDeliveryService>();
 
         // Register background processor as hosted service
-        services.AddHostedService<SignalRBufferProcessorService>();
+        _ = services.AddHostedService<SignalRBufferProcessorService>();
 
         // Register the buffered broadcast service as a decorator
         services.Add(ServiceDescriptor.Scoped<ISignalRBroadcastService>(provider =>
@@ -164,7 +164,7 @@ public static class SignalRBufferingServiceExtensions
         where TBuffer : class, ISignalRMessageBuffer
     {
         // Register configuration
-        services.AddOptions<SignalRBufferConfiguration>()
+        _ = services.AddOptions<SignalRBufferConfiguration>()
             .BindConfiguration(configurationSection)
             .ValidateDataAnnotations()
             .ValidateOnStart();
@@ -175,7 +175,7 @@ public static class SignalRBufferingServiceExtensions
         services.TryAddSingleton<ISignalRDeliveryService, SignalRDeliveryService>();
 
         // Register background processor as hosted service
-        services.AddHostedService<SignalRBufferProcessorService>();
+        _ = services.AddHostedService<SignalRBufferProcessorService>();
 
         // Register the buffered broadcast service as a decorator
         services.Add(ServiceDescriptor.Scoped<ISignalRBroadcastService>(provider =>
@@ -215,10 +215,10 @@ public static class SignalRBufferingServiceExtensions
         // Register configuration
         if (configureOptions != null)
         {
-            services.Configure<SignalRBufferConfiguration>(configureOptions);
+            _ = services.Configure(configureOptions);
         }
 
-        services.AddOptions<SignalRBufferConfiguration>()
+        _ = services.AddOptions<SignalRBufferConfiguration>()
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
@@ -228,7 +228,7 @@ public static class SignalRBufferingServiceExtensions
         services.TryAddSingleton<ISignalRDeliveryService, TDelivery>();
 
         // Register background processor as hosted service
-        services.AddHostedService<SignalRBufferProcessorService>();
+        _ = services.AddHostedService<SignalRBufferProcessorService>();
 
         // Register the buffered broadcast service as a decorator
         services.Add(ServiceDescriptor.Scoped<ISignalRBroadcastService>(provider =>
@@ -262,7 +262,7 @@ public static class SignalRBufferingServiceExtensions
         string name = "signalr-buffering",
         params string[] tags)
     {
-        services.AddHealthChecks()
+        _ = services.AddHealthChecks()
             .AddCheck<SignalRBufferingHealthCheck>(name, tags: tags);
 
         return services;
@@ -381,7 +381,7 @@ public class SignalRBufferingHealthCheck : IHealthCheck
 
             // Determine overall health
             var isHealthy = bufferHealth.IsHealthy && deliveryServiceAvailable;
-            Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus status;
+            HealthStatus status;
             if (isHealthy)
             {
                 status = HealthStatus.Healthy;

@@ -112,7 +112,7 @@ if (builder.Configuration["ASPIRE_PROFILE"] == "backend-only")
 else if (builder.Configuration["ASPIRE_PROFILE"] == "orleans-debug")
 {
     // Orleans debugging profile - extra logging for troubleshooting
-    orleansHost.WithEnvironment("Logging__LogLevel__Orleans", "Debug");
+    _ = orleansHost.WithEnvironment("Logging__LogLevel__Orleans", "Debug");
 }
 
 builder.Build().Run();

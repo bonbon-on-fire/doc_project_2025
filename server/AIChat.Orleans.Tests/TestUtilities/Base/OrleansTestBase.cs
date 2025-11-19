@@ -63,7 +63,7 @@ public abstract class OrleansTestBase : IClassFixture<OrleansTestFixture>
                 ? Path.Combine(solutionRoot, "test-logs")
                 : Path.GetFullPath("test-logs");
 
-            Directory.CreateDirectory(logPath);
+            _ = Directory.CreateDirectory(logPath);
 
             var logFileName = Path.Combine(logPath, "orleans-tests-.jsonl");
 

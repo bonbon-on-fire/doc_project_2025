@@ -59,7 +59,7 @@ internal sealed class WebSocketHeartbeatManager : IDisposable
                 {
                     if (_sessionInfo.WebSocket.State == System.Net.WebSockets.WebSocketState.Open)
                     {
-                        await _messageRouter.RouteHeartbeatAsync(_sessionInfo, cancellationToken: cancellationToken);
+                        _ = await _messageRouter.RouteHeartbeatAsync(_sessionInfo, cancellationToken: cancellationToken);
                     }
                     else
                     {
@@ -192,8 +192,8 @@ public class WebSocketHandler : IWebSocketHandler
                 "WebSocket connection established: Connection {ConnectionId}, User {UserId}",
                 connectionId, userId);
 
-            activity?.SetTag("connection.id", connectionId);
-            activity?.SetTag("user.id", userId);
+            _ = (activity?.SetTag("connection.id", connectionId));
+            _ = (activity?.SetTag("user.id", userId));
 
             // Perform protocol negotiation
             var requestedProtocols = GetRequestedProtocols(context);
@@ -219,8 +219,8 @@ public class WebSocketHandler : IWebSocketHandler
                 },
                 cancellationToken);
 
-            activity?.SetTag("session.id", sessionInfo.SessionId);
-            activity?.SetTag("protocol", protocol);
+            _ = (activity?.SetTag("session.id", sessionInfo.SessionId));
+            _ = (activity?.SetTag("protocol", protocol));
 
             stopwatch.Stop();
             _logger.LogInformation(
@@ -236,9 +236,9 @@ public class WebSocketHandler : IWebSocketHandler
                 "WebSocket error during connection handling (Connection: {ConnectionId}): {ErrorCode}",
                 context.Connection.Id, wsEx.WebSocketErrorCode);
 
-            activity?.SetTag("operation.success", false);
-            activity?.SetTag("error.type", "WebSocketException");
-            activity?.SetTag("websocket.error.code", wsEx.WebSocketErrorCode.ToString());
+            _ = (activity?.SetTag("operation.success", false));
+            _ = (activity?.SetTag("error.type", "WebSocketException"));
+            _ = (activity?.SetTag("websocket.error.code", wsEx.WebSocketErrorCode.ToString()));
         }
         catch (Exception ex)
         {
@@ -246,13 +246,13 @@ public class WebSocketHandler : IWebSocketHandler
                 "Unexpected error during WebSocket connection handling (Connection: {ConnectionId})",
                 context.Connection.Id);
 
-            activity?.SetTag("operation.success", false);
-            activity?.SetTag("error.type", ex.GetType().Name);
+            _ = (activity?.SetTag("operation.success", false));
+            _ = (activity?.SetTag("error.type", ex.GetType().Name));
         }
         finally
         {
             stopwatch.Stop();
-            activity?.SetTag("operation.duration_ms", stopwatch.ElapsedMilliseconds);
+            _ = (activity?.SetTag("operation.duration_ms", stopwatch.ElapsedMilliseconds));
         }
     }
 
@@ -284,7 +284,7 @@ public class WebSocketHandler : IWebSocketHandler
         }
         finally
         {
-            await _sessionManager.RemoveSessionAsync(sessionInfo.SessionId, CancellationToken.None);
+            _ = await _sessionManager.RemoveSessionAsync(sessionInfo.SessionId, CancellationToken.None);
         }
     }
 
@@ -307,11 +307,11 @@ public class WebSocketHandler : IWebSocketHandler
             var result = await _protocolNegotiator.NegotiateProtocolAsync(
                 requestedProtocols, userId, cancellationToken: cancellationToken);
 
-            activity?.SetTag("user.id", userId);
-            activity?.SetTag("negotiation.success", result.Success);
+            _ = (activity?.SetTag("user.id", userId));
+            _ = (activity?.SetTag("negotiation.success", result.Success));
             if (result.Success)
             {
-                activity?.SetTag("selected.protocol", result.SelectedProtocol!.Name);
+                _ = (activity?.SetTag("selected.protocol", result.SelectedProtocol!.Name));
             }
 
             return result;
@@ -320,8 +320,8 @@ public class WebSocketHandler : IWebSocketHandler
         {
             _logger.LogError(ex, "Protocol negotiation failed for user {UserId}", userId);
 
-            activity?.SetTag("operation.success", false);
-            activity?.SetTag("error.type", ex.GetType().Name);
+            _ = (activity?.SetTag("operation.success", false));
+            _ = (activity?.SetTag("error.type", ex.GetType().Name));
 
             return ProtocolNegotiationResult.CreateFailure($"Protocol negotiation error: {ex.Message}");
         }
@@ -344,9 +344,9 @@ public class WebSocketHandler : IWebSocketHandler
                 "Handling incoming message {MessageId} of type {MessageType} for session {SessionId}",
                 message.MessageId, message.Type, sessionInfo.SessionId);
 
-            activity?.SetTag("message.id", message.MessageId);
-            activity?.SetTag("message.type", message.Type);
-            activity?.SetTag("session.id", sessionInfo.SessionId);
+            _ = (activity?.SetTag("message.id", message.MessageId));
+            _ = (activity?.SetTag("message.type", message.Type));
+            _ = (activity?.SetTag("session.id", sessionInfo.SessionId));
 
             // Route message through the message router
             var routingResult = await _messageRouter.RouteMessageAsync(message, sessionInfo, cancellationToken);
@@ -366,8 +366,8 @@ public class WebSocketHandler : IWebSocketHandler
                 await SendMessageAsync(sessionInfo.WebSocket, routingResult.ResponseMessage, cancellationToken);
             }
 
-            activity?.SetTag("routing.success", routingResult.Success);
-            activity?.SetTag("routing.destination", routingResult.Destination.ToString());
+            _ = (activity?.SetTag("routing.success", routingResult.Success));
+            _ = (activity?.SetTag("routing.destination", routingResult.Destination.ToString()));
         }
         catch (Exception ex)
         {
@@ -375,8 +375,8 @@ public class WebSocketHandler : IWebSocketHandler
                 "Error handling incoming message {MessageId} for session {SessionId}",
                 message.MessageId, sessionInfo.SessionId);
 
-            activity?.SetTag("operation.success", false);
-            activity?.SetTag("error.type", ex.GetType().Name);
+            _ = (activity?.SetTag("operation.success", false));
+            _ = (activity?.SetTag("error.type", ex.GetType().Name));
 
             await HandleWebSocketErrorAsync(ex, sessionInfo, cancellationToken);
         }
@@ -411,25 +411,25 @@ public class WebSocketHandler : IWebSocketHandler
             _logger.LogTrace("Sent message {MessageId} of type {MessageType} ({ByteCount} bytes)",
                 message.MessageId, message.Type, bytes.Length);
 
-            activity?.SetTag("message.id", message.MessageId);
-            activity?.SetTag("message.type", message.Type);
-            activity?.SetTag("message.size.bytes", bytes.Length);
-            activity?.SetTag("operation.success", true);
+            _ = (activity?.SetTag("message.id", message.MessageId));
+            _ = (activity?.SetTag("message.type", message.Type));
+            _ = (activity?.SetTag("message.size.bytes", bytes.Length));
+            _ = (activity?.SetTag("operation.success", true));
         }
         catch (WebSocketException wsEx)
         {
             _logger.LogWarning(wsEx, "Failed to send WebSocket message: {ErrorCode}", wsEx.WebSocketErrorCode);
 
-            activity?.SetTag("operation.success", false);
-            activity?.SetTag("error.type", "WebSocketException");
-            activity?.SetTag("websocket.error.code", wsEx.WebSocketErrorCode.ToString());
+            _ = (activity?.SetTag("operation.success", false));
+            _ = (activity?.SetTag("error.type", "WebSocketException"));
+            _ = (activity?.SetTag("websocket.error.code", wsEx.WebSocketErrorCode.ToString()));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send message {MessageId}", message.MessageId);
 
-            activity?.SetTag("operation.success", false);
-            activity?.SetTag("error.type", ex.GetType().Name);
+            _ = (activity?.SetTag("operation.success", false));
+            _ = (activity?.SetTag("error.type", ex.GetType().Name));
         }
     }
 
@@ -464,11 +464,11 @@ public class WebSocketHandler : IWebSocketHandler
             }
 
             // Remove session
-            await _sessionManager.RemoveSessionAsync(sessionInfo.SessionId, cancellationToken);
+            _ = await _sessionManager.RemoveSessionAsync(sessionInfo.SessionId, cancellationToken);
 
-            activity?.SetTag("session.id", sessionInfo.SessionId);
-            activity?.SetTag("close.status", closeStatus?.ToString());
-            activity?.SetTag("operation.success", true);
+            _ = (activity?.SetTag("session.id", sessionInfo.SessionId));
+            _ = (activity?.SetTag("close.status", closeStatus?.ToString()));
+            _ = (activity?.SetTag("operation.success", true));
 
             _logger.LogDebug("Connection cleanup completed for session {SessionId}", sessionInfo.SessionId);
         }
@@ -476,8 +476,8 @@ public class WebSocketHandler : IWebSocketHandler
         {
             _logger.LogError(ex, "Error during connection close handling for session {SessionId}", sessionInfo.SessionId);
 
-            activity?.SetTag("operation.success", false);
-            activity?.SetTag("error.type", ex.GetType().Name);
+            _ = (activity?.SetTag("operation.success", false));
+            _ = (activity?.SetTag("error.type", ex.GetType().Name));
         }
     }
 
@@ -512,8 +512,8 @@ public class WebSocketHandler : IWebSocketHandler
                     WebSocketConnectionStatus.Error, cancellationToken);
             }
 
-            activity?.SetTag("session.id", sessionId);
-            activity?.SetTag("error.type", exception.GetType().Name);
+            _ = (activity?.SetTag("session.id", sessionId));
+            _ = (activity?.SetTag("error.type", exception.GetType().Name));
         }
         catch (Exception ex)
         {

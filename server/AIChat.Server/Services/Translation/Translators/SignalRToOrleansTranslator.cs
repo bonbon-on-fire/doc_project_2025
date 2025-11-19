@@ -41,9 +41,9 @@ public class SignalRToOrleansTranslator : MessageTranslatorBase<SignalRMessage, 
                 return validationError;
             }
 
-            activity?.SetTag("signalr.operation", source.Operation);
-            activity?.SetTag("signalr.connection_id", source.ConnectionId);
-            activity?.SetTag("correlation.id", context.CorrelationId);
+            _ = (activity?.SetTag("signalr.operation", source.Operation));
+            _ = (activity?.SetTag("signalr.connection_id", source.ConnectionId));
+            _ = (activity?.SetTag("correlation.id", context.CorrelationId));
 
             Logger.LogDebug(
                 "Translating SignalR operation {Operation} from connection {ConnectionId}",
@@ -88,9 +88,9 @@ public class SignalRToOrleansTranslator : MessageTranslatorBase<SignalRMessage, 
                 stopwatch.ElapsedMilliseconds
             );
 
-            activity?.SetTag("translation.success", true);
-            activity?.SetTag("orleans.message_id", chatMessage.Id);
-            activity?.SetTag("orleans.chat_id", chatMessage.ChatId);
+            _ = (activity?.SetTag("translation.success", true));
+            _ = (activity?.SetTag("orleans.message_id", chatMessage.Id));
+            _ = (activity?.SetTag("orleans.chat_id", chatMessage.ChatId));
 
             return TranslationResult.SuccessWithTypes<SignalRMessage, ChatMessage>(chatMessage, stopwatch.Elapsed);
         }
@@ -100,8 +100,8 @@ public class SignalRToOrleansTranslator : MessageTranslatorBase<SignalRMessage, 
             var errorMessage = $"Unsupported operation: {ex.Message}";
             Logger.LogWarning(ex, "Unsupported operation: {ExceptionMessage}", ex.Message);
             UpdateFailureMetrics(stopwatch.Elapsed, "UNSUPPORTED_OPERATION", context);
-            activity?.SetTag("translation.success", false);
-            activity?.SetTag("error.type", "UnsupportedOperation");
+            _ = (activity?.SetTag("translation.success", false));
+            _ = (activity?.SetTag("error.type", "UnsupportedOperation"));
             return TranslationResult.Failure<ChatMessage>(errorMessage, "UNSUPPORTED_OPERATION", stopwatch.Elapsed);
         }
         catch (Exception ex)
@@ -110,8 +110,8 @@ public class SignalRToOrleansTranslator : MessageTranslatorBase<SignalRMessage, 
             var errorMessage = $"Translation failed: {ex.Message}";
             Logger.LogError(ex, "Translation failed: {ExceptionMessage}", ex.Message);
             UpdateFailureMetrics(stopwatch.Elapsed, "TRANSLATION_ERROR", context);
-            activity?.SetTag("translation.success", false);
-            activity?.SetTag("error.type", ex.GetType().Name);
+            _ = (activity?.SetTag("translation.success", false));
+            _ = (activity?.SetTag("error.type", ex.GetType().Name));
             return TranslationResult.Failure<ChatMessage>(errorMessage, "TRANSLATION_ERROR", stopwatch.Elapsed);
         }
     }

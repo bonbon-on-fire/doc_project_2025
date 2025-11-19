@@ -106,7 +106,7 @@ public class EventProjectionTests
         // Assert
         Assert.NotNull(newState);
         Assert.Equal("chat-123", newState.ChatId);
-        Assert.Single(newState.Messages);
+        _ = Assert.Single(newState.Messages);
 
         var message = newState.Messages[0];
         Assert.Equal("msg-456", message.MessageId);
@@ -203,7 +203,7 @@ public class EventProjectionTests
             });
 
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() =>
+        _ = Assert.Throws<ArgumentNullException>(() =>
             projection.Apply(null!, chatEvent));
     }
 
@@ -215,7 +215,7 @@ public class EventProjectionTests
         var state = projection.CreateInitialState();
 
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() =>
+        _ = Assert.Throws<ArgumentNullException>(() =>
             projection.Apply(state, null!));
     }
 
@@ -283,7 +283,7 @@ public class EventProjectionTests
     public void DelegateEventProjection_Constructor_WithNullName_ShouldThrowArgumentNullException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() =>
+        _ = Assert.Throws<ArgumentNullException>(() =>
             new DelegateEventProjection<int>(null!, () => 0));
     }
 
@@ -291,7 +291,7 @@ public class EventProjectionTests
     public void DelegateEventProjection_Constructor_WithNullInitialStateFactory_ShouldThrowArgumentNullException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() =>
+        _ = Assert.Throws<ArgumentNullException>(() =>
             new DelegateEventProjection<int>("Test", null!));
     }
 
@@ -302,7 +302,7 @@ public class EventProjectionTests
         var projection = new DelegateEventProjection<int>("Test", () => 0);
 
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() =>
+        _ = Assert.Throws<ArgumentNullException>(() =>
             projection.Handle(null!, (state, @event) => state));
     }
 
@@ -313,7 +313,7 @@ public class EventProjectionTests
         var projection = new DelegateEventProjection<int>("Test", () => 0);
 
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() =>
+        _ = Assert.Throws<ArgumentNullException>(() =>
             projection.Handle("TestEvent", null!));
     }
 
@@ -324,7 +324,7 @@ public class EventProjectionTests
         var projection = new DelegateEventProjection<int>("Test", () => 0);
 
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() =>
+        _ = Assert.Throws<ArgumentNullException>(() =>
             projection.Handle<ChatMessageSentEvent>(null!));
     }
 

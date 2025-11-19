@@ -327,7 +327,7 @@ public class ResponseCacheManager : IResponseCacheManager
         }
         finally
         {
-            _healthCheckSemaphore.Release();
+            _ = _healthCheckSemaphore.Release();
         }
     }
 
@@ -646,7 +646,7 @@ public class ResponseCacheManager : IResponseCacheManager
     /// </summary>
     private void UpdateOperationMetrics(string operationName, bool isHit, TimeSpan latency)
     {
-        _operationMetrics.AddOrUpdate(operationName,
+        _ = _operationMetrics.AddOrUpdate(operationName,
             new CacheOperationMetrics
             {
                 OperationName = operationName,
@@ -669,7 +669,7 @@ public class ResponseCacheManager : IResponseCacheManager
     /// </summary>
     private void UpdateRouterMetrics(string routerType, bool isHit)
     {
-        _routerMetrics.AddOrUpdate(routerType,
+        _ = _routerMetrics.AddOrUpdate(routerType,
             new RouterCacheMetrics
             {
                 RouterType = routerType,
@@ -690,7 +690,7 @@ public class ResponseCacheManager : IResponseCacheManager
     /// </summary>
     private void UpdateRouterInvalidationMetrics(string routerType)
     {
-        _routerMetrics.AddOrUpdate(routerType,
+        _ = _routerMetrics.AddOrUpdate(routerType,
             new RouterCacheMetrics
             {
                 RouterType = routerType,
@@ -729,7 +729,7 @@ public class ResponseCacheManager : IResponseCacheManager
 
             foreach (var operation in staleOperations)
             {
-                _operationMetrics.TryRemove(operation, out _);
+                _ = _operationMetrics.TryRemove(operation, out _);
             }
 
             if (staleOperations.Count > 0)
@@ -838,38 +838,38 @@ public class ResponseCacheMetricsCollector
 
     public void RecordHit(TimeSpan latency)
     {
-        Interlocked.Increment(ref _hitCount);
-        Interlocked.Add(ref _totalLatencyMs, (long)latency.TotalMilliseconds);
-        Interlocked.Increment(ref _operationCount);
+        _ = Interlocked.Increment(ref _hitCount);
+        _ = Interlocked.Add(ref _totalLatencyMs, (long)latency.TotalMilliseconds);
+        _ = Interlocked.Increment(ref _operationCount);
     }
 
     public void RecordMiss(TimeSpan latency)
     {
-        Interlocked.Increment(ref _missCount);
-        Interlocked.Add(ref _totalLatencyMs, (long)latency.TotalMilliseconds);
-        Interlocked.Increment(ref _operationCount);
+        _ = Interlocked.Increment(ref _missCount);
+        _ = Interlocked.Add(ref _totalLatencyMs, (long)latency.TotalMilliseconds);
+        _ = Interlocked.Increment(ref _operationCount);
     }
 
     public void RecordSet(long sizeBytes, TimeSpan latency)
     {
-        Interlocked.Add(ref _totalBytesStored, sizeBytes);
-        Interlocked.Add(ref _totalLatencyMs, (long)latency.TotalMilliseconds);
-        Interlocked.Increment(ref _operationCount);
+        _ = Interlocked.Add(ref _totalBytesStored, sizeBytes);
+        _ = Interlocked.Add(ref _totalLatencyMs, (long)latency.TotalMilliseconds);
+        _ = Interlocked.Increment(ref _operationCount);
     }
 
     public void RecordInvalidation()
     {
-        Interlocked.Increment(ref _invalidationCount);
+        _ = Interlocked.Increment(ref _invalidationCount);
     }
 
     public void RecordPatternInvalidation()
     {
-        Interlocked.Increment(ref _invalidationCount);
+        _ = Interlocked.Increment(ref _invalidationCount);
     }
 
     public void RecordEviction()
     {
-        Interlocked.Increment(ref _evictionCount);
+        _ = Interlocked.Increment(ref _evictionCount);
     }
 
     public ResponseCacheMetricsSnapshot GetSnapshot()

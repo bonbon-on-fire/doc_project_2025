@@ -40,27 +40,27 @@ public static class ResponseCacheServiceExtensions
         ArgumentNullException.ThrowIfNull(configureOptions);
 
         // Configure cache-specific configurations
-        services.AddOptions<MemoryStateCacheConfiguration>()
+        _ = services.AddOptions<MemoryStateCacheConfiguration>()
             .BindConfiguration(MemoryStateCacheConfiguration.SectionName)
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-        services.AddOptions<ResponseCacheConfiguration>()
+        _ = services.AddOptions<ResponseCacheConfiguration>()
             .BindConfiguration(ResponseCacheConfiguration.SectionName)
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
         // Configure legacy options for backward compatibility
-        services.Configure(configureOptions);
+        _ = services.Configure(configureOptions);
 
         // Register memory cache if not already registered
-        services.AddMemoryCache();
+        _ = services.AddMemoryCache();
 
         // Register cache key generator
-        services.AddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
+        _ = services.AddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
 
         // Register state cache manager for cached responses with configuration
-        services.AddSingleton<IStateCacheManager<CachedResponse>>(serviceProvider =>
+        _ = services.AddSingleton<IStateCacheManager<CachedResponse>>(serviceProvider =>
         {
             var memoryCache = serviceProvider.GetRequiredService<IMemoryCache>();
             var logger = serviceProvider.GetRequiredService<ILogger<MemoryStateCacheManager<CachedResponse>>>();
@@ -69,10 +69,10 @@ public static class ResponseCacheServiceExtensions
         });
 
         // Register response cache manager
-        services.AddSingleton<IResponseCacheManager, ResponseCacheManager>();
+        _ = services.AddSingleton<IResponseCacheManager, ResponseCacheManager>();
 
         // Register health checks
-        services.AddHealthChecks()
+        _ = services.AddHealthChecks()
             .AddCheck<ResponseCacheHealthCheck>("response_cache", HealthStatus.Degraded, tags);
 
         return services;
@@ -97,12 +97,12 @@ public static class ResponseCacheServiceExtensions
         ArgumentNullException.ThrowIfNull(stateCacheManagerFactory);
 
         // Register cache-specific configurations
-        services.AddOptions<MemoryStateCacheConfiguration>()
+        _ = services.AddOptions<MemoryStateCacheConfiguration>()
             .BindConfiguration(MemoryStateCacheConfiguration.SectionName)
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-        services.AddOptions<ResponseCacheConfiguration>()
+        _ = services.AddOptions<ResponseCacheConfiguration>()
             .BindConfiguration(ResponseCacheConfiguration.SectionName)
             .ValidateDataAnnotations()
             .ValidateOnStart();
@@ -110,23 +110,23 @@ public static class ResponseCacheServiceExtensions
         // Configure legacy options for backward compatibility
         if (configureOptions != null)
         {
-            services.Configure(configureOptions);
+            _ = services.Configure(configureOptions);
         }
 
         // Register underlying state cache infrastructure
         // State cache infrastructure will be registered directly
 
         // Register cache key generator
-        services.AddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
+        _ = services.AddSingleton<ICacheKeyGenerator, DefaultCacheKeyGenerator>();
 
         // Register custom state cache manager
-        services.AddSingleton<IStateCacheManager<CachedResponse>>(stateCacheManagerFactory);
+        _ = services.AddSingleton<IStateCacheManager<CachedResponse>>(stateCacheManagerFactory);
 
         // Register response cache manager
-        services.AddSingleton<IResponseCacheManager, ResponseCacheManager>();
+        _ = services.AddSingleton<IResponseCacheManager, ResponseCacheManager>();
 
         // Register health checks
-        services.AddHealthChecks()
+        _ = services.AddHealthChecks()
             .AddCheck<ResponseCacheHealthCheck>("response_cache", HealthStatus.Degraded, tags);
 
         return services;

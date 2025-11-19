@@ -43,7 +43,7 @@ public class InMemorySseMetricsStorage : ISseMetricsStorage
     /// <inheritdoc />
     public Task<SseConnectionMetrics?> RemoveConnectionAsync(string connectionId)
     {
-        _activeConnections.TryRemove(connectionId, out var connection);
+        _ = _activeConnections.TryRemove(connectionId, out var connection);
         return Task.FromResult(connection);
     }
 

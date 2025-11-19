@@ -40,11 +40,11 @@ public class DirectGrainAccessTests
             LastActivityAt = DateTime.UtcNow
         };
 
-        mockChatGrain
+        _ = mockChatGrain
             .Setup(g => g.GetStateAsync(default))
             .ReturnsAsync(expectedState);
 
-        _mockGrainFactory
+        _ = _mockGrainFactory
             .Setup(gf => gf.GetGrain<IChatGrain>(chatId, null))
             .Returns(mockChatGrain.Object);
 
@@ -66,14 +66,14 @@ public class DirectGrainAccessTests
         // Arrange
         var chatId = Guid.NewGuid().ToString();
 
-        _mockGrainFactory
+        _ = _mockGrainFactory
             .Setup(gf => gf.GetGrain<IChatGrain>(chatId, null))
             .Throws(new OrleansException("Orleans cluster unavailable"));
 
         // Act & Assert
-        Assert.Throws<OrleansException>(() =>
+        _ = Assert.Throws<OrleansException>(() =>
         {
-            _mockGrainFactory.Object.GetGrain<IChatGrain>(chatId);
+            _ = _mockGrainFactory.Object.GetGrain<IChatGrain>(chatId);
         });
     }
 
@@ -88,20 +88,20 @@ public class DirectGrainAccessTests
         var chatId = Guid.NewGuid().ToString();
         var mockChatGrain = new Mock<IChatGrain>();
 
-        mockChatGrain
+        _ = mockChatGrain
             .Setup(g => g.GetStateAsync(default))
             .ThrowsAsync(new OrleansException("Storage failure"));
 
-        _mockGrainFactory
+        _ = _mockGrainFactory
             .Setup(gf => gf.GetGrain<IChatGrain>(chatId, null))
             .Returns(mockChatGrain.Object);
 
         // Act & Assert
         var chatGrain = _mockGrainFactory.Object.GetGrain<IChatGrain>(chatId);
 
-        await Assert.ThrowsAsync<OrleansException>(async () =>
+        _ = await Assert.ThrowsAsync<OrleansException>(async () =>
         {
-            await chatGrain.GetStateAsync();
+            _ = await chatGrain.GetStateAsync();
         });
     }
 

@@ -70,7 +70,7 @@ public class BoundedModeCacheManager : IModeCacheManager
                 {
                     _currentMemoryBytes -= existingNode.Value.SizeBytes;
                     _lruList.Remove(existingNode);
-                    _cache.Remove(key);
+                    _ = _cache.Remove(key);
                 }
 
                 // Create new cache entry
@@ -126,7 +126,7 @@ public class BoundedModeCacheManager : IModeCacheManager
                     // Remove expired entry
                     _currentMemoryBytes -= entry.SizeBytes;
                     _lruList.Remove(node);
-                    _cache.Remove(key);
+                    _ = _cache.Remove(key);
                     _totalMisses++;
                     _totalEvictions++;
 
@@ -166,7 +166,7 @@ public class BoundedModeCacheManager : IModeCacheManager
                 {
                     _currentMemoryBytes -= node.Value.SizeBytes;
                     _lruList.Remove(node);
-                    _cache.Remove(key);
+                    _ = _cache.Remove(key);
 
                     _logger.LogDebug("Removed cache entry with key '{Key}'", key);
                 }
@@ -253,7 +253,7 @@ public class BoundedModeCacheManager : IModeCacheManager
                     {
                         _currentMemoryBytes -= node.Value.SizeBytes;
                         _lruList.Remove(node);
-                        _cache.Remove(key);
+                        _ = _cache.Remove(key);
                         _totalEvictions++;
                     }
                 }
@@ -300,7 +300,7 @@ public class BoundedModeCacheManager : IModeCacheManager
         var oldest = _lruList.Last;
         if (oldest != null)
         {
-            _cache.Remove(oldest.Value.Key);
+            _ = _cache.Remove(oldest.Value.Key);
             _currentMemoryBytes -= oldest.Value.SizeBytes;
             _lruList.RemoveLast();
             _totalEvictions++;

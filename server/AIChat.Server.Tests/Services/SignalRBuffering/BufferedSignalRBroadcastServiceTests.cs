@@ -40,14 +40,14 @@ public class BufferedSignalRBroadcastServiceTests : IDisposable
         var configOptions = Options.Create(_config);
 
         // Setup default mock behaviors
-        _mockInnerService.Setup(x => x.IsAvailable).Returns(true);
+        _ = _mockInnerService.Setup(x => x.IsAvailable).Returns(true);
 
-        _mockMessageBuffer
+        _ = _mockMessageBuffer
             .Setup(x => x.EnqueueAsync(It.IsAny<SignalRMessage>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((SignalRMessage msg, CancellationToken ct) =>
                 BufferResult.CreateSuccess(1));
 
-        _mockMessageBuffer
+        _ = _mockMessageBuffer
             .Setup(x => x.GetHealthAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new BufferHealth
             {
@@ -56,7 +56,7 @@ public class BufferedSignalRBroadcastServiceTests : IDisposable
                 Message = "Buffer is operating normally"
             });
 
-        _mockMessageBuffer
+        _ = _mockMessageBuffer
             .Setup(x => x.GetMaxCapacity())
             .Returns(_config.MaxBufferSize);
 
@@ -72,7 +72,7 @@ public class BufferedSignalRBroadcastServiceTests : IDisposable
     {
         // Arrange
         _config.Enabled = true;
-        _mockInnerService.Setup(x => x.IsAvailable).Returns(true);
+        _ = _mockInnerService.Setup(x => x.IsAvailable).Returns(true);
 
         // Act
         var result = _service.IsAvailable;
@@ -86,7 +86,7 @@ public class BufferedSignalRBroadcastServiceTests : IDisposable
     {
         // Arrange
         _config.Enabled = false;
-        _mockInnerService.Setup(x => x.IsAvailable).Returns(true);
+        _ = _mockInnerService.Setup(x => x.IsAvailable).Returns(true);
 
         // Act
         var result = _service.IsAvailable;
@@ -99,7 +99,7 @@ public class BufferedSignalRBroadcastServiceTests : IDisposable
     public void IsAvailable_WhenBufferUnhealthyButInnerServiceAvailable_ShouldReturnTrue()
     {
         // Arrange
-        _mockMessageBuffer
+        _ = _mockMessageBuffer
             .Setup(x => x.GetHealthAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new BufferHealth
             {
@@ -108,7 +108,7 @@ public class BufferedSignalRBroadcastServiceTests : IDisposable
                 Message = "Buffer is unhealthy"
             });
 
-        _mockInnerService.Setup(x => x.IsAvailable).Returns(true);
+        _ = _mockInnerService.Setup(x => x.IsAvailable).Returns(true);
 
         // Act
         var result = _service.IsAvailable;
@@ -169,7 +169,7 @@ public class BufferedSignalRBroadcastServiceTests : IDisposable
     public async Task BroadcastToGroupAsync_WithNullGroupName_ShouldThrowArgumentNullException()
     {
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+        _ = await Assert.ThrowsAsync<ArgumentNullException>(() =>
             _service.BroadcastToGroupAsync(null!, "TestMethod", new { }));
     }
 
@@ -177,7 +177,7 @@ public class BufferedSignalRBroadcastServiceTests : IDisposable
     public async Task BroadcastToGroupAsync_WithNullMethodName_ShouldThrowArgumentNullException()
     {
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+        _ = await Assert.ThrowsAsync<ArgumentNullException>(() =>
             _service.BroadcastToGroupAsync("test-group", null!, new { }));
     }
 
@@ -185,7 +185,7 @@ public class BufferedSignalRBroadcastServiceTests : IDisposable
     public async Task BroadcastToGroupAsync_WithNullPayload_ShouldThrowArgumentNullException()
     {
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+        _ = await Assert.ThrowsAsync<ArgumentNullException>(() =>
             _service.BroadcastToGroupAsync("test-group", "TestMethod", null!));
     }
 
@@ -197,7 +197,7 @@ public class BufferedSignalRBroadcastServiceTests : IDisposable
         const string methodName = "TestMethod";
         var payload = new { Message = "Test message" };
 
-        _mockMessageBuffer
+        _ = _mockMessageBuffer
             .Setup(x => x.EnqueueAsync(It.IsAny<SignalRMessage>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(BufferResult.Rejected(BufferOperationResult.Overflow, 100, "Buffer is full"));
 
@@ -224,7 +224,7 @@ public class BufferedSignalRBroadcastServiceTests : IDisposable
         const string methodName = "TestMethod";
         var payload = new { Message = "Test message" };
 
-        _mockMessageBuffer
+        _ = _mockMessageBuffer
             .Setup(x => x.GetHealthAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new BufferHealth
             {
@@ -255,7 +255,7 @@ public class BufferedSignalRBroadcastServiceTests : IDisposable
         const string methodName = "TestMethod";
         var payload = new { Message = "Test message" };
 
-        _mockInnerService.Setup(x => x.IsAvailable).Returns(false);
+        _ = _mockInnerService.Setup(x => x.IsAvailable).Returns(false);
 
         // Act
         await _service.BroadcastToGroupAsync(groupName, methodName, payload);
@@ -280,7 +280,7 @@ public class BufferedSignalRBroadcastServiceTests : IDisposable
         var payload = new { Message = "Error occurred" };
 
         SignalRMessage? capturedMessage = null;
-        _mockMessageBuffer
+        _ = _mockMessageBuffer
             .Setup(x => x.EnqueueAsync(It.IsAny<SignalRMessage>(), It.IsAny<CancellationToken>()))
             .Callback<SignalRMessage, CancellationToken>((msg, ct) => capturedMessage = msg)
             .ReturnsAsync(BufferResult.CreateSuccess(1));
@@ -302,7 +302,7 @@ public class BufferedSignalRBroadcastServiceTests : IDisposable
         var payload = new { Message = "System notification" };
 
         SignalRMessage? capturedMessage = null;
-        _mockMessageBuffer
+        _ = _mockMessageBuffer
             .Setup(x => x.EnqueueAsync(It.IsAny<SignalRMessage>(), It.IsAny<CancellationToken>()))
             .Callback<SignalRMessage, CancellationToken>((msg, ct) => capturedMessage = msg)
             .ReturnsAsync(BufferResult.CreateSuccess(1));
@@ -324,7 +324,7 @@ public class BufferedSignalRBroadcastServiceTests : IDisposable
         var payload = new { Message = "Regular message" };
 
         SignalRMessage? capturedMessage = null;
-        _mockMessageBuffer
+        _ = _mockMessageBuffer
             .Setup(x => x.EnqueueAsync(It.IsAny<SignalRMessage>(), It.IsAny<CancellationToken>()))
             .Callback<SignalRMessage, CancellationToken>((msg, ct) => capturedMessage = msg)
             .ReturnsAsync(BufferResult.CreateSuccess(1));
@@ -361,11 +361,11 @@ public class BufferedSignalRBroadcastServiceTests : IDisposable
             Message = "Buffer is operating normally"
         };
 
-        _mockMessageBuffer
+        _ = _mockMessageBuffer
             .Setup(x => x.GetMetricsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(bufferMetrics);
 
-        _mockMessageBuffer
+        _ = _mockMessageBuffer
             .Setup(x => x.GetHealthAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(bufferHealth);
 
@@ -415,11 +415,11 @@ public class BufferedSignalRBroadcastServiceTests : IDisposable
             Message = "Buffer is operating normally"
         };
 
-        _mockMessageBuffer
+        _ = _mockMessageBuffer
             .Setup(x => x.GetMetricsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(bufferMetrics);
 
-        _mockMessageBuffer
+        _ = _mockMessageBuffer
             .Setup(x => x.GetHealthAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(bufferHealth);
 
@@ -447,7 +447,7 @@ public class BufferedSignalRBroadcastServiceTests : IDisposable
     public void Constructor_WithNullInnerService_ShouldThrowArgumentNullException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => new BufferedSignalRBroadcastService(
+        _ = Assert.Throws<ArgumentNullException>(() => new BufferedSignalRBroadcastService(
             null!,
             _mockMessageBuffer.Object,
             Options.Create(_config),
@@ -458,7 +458,7 @@ public class BufferedSignalRBroadcastServiceTests : IDisposable
     public void Constructor_WithNullMessageBuffer_ShouldThrowArgumentNullException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => new BufferedSignalRBroadcastService(
+        _ = Assert.Throws<ArgumentNullException>(() => new BufferedSignalRBroadcastService(
             _mockInnerService.Object,
             null!,
             Options.Create(_config),
@@ -469,7 +469,7 @@ public class BufferedSignalRBroadcastServiceTests : IDisposable
     public void Constructor_WithNullConfig_ShouldThrowArgumentNullException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => new BufferedSignalRBroadcastService(
+        _ = Assert.Throws<ArgumentNullException>(() => new BufferedSignalRBroadcastService(
             _mockInnerService.Object,
             _mockMessageBuffer.Object,
             null!,
@@ -480,7 +480,7 @@ public class BufferedSignalRBroadcastServiceTests : IDisposable
     public void Constructor_WithNullLogger_ShouldThrowArgumentNullException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => new BufferedSignalRBroadcastService(
+        _ = Assert.Throws<ArgumentNullException>(() => new BufferedSignalRBroadcastService(
             _mockInnerService.Object,
             _mockMessageBuffer.Object,
             Options.Create(_config),
@@ -504,7 +504,7 @@ public class BufferedSignalRBroadcastServiceTests : IDisposable
         _service.Dispose();
 
         // Act & Assert
-        await Assert.ThrowsAsync<ObjectDisposedException>(() =>
+        _ = await Assert.ThrowsAsync<ObjectDisposedException>(() =>
             _service.BroadcastToGroupAsync("group", "method", new { }));
     }
 
@@ -515,7 +515,7 @@ public class BufferedSignalRBroadcastServiceTests : IDisposable
         _service.Dispose();
 
         // Act & Assert
-        await Assert.ThrowsAsync<ObjectDisposedException>(_service.GetMetricsAsync);
+        _ = await Assert.ThrowsAsync<ObjectDisposedException>(_service.GetMetricsAsync);
     }
 
     [Fact]
@@ -525,7 +525,7 @@ public class BufferedSignalRBroadcastServiceTests : IDisposable
         _service.Dispose();
 
         // Act & Assert
-        Assert.Throws<ObjectDisposedException>(() => _service.IsAvailable);
+        _ = Assert.Throws<ObjectDisposedException>(() => _service.IsAvailable);
     }
 
     public void Dispose()

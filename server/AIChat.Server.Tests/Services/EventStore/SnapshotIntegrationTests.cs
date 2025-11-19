@@ -56,10 +56,10 @@ public class SnapshotIntegrationTests : IDisposable
         var result = await _snapshotStore.CreateSnapshotAsync(streamId, version, testState, metadata);
 
         // Assert
-        result.Success.Should().BeTrue();
-        result.SnapshotId.Should().NotBeNullOrEmpty();
-        result.CompressedSize.Should().BeGreaterThan(0);
-        result.UncompressedSize.Should().BeGreaterThan(0);
+        _ = result.Success.Should().BeTrue();
+        _ = result.SnapshotId.Should().NotBeNullOrEmpty();
+        _ = result.CompressedSize.Should().BeGreaterThan(0);
+        _ = result.UncompressedSize.Should().BeGreaterThan(0);
     }
 
     [Fact]
@@ -72,17 +72,17 @@ public class SnapshotIntegrationTests : IDisposable
 
         // Create snapshot first
         var createResult = await _snapshotStore.CreateSnapshotAsync(streamId, version, originalState);
-        createResult.Success.Should().BeTrue();
+        _ = createResult.Success.Should().BeTrue();
 
         // Act
         var getResult = await _snapshotStore.GetLatestSnapshotAsync<TestState>(streamId);
 
         // Assert
-        getResult.Success.Should().BeTrue();
-        getResult.Data.Should().NotBeNull();
-        getResult.Data!.Name.Should().Be("Original");
-        getResult.Data.Value.Should().Be(100);
-        getResult.Metadata!.Version.Should().Be(version);
+        _ = getResult.Success.Should().BeTrue();
+        _ = getResult.Data.Should().NotBeNull();
+        _ = getResult.Data!.Name.Should().Be("Original");
+        _ = getResult.Data.Value.Should().Be(100);
+        _ = getResult.Metadata!.Version.Should().Be(version);
     }
 
     [Fact]
@@ -92,8 +92,8 @@ public class SnapshotIntegrationTests : IDisposable
         var health = await _snapshotStore.CheckHealthAsync();
 
         // Assert
-        health.IsHealthy.Should().BeTrue();
-        health.Message.Should().Contain("healthy");
+        _ = health.IsHealthy.Should().BeTrue();
+        _ = health.Message.Should().Contain("healthy");
     }
 
     [Fact]
@@ -103,8 +103,8 @@ public class SnapshotIntegrationTests : IDisposable
         var metrics = await _snapshotStore.GetMetricsAsync();
 
         // Assert
-        metrics.Should().NotBeNull();
-        metrics.TotalSnapshots.Should().BeGreaterOrEqualTo(0);
+        _ = metrics.Should().NotBeNull();
+        _ = metrics.TotalSnapshots.Should().BeGreaterOrEqualTo(0);
     }
 
     /// <summary>

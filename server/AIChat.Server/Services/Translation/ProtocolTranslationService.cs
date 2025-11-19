@@ -67,10 +67,10 @@ public sealed class ProtocolTranslationService : IProtocolTranslationService, ID
             var cachedResult = await TryGetCachedResultAsync<TSource, TTarget>(source, context, cancellationToken);
             if (cachedResult != null)
             {
-                activity?.SetTag("cache.hit", true);
+                _ = (activity?.SetTag("cache.hit", true));
                 return cachedResult;
             }
-            activity?.SetTag("cache.hit", false);
+            _ = (activity?.SetTag("cache.hit", false));
 
             // Get and validate translator
             var translator = await GetValidatedTranslatorAsync<TSource, TTarget>(source);
@@ -234,9 +234,9 @@ public sealed class ProtocolTranslationService : IProtocolTranslationService, ID
             return TranslationResult.Failure<TTarget>("Translation context cannot be null", "NULL_CONTEXT");
         }
 
-        activity?.SetTag("source.type", typeof(TSource).Name);
-        activity?.SetTag("target.type", typeof(TTarget).Name);
-        activity?.SetTag("correlation.id", context.CorrelationId);
+        _ = (activity?.SetTag("source.type", typeof(TSource).Name));
+        _ = (activity?.SetTag("target.type", typeof(TTarget).Name));
+        _ = (activity?.SetTag("correlation.id", context.CorrelationId));
 
         _logger.LogDebug(
             "Starting translation from {SourceType} to {TargetType}, CorrelationId: {CorrelationId}",
@@ -343,7 +343,7 @@ public sealed class ProtocolTranslationService : IProtocolTranslationService, ID
     {
         var errorMessage = $"Translation failed with exception: {ex.Message}";
         _logger.LogError(ex, "Translation failed with exception: {ExceptionMessage}", ex.Message);
-        activity?.SetTag("error.type", ex.GetType().Name);
+        _ = (activity?.SetTag("error.type", ex.GetType().Name));
         var result = TranslationResult.Failure<TTarget>(errorMessage, "EXCEPTION", elapsed);
         await RecordTranslationAsync(result, elapsed, context, null);
         return result;
@@ -381,9 +381,9 @@ public sealed class ProtocolTranslationService : IProtocolTranslationService, ID
 
     private static void SetBatchActivityTags(Activity? activity, int batchSize, string sourceTypeName, string targetTypeName)
     {
-        activity?.SetTag("batch.size", batchSize);
-        activity?.SetTag("source.type", sourceTypeName);
-        activity?.SetTag("target.type", targetTypeName);
+        _ = (activity?.SetTag("batch.size", batchSize));
+        _ = (activity?.SetTag("source.type", sourceTypeName));
+        _ = (activity?.SetTag("target.type", targetTypeName));
     }
 
     private async Task<TranslationResult<TTarget>[]> ProcessBatchTranslationsAsync<TSource, TTarget>(
@@ -405,8 +405,8 @@ public sealed class ProtocolTranslationService : IProtocolTranslationService, ID
         var resultArray = results.ToArray();
         var successCount = resultArray.Count(r => r.Success);
 
-        activity?.SetTag("batch.success_count", successCount);
-        activity?.SetTag("batch.total_count", resultArray.Length);
+        _ = (activity?.SetTag("batch.success_count", successCount));
+        _ = (activity?.SetTag("batch.total_count", resultArray.Length));
     }
 
     // Health check helper methods

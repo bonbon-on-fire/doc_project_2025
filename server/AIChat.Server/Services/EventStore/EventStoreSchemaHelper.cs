@@ -110,7 +110,7 @@ public static class EventStoreSchemaHelper
         await using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = dropSql;
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        _ = await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     /// <summary>
@@ -161,7 +161,7 @@ CREATE INDEX IF NOT EXISTS idx_snapshots_stream_id ON EventSnapshots(StreamId);"
         await using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = createSql;
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        _ = await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     /// <summary>
@@ -205,7 +205,7 @@ CREATE INDEX IF NOT EXISTS idx_snapshots_stream_id ON EventSnapshots(StreamId);"
 
                 await using var command = connection.CreateCommand();
                 command.CommandText = checkTableSql;
-                command.Parameters.AddWithValue("$tableName", tableName);
+                _ = command.Parameters.AddWithValue("$tableName", tableName);
 
                 var result = await command.ExecuteScalarAsync(cancellationToken);
                 if (result == null)
@@ -221,8 +221,8 @@ CREATE INDEX IF NOT EXISTS idx_snapshots_stream_id ON EventSnapshots(StreamId);"
             await using (var cleanupCommand = connection.CreateCommand())
             {
                 cleanupCommand.CommandText = "DELETE FROM Events WHERE EventId = $testEventId";
-                cleanupCommand.Parameters.AddWithValue("$testEventId", testEventId);
-                await cleanupCommand.ExecuteNonQueryAsync(cancellationToken);
+                _ = cleanupCommand.Parameters.AddWithValue("$testEventId", testEventId);
+                _ = await cleanupCommand.ExecuteNonQueryAsync(cancellationToken);
             }
 
             // Insert a test event
@@ -233,12 +233,12 @@ CREATE INDEX IF NOT EXISTS idx_snapshots_stream_id ON EventSnapshots(StreamId);"
             await using (var insertCommand = connection.CreateCommand())
             {
                 insertCommand.CommandText = insertSql;
-                insertCommand.Parameters.AddWithValue("$eventId", testEventId);
-                insertCommand.Parameters.AddWithValue("$streamId", "test-stream");
-                insertCommand.Parameters.AddWithValue("$eventType", "TestEvent");
-                insertCommand.Parameters.AddWithValue("$version", 1);
-                insertCommand.Parameters.AddWithValue("$timestamp", DateTimeOffset.UtcNow.ToString("O"));
-                insertCommand.Parameters.AddWithValue("$eventData", "{}");
+                _ = insertCommand.Parameters.AddWithValue("$eventId", testEventId);
+                _ = insertCommand.Parameters.AddWithValue("$streamId", "test-stream");
+                _ = insertCommand.Parameters.AddWithValue("$eventType", "TestEvent");
+                _ = insertCommand.Parameters.AddWithValue("$version", 1);
+                _ = insertCommand.Parameters.AddWithValue("$timestamp", DateTimeOffset.UtcNow.ToString("O"));
+                _ = insertCommand.Parameters.AddWithValue("$eventData", "{}");
 
                 var rowsAffected = await insertCommand.ExecuteNonQueryAsync(cancellationToken);
                 if (rowsAffected != 1)
@@ -255,7 +255,7 @@ CREATE INDEX IF NOT EXISTS idx_snapshots_stream_id ON EventSnapshots(StreamId);"
             await using (var selectCommand = connection.CreateCommand())
             {
                 selectCommand.CommandText = selectSql;
-                selectCommand.Parameters.AddWithValue("$testEventId", testEventId);
+                _ = selectCommand.Parameters.AddWithValue("$testEventId", testEventId);
 
                 await using var reader = await selectCommand.ExecuteReaderAsync(cancellationToken);
                 if (!await reader.ReadAsync(cancellationToken))
@@ -280,8 +280,8 @@ CREATE INDEX IF NOT EXISTS idx_snapshots_stream_id ON EventSnapshots(StreamId);"
             await using (var cleanupCommand = connection.CreateCommand())
             {
                 cleanupCommand.CommandText = "DELETE FROM Events WHERE EventId = $testEventId";
-                cleanupCommand.Parameters.AddWithValue("$testEventId", testEventId);
-                await cleanupCommand.ExecuteNonQueryAsync(cancellationToken);
+                _ = cleanupCommand.Parameters.AddWithValue("$testEventId", testEventId);
+                _ = await cleanupCommand.ExecuteNonQueryAsync(cancellationToken);
             }
 
             return true; // All checks passed

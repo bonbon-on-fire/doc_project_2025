@@ -194,7 +194,7 @@ public class OrleansSnapshotService : IOrleansSnapshotService
             // Create a simple projection for Orleans grain state restoration
             var projection = new OrleansGrainProjection<TGrainState>();
 
-            var restoreResult = await _snapshotManager.RestoreFromSnapshotAsync<TGrainState>(
+            var restoreResult = await _snapshotManager.RestoreFromSnapshotAsync(
                 streamId,
                 projection,
                 targetVersion,

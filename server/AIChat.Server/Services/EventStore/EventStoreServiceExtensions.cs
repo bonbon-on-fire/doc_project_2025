@@ -16,20 +16,20 @@ public static class EventStoreServiceExtensions
     public static IServiceCollection AddEventStore(this IServiceCollection services)
     {
         // Register core services
-        services.AddSingleton<IEventSerializer, JsonEventSerializer>();
-        services.AddSingleton<EventStoreMetricsCollector>();
+        _ = services.AddSingleton<IEventSerializer, JsonEventSerializer>();
+        _ = services.AddSingleton<EventStoreMetricsCollector>();
 
         // Register SQLite implementation
-        services.AddSingleton<IEventStore, SqliteEventStore>();
+        _ = services.AddSingleton<IEventStore, SqliteEventStore>();
 
         // Register individual interfaces for segregated access
-        services.AddSingleton<IEventAppender>(provider => provider.GetRequiredService<IEventStore>());
-        services.AddSingleton<IEventReader>(provider => provider.GetRequiredService<IEventStore>());
-        services.AddSingleton<IEventQuery>(provider => provider.GetRequiredService<IEventStore>());
-        services.AddSingleton<IEventReplay>(provider => provider.GetRequiredService<IEventStore>());
+        _ = services.AddSingleton<IEventAppender>(provider => provider.GetRequiredService<IEventStore>());
+        _ = services.AddSingleton<IEventReader>(provider => provider.GetRequiredService<IEventStore>());
+        _ = services.AddSingleton<IEventQuery>(provider => provider.GetRequiredService<IEventStore>());
+        _ = services.AddSingleton<IEventReplay>(provider => provider.GetRequiredService<IEventStore>());
 
         // Register the initialization service
-        services.AddSingleton<IHostedService, EventStoreInitializationService>();
+        _ = services.AddSingleton<IHostedService, EventStoreInitializationService>();
 
         return services;
     }
@@ -44,7 +44,7 @@ public static class EventStoreServiceExtensions
         this IServiceCollection services,
         Action<EventStoreOptions> configureOptions)
     {
-        services.Configure(configureOptions);
+        _ = services.Configure(configureOptions);
         return services.AddEventStore();
     }
 }
@@ -255,7 +255,7 @@ public static class EventStoreHealthCheckExtensions
         string name = "event_store",
         params string[] tags)
     {
-        services.AddHealthChecks()
+        _ = services.AddHealthChecks()
             .AddCheck<EventStoreHealthCheck>(name, tags: tags);
 
         return services;

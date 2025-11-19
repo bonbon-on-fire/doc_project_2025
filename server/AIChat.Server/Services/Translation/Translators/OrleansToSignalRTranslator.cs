@@ -41,9 +41,9 @@ public class OrleansToSignalRTranslator : MessageTranslatorBase<MessageResult, S
                 return validationError;
             }
 
-            activity?.SetTag("orleans.success", source.Success);
-            activity?.SetTag("orleans.has_message", source.Message != null);
-            activity?.SetTag("correlation.id", context.CorrelationId);
+            _ = (activity?.SetTag("orleans.success", source.Success));
+            _ = (activity?.SetTag("orleans.has_message", source.Message != null));
+            _ = (activity?.SetTag("correlation.id", context.CorrelationId));
 
             Logger.LogDebug(
                 "Translating Orleans MessageResult (Success: {Success}) to SignalR response",
@@ -77,9 +77,9 @@ public class OrleansToSignalRTranslator : MessageTranslatorBase<MessageResult, S
                 stopwatch.ElapsedMilliseconds
             );
 
-            activity?.SetTag("translation.success", true);
-            activity?.SetTag("signalr.method", signalRResponse.Method);
-            activity?.SetTag("signalr.target_type", signalRResponse.Target.Type.ToString());
+            _ = (activity?.SetTag("translation.success", true));
+            _ = (activity?.SetTag("signalr.method", signalRResponse.Method));
+            _ = (activity?.SetTag("signalr.target_type", signalRResponse.Target.Type.ToString()));
 
             return TranslationResult.SuccessWithTypes<MessageResult, SignalRResponse>(signalRResponse, stopwatch.Elapsed);
         }
@@ -89,8 +89,8 @@ public class OrleansToSignalRTranslator : MessageTranslatorBase<MessageResult, S
             var errorMessage = $"Translation failed: {ex.Message}";
             Logger.LogError(ex, "Translation failed: {ExceptionMessage}", ex.Message);
             UpdateFailureMetrics(stopwatch.Elapsed, "TRANSLATION_ERROR", context);
-            activity?.SetTag("translation.success", false);
-            activity?.SetTag("error.type", ex.GetType().Name);
+            _ = (activity?.SetTag("translation.success", false));
+            _ = (activity?.SetTag("error.type", ex.GetType().Name));
             return TranslationResult.Failure<SignalRResponse>(errorMessage, "TRANSLATION_ERROR", stopwatch.Elapsed);
         }
     }

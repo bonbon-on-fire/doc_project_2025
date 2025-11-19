@@ -16,16 +16,16 @@ public static class SseMetricsServiceExtensions
     public static IServiceCollection AddSseMetricsCollection(this IServiceCollection services)
     {
         // Register default options
-        services.Configure<SseMetricsOptions>(options =>
+        _ = services.Configure<SseMetricsOptions>(options =>
         {
             // Use default values from the SseMetricsOptions constructor
         });
 
         // Register SSE metrics collector as singleton for metric aggregation
-        services.AddSingleton<ISseMetricsCollector, SseMetricsCollector>();
+        _ = services.AddSingleton<ISseMetricsCollector, SseMetricsCollector>();
 
         // Register the background cleanup service
-        services.AddHostedService<SseMetricsCleanupService>();
+        _ = services.AddHostedService<SseMetricsCleanupService>();
 
         return services;
     }
@@ -41,13 +41,13 @@ public static class SseMetricsServiceExtensions
         Action<SseMetricsOptions> configureOptions)
     {
         // Configure options using the provided action
-        services.Configure<SseMetricsOptions>(configureOptions);
+        _ = services.Configure(configureOptions);
 
         // Register SSE metrics collector as singleton for metric aggregation
-        services.AddSingleton<ISseMetricsCollector, SseMetricsCollector>();
+        _ = services.AddSingleton<ISseMetricsCollector, SseMetricsCollector>();
 
         // Register the background cleanup service
-        services.AddHostedService<SseMetricsCleanupService>();
+        _ = services.AddHostedService<SseMetricsCleanupService>();
 
         return services;
     }

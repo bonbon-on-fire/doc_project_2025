@@ -23,18 +23,18 @@ public static class StreamingServiceExtensions
         IConfiguration configuration)
     {
         // Register configuration
-        services.Configure<StreamingConfiguration>(configuration.GetSection("Streaming"));
+        _ = services.Configure<StreamingConfiguration>(configuration.GetSection("Streaming"));
 
         // Register configuration validators
-        services.AddSingleton<IValidateOptions<StreamingConfiguration>, AdaptiveBufferingConfigurationValidator>();
+        _ = services.AddSingleton<IValidateOptions<StreamingConfiguration>, AdaptiveBufferingConfigurationValidator>();
 
         // Register abstractions
-        services.AddSingleton<ISystemTime, SystemTime>();
-        services.AddSingleton<ITimerFactory, SystemTimerFactory>();
+        _ = services.AddSingleton<ISystemTime, SystemTime>();
+        _ = services.AddSingleton<ITimerFactory, SystemTimerFactory>();
 
         // Register core streaming services
-        services.AddSingleton<ITrendAnalyzer, TrendAnalyzer>();
-        services.AddSingleton<IMessageReplayService>(provider =>
+        _ = services.AddSingleton<ITrendAnalyzer, TrendAnalyzer>();
+        _ = services.AddSingleton<IMessageReplayService>(provider =>
         {
             var config = provider.GetService<IOptions<StreamingConfiguration>>()?.Value
                 ?? throw new InvalidOperationException("StreamingConfiguration not found");
@@ -49,7 +49,7 @@ public static class StreamingServiceExtensions
         });
 
         // Register adaptive buffer manager
-        services.AddSingleton<IAdaptiveBufferManager>(provider =>
+        _ = services.AddSingleton<IAdaptiveBufferManager>(provider =>
         {
             var options = provider.GetService<IOptions<StreamingConfiguration>>()
                 ?? throw new InvalidOperationException("StreamingConfiguration not found");
@@ -71,16 +71,16 @@ public static class StreamingServiceExtensions
         });
 
         // Register stream recovery manager
-        services.AddSingleton<IStreamRecoveryManager, StreamRecoveryManager>();
+        _ = services.AddSingleton<IStreamRecoveryManager, StreamRecoveryManager>();
 
         // Register overflow strategies
-        services.AddTransient<BackpressureStrategy>();
-        services.AddTransient<DropOldestStrategy>();
-        services.AddTransient<DropNewestStrategy>();
-        services.AddTransient<HybridStrategy>();
+        _ = services.AddTransient<BackpressureStrategy>();
+        _ = services.AddTransient<DropOldestStrategy>();
+        _ = services.AddTransient<DropNewestStrategy>();
+        _ = services.AddTransient<HybridStrategy>();
 
         // Register overflow strategy factory
-        services.AddSingleton<IOverflowStrategyFactory, OverflowStrategyFactory>();
+        _ = services.AddSingleton<IOverflowStrategyFactory, OverflowStrategyFactory>();
 
         return services;
     }

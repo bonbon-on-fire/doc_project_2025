@@ -159,7 +159,7 @@ public sealed class SessionNotFoundException : SessionGrainException
         : base($"Session with ID '{sessionId}' was not found.", sessionId)
     {
         RequestedSessionId = sessionId;
-        WithContext("RequestedSessionId", sessionId);
+        _ = WithContext("RequestedSessionId", sessionId);
         Severity = ExceptionSeverity.Low;
         ErrorCode = "SESSION_NOT_FOUND";
         CanRetry = false;
@@ -173,7 +173,7 @@ public sealed class SessionNotFoundException : SessionGrainException
         : base(message, sessionId)
     {
         RequestedSessionId = sessionId;
-        WithContext("RequestedSessionId", sessionId);
+        _ = WithContext("RequestedSessionId", sessionId);
         Severity = ExceptionSeverity.Low;
         ErrorCode = "SESSION_NOT_FOUND";
         CanRetry = false;
@@ -204,10 +204,10 @@ public sealed class SessionAlreadyExistsException : SessionGrainException
     {
         ExistingSessionId = sessionId;
         ExistingSessionCreatedAt = createdAt;
-        WithContext("ExistingSessionId", sessionId);
+        _ = WithContext("ExistingSessionId", sessionId);
         if (createdAt.HasValue)
         {
-            WithContext("ExistingSessionCreatedAt", createdAt.Value);
+            _ = WithContext("ExistingSessionCreatedAt", createdAt.Value);
         }
     }
 }
@@ -235,10 +235,10 @@ public sealed class SessionDisconnectedException : SessionGrainException
     {
         DisconnectionReason = reason;
         DisconnectedAt = disconnectedAt;
-        WithContext("DisconnectionReason", reason ?? "Unknown");
+        _ = WithContext("DisconnectionReason", reason ?? "Unknown");
         if (disconnectedAt.HasValue)
         {
-            WithContext("DisconnectedAt", disconnectedAt.Value);
+            _ = WithContext("DisconnectedAt", disconnectedAt.Value);
         }
 
         // Set retry policy - disconnected sessions can often be reconnected
@@ -278,7 +278,7 @@ public sealed class SessionProtocolException : SessionGrainException
         : base(message, sessionId)
     {
         ProtocolType = protocolType;
-        WithContext("ProtocolType", protocolType);
+        _ = WithContext("ProtocolType", protocolType);
     }
 
     /// <summary>
@@ -289,8 +289,8 @@ public sealed class SessionProtocolException : SessionGrainException
     {
         ProtocolType = protocolType;
         FailedOperation = operation;
-        WithContext("ProtocolType", protocolType);
-        WithContext("FailedOperation", operation);
+        _ = WithContext("ProtocolType", protocolType);
+        _ = WithContext("FailedOperation", operation);
     }
 
     /// <summary>
@@ -300,7 +300,7 @@ public sealed class SessionProtocolException : SessionGrainException
         : base(message, innerException, sessionId)
     {
         ProtocolType = protocolType;
-        WithContext("ProtocolType", protocolType);
+        _ = WithContext("ProtocolType", protocolType);
     }
 
     /// <summary>
@@ -309,7 +309,7 @@ public sealed class SessionProtocolException : SessionGrainException
     public SessionProtocolException WithErrorCode(string errorCode)
     {
         ErrorCode = errorCode;
-        WithContext("ErrorCode", errorCode);
+        _ = WithContext("ErrorCode", errorCode);
         return this;
     }
 }
@@ -342,8 +342,8 @@ public sealed class SessionReconnectionException : SessionGrainException
     {
         AttemptCount = attemptCount;
         MaxAttempts = maxAttempts;
-        WithContext("AttemptCount", attemptCount);
-        WithContext("MaxAttempts", maxAttempts);
+        _ = WithContext("AttemptCount", attemptCount);
+        _ = WithContext("MaxAttempts", maxAttempts);
     }
 
     /// <summary>
@@ -355,8 +355,8 @@ public sealed class SessionReconnectionException : SessionGrainException
         AttemptCount = attemptCount;
         LastError = lastError;
         MaxAttempts = 0;
-        WithContext("AttemptCount", attemptCount);
-        WithContext("LastError", lastError);
+        _ = WithContext("AttemptCount", attemptCount);
+        _ = WithContext("LastError", lastError);
     }
 
     /// <summary>
@@ -368,7 +368,7 @@ public sealed class SessionReconnectionException : SessionGrainException
         AttemptCount = 0;
         MaxAttempts = 0;
         LastError = innerException.Message;
-        WithContext("LastError", LastError);
+        _ = WithContext("LastError", LastError);
     }
 }
 
@@ -395,8 +395,8 @@ public sealed class SessionTimeoutException : SessionGrainException
     {
         Operation = operation;
         TimeoutSeconds = timeoutSeconds;
-        WithContext("Operation", operation);
-        WithContext("TimeoutSeconds", timeoutSeconds);
+        _ = WithContext("Operation", operation);
+        _ = WithContext("TimeoutSeconds", timeoutSeconds);
     }
 
     /// <summary>
@@ -407,8 +407,8 @@ public sealed class SessionTimeoutException : SessionGrainException
     {
         Operation = operation;
         TimeoutSeconds = timeoutSeconds;
-        WithContext("Operation", operation);
-        WithContext("TimeoutSeconds", timeoutSeconds);
+        _ = WithContext("Operation", operation);
+        _ = WithContext("TimeoutSeconds", timeoutSeconds);
     }
 }
 
@@ -442,7 +442,7 @@ public sealed class SessionValidationException : SessionGrainException
         : base($"Session validation failed with {errors.Count} error(s): {string.Join("; ", errors)}", sessionId)
     {
         ValidationErrors = errors;
-        WithContext("ValidationErrors", errors);
+        _ = WithContext("ValidationErrors", errors);
     }
 
     /// <summary>
@@ -453,8 +453,8 @@ public sealed class SessionValidationException : SessionGrainException
     {
         FailedField = field;
         ValidationErrors = [error];
-        WithContext("FailedField", field);
-        WithContext("ValidationError", error);
+        _ = WithContext("FailedField", field);
+        _ = WithContext("ValidationError", error);
     }
 
     /// <summary>
@@ -463,7 +463,7 @@ public sealed class SessionValidationException : SessionGrainException
     public SessionValidationException AddError(string error)
     {
         ValidationErrors.Add(error);
-        WithContext($"ValidationError_{ValidationErrors.Count}", error);
+        _ = WithContext($"ValidationError_{ValidationErrors.Count}", error);
         return this;
     }
 }
@@ -497,9 +497,9 @@ public sealed class SessionLimitExceededException : SessionGrainException
         LimitType = limitType;
         CurrentValue = currentValue;
         MaxLimit = maxLimit;
-        WithContext("LimitType", limitType);
-        WithContext("CurrentValue", currentValue);
-        WithContext("MaxLimit", maxLimit);
+        _ = WithContext("LimitType", limitType);
+        _ = WithContext("CurrentValue", currentValue);
+        _ = WithContext("MaxLimit", maxLimit);
     }
 
     /// <summary>
@@ -511,9 +511,9 @@ public sealed class SessionLimitExceededException : SessionGrainException
         LimitType = limitType;
         CurrentValue = currentValue;
         MaxLimit = maxLimit;
-        WithContext("LimitType", limitType);
-        WithContext("CurrentValue", currentValue);
-        WithContext("MaxLimit", maxLimit);
+        _ = WithContext("LimitType", limitType);
+        _ = WithContext("CurrentValue", currentValue);
+        _ = WithContext("MaxLimit", maxLimit);
     }
 }
 
@@ -540,10 +540,10 @@ public sealed class SessionAlreadyConnectedException : SessionGrainException
     {
         ExistingConnectionId = connectionId;
         ConnectedAt = connectedAt;
-        WithContext("ExistingConnectionId", connectionId);
+        _ = WithContext("ExistingConnectionId", connectionId);
         if (connectedAt.HasValue)
         {
-            WithContext("ConnectedAt", connectedAt.Value);
+            _ = WithContext("ConnectedAt", connectedAt.Value);
         }
     }
 }

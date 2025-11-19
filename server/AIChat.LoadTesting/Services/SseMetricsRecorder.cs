@@ -45,7 +45,7 @@ public class SseMetricsRecorder : ISseMetricsRecorder
 
     public void RecordConnectionAttempt(string connectionId, DateTime timestamp)
     {
-        Interlocked.Increment(ref _totalConnectionAttempts);
+        _ = Interlocked.Increment(ref _totalConnectionAttempts);
 
         var metrics = GetOrCreateConnectionMetrics(connectionId);
         metrics.LastAttemptTime = timestamp;
@@ -56,7 +56,7 @@ public class SseMetricsRecorder : ISseMetricsRecorder
 
     public void RecordConnectionSuccess(string connectionId, double latencyMs, DateTime timestamp)
     {
-        Interlocked.Increment(ref _successfulConnections);
+        _ = Interlocked.Increment(ref _successfulConnections);
         _allLatencies.Add(latencyMs);
 
         var metrics = GetOrCreateConnectionMetrics(connectionId);
@@ -70,7 +70,7 @@ public class SseMetricsRecorder : ISseMetricsRecorder
 
     public void RecordConnectionFailure(string connectionId, Exception error, DateTime timestamp)
     {
-        Interlocked.Increment(ref _failedConnections);
+        _ = Interlocked.Increment(ref _failedConnections);
 
         var metrics = GetOrCreateConnectionMetrics(connectionId);
         metrics.LastError = error.Message;
@@ -95,7 +95,7 @@ public class SseMetricsRecorder : ISseMetricsRecorder
 
     public void RecordMessageReceived(string connectionId, SseMessage message, double processingTimeMs)
     {
-        Interlocked.Increment(ref _totalMessagesReceived);
+        _ = Interlocked.Increment(ref _totalMessagesReceived);
         _allLatencies.Add(message.LatencyMs);
 
         var metrics = GetOrCreateConnectionMetrics(connectionId);
@@ -104,7 +104,7 @@ public class SseMetricsRecorder : ISseMetricsRecorder
         metrics.MessageLatencies.Add(message.LatencyMs);
 
         // Track message types
-        _messagesByEventType.AddOrUpdate(message.Event, 1, (_, count) => count + 1);
+        _ = _messagesByEventType.AddOrUpdate(message.Event, 1, (_, count) => count + 1);
 
         _logger.LogTrace("Recorded message for {ConnectionId}: Type={EventType}, Processing={ProcessingTime}ms",
             connectionId, message.Event, processingTimeMs);
@@ -112,7 +112,7 @@ public class SseMetricsRecorder : ISseMetricsRecorder
 
     public void RecordChunkReceived(string connectionId, int chunkSizeBytes, double latencyMs)
     {
-        Interlocked.Add(ref _totalBytesReceived, chunkSizeBytes);
+        _ = Interlocked.Add(ref _totalBytesReceived, chunkSizeBytes);
         _allLatencies.Add(latencyMs);
 
         var metrics = GetOrCreateConnectionMetrics(connectionId);
@@ -143,10 +143,10 @@ public class SseMetricsRecorder : ISseMetricsRecorder
 
     public void RecordReconnection(string connectionId, int attemptNumber, bool success, double latencyMs)
     {
-        Interlocked.Increment(ref _totalReconnectionAttempts);
+        _ = Interlocked.Increment(ref _totalReconnectionAttempts);
         if (success)
         {
-            Interlocked.Increment(ref _successfulReconnections);
+            _ = Interlocked.Increment(ref _successfulReconnections);
         }
 
         var metrics = GetOrCreateConnectionMetrics(connectionId);
@@ -158,7 +158,7 @@ public class SseMetricsRecorder : ISseMetricsRecorder
 
     public void RecordError(string connectionId, Exception error, string context)
     {
-        Interlocked.Increment(ref _totalErrors);
+        _ = Interlocked.Increment(ref _totalErrors);
 
         var metrics = GetOrCreateConnectionMetrics(connectionId);
         metrics.ErrorCount++;
@@ -265,7 +265,7 @@ public class SseMetricsRecorder : ISseMetricsRecorder
     private void RecordErrorType(Exception error)
     {
         var errorType = error.GetType().Name;
-        _errorsByType.AddOrUpdate(errorType, 1, (_, count) => count + 1);
+        _ = _errorsByType.AddOrUpdate(errorType, 1, (_, count) => count + 1);
     }
 
     private double CalculateAverageMessageLatency()
@@ -338,22 +338,22 @@ public class SseMetricsRecorder : ISseMetricsRecorder
     private static string ExportAsCsv(AggregatedSseMetrics metrics)
     {
         var csv = new System.Text.StringBuilder();
-        csv.AppendLine("Metric,Value");
-        csv.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
+        _ = csv.AppendLine("Metric,Value");
+        _ = csv.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
             $"TotalConnectionAttempts,{metrics.TotalConnectionAttempts}");
-        csv.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
+        _ = csv.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
             $"SuccessfulConnections,{metrics.SuccessfulConnections}");
-        csv.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
+        _ = csv.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
             $"FailedConnections,{metrics.FailedConnections}");
-        csv.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
+        _ = csv.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
             $"ActiveConnections,{metrics.ActiveConnections}");
-        csv.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
+        _ = csv.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
             $"TotalMessagesReceived,{metrics.TotalMessagesReceived}");
-        csv.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
+        _ = csv.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
             $"TotalBytesReceived,{metrics.TotalBytesReceived}");
-        csv.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
+        _ = csv.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
             $"MessagesPerSecond,{metrics.MessagesPerSecond:F2}");
-        csv.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
+        _ = csv.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
             $"BytesPerSecond,{metrics.BytesPerSecond:F2}");
         return csv.ToString();
     }
@@ -361,19 +361,19 @@ public class SseMetricsRecorder : ISseMetricsRecorder
     private static string ExportAsPrometheus(AggregatedSseMetrics metrics)
     {
         var prom = new System.Text.StringBuilder();
-        prom.AppendLine("# HELP sse_connections_total Total SSE connection attempts");
-        prom.AppendLine("# TYPE sse_connections_total counter");
-        prom.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
+        _ = prom.AppendLine("# HELP sse_connections_total Total SSE connection attempts");
+        _ = prom.AppendLine("# TYPE sse_connections_total counter");
+        _ = prom.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
             $"sse_connections_total {metrics.TotalConnectionAttempts}");
 
-        prom.AppendLine("# HELP sse_connections_active Currently active SSE connections");
-        prom.AppendLine("# TYPE sse_connections_active gauge");
-        prom.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
+        _ = prom.AppendLine("# HELP sse_connections_active Currently active SSE connections");
+        _ = prom.AppendLine("# TYPE sse_connections_active gauge");
+        _ = prom.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
             $"sse_connections_active {metrics.ActiveConnections}");
 
-        prom.AppendLine("# HELP sse_messages_total Total SSE messages received");
-        prom.AppendLine("# TYPE sse_messages_total counter");
-        prom.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
+        _ = prom.AppendLine("# HELP sse_messages_total Total SSE messages received");
+        _ = prom.AppendLine("# TYPE sse_messages_total counter");
+        _ = prom.AppendLine(System.Globalization.CultureInfo.InvariantCulture,
             $"sse_messages_total {metrics.TotalMessagesReceived}");
 
         return prom.ToString();

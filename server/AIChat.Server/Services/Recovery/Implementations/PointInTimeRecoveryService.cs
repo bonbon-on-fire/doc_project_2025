@@ -121,7 +121,7 @@ public class PointInTimeRecoveryService : IPointInTimeRecoveryService
             }
 
             // Step 4: Convert to point-in-time result
-            var result = PointInTimeRecoveryResult.CreateSuccess<T>(
+            var result = PointInTimeRecoveryResult.CreateSuccess(
                 operationId,
                 recoveryResult.RecoveredState!,
                 request.TargetTimestamp,
@@ -215,7 +215,7 @@ public class PointInTimeRecoveryService : IPointInTimeRecoveryService
             // Find timestamp for the recovered version
             var actualTimestamp = await FindTimestampAtVersionAsync(grainId, recoveryResult.FinalVersion, cancellationToken);
 
-            var result = PointInTimeRecoveryResult.CreateSuccess<T>(
+            var result = PointInTimeRecoveryResult.CreateSuccess(
                 operationId,
                 recoveryResult.RecoveredState!,
                 actualTimestamp,
@@ -541,7 +541,7 @@ public class PointInTimeRecoveryService : IPointInTimeRecoveryService
 
         if (_backgroundOperations.TryGetValue(operationId, out var operation))
         {
-            return Task.FromResult<PointInTimeRecoveryResult<object>?>(operation.Result);
+            return Task.FromResult(operation.Result);
         }
 
         return Task.FromResult<PointInTimeRecoveryResult<object>?>(null);

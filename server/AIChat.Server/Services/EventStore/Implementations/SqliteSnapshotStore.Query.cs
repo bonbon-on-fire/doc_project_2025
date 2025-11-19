@@ -40,7 +40,7 @@ public sealed partial class SqliteSnapshotStore : ISnapshotQuery
 
             foreach (var (name, value) in parameters)
             {
-                command.Parameters.AddWithValue(name, value);
+                _ = command.Parameters.AddWithValue(name, value);
             }
 
             var snapshots = new List<SnapshotMetadata>();
@@ -168,7 +168,7 @@ public sealed partial class SqliteSnapshotStore : ISnapshotQuery
 
             foreach (var (name, value) in parameters)
             {
-                command.Parameters.AddWithValue(name, value);
+                _ = command.Parameters.AddWithValue(name, value);
             }
 
             var snapshots = new List<SnapshotMetadata>();
@@ -466,7 +466,7 @@ public sealed partial class SqliteSnapshotStore : ISnapshotQuery
 
         foreach (var (name, value) in parameters)
         {
-            countCommand.Parameters.AddWithValue(name, value);
+            _ = countCommand.Parameters.AddWithValue(name, value);
         }
 
         var result = await countCommand.ExecuteScalarAsync(cancellationToken);

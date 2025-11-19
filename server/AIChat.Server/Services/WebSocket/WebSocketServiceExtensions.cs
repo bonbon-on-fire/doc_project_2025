@@ -20,10 +20,10 @@ public static class WebSocketServiceExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         // Register WebSocket core services
-        services.AddScoped<IWebSocketHandler, WebSocketHandler>();
-        services.AddScoped<IWebSocketSessionManager, WebSocketSessionManager>();
-        services.AddScoped<IWebSocketProtocolNegotiator, WebSocketProtocolNegotiator>();
-        services.AddScoped<IWebSocketMessageRouter, WebSocketMessageRouter>();
+        _ = services.AddScoped<IWebSocketHandler, WebSocketHandler>();
+        _ = services.AddScoped<IWebSocketSessionManager, WebSocketSessionManager>();
+        _ = services.AddScoped<IWebSocketProtocolNegotiator, WebSocketProtocolNegotiator>();
+        _ = services.AddScoped<IWebSocketMessageRouter, WebSocketMessageRouter>();
 
         return services;
     }

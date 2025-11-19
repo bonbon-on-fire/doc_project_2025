@@ -30,7 +30,7 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
         ArgumentNullException.ThrowIfNull(message);
         ArgumentNullException.ThrowIfNull(sessionInfo);
 
-        Interlocked.Increment(ref _totalMessages);
+        _ = Interlocked.Increment(ref _totalMessages);
         var stopwatch = Stopwatch.StartNew();
 
         try
@@ -46,12 +46,12 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
 
                 if (result.Success)
                 {
-                    Interlocked.Increment(ref _successfulMessages);
-                    _routingCounts.AddOrUpdate(MessageRoutingDestination.CustomHandler, 1, (_, count) => count + 1);
+                    _ = Interlocked.Increment(ref _successfulMessages);
+                    _ = _routingCounts.AddOrUpdate(MessageRoutingDestination.CustomHandler, 1, (_, count) => count + 1);
                 }
                 else
                 {
-                    Interlocked.Increment(ref _failedMessages);
+                    _ = Interlocked.Increment(ref _failedMessages);
                 }
 
                 return result with { ProcessingTimeMs = stopwatch.Elapsed.TotalMilliseconds };
@@ -59,8 +59,8 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
 
             // Default routing logic - basic acknowledgment for now
             stopwatch.Stop();
-            Interlocked.Increment(ref _successfulMessages);
-            _routingCounts.AddOrUpdate(MessageRoutingDestination.DirectChatService, 1, (_, count) => count + 1);
+            _ = Interlocked.Increment(ref _successfulMessages);
+            _ = _routingCounts.AddOrUpdate(MessageRoutingDestination.DirectChatService, 1, (_, count) => count + 1);
 
             _logger.LogDebug("Message {MessageId} routed successfully using default handler", message.MessageId);
 
@@ -72,7 +72,7 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
         catch (Exception ex)
         {
             stopwatch.Stop();
-            Interlocked.Increment(ref _failedMessages);
+            _ = Interlocked.Increment(ref _failedMessages);
 
             _logger.LogError(ex, "Error routing message {MessageId} for session {SessionId}",
                 message.MessageId, sessionInfo.SessionId);
@@ -96,8 +96,8 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
             message.MessageId, destination);
 
         // For now, just acknowledge the routing
-        Interlocked.Increment(ref _successfulMessages);
-        _routingCounts.AddOrUpdate(destination, 1, (_, count) => count + 1);
+        _ = Interlocked.Increment(ref _successfulMessages);
+        _ = _routingCounts.AddOrUpdate(destination, 1, (_, count) => count + 1);
 
         return Task.FromResult(MessageRoutingResult.CreateSuccess(destination));
     }
@@ -141,7 +141,7 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
                 MessageRoutingDestination.Broadcast));
         }
 
-        _routingCounts.AddOrUpdate(MessageRoutingDestination.Broadcast, sessions.Count, (_, count) => count + sessions.Count);
+        _ = _routingCounts.AddOrUpdate(MessageRoutingDestination.Broadcast, sessions.Count, (_, count) => count + sessions.Count);
         return results;
     }
 
@@ -154,7 +154,7 @@ public class WebSocketMessageRouter : IWebSocketMessageRouter
 
         _logger.LogTrace("Routing heartbeat for session {SessionId}", sessionInfo.SessionId);
 
-        _routingCounts.AddOrUpdate(MessageRoutingDestination.HeartbeatHandler, 1, (_, count) => count + 1);
+        _ = _routingCounts.AddOrUpdate(MessageRoutingDestination.HeartbeatHandler, 1, (_, count) => count + 1);
 
         return Task.FromResult(MessageRoutingResult.CreateSuccess(
             MessageRoutingDestination.HeartbeatHandler));

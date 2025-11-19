@@ -258,10 +258,10 @@ public class ChatGrainBasicTests
             ]
         };
 
-        await _chatGrain!.InitializeAsync(initRequest);
+        _ = await _chatGrain!.InitializeAsync(initRequest);
 
         // Add some state changes
-        await _chatGrain.ProcessMessageAsync(new ChatMessage
+        _ = await _chatGrain.ProcessMessageAsync(new ChatMessage
         {
             UserId = "test-user",
             Content = "Test message",
@@ -293,7 +293,7 @@ public class ChatGrainBasicTests
         // This test verifies that all 27 interface methods are implemented
         // by calling each one and ensuring no NotImplementedException is thrown
 
-        await _chatGrain!.InitializeAsync(new ChatInitRequest
+        _ = await _chatGrain!.InitializeAsync(new ChatInitRequest
         {
             ChatId = _testChatId,
             Title = "Interface Test",

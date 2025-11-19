@@ -24,30 +24,30 @@ public static class ProtocolTranslationServiceExtensions
         // Configure options
         var options = new TranslationOptions();
         configure?.Invoke(options);
-        services.AddSingleton(options);
+        _ = services.AddSingleton(options);
 
         // Register core specialized services
-        services.AddSingleton<ITranslatorRegistry, TranslatorRegistry>();
-        services.AddSingleton<ITranslationMetricsCollector, TranslationMetricsCollector>();
+        _ = services.AddSingleton<ITranslatorRegistry, TranslatorRegistry>();
+        _ = services.AddSingleton<ITranslationMetricsCollector, TranslationMetricsCollector>();
 
         // Register main orchestration service
-        services.AddSingleton<IProtocolTranslationService, ProtocolTranslationService>();
+        _ = services.AddSingleton<IProtocolTranslationService, ProtocolTranslationService>();
 
         // Register translation cache
         if (options.EnableCaching)
         {
-            services.AddSingleton<ITranslationCache, MemoryTranslationCache>();
+            _ = services.AddSingleton<ITranslationCache, MemoryTranslationCache>();
         }
         else
         {
-            services.AddSingleton<ITranslationCache, NullTranslationCache>();
+            _ = services.AddSingleton<ITranslationCache, NullTranslationCache>();
         }
 
         // Register all translators
         RegisterTranslators(services);
 
         // Register health checks
-        services.AddHealthChecks()
+        _ = services.AddHealthChecks()
             .AddCheck<ProtocolTranslationHealthCheck>("protocol_translation");
 
         return services;
@@ -122,12 +122,12 @@ public static class ProtocolTranslationServiceExtensions
     private static void RegisterTranslators(IServiceCollection services)
     {
         // Protocol to Orleans translators (incoming)
-        services.AddTransient<IMessageTranslator<SignalRMessage, ChatMessage>, SignalRToOrleansTranslator>();
-        services.AddTransient<IMessageTranslator<WebSocketMessage, ChatMessage>, WebSocketToOrleansTranslator>();
-        services.AddTransient<IMessageTranslator<RestMessage, ChatMessage>, RestToOrleansTranslator>();
+        _ = services.AddTransient<IMessageTranslator<SignalRMessage, ChatMessage>, SignalRToOrleansTranslator>();
+        _ = services.AddTransient<IMessageTranslator<WebSocketMessage, ChatMessage>, WebSocketToOrleansTranslator>();
+        _ = services.AddTransient<IMessageTranslator<RestMessage, ChatMessage>, RestToOrleansTranslator>();
 
         // Orleans to Protocol translators (outgoing)
-        services.AddTransient<IMessageTranslator<MessageResult, SignalRResponse>, OrleansToSignalRTranslator>();
+        _ = services.AddTransient<IMessageTranslator<MessageResult, SignalRResponse>, OrleansToSignalRTranslator>();
 
         // Additional bidirectional translators can be added here
         // services.AddTransient<IMessageTranslator<MessageResult, WebSocketMessage>, OrleansToWebSocketTranslator>();
@@ -209,7 +209,7 @@ public class ProtocolTranslationBuilder
     public ProtocolTranslationBuilder AddTranslator<TSource, TTarget, TTranslator>()
         where TTranslator : class, IMessageTranslator<TSource, TTarget>
     {
-        _services.AddTransient<IMessageTranslator<TSource, TTarget>, TTranslator>();
+        _ = _services.AddTransient<IMessageTranslator<TSource, TTarget>, TTranslator>();
         return this;
     }
 
@@ -221,7 +221,7 @@ public class ProtocolTranslationBuilder
     public ProtocolTranslationBuilder WithCache<TCache>()
         where TCache : class, ITranslationCache
     {
-        _services.AddSingleton<ITranslationCache, TCache>();
+        _ = _services.AddSingleton<ITranslationCache, TCache>();
         return this;
     }
 
@@ -255,8 +255,8 @@ public static class AdvancedProtocolTranslationExtensions
 
         configure(builder);
 
-        services.AddSingleton(options);
-        services.AddSingleton<IProtocolTranslationService, ProtocolTranslationService>();
+        _ = services.AddSingleton(options);
+        _ = services.AddSingleton<IProtocolTranslationService, ProtocolTranslationService>();
 
         return builder.Build();
     }

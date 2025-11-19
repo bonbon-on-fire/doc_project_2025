@@ -206,12 +206,12 @@ public class ResilientMetricsCollectorDecorator : IOrleansMetricsCollector
 
     private void ResetFailureCount()
     {
-        Interlocked.Exchange(ref _consecutiveFailures, 0);
+        _ = Interlocked.Exchange(ref _consecutiveFailures, 0);
         _circuitOpenedAt = DateTime.MinValue;
     }
 
     private void IncrementFailureCount()
     {
-        Interlocked.Increment(ref _consecutiveFailures);
+        _ = Interlocked.Increment(ref _consecutiveFailures);
     }
 }

@@ -23,7 +23,7 @@ public class WebSocketProtocolNegotiator : IWebSocketProtocolNegotiator
         // Register standard protocols
         foreach (var protocol in StandardWebSocketProtocols.GetAllProtocols())
         {
-            _registeredProtocols.TryAdd(protocol.Name, protocol);
+            _ = _registeredProtocols.TryAdd(protocol.Name, protocol);
         }
     }
 
@@ -36,7 +36,7 @@ public class WebSocketProtocolNegotiator : IWebSocketProtocolNegotiator
         ArgumentNullException.ThrowIfNull(requestedProtocols);
         ArgumentException.ThrowIfNullOrWhiteSpace(userId);
 
-        Interlocked.Increment(ref _totalNegotiations);
+        _ = Interlocked.Increment(ref _totalNegotiations);
 
         try
         {
@@ -51,8 +51,8 @@ public class WebSocketProtocolNegotiator : IWebSocketProtocolNegotiator
                 {
                     var negotiatedCapabilities = clientCapabilities ?? [];
 
-                    Interlocked.Increment(ref _successfulNegotiations);
-                    _negotiationCounts.AddOrUpdate(requestedProtocol, 1, (_, count) => count + 1);
+                    _ = Interlocked.Increment(ref _successfulNegotiations);
+                    _ = _negotiationCounts.AddOrUpdate(requestedProtocol, 1, (_, count) => count + 1);
 
                     _logger.LogInformation("Protocol negotiation successful for user {UserId}: {Protocol}",
                         userId, requestedProtocol);
@@ -65,8 +65,8 @@ public class WebSocketProtocolNegotiator : IWebSocketProtocolNegotiator
             // No matching protocol found - use generic-v1 as fallback
             if (_registeredProtocols.TryGetValue("generic-v1", out var genericProtocol) && genericProtocol.Enabled)
             {
-                Interlocked.Increment(ref _successfulNegotiations);
-                _negotiationCounts.AddOrUpdate("generic-v1", 1, (_, count) => count + 1);
+                _ = Interlocked.Increment(ref _successfulNegotiations);
+                _ = _negotiationCounts.AddOrUpdate("generic-v1", 1, (_, count) => count + 1);
 
                 _logger.LogInformation("No matching protocol found for user {UserId}, using generic-v1 fallback", userId);
 
@@ -75,7 +75,7 @@ public class WebSocketProtocolNegotiator : IWebSocketProtocolNegotiator
             }
 
             // Negotiation failed
-            Interlocked.Increment(ref _failedNegotiations);
+            _ = Interlocked.Increment(ref _failedNegotiations);
             _logger.LogWarning("Protocol negotiation failed for user {UserId}: no supported protocols found", userId);
 
             return Task.FromResult(ProtocolNegotiationResult.CreateFailure(
@@ -84,7 +84,7 @@ public class WebSocketProtocolNegotiator : IWebSocketProtocolNegotiator
         }
         catch (Exception ex)
         {
-            Interlocked.Increment(ref _failedNegotiations);
+            _ = Interlocked.Increment(ref _failedNegotiations);
             _logger.LogError(ex, "Error during protocol negotiation for user {UserId}", userId);
             return Task.FromResult(ProtocolNegotiationResult.CreateFailure($"Protocol negotiation error: {ex.Message}"));
         }
@@ -122,7 +122,7 @@ public class WebSocketProtocolNegotiator : IWebSocketProtocolNegotiator
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(protocolName);
 
-        _registeredProtocols.TryGetValue(protocolName, out var protocolInfo);
+        _ = _registeredProtocols.TryGetValue(protocolName, out var protocolInfo);
         return Task.FromResult(protocolInfo);
     }
 

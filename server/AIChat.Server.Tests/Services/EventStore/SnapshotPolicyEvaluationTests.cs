@@ -21,10 +21,10 @@ public class SnapshotPolicyEvaluationTests
         var policy = SnapshotCreationPolicy.ByEventCount(eventCount);
 
         // Assert
-        policy.EventCountThreshold.Should().Be(eventCount);
-        policy.TimeThreshold.Should().BeNull();
-        policy.VersionThreshold.Should().BeNull();
-        policy.CreateOnDeactivation.Should().BeFalse();
+        _ = policy.EventCountThreshold.Should().Be(eventCount);
+        _ = policy.TimeThreshold.Should().BeNull();
+        _ = policy.VersionThreshold.Should().BeNull();
+        _ = policy.CreateOnDeactivation.Should().BeFalse();
     }
 
     [Fact]
@@ -37,10 +37,10 @@ public class SnapshotPolicyEvaluationTests
         var policy = SnapshotCreationPolicy.ByTime(timeSpan);
 
         // Assert
-        policy.TimeThreshold.Should().Be(timeSpan);
-        policy.EventCountThreshold.Should().BeNull();
-        policy.VersionThreshold.Should().BeNull();
-        policy.CreateOnDeactivation.Should().BeFalse();
+        _ = policy.TimeThreshold.Should().Be(timeSpan);
+        _ = policy.EventCountThreshold.Should().BeNull();
+        _ = policy.VersionThreshold.Should().BeNull();
+        _ = policy.CreateOnDeactivation.Should().BeFalse();
     }
 
     [Fact]
@@ -53,10 +53,10 @@ public class SnapshotPolicyEvaluationTests
         var policy = SnapshotCreationPolicy.ByVersion(versionDelta);
 
         // Assert
-        policy.VersionThreshold.Should().Be(versionDelta);
-        policy.EventCountThreshold.Should().BeNull();
-        policy.TimeThreshold.Should().BeNull();
-        policy.CreateOnDeactivation.Should().BeFalse();
+        _ = policy.VersionThreshold.Should().Be(versionDelta);
+        _ = policy.EventCountThreshold.Should().BeNull();
+        _ = policy.TimeThreshold.Should().BeNull();
+        _ = policy.CreateOnDeactivation.Should().BeFalse();
     }
 
     [Fact]
@@ -71,10 +71,10 @@ public class SnapshotPolicyEvaluationTests
         var policy = SnapshotCreationPolicy.Combined(eventCount, timeThreshold, versionThreshold);
 
         // Assert
-        policy.EventCountThreshold.Should().Be(eventCount);
-        policy.TimeThreshold.Should().Be(timeThreshold);
-        policy.VersionThreshold.Should().Be(versionThreshold);
-        policy.CreateOnDeactivation.Should().BeFalse();
+        _ = policy.EventCountThreshold.Should().Be(eventCount);
+        _ = policy.TimeThreshold.Should().Be(timeThreshold);
+        _ = policy.VersionThreshold.Should().Be(versionThreshold);
+        _ = policy.CreateOnDeactivation.Should().BeFalse();
     }
 
     [Theory]
@@ -97,7 +97,7 @@ public class SnapshotPolicyEvaluationTests
         var shouldCreate = eventsSinceSnapshot >= threshold;
 
         // Assert
-        shouldCreate.Should().Be(expectedResult);
+        _ = shouldCreate.Should().Be(expectedResult);
     }
 
     [Fact]
@@ -113,11 +113,11 @@ public class SnapshotPolicyEvaluationTests
         var result = PolicyEvaluationResult.CreatePositive(reason, triggeredCriteria, confidence, priority);
 
         // Assert
-        result.ShouldCreateSnapshot.Should().BeTrue();
-        result.Reason.Should().Be(reason);
-        result.TriggeredCriteria.Should().BeEquivalentTo(triggeredCriteria);
-        result.Confidence.Should().Be(confidence);
-        result.Priority.Should().Be(priority);
+        _ = result.ShouldCreateSnapshot.Should().BeTrue();
+        _ = result.Reason.Should().Be(reason);
+        _ = result.TriggeredCriteria.Should().BeEquivalentTo(triggeredCriteria);
+        _ = result.Confidence.Should().Be(confidence);
+        _ = result.Priority.Should().Be(priority);
     }
 
     [Fact]
@@ -131,11 +131,11 @@ public class SnapshotPolicyEvaluationTests
         var result = PolicyEvaluationResult.CreateNegative(reason, confidence);
 
         // Assert
-        result.ShouldCreateSnapshot.Should().BeFalse();
-        result.Reason.Should().Be(reason);
-        result.Confidence.Should().Be(confidence);
-        result.TriggeredCriteria.Should().BeEmpty();
-        result.Priority.Should().Be(0);
+        _ = result.ShouldCreateSnapshot.Should().BeFalse();
+        _ = result.Reason.Should().Be(reason);
+        _ = result.Confidence.Should().Be(confidence);
+        _ = result.TriggeredCriteria.Should().BeEmpty();
+        _ = result.Priority.Should().Be(0);
     }
 
     [Fact]
@@ -158,10 +158,10 @@ public class SnapshotPolicyEvaluationTests
         var result = RetentionEvaluationResult.CreatePositive(candidates, reason, estimatedSpace);
 
         // Assert
-        result.ShouldCleanup.Should().BeTrue();
-        result.CandidatesForDeletion.Should().HaveCount(1);
-        result.Reason.Should().Be(reason);
-        result.EstimatedSpaceReclaimed.Should().Be(estimatedSpace);
+        _ = result.ShouldCleanup.Should().BeTrue();
+        _ = result.CandidatesForDeletion.Should().HaveCount(1);
+        _ = result.Reason.Should().Be(reason);
+        _ = result.EstimatedSpaceReclaimed.Should().Be(estimatedSpace);
     }
 
     [Fact]
@@ -174,10 +174,10 @@ public class SnapshotPolicyEvaluationTests
         var result = RetentionEvaluationResult.CreateNegative(reason);
 
         // Assert
-        result.ShouldCleanup.Should().BeFalse();
-        result.CandidatesForDeletion.Should().BeEmpty();
-        result.Reason.Should().Be(reason);
-        result.EstimatedSpaceReclaimed.Should().Be(0);
+        _ = result.ShouldCleanup.Should().BeFalse();
+        _ = result.CandidatesForDeletion.Should().BeEmpty();
+        _ = result.Reason.Should().Be(reason);
+        _ = result.EstimatedSpaceReclaimed.Should().Be(0);
     }
 
     [Fact]
@@ -200,7 +200,7 @@ public class SnapshotPolicyEvaluationTests
 
         // Assert
         var eventsSinceSnapshot = context.CurrentVersion - context.LatestSnapshotVersion;
-        eventsSinceSnapshot.Should().Be(25);
+        _ = eventsSinceSnapshot.Should().Be(25);
     }
 
     [Fact]
@@ -213,9 +213,9 @@ public class SnapshotPolicyEvaluationTests
         var result = PolicyValidationResult.CreateValid(warnings);
 
         // Assert
-        result.IsValid.Should().BeTrue();
-        result.Issues.Should().BeEmpty();
-        result.Warnings.Should().BeEquivalentTo(warnings);
+        _ = result.IsValid.Should().BeTrue();
+        _ = result.Issues.Should().BeEmpty();
+        _ = result.Warnings.Should().BeEquivalentTo(warnings);
     }
 
     [Fact]
@@ -229,9 +229,9 @@ public class SnapshotPolicyEvaluationTests
         var result = PolicyValidationResult.CreateInvalid(issues, warnings);
 
         // Assert
-        result.IsValid.Should().BeFalse();
-        result.Issues.Should().BeEquivalentTo(issues);
-        result.Warnings.Should().BeEquivalentTo(warnings);
+        _ = result.IsValid.Should().BeFalse();
+        _ = result.Issues.Should().BeEquivalentTo(issues);
+        _ = result.Warnings.Should().BeEquivalentTo(warnings);
     }
 
     [Fact]
@@ -251,7 +251,7 @@ public class SnapshotPolicyEvaluationTests
         };
 
         // Assert
-        statistics.AverageEventSize.Should().Be(500.0);
+        _ = statistics.AverageEventSize.Should().Be(500.0);
     }
 
     [Fact]
@@ -267,7 +267,7 @@ public class SnapshotPolicyEvaluationTests
         };
 
         // Assert
-        statistics.AverageEventSize.Should().Be(0.0);
+        _ = statistics.AverageEventSize.Should().Be(0.0);
     }
 
     [Theory]
@@ -289,7 +289,7 @@ public class SnapshotPolicyEvaluationTests
         };
 
         // Assert
-        content.CompressionRatio.Should().BeApproximately(expectedRatio, 0.001);
+        _ = content.CompressionRatio.Should().BeApproximately(expectedRatio, 0.001);
     }
 
     [Fact]
@@ -303,10 +303,10 @@ public class SnapshotPolicyEvaluationTests
         var result = ContentValidationResult.CreateValid(contentHash, metadata);
 
         // Assert
-        result.IsValid.Should().BeTrue();
-        result.ContentHash.Should().Be(contentHash);
-        result.Metadata.Should().Contain("test", "value");
-        result.Issues.Should().BeEmpty();
+        _ = result.IsValid.Should().BeTrue();
+        _ = result.ContentHash.Should().Be(contentHash);
+        _ = result.Metadata.Should().Contain("test", "value");
+        _ = result.Issues.Should().BeEmpty();
     }
 
     [Fact]
@@ -320,10 +320,10 @@ public class SnapshotPolicyEvaluationTests
         var result = ContentValidationResult.CreateInvalid(issues, metadata);
 
         // Assert
-        result.IsValid.Should().BeFalse();
-        result.Issues.Should().BeEquivalentTo(issues);
-        result.Metadata.Should().Contain("error", "details");
-        result.ContentHash.Should().BeNull();
+        _ = result.IsValid.Should().BeFalse();
+        _ = result.Issues.Should().BeEquivalentTo(issues);
+        _ = result.Metadata.Should().Contain("error", "details");
+        _ = result.ContentHash.Should().BeNull();
     }
 
     [Fact]
@@ -345,10 +345,10 @@ public class SnapshotPolicyEvaluationTests
         };
 
         // Assert
-        candidate.Metadata.Should().Be(metadata);
-        candidate.CleanupReason.Should().Be(cleanupReason);
-        candidate.Priority.Should().Be(priority);
-        candidate.EstimatedSpaceReclaimed.Should().Be(spaceReclaimed);
+        _ = candidate.Metadata.Should().Be(metadata);
+        _ = candidate.CleanupReason.Should().Be(cleanupReason);
+        _ = candidate.Priority.Should().Be(priority);
+        _ = candidate.EstimatedSpaceReclaimed.Should().Be(spaceReclaimed);
     }
 
     /// <summary>
@@ -390,7 +390,7 @@ public class SnapshotContentProcessingTests
         };
 
         // Assert
-        content.CompressionRatio.Should().Be(1.0);
+        _ = content.CompressionRatio.Should().Be(1.0);
     }
 
     [Fact]
@@ -416,11 +416,11 @@ public class SnapshotContentProcessingTests
         };
 
         // Assert
-        content.Data.Should().BeEquivalentTo(data);
-        content.ContentType.Should().Be("application/octet-stream");
-        content.Metadata.Should().Contain("algorithm", "gzip");
-        content.Metadata.Should().Contain("level", 6);
-        content.ProcessingTime.Should().Be(TimeSpan.FromMilliseconds(50));
+        _ = content.Data.Should().BeEquivalentTo(data);
+        _ = content.ContentType.Should().Be("application/octet-stream");
+        _ = content.Metadata.Should().Contain("algorithm", "gzip");
+        _ = content.Metadata.Should().Contain("level", 6);
+        _ = content.ProcessingTime.Should().Be(TimeSpan.FromMilliseconds(50));
     }
 }
 
@@ -451,14 +451,14 @@ public class SnapshotResultTests
             timeSaved);
 
         // Assert
-        result.Success.Should().BeTrue();
-        result.State.Should().Be(state);
-        result.FinalVersion.Should().Be(finalVersion);
-        result.SnapshotVersion.Should().Be(snapshotVersion);
-        result.EventsReplayed.Should().Be(eventsReplayed);
-        result.RestorationTime.Should().Be(restorationTime);
-        result.TimeSaved.Should().Be(timeSaved);
-        result.Error.Should().BeNull();
+        _ = result.Success.Should().BeTrue();
+        _ = result.State.Should().Be(state);
+        _ = result.FinalVersion.Should().Be(finalVersion);
+        _ = result.SnapshotVersion.Should().Be(snapshotVersion);
+        _ = result.EventsReplayed.Should().Be(eventsReplayed);
+        _ = result.RestorationTime.Should().Be(restorationTime);
+        _ = result.TimeSaved.Should().Be(timeSaved);
+        _ = result.Error.Should().BeNull();
     }
 
     [Fact]
@@ -476,11 +476,11 @@ public class SnapshotResultTests
             restorationTime: restorationTime);
 
         // Assert
-        result.Success.Should().BeFalse();
-        result.Error.Should().Be(error);
-        result.ErrorCode.Should().Be(errorCode);
-        result.RestorationTime.Should().Be(restorationTime);
-        result.State.Should().BeNull();
+        _ = result.Success.Should().BeFalse();
+        _ = result.Error.Should().Be(error);
+        _ = result.ErrorCode.Should().Be(errorCode);
+        _ = result.RestorationTime.Should().Be(restorationTime);
+        _ = result.State.Should().BeNull();
     }
 
     [Fact]
@@ -493,12 +493,12 @@ public class SnapshotResultTests
         var result = SnapshotValidationResult.CreateValid(metadata);
 
         // Assert
-        result.IsValid.Should().BeTrue();
-        result.ContentHashValid.Should().BeTrue();
-        result.CompressionValid.Should().BeTrue();
-        result.SerializationValid.Should().BeTrue();
-        result.Issues.Should().BeEmpty();
-        result.Metadata.Should().Be(metadata);
+        _ = result.IsValid.Should().BeTrue();
+        _ = result.ContentHashValid.Should().BeTrue();
+        _ = result.CompressionValid.Should().BeTrue();
+        _ = result.SerializationValid.Should().BeTrue();
+        _ = result.Issues.Should().BeEmpty();
+        _ = result.Metadata.Should().Be(metadata);
     }
 
     [Fact]
@@ -515,11 +515,11 @@ public class SnapshotResultTests
             serializationValid: true);
 
         // Assert
-        result.IsValid.Should().BeFalse();
-        result.ContentHashValid.Should().BeFalse();
-        result.CompressionValid.Should().BeFalse();
-        result.SerializationValid.Should().BeTrue();
-        result.Issues.Should().BeEquivalentTo(issues);
+        _ = result.IsValid.Should().BeFalse();
+        _ = result.ContentHashValid.Should().BeFalse();
+        _ = result.CompressionValid.Should().BeFalse();
+        _ = result.SerializationValid.Should().BeTrue();
+        _ = result.Issues.Should().BeEquivalentTo(issues);
     }
 
     [Fact]
@@ -550,12 +550,12 @@ public class SnapshotResultTests
             cleanupTime);
 
         // Assert
-        result.Success.Should().BeTrue();
-        result.SnapshotsDeleted.Should().Be(snapshotsDeleted);
-        result.SpaceReclaimed.Should().Be(spaceReclaimed);
-        result.CleanupDetails.Should().HaveCount(1);
-        result.CleanupTime.Should().Be(cleanupTime);
-        result.Error.Should().BeNull();
+        _ = result.Success.Should().BeTrue();
+        _ = result.SnapshotsDeleted.Should().Be(snapshotsDeleted);
+        _ = result.SpaceReclaimed.Should().Be(spaceReclaimed);
+        _ = result.CleanupDetails.Should().HaveCount(1);
+        _ = result.CleanupTime.Should().Be(cleanupTime);
+        _ = result.Error.Should().BeNull();
     }
 
     /// <summary>

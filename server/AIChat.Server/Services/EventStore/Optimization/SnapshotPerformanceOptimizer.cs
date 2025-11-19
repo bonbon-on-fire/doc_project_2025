@@ -190,16 +190,16 @@ public sealed class SnapshotPerformanceOptimizer : IDisposable
                 if (result.Success && _configuration.EnableCaching)
                 {
                     CacheSnapshot(streamId, result, TimeSpan.Zero);
-                    Interlocked.Increment(ref successCount);
+                    _ = Interlocked.Increment(ref successCount);
                 }
                 else
                 {
-                    Interlocked.Increment(ref failureCount);
+                    _ = Interlocked.Increment(ref failureCount);
                 }
             }
             catch (Exception ex)
             {
-                Interlocked.Increment(ref failureCount);
+                _ = Interlocked.Increment(ref failureCount);
                 lock (errors)
                 {
                     errors.Add($"{streamId}: {ex.Message}");
@@ -298,7 +298,7 @@ public sealed class SnapshotPerformanceOptimizer : IDisposable
             }
 
             // Remove expired entry
-            _snapshotCache.TryRemove(streamId, out _);
+            _ = _snapshotCache.TryRemove(streamId, out _);
         }
 
         result = default!;
@@ -322,7 +322,7 @@ public sealed class SnapshotPerformanceOptimizer : IDisposable
             EstimatedSize = EstimateObjectSize(result.Data!)
         };
 
-        _snapshotCache.AddOrUpdate(streamId, cachedSnapshot, (_, _) => cachedSnapshot);
+        _ = _snapshotCache.AddOrUpdate(streamId, cachedSnapshot, (_, _) => cachedSnapshot);
 
         // Also cache metadata separately for quick access
         var cachedMetadata = new CachedMetadata
@@ -331,13 +331,13 @@ public sealed class SnapshotPerformanceOptimizer : IDisposable
             CachedAt = DateTimeOffset.UtcNow
         };
 
-        _metadataCache.AddOrUpdate(streamId, cachedMetadata, (_, _) => cachedMetadata);
+        _ = _metadataCache.AddOrUpdate(streamId, cachedMetadata, (_, _) => cachedMetadata);
     }
 
     private void InvalidateStreamCache(string streamId)
     {
-        _snapshotCache.TryRemove(streamId, out _);
-        _metadataCache.TryRemove(streamId, out _);
+        _ = _snapshotCache.TryRemove(streamId, out _);
+        _ = _metadataCache.TryRemove(streamId, out _);
     }
 
     private void ProcessBatchedOperations(object? state)
@@ -403,28 +403,28 @@ public sealed class SnapshotPerformanceOptimizer : IDisposable
     private void RecordCacheHit(string streamId, TimeSpan retrievalTime)
     {
         var metrics = GetOrCreateMetrics(streamId);
-        Interlocked.Increment(ref metrics.CacheHits);
+        _ = Interlocked.Increment(ref metrics.CacheHits);
         metrics.RecordRetrievalTime(retrievalTime);
     }
 
     private void RecordCacheMiss(string streamId, TimeSpan retrievalTime)
     {
         var metrics = GetOrCreateMetrics(streamId);
-        Interlocked.Increment(ref metrics.CacheMisses);
+        _ = Interlocked.Increment(ref metrics.CacheMisses);
         metrics.RecordRetrievalTime(retrievalTime);
     }
 
     private void RecordCreateSuccess(string streamId, TimeSpan creationTime)
     {
         var metrics = GetOrCreateMetrics(streamId);
-        Interlocked.Increment(ref metrics.CreateOperations);
+        _ = Interlocked.Increment(ref metrics.CreateOperations);
         metrics.RecordCreationTime(creationTime);
     }
 
     private void RecordError(string streamId, string operation, TimeSpan operationTime, Exception exception)
     {
         var metrics = GetOrCreateMetrics(streamId);
-        Interlocked.Increment(ref metrics.ErrorCount);
+        _ = Interlocked.Increment(ref metrics.ErrorCount);
 
         _logger.LogWarning(exception, "Error in optimized snapshot operation {Operation} for stream {StreamId} after {ElapsedTime}ms",
             operation, streamId, operationTime.TotalMilliseconds);

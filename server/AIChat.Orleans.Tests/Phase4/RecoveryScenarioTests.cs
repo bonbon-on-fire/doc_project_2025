@@ -51,17 +51,17 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
                 }
 
                 var services = _fixture.WebAppFactory.Services;
-                var logger = services.GetRequiredService<ILogger<AIChat.Orleans.Tests.TestUtilities.Mocks.StreamingBridge>>();
-                var config = services.GetRequiredService<IOptions<AIChat.Orleans.Tests.TestUtilities.Mocks.StreamingConfiguration>>();
-                return new AIChat.Orleans.Tests.TestUtilities.Mocks.StreamingBridge(logger, config);
+                var logger = services.GetRequiredService<ILogger<TestUtilities.Mocks.StreamingBridge>>();
+                var config = services.GetRequiredService<IOptions<TestUtilities.Mocks.StreamingConfiguration>>();
+                return new TestUtilities.Mocks.StreamingBridge(logger, config);
             });
 
         // Replace factory in DI container
         var serviceProvider = _fixture.WebAppFactory.Services;
         var resilientManager = new TestResilientStreamManager(
-            serviceProvider.GetRequiredService<ILogger<AIChat.Orleans.Tests.TestUtilities.Mocks.ResilientStreamManager>>(),
+            serviceProvider.GetRequiredService<ILogger<TestUtilities.Mocks.ResilientStreamManager>>(),
             mockBridgeFactory.Object,
-            serviceProvider.GetRequiredService<IOptions<AIChat.Orleans.Tests.TestUtilities.Mocks.ResilientStreamingConfiguration>>()
+            serviceProvider.GetRequiredService<IOptions<TestUtilities.Mocks.ResilientStreamingConfiguration>>()
         );
 
         // Act
@@ -100,7 +100,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
         _fixture.ResilientStreamingEnabled = true;
         await _fixture.InitializeAsync();
 
-        var config = new AIChat.Orleans.Tests.TestUtilities.Mocks.ResilientStreamingConfiguration
+        var config = new TestUtilities.Mocks.ResilientStreamingConfiguration
         {
             Enabled = true,
             PartialMessageBufferSize = 5,
@@ -108,7 +108,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
             RetryDelayMs = 100,
         };
 
-        var logger = new Mock<ILogger<AIChat.Orleans.Tests.TestUtilities.Mocks.ResilientStreamManager>>();
+        var logger = new Mock<ILogger<TestUtilities.Mocks.ResilientStreamManager>>();
         var bridgeFactory = new Mock<ITestStreamingBridgeFactory>();
 
         var manager = new TestResilientStreamManager(
@@ -181,7 +181,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
         _fixture.ResilientStreamingEnabled = true;
         await _fixture.InitializeAsync();
 
-        var config = new AIChat.Orleans.Tests.TestUtilities.Mocks.ResilientStreamingConfiguration
+        var config = new TestUtilities.Mocks.ResilientStreamingConfiguration
         {
             Enabled = true,
             CircuitBreakerThreshold = 3,
@@ -189,7 +189,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
             MaxRetryAttempts = 1,
         };
 
-        var logger = new Mock<ILogger<AIChat.Orleans.Tests.TestUtilities.Mocks.ResilientStreamManager>>();
+        var logger = new Mock<ILogger<TestUtilities.Mocks.ResilientStreamManager>>();
         var bridgeFactory = new Mock<ITestStreamingBridgeFactory>();
 
         // Setup bridge to always fail
@@ -249,7 +249,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
         _fixture.ResilientStreamingEnabled = true;
         await _fixture.InitializeAsync();
 
-        var config = new AIChat.Orleans.Tests.TestUtilities.Mocks.ResilientStreamingConfiguration
+        var config = new TestUtilities.Mocks.ResilientStreamingConfiguration
         {
             Enabled = true,
             CircuitBreakerThreshold = 2,
@@ -257,7 +257,7 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
             MaxRetryAttempts = 1,
         };
 
-        var logger = new Mock<ILogger<AIChat.Orleans.Tests.TestUtilities.Mocks.ResilientStreamManager>>();
+        var logger = new Mock<ILogger<TestUtilities.Mocks.ResilientStreamManager>>();
         var bridgeFactory = new Mock<ITestStreamingBridgeFactory>();
 
         var attemptCount = 0;
@@ -367,14 +367,14 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
     public async Task RetryMechanismShouldRespectConfiguration()
     {
         // Arrange
-        var config = new AIChat.Orleans.Tests.TestUtilities.Mocks.ResilientStreamingConfiguration
+        var config = new TestUtilities.Mocks.ResilientStreamingConfiguration
         {
             Enabled = true,
             MaxRetryAttempts = 3,
             RetryDelayMs = 100,
         };
 
-        var logger = new Mock<ILogger<AIChat.Orleans.Tests.TestUtilities.Mocks.ResilientStreamManager>>();
+        var logger = new Mock<ILogger<TestUtilities.Mocks.ResilientStreamManager>>();
         var bridgeFactory = new Mock<ITestStreamingBridgeFactory>();
 
         var attemptCount = 0;
@@ -428,14 +428,14 @@ public class RecoveryScenarioTests : IClassFixture<OrleansTestFixture>
         var processedMessages = new HashSet<string>();
         var testState = new TestState();
 
-        var config = new AIChat.Orleans.Tests.TestUtilities.Mocks.ResilientStreamingConfiguration
+        var config = new TestUtilities.Mocks.ResilientStreamingConfiguration
         {
             Enabled = true,
             PartialMessageBufferSize = 10,
             MaxRetryAttempts = 2,
         };
 
-        var logger = new Mock<ILogger<AIChat.Orleans.Tests.TestUtilities.Mocks.ResilientStreamManager>>();
+        var logger = new Mock<ILogger<TestUtilities.Mocks.ResilientStreamManager>>();
         var bridgeFactory = new Mock<ITestStreamingBridgeFactory>();
 
         _ = bridgeFactory

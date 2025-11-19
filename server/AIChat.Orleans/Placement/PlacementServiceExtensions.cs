@@ -16,10 +16,10 @@ public static class PlacementServiceExtensions
     public static IServiceCollection AddPlacementMetrics(this IServiceCollection services)
     {
         // Register placement metrics collector for tracking placement effectiveness
-        services.AddSingleton<IPlacementMetricsCollector, PlacementMetricsCollector>();
+        _ = services.AddSingleton<IPlacementMetricsCollector, PlacementMetricsCollector>();
 
         // Register the grain filter that will actually collect metrics
-        services.AddSingleton<PlacementMetricsFilter>();
+        _ = services.AddSingleton<PlacementMetricsFilter>();
 
         return services;
     }

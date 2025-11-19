@@ -237,7 +237,7 @@ public class StreamLifecycleTests : IClassFixture<OrleansTestFixture>
         await _fixture.InitializeAsync();
 
         var loggerMock = new Mock<ILogger<StreamingBridge>>();
-        var config = new AIChat.Orleans.Tests.TestUtilities.Mocks.StreamingConfiguration
+        var config = new TestUtilities.Mocks.StreamingConfiguration
         {
             BufferSize = 5, // Small buffer for testing
             BackpressureThreshold = 80,

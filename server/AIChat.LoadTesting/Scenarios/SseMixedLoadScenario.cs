@@ -230,7 +230,7 @@ public class SseMixedLoadScenario : LoadTestScenarioBase
                 }
                 finally
                 {
-                    connectionSemaphore.Release();
+                    _ = connectionSemaphore.Release();
                 }
             }, cancellationToken));
         }

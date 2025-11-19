@@ -59,7 +59,7 @@ public abstract class BaseApiTest : IClassFixture<WebApplicationFactory<Program>
                 ? Path.Combine(solutionRoot, "test-logs")
                 : Path.GetFullPath("test-logs");
 
-            Directory.CreateDirectory(logPath);
+            _ = Directory.CreateDirectory(logPath);
 
             var logFileName = Path.Combine(logPath, "server-tests-.jsonl");
 

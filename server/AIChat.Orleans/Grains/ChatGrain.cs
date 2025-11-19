@@ -29,7 +29,7 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
     private readonly ISignalRBroadcastService _signalRBroadcast;
     private readonly IStreamingAgent? _streamingAgent;
 #pragma warning disable IDE0052 // Remove unread private members - field reserved for future MCP integration
-    private readonly AIChat.Orleans.Services.IToolingService? _toolingService;
+    private readonly IToolingService? _toolingService;
 #pragma warning restore IDE0052
 
     private IGrainTimer? _cleanupTimer;
@@ -60,7 +60,7 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
         IOrleansMetricsCollector metricsCollector,
         ISignalRBroadcastService? signalRBroadcast = null,
         IStreamingAgent? streamingAgent = null,
-        AIChat.Orleans.Services.IToolingService? toolingService = null
+        IToolingService? toolingService = null
     )
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -324,7 +324,7 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
             {
                 try
                 {
-                    JsonDocument.Parse(metadata); // Validate JSON format
+                    _ = JsonDocument.Parse(metadata); // Validate JSON format
                 }
                 catch (JsonException ex)
                 {
@@ -561,7 +561,7 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
             var queuedProcessedCount = await ProcessQueuedMessagesAsync();
 
             // Pipeline step 5: Handle sequence gap timeouts (periodic recovery)
-            await HandleSequenceGapTimeoutsAsync();
+            _ = await HandleSequenceGapTimeoutsAsync();
 
             // Pipeline step 6: Persist state changes
             await WriteStateAsync();
@@ -828,7 +828,7 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
                     if (!status.AcknowledgedBy.Contains(participantId))
                     {
                         status.AcknowledgedBy.Add(participantId);
-                        status.PendingDelivery.Remove(participantId);
+                        _ = status.PendingDelivery.Remove(participantId);
                         statusChanged = true;
 
                         // Check if all participants have acknowledged
@@ -1111,7 +1111,7 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
                     Metadata = JsonSerializer.Serialize(new { StreamId = streamId, StreamCompleted = true })
                 };
 
-                await ProcessMessageAsync(finalMessage, cancellationToken);
+                _ = await ProcessMessageAsync(finalMessage, cancellationToken);
             }
 
             await WriteStateAsync();
@@ -1370,7 +1370,7 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
             // Remove participant (Orleans grain single-threaded, no lock needed)
             if (State.Participants.TryGetValue(participantId, out var removedParticipant))
             {
-                State.Participants.Remove(participantId);
+                _ = State.Participants.Remove(participantId);
                 State.ChatMetadata.ParticipantCount = State.Participants.Count;
                 State.ChatMetadata.LastActivityAt = DateTime.UtcNow;
                 State.ChatMetadata.Version++;
@@ -1850,7 +1850,7 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
         // Perform validation of sequence state periodically
         if (State.MessageSequenceNumber % 100 == 0) // Every 100 messages
         {
-            ValidateAndRecoverSequenceState();
+            _ = ValidateAndRecoverSequenceState();
         }
 
         return new SequenceProcessingInfo
@@ -2079,7 +2079,7 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
             }
 
             // After skipping sequences, try to process newly available queued messages
-            await ProcessQueuedMessagesAsync();
+            _ = await ProcessQueuedMessagesAsync();
 
             // Record recovery metrics
             await RecordSequenceRecoveryMetricsAsync(timedOutSequences.Count);
@@ -2293,7 +2293,7 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
                 {
                     stateChanged = true;
                 }
-                status.PendingDelivery.Remove(participantId);
+                _ = status.PendingDelivery.Remove(participantId);
             }
 
             if (stateChanged)
@@ -2571,7 +2571,7 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
         // Remove completed operations
         foreach (var operationId in completedOperations)
         {
-            State.PendingOperations.Remove(operationId);
+            _ = State.PendingOperations.Remove(operationId);
         }
 
         if (completedOperations.Count > 0)
@@ -2624,7 +2624,7 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
 
                 foreach (var streamId in expiredStreams)
                 {
-                    State.ActiveStreams.Remove(streamId);
+                    _ = State.ActiveStreams.Remove(streamId);
                     stateChanged = true;
                     _logger.LogInformation("Cleaned up expired stream {StreamId} in chat {ChatId}", streamId, State.ChatMetadata.ChatId);
                 }
@@ -2637,7 +2637,7 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
 
                 foreach (var messageId in expiredDeliveryStatus)
                 {
-                    State.MessageDeliveryStatus.Remove(messageId);
+                    _ = State.MessageDeliveryStatus.Remove(messageId);
                     stateChanged = true;
                 }
 
@@ -2649,7 +2649,7 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
 
                 foreach (var operationId in expiredOperations)
                 {
-                    State.PendingOperations.Remove(operationId);
+                    _ = State.PendingOperations.Remove(operationId);
                     stateChanged = true;
                     _logger.LogInformation("Cleaned up expired pending operation {OperationId} in chat {ChatId}", operationId, State.ChatMetadata.ChatId);
                 }
@@ -2894,7 +2894,7 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
 
             foreach (var key in staleKeys)
             {
-                State.SequenceGapTimeouts.Remove(key);
+                _ = State.SequenceGapTimeouts.Remove(key);
             }
         }
 
@@ -3089,12 +3089,12 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
                 State.RecentMessages.Enqueue(assistantMessage);
                 State.ChatMetadata.MessageCount++;
                 State.ChatMetadata.LastActivityAt = DateTime.UtcNow;
-                State.ActiveStreams.Remove(streamId);
+                _ = State.ActiveStreams.Remove(streamId);
 
                 // Trim recent messages buffer if needed
                 while (State.RecentMessages.Count > _configuration.ChatGrain.MaxRecentMessages)
                 {
-                    State.RecentMessages.Dequeue();
+                    _ = State.RecentMessages.Dequeue();
                 }
             }
             await WriteStateAsync();
@@ -3125,7 +3125,7 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
             // Clean up partial stream state
             lock (_stateLock)
             {
-                State.ActiveStreams.Remove(streamId);
+                _ = State.ActiveStreams.Remove(streamId);
             }
             await WriteStateAsync();
 
@@ -3139,7 +3139,7 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
             // Clean up failed stream state
             lock (_stateLock)
             {
-                State.ActiveStreams.Remove(streamId);
+                _ = State.ActiveStreams.Remove(streamId);
             }
             await WriteStateAsync();
 
@@ -3152,14 +3152,14 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
     /// Converts ChatMessage objects to IMessage format expected by IStreamingAgent.
     /// </summary>
     /// <returns>Enumerable of IMessage for LLM processing</returns>
-    private List<AchieveAi.LmDotnetTools.LmCore.Messages.IMessage> BuildLLMContext()
+    private List<IMessage> BuildLLMContext()
     {
-        var messages = new List<AchieveAi.LmDotnetTools.LmCore.Messages.IMessage>();
+        var messages = new List<IMessage>();
 
         // Add system prompt if configured
         if (!string.IsNullOrEmpty(State.ChatMetadata.SystemPrompt))
         {
-            messages.Add(new AchieveAi.LmDotnetTools.LmCore.Messages.TextMessage
+            messages.Add(new TextMessage
             {
                 Text = State.ChatMetadata.SystemPrompt,
                 Role = Role.System
@@ -3177,7 +3177,7 @@ public sealed class ChatGrain : Grain<ChatGrainState>, IChatGrain, IDisposable
                     continue;
                 }
 
-                messages.Add(new AchieveAi.LmDotnetTools.LmCore.Messages.TextMessage
+                messages.Add(new TextMessage
                 {
                     Text = chatMsg.Content,
                     Role = Enum.Parse<Role>(chatMsg.Role, ignoreCase: true)

@@ -101,12 +101,12 @@ public sealed class BufferedSignalRBroadcastService : ISignalRBroadcastService, 
         ArgumentNullException.ThrowIfNull(methodName);
         ArgumentNullException.ThrowIfNull(payload);
 
-        Interlocked.Increment(ref _totalBroadcastRequests);
+        _ = Interlocked.Increment(ref _totalBroadcastRequests);
 
         using var activity = ActivitySource.StartActivity("SignalRBroadcast");
         var stopwatch = Stopwatch.StartNew();
-        activity?.SetTag("group.name", groupName);
-        activity?.SetTag("method.name", methodName);
+        _ = (activity?.SetTag("group.name", groupName));
+        _ = (activity?.SetTag("method.name", methodName));
 
         try
         {
@@ -116,17 +116,17 @@ public sealed class BufferedSignalRBroadcastService : ISignalRBroadcastService, 
             if (shouldUseBuffer)
             {
                 await BroadcastViaBufferAsync(groupName, methodName, payload);
-                Interlocked.Increment(ref _totalBufferedRequests);
-                activity?.SetTag("delivery.method", "buffered");
+                _ = Interlocked.Increment(ref _totalBufferedRequests);
+                _ = (activity?.SetTag("delivery.method", "buffered"));
             }
             else
             {
                 await BroadcastDirectlyAsync(groupName, methodName, payload);
-                Interlocked.Increment(ref _totalDirectRequests);
-                activity?.SetTag("delivery.method", "direct");
+                _ = Interlocked.Increment(ref _totalDirectRequests);
+                _ = (activity?.SetTag("delivery.method", "direct"));
             }
 
-            activity?.SetTag("broadcast.success", true);
+            _ = (activity?.SetTag("broadcast.success", true));
 
             _logger.LogDebug(
                 "Broadcast completed successfully: Group={GroupName}, Method={MethodName}, " +
@@ -135,9 +135,9 @@ public sealed class BufferedSignalRBroadcastService : ISignalRBroadcastService, 
         }
         catch (Exception ex)
         {
-            Interlocked.Increment(ref _totalFailedRequests);
-            activity?.SetTag("broadcast.success", false);
-            activity?.SetTag("error.type", ex.GetType().Name);
+            _ = Interlocked.Increment(ref _totalFailedRequests);
+            _ = (activity?.SetTag("broadcast.success", false));
+            _ = (activity?.SetTag("error.type", ex.GetType().Name));
 
             _logger.LogError(ex,
                 "Failed to broadcast message: Group={GroupName}, Method={MethodName}",
@@ -153,7 +153,7 @@ public sealed class BufferedSignalRBroadcastService : ISignalRBroadcastService, 
                         groupName, methodName);
 
                     await BroadcastDirectlyAsync(groupName, methodName, payload);
-                    Interlocked.Increment(ref _totalDirectRequests);
+                    _ = Interlocked.Increment(ref _totalDirectRequests);
 
                     _logger.LogInformation(
                         "Fallback broadcast succeeded: Group={GroupName}, Method={MethodName}",

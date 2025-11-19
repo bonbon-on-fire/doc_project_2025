@@ -438,7 +438,7 @@ public sealed class StateRecoveryDetector : IStateRecoveryDetector
         {
             // Basic JSON serialization test to validate structure
             var json = System.Text.Json.JsonSerializer.Serialize(state);
-            System.Text.Json.JsonSerializer.Deserialize<T>(json);
+            _ = System.Text.Json.JsonSerializer.Deserialize<T>(json);
             return true;
         }
         catch

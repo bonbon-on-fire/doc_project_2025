@@ -190,7 +190,7 @@ public class SseConnection : ISseConnection
         }
 
         // Complete the message channel
-        _messageChannel.Writer.TryComplete();
+        _ = _messageChannel.Writer.TryComplete();
 
         _metricsRecorder.RecordDisconnection(ConnectionId, "Manual disconnect", DateTime.UtcNow);
         _logger.LogInformation("SSE connection {ConnectionId} disconnected", ConnectionId);

@@ -256,7 +256,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
     /// <inheritdoc />
     public async Task RecordActivity(ActivityType type, string metadata)
     {
-        await RecordActivityAsync(type, metadata, CancellationToken.None);
+        _ = await RecordActivityAsync(type, metadata, CancellationToken.None);
     }
 
     /// <summary>
@@ -276,7 +276,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             var consentResult = await _activityPrivacy.ValidateUserConsentAsync(State.UserId, type, cancellationToken);
             if (!consentResult.ConsentGranted)
             {
-                activity?.SetTag("consent.granted", false);
+                _ = (activity?.SetTag("consent.granted", false));
                 return StateResult.FromSuccess(); // Respect user privacy preference
             }
 
@@ -284,7 +284,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             var sanitizationResult = await _activityPrivacy.SanitizeActivityMetadataAsync(metadata, cancellationToken);
             if (!sanitizationResult.IsValid)
             {
-                activity?.SetTag("sanitization.failed", true);
+                _ = (activity?.SetTag("sanitization.failed", true));
                 return StateResult.FromError("Activity metadata contains PII that cannot be sanitized");
             }
 
@@ -318,7 +318,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
             // 8. Persist state
             await WriteStateAsync();
 
-            activity?.SetTag("activity.recorded", true);
+            _ = (activity?.SetTag("activity.recorded", true));
             OrleansActivitySource.SetSuccess(activity);
 
             _logger.LogDebug(
@@ -1193,7 +1193,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                 var chatGrain = GrainFactory.GetGrain<IChatGrain>(message.ChatId);
 
                 // Process the message through the chat grain
-                await chatGrain.ProcessMessageAsync(message);
+                _ = await chatGrain.ProcessMessageAsync(message);
 
                 // Update operation status to in progress
                 if (State.ActiveOperations.TryGetValue(operationId, out var operation))
@@ -3911,7 +3911,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
         ArgumentNullException.ThrowIfNull(preferences);
 
         using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "UpdatePreferences", State.UserId);
-        activity?.SetTag("preferences.version", preferences.Version);
+        _ = (activity?.SetTag("preferences.version", preferences.Version));
 
         try
         {
@@ -3964,8 +3964,8 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
         }
 
         using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "UpdateMessagePreference", State.UserId);
-        activity?.SetTag("message.id", messageId);
-        activity?.SetTag("message.expanded", isExpanded);
+        _ = (activity?.SetTag("message.id", messageId));
+        _ = (activity?.SetTag("message.expanded", isExpanded));
 
         try
         {
@@ -4021,7 +4021,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
         }
 
         using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "GetMessagePreference", State.UserId);
-        activity?.SetTag("message.id", messageId);
+        _ = (activity?.SetTag("message.id", messageId));
 
         try
         {
@@ -4054,7 +4054,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
         ArgumentNullException.ThrowIfNull(preferences);
 
         using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "BulkUpdateMessagePreferences", State.UserId);
-        activity?.SetTag("preferences.count", preferences.Count);
+        _ = (activity?.SetTag("preferences.count", preferences.Count));
 
         try
         {
@@ -4108,7 +4108,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
         CancellationToken cancellationToken = default)
     {
         using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "ArchiveOldMessagePreferences", State.UserId);
-        activity?.SetTag("archive.older_than", olderThan.ToString("O"));
+        _ = (activity?.SetTag("archive.older_than", olderThan.ToString("O")));
 
         try
         {
@@ -4126,7 +4126,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
 
             foreach (var messageId in toRemove)
             {
-                State.Preferences.MessagePreferences.Remove(messageId);
+                _ = State.Preferences.MessagePreferences.Remove(messageId);
             }
 
             if (toRemove.Count > 0)
@@ -4160,7 +4160,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
         CancellationToken cancellationToken = default)
     {
         using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "UpdateSelectedMode", State.UserId);
-        activity?.SetTag("mode.id", modeId ?? "null");
+        _ = (activity?.SetTag("mode.id", modeId ?? "null"));
 
         try
         {
@@ -4233,7 +4233,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
         ArgumentNullException.ThrowIfNull(value);
 
         using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "UpdateUIPreference", State.UserId);
-        activity?.SetTag("preference.key", key);
+        _ = (activity?.SetTag("preference.key", key));
 
         try
         {
@@ -4278,7 +4278,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
         }
 
         using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "GetUIPreference", State.UserId);
-        activity?.SetTag("preference.key", key);
+        _ = (activity?.SetTag("preference.key", key));
 
         try
         {
@@ -4307,7 +4307,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
                     var deserializedValue = System.Text.Json.JsonSerializer.Deserialize<T>(stringValue);
                     return StateResult<T?>.FromSuccess(deserializedValue);
                 }
-                catch (System.Text.Json.JsonException)
+                catch (JsonException)
                 {
                     // Fall through to type conversion error
                 }
@@ -4336,7 +4336,7 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
         }
 
         using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "RemoveUIPreference", State.UserId);
-        activity?.SetTag("preference.key", key);
+        _ = (activity?.SetTag("preference.key", key));
 
         try
         {
@@ -4382,8 +4382,8 @@ public sealed class UserGrain : Grain<UserGrainState>, IUserGrain, IDisposable
         ArgumentNullException.ThrowIfNull(import);
 
         using var activity = OrleansActivitySource.StartGrainActivity("UserGrain", "ImportClientPreferences", State.UserId);
-        activity?.SetTag("import.source", import.ImportSource);
-        activity?.SetTag("import.message_count", import.MessagePreferences.Count);
+        _ = (activity?.SetTag("import.source", import.ImportSource));
+        _ = (activity?.SetTag("import.message_count", import.MessagePreferences.Count));
 
         try
         {
