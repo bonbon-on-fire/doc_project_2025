@@ -314,12 +314,12 @@ pwsh <skill_base_path>/scripts/build_and_group_errors_and_warnings.ps1
 
 | Script | Purpose | Documentation |
 |--------|---------|---------------|
-| `build_and_group_errors_and_warnings.ps1` | Build & group warnings by code **IMPORTANT**| [→ Details](references/scripts/build-and-group-errors.md) |
-| `format-code.ps1` | Auto-fix code style issues **IMPORTANT** | [→ Details](references/scripts/format-code.md) |
-| `validate-package-versions.ps1` | Detect NuGet version mismatches | [→ Details](references/scripts/validate-package-versions.md) |
-| `enable-roslynator-analyzers.ps1` | Add Roslynator to all projects | [→ Details](references/scripts/enable-roslynator-analyzers.md) |
-| `configure-roslynator-editorconfig.ps1` | Configure .editorconfig rules | [→ Details](references/scripts/configure-roslynator-editorconfig.md) |
-| `validate-code-style-enforcement.ps1` | Enable code style during build | [→ Details](references/scripts/validate-code-style-enforcement.md) |
+| `build_and_group_errors_and_warnings.ps1` | Build & group warnings by code **IMPORTANT**| [→ Details](<skill_base_path>/references/scripts/build-and-group-errors.md) |
+| `format-code.ps1` | Auto-fix code style issues **IMPORTANT** | [→ Details](<skill_base_path>/references/scripts/format-code.md) |
+| `validate-package-versions.ps1` | Detect NuGet version mismatches | [→ Details](<skill_base_path>/references/scripts/validate-package-versions.md) |
+| `enable-roslynator-analyzers.ps1` | Add Roslynator to all projects | [→ Details](<skill_base_path>/references/scripts/enable-roslynator-analyzers.md) |
+| `configure-roslynator-editorconfig.ps1` | Configure .editorconfig rules | [→ Details](<skill_base_path>/references/scripts/configure-roslynator-editorconfig.md) |
+| `validate-code-style-enforcement.ps1` | Enable code style during build | [→ Details](<skill_base_path>/references/scripts/validate-code-style-enforcement.md) |
 
 ## Handling Issues
 
@@ -403,7 +403,7 @@ roslynator fix DOC_Project_2025.sln --ignore-compiler-errors --format
 
 6. **Repeat** until zero warnings
 
-**📖 Detailed Guide**: [Warning Codes Guide](references/warning-codes-guide.md)
+**📖 Detailed Guide**: [Warning Codes Guide](<skill_base_path>/references/warning-codes-guide.md)
 
 ### Package Version Issues
 
@@ -414,7 +414,7 @@ roslynator fix DOC_Project_2025.sln --ignore-compiler-errors --format
 **🟡 WARNING** (should review):
 - Minor/patch version variations
 
-**📖 Detailed Guide**: [Package Version Management](references/package-version-management.md)
+**📖 Detailed Guide**: [Package Version Management](<skill_base_path>/references/package-version-management.md)
 
 ### Troubleshooting
 
@@ -425,7 +425,7 @@ Common issues and solutions:
 - **Too many Roslynator warnings** → Start with lower severity
 - **Build time increased** → Exclude submodules from analysis
 
-**📖 Detailed Guide**: [Troubleshooting Guide](references/troubleshooting.md)
+**📖 Detailed Guide**: [Troubleshooting Guide](<skill_base_path>/references/troubleshooting.md)
 
 ## Best Practices
 
@@ -441,7 +441,7 @@ Common issues and solutions:
 8. ✅ **Enable Roslynator** - Get 200+ code quality rules
 9. ✅ **Team consistency** - Commit .editorconfig and .csproj changes
 
-**📖 Detailed Guide**: [Best Practices](references/best-practices.md)
+**📖 Detailed Guide**: [Best Practices](<skill_base_path>/references/best-practices.md)
 
 ## Roslynator Analyzers (Optional but Recommended)
 
@@ -473,33 +473,33 @@ roslynator fix DOC_Project_2025.sln --ignore-compiler-errors --format
 - Initial warnings: 100s
 - Auto-fixable: 200-300+
 
-**📖 Detailed Guide**: [Roslynator Setup Guide](references/roslynator-setup.md)
+**📖 Detailed Guide**: [Roslynator Setup Guide](<skill_base_path>/references/roslynator-setup.md)
 
 ## Examples
 
-- **[Complete Workflow](examples/complete-workflow.md)** - Full workflow from start to commit
-- **[First-Time Setup](examples/first-time-setup.md)** - Initial configuration walkthrough
-- **[Fixing Warnings in Bulk](examples/fixing-warnings-bulk.md)** - Batch fixing strategies
-- **[Package Version Fixes](examples/package-version-fixes.md)** - Step-by-step package fixes
-- **[Roslynator Auto-Fix](examples/roslynator-auto-fix.md)** - Using `roslynator fix` command
+- **[Complete Workflow](<skill_base_path>/examples/complete-workflow.md)** - Full workflow from start to commit
+- **[First-Time Setup](<skill_base_path>/examples/first-time-setup.md)** - Initial configuration walkthrough
+- **[Fixing Warnings in Bulk](<skill_base_path>/examples/fixing-warnings-bulk.md)** - Batch fixing strategies
+- **[Package Version Fixes](<skill_base_path>/examples/package-version-fixes.md)** - Step-by-step package fixes
+- **[Roslynator Auto-Fix](<skill_base_path>/examples/roslynator-auto-fix.md)** - Using `roslynator fix` command
 
 ## References
 
-- **[One-Time Setup Guide](references/one-time-setup-guide.md)** - Complete setup checklist
-- **[Warning Codes Guide](references/warning-codes-guide.md)** - Detailed warning explanations
-- **[Package Version Management](references/package-version-management.md)** - NuGet version guide
-- **[Roslynator Setup](references/roslynator-setup.md)** - Comprehensive Roslynator guide
-- **[Best Practices](references/best-practices.md)** - Zero-warning build strategies
-- **[Troubleshooting](references/troubleshooting.md)** - Common issues and solutions
+- **[One-Time Setup Guide](<skill_base_path>/references/one-time-setup-guide.md)** - Complete setup checklist
+- **[Warning Codes Guide](<skill_base_path>/references/warning-codes-guide.md)** - Detailed warning explanations
+- **[Package Version Management](<skill_base_path>/references/package-version-management.md)** - NuGet version guide
+- **[Roslynator Setup](<skill_base_path>/references/roslynator-setup.md)** - Comprehensive Roslynator guide
+- **[Best Practices](<skill_base_path>/references/best-practices.md)** - Zero-warning build strategies
+- **[Troubleshooting](<skill_base_path>/references/troubleshooting.md)** - Common issues and solutions
 
 ### Script Documentation
 
-- **[format-code.ps1](references/scripts/format-code.md)** - Code formatting
-- **[build_and_group_errors_and_warnings.ps1](references/scripts/build-and-group-errors.md)** - Build validation
-- **[validate-package-versions.ps1](references/scripts/validate-package-versions.md)** - Package validation
-- **[enable-roslynator-analyzers.ps1](references/scripts/enable-roslynator-analyzers.md)** - Enable analyzers
-- **[configure-roslynator-editorconfig.ps1](references/scripts/configure-roslynator-editorconfig.md)** - Configure rules
-- **[validate-code-style-enforcement.ps1](references/scripts/validate-code-style-enforcement.md)** - Style enforcement
+- **[format-code.ps1](<skill_base_path>/references/scripts/format-code.md)** - Code formatting
+- **[build_and_group_errors_and_warnings.ps1](<skill_base_path>/references/scripts/build-and-group-errors.md)** - Build validation
+- **[validate-package-versions.ps1](<skill_base_path>/references/scripts/validate-package-versions.md)** - Package validation
+- **[enable-roslynator-analyzers.ps1](<skill_base_path>/references/scripts/enable-roslynator-analyzers.md)** - Enable analyzers
+- **[configure-roslynator-editorconfig.ps1](<skill_base_path>/references/scripts/configure-roslynator-editorconfig.md)** - Configure rules
+- **[validate-code-style-enforcement.ps1](<skill_base_path>/references/scripts/validate-code-style-enforcement.md)** - Style enforcement
 
 ## Next Steps
 
