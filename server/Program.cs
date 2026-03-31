@@ -33,7 +33,7 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Verbose()
     .WriteTo.Console()
     .WriteTo.File(
-        new CompactJsonFormatter(), 
+        new CompactJsonFormatter(),
         logFileName,
         shared: true,
         buffered: false,
