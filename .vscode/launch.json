@@ -1,0 +1,81 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Watch + Debug Server (dotnet watch)",
+      "type": "coreclr",
+      "request": "attach",
+      "processName": "dotnet",
+      "preLaunchTask": "Watch Server",
+    },
+    {
+      "name": "Launch Server (HTTP)",
+      "preLaunchTask": "Build Server",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/server/bin/Debug/net9.0/AIChat.Server.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/server",
+      "stopAtEntry": false,
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "\\\\[\\\\d+\\\\]:\\\\s+Now listening on: (https?://\\\\S+)"
+      },
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "name": "Launch Server (HTTP) Test",
+      "preLaunchTask": "Build Server",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/server/bin/Debug/net9.0/AIChat.Server.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/server",
+      "stopAtEntry": false,
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "\\\\[\\\\d+\\\\]:\\\\s+Now listening on: (https?://\\\\S+)"
+      },
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Test",
+        "LLM_API_KEY": "DUMMY"
+      },
+      // "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "name": "Launch Client (Vite)",
+      "preLaunchTask": "Build Client",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "cwd": "${workspaceFolder}/client",
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "envFile": "${workspaceFolder}/.env"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Launch Client and Server",
+      "configurations": [
+        "Launch Server (HTTP)",
+        "Launch Client (Vite)"
+      ]
+    },
+    {
+      "name": "Watch Server + Client",
+      "configurations": [
+        "Watch + Debug Server (dotnet watch)",
+        "Launch Client (Vite)"
+      ]
+    }
+  ]
+}

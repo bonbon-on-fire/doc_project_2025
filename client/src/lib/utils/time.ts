@@ -4,18 +4,18 @@
  * @returns A formatted time string, e.g., "5:09 PM".
  */
 export function formatTime(timestamp: Date | string): string {
-  // The timestamp can arrive as a string, so we must ensure it's a Date object.
-  const date = new Date(timestamp);
+	// The timestamp can arrive as a string, so we must ensure it's a Date object.
+	const date = new Date(timestamp);
 
-  // getHours() and getMinutes() automatically return the time in the browser's local timezone.
-  let hours = date.getHours();
-  const minutes = date.getMinutes();
-  const ampm = hours >= 12 ? 'PM' : 'AM';
+	// getHours() and getMinutes() automatically return the time in the browser's local timezone.
+	let hours = date.getHours();
+	const minutes = date.getMinutes();
+	const ampm = hours >= 12 ? 'PM' : 'AM';
 
-  hours = hours % 12;
-  hours = hours ? hours : 12; // The hour '0' should be '12'.
+	hours = hours % 12;
+	hours = hours ? hours : 12; // The hour '0' should be '12'.
 
-  const minutesStr = minutes < 10 ? '0' + minutes : String(minutes);
+	const minutesStr = minutes < 10 ? '0' + minutes : String(minutes);
 
-  return `${hours}:${minutesStr} ${ampm}`;
+	return `${hours}:${minutesStr} ${ampm}`;
 }

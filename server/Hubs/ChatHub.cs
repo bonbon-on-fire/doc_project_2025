@@ -1,11 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
 using AIChat.Server.Services;
-using AIChat.Server.Data;
-using AIChat.Server.Models;
-using Microsoft.EntityFrameworkCore;
-using AchieveAi.LmDotnetTools.LmCore.Agents;
-using AchieveAi.LmDotnetTools.LmCore.Messages;
-using System.Collections.Immutable;
 
 namespace AIChat.Server.Hubs;
 
@@ -20,11 +14,11 @@ public class ChatHub : Hub
     {
         _chatService = chatService;
         _logger = logger;
-        
+
         // Subscribe to ChatService events for real-time broadcasting
         _chatService.MessageCreated += OnMessageCreated;
         _chatService.StreamChunkReceived += OnStreamChunkReceived;
-        _chatService.StreamCompleted += OnStreamCompleted;
+        _chatService.MessageReceived += OnMessageReceived;
     }
 
     public async Task JoinChatGroup(string chatId)
@@ -49,13 +43,13 @@ public class ChatHub : Hub
                 UserId = userId,
                 Message = message
             };
-            
+
             var result = await _chatService.SendMessageAsync(sendRequest);
-            
+
             if (!result.Success)
             {
                 _logger.LogError("Error sending message for chat {ChatId}: {Error}", chatId, result.Error);
-                
+
                 await Clients.Group($"chat_{chatId}").SendAsync("ReceiveError", new
                 {
                     ChatId = chatId,
@@ -71,7 +65,7 @@ public class ChatHub : Hub
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing message for chat {ChatId}", chatId);
-            
+
             await Clients.Group($"chat_{chatId}").SendAsync("ReceiveError", new
             {
                 ChatId = chatId,
@@ -89,7 +83,7 @@ public class ChatHub : Hub
             Id = messageEvent.Message.Id,
             ChatId = messageEvent.Message.ChatId,
             Role = messageEvent.Message.Role,
-            Content = messageEvent.Message.Content,
+            Content = (messageEvent.Message as TextMessageDto)?.Text ?? string.Empty,
             Timestamp = messageEvent.Message.Timestamp,
             SequenceNumber = messageEvent.Message.SequenceNumber
         });
@@ -97,24 +91,64 @@ public class ChatHub : Hub
 
     private async Task OnStreamChunkReceived(StreamChunkEvent chunkEvent)
     {
+        // Extract delta based on the specific event type
+        string delta = chunkEvent switch
+        {
+            ReasoningStreamEvent reasoningEvent => reasoningEvent.Delta,
+            TextStreamEvent textEvent => textEvent.Delta,
+            _ => ""
+        };
+
         await Clients.Group($"chat_{chunkEvent.ChatId}").SendAsync("ReceiveStreamChunk", new
         {
             MessageId = chunkEvent.MessageId,
             ChatId = chunkEvent.ChatId,
-            Delta = chunkEvent.Delta,
-            Done = chunkEvent.Done
+            Delta = delta,
+            Done = chunkEvent.Done,
+            Kind = chunkEvent.Kind
         });
     }
 
-    private async Task OnStreamCompleted(StreamCompleteEvent completeEvent)
+    private async Task OnMessageReceived(MessageEvent messageEvent)
     {
-        await Clients.Group($"chat_{completeEvent.ChatId}").SendAsync("ReceiveStreamChunk", new
+        // Handle complete message events (reasoning, text, usage)
+        var messageData = messageEvent switch
         {
-            MessageId = completeEvent.MessageId,
-            ChatId = completeEvent.ChatId,
-            Delta = "",
-            Done = true
-        });
+            ReasoningEvent reasoningEvent => new
+            {
+                MessageId = messageEvent.MessageId,
+                ChatId = messageEvent.ChatId,
+                Kind = messageEvent.Kind,
+                Content = reasoningEvent.Reasoning,
+                Visibility = reasoningEvent.Visibility?.ToString()
+            },
+            TextEvent textEvent => new
+            {
+                MessageId = messageEvent.MessageId,
+                ChatId = messageEvent.ChatId,
+                Kind = messageEvent.Kind,
+                Content = textEvent.Text,
+                Visibility = (string?)null
+            },
+            UsageEvent usageEvent => new
+            {
+                MessageId = messageEvent.MessageId,
+                ChatId = messageEvent.ChatId,
+                Kind = messageEvent.Kind,
+                Content = System.Text.Json.JsonSerializer.Serialize(usageEvent.Usage),
+                Visibility = (string?)null
+            },
+            _ => new
+            {
+                MessageId = messageEvent.MessageId,
+                ChatId = messageEvent.ChatId,
+                Kind = messageEvent.Kind,
+                Content = "",
+                Visibility = (string?)null
+            }
+        };
+
+        await Clients.Group($"chat_{messageEvent.ChatId}").SendAsync("ReceiveMessageComplete", messageData);
     }
 
     public override async Task OnConnectedAsync()
@@ -127,10 +161,10 @@ public class ChatHub : Hub
     {
         _logger.LogInformation("Client {ConnectionId} disconnected from ChatHub", Context.ConnectionId);
         await base.OnDisconnectedAsync(exception);
-        
+
         // Unsubscribe from events when client disconnects
         _chatService.MessageCreated -= OnMessageCreated;
         _chatService.StreamChunkReceived -= OnStreamChunkReceived;
-        _chatService.StreamCompleted -= OnStreamCompleted;
+        _chatService.MessageReceived -= OnMessageReceived;
     }
 }

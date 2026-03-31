@@ -2,6 +2,12 @@
 
 A modern AI chat application built with SvelteKit frontend and ASP.NET 9.0 backend.
 
+## Contributing
+
+Please read AGENTS.md for repository guidelines, coding standards, testing, and chat mode usage. It explains how to pick and follow the appropriate chat modes during development.
+
+See: AGENTS.md
+
 ## 🚀 Features
 
 - **Modern Frontend**: SvelteKit with TypeScript and Tailwind CSS

@@ -1,0 +1,55 @@
+- [x] Task 1: Define storage abstraction and schema helpers
+  - [x] Create `IChatStorage` with methods: CreateChat, GetChatById, GetChatHistoryByUser (paged), DeleteChat, AllocateSequence, InsertMessage, ListChatMessagesOrdered, GetMessageById, GetMessageContent
+  - [x] Add schema creation helper to create tables/indexes and seed users (idempotent)
+  - [x] Wire connection management (root connection for Test in-memory mode)
+  - Requirements:
+  - [x] Feature Spec: Requirement 1 (Sqlite schema)
+  - [x] Feature Spec: Requirement 2 (Storage provider)
+  - [x] Feature Spec: Requirement 6/7 (Startup & Test mode)
+  - Tests:
+  - [x] Schema creation is idempotent
+  - [x] Users seeded on empty DB; no duplicates on rerun
+  - [x] Test env uses in-memory and preserves DB for app lifetime
+
+- [x] Task 2: Implement `SqliteChatStorage` with parameterized SQL
+  - [x] Implement CRUD methods with transactions where required
+  - [x] Implement sequence allocation with retry on unique conflict
+  - [x] Serialize/deserialize `MessageDto` polymorphically to/from `MessageJson`
+  - Requirements:
+    - [x] Feature Spec: Requirement 2 (Storage provider)
+    - [x] Feature Spec: Requirement 3 (Sequence allocation)
+    - [x] Feature Spec: Requirement 5 (JSON persistence)
+  - Tests:
+    - [x] Sequence numbers monotonic per chat under concurrency
+    - [x] Insert/retrieve messages preserves role/kind and content
+    - [x] Deleting a chat cascades delete messages
+
+- [x] Task 3: Replace EF usage in `Program.cs` with storage wiring
+  - [x] Remove EF DbContext and migration code paths
+  - [x] Register `IChatStorage` and configure connection strings for Dev/Prod/Test
+  - Requirements:
+    - [x] Feature Spec: Requirement 6 (Startup and configuration)
+    - [x] Feature Spec: Requirement 7 (Test Mode)
+  - Tests:
+    - [x] Server starts in Dev and Test; health check OK
+    - [x] Test mode resets DB on restart
+
+- [x] Task 4: Refactor `ChatService` to use `IChatStorage`
+  - [x] Update CreateChatAsync, GetChatAsync, GetChatHistoryAsync, DeleteChatAsync
+  - [x] Update streaming flows: PrepareUnifiedStreamChatAsync, StreamAssistantResponseAsync, GetMessageContentAsync
+  - [x] Remove dependency on `MessageSequenceService` or adapt to call storage
+  - Requirements:
+    - [x] Feature Spec: Requirement 4 (Service layer adaptation)
+    - [x] Feature Spec: Requirement 5 (JSON persistence)
+  - Tests:
+    - [x] Existing API endpoints produce unchanged shapes
+    - [x] SSE streaming works end-to-end in Test mode
+
+- [x] Task 5: Clean up EF artifacts and ensure clean build
+  - [x] Remove EF migrations and `AIChatDbContext` from build
+  - [x] Ensure no references to EF packages in runtime path
+  - Requirements:
+    - [x] Feature Spec: High level Requirements (big-bang EF removal)
+  - Tests:
+    - [x] `dotnet build` shows 0 warnings/errors
+    - [x] `dotnet test` passes; client e2e smoke passes

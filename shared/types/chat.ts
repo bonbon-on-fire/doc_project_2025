@@ -7,6 +7,7 @@ export interface Message {
   content: string;
   timestamp: Date;
   sequenceNumber: number;
+  isHidden?: boolean;
 }
 
 export interface Chat {

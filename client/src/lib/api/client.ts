@@ -1,105 +1,95 @@
 // API client for communicating with ASP.NET backend
 import { PUBLIC_API_BASE_URL } from '$env/static/public';
-import type { 
-  ChatDto, 
-  CreateChatRequest, 
-  ChatHistoryResponse 
-} from '$lib/types/chat';
+import type { ChatDto, CreateChatRequest, ChatHistoryResponse } from '$lib/types/chat';
 
 export class ApiClient {
-  private baseUrl: string;
+	private baseUrl: string;
 
-  constructor(baseUrl: string = PUBLIC_API_BASE_URL) {
-    this.baseUrl = baseUrl;
-  }
+	constructor(baseUrl: string = (PUBLIC_API_BASE_URL as any) || '') {
+		// Prefer explicit env, otherwise in dev (vite on 5173) hit server directly to avoid proxy buffering SSE
+		if (!baseUrl && typeof window !== 'undefined' && window.location.port === '5173') {
+			baseUrl = 'http://localhost:5099';
+		}
+		this.baseUrl = baseUrl || '';
+	}
 
-  private async request<T>(
-    endpoint: string, 
-    options: RequestInit = {}
-  ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
-    
-    const config: RequestInit = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      ...options,
-    };
+	private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+		const url = this.baseUrl ? `${this.baseUrl}${endpoint}` : endpoint;
 
-    try {
-      const response = await fetch(url, config);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
-      }
+		const config: RequestInit = {
+			headers: {
+				'Content-Type': 'application/json',
+				...options.headers
+			},
+			...options
+		};
 
-      return await response.json();
-    } catch (error) {
-      console.error(`API request failed: ${endpoint}`, error);
-      throw error;
-    }
-  }
+		try {
+			const response = await fetch(url, config);
 
-  // Chat endpoints
-  async getChatHistory(
-    userId: string, 
-    page: number = 1, 
-    pageSize: number = 20
-  ): Promise<ChatHistoryResponse> {
-    return this.request<ChatHistoryResponse>(
-      `/api/chat/history?userId=${userId}&page=${page}&pageSize=${pageSize}`
-    );
-  }
+			if (!response.ok) {
+				const errorText = await response.text();
+				throw new Error(`HTTP ${response.status}: ${errorText}`);
+			}
 
-  async getChat(chatId: string): Promise<ChatDto> {
-    return this.request<ChatDto>(`/api/chat/${chatId}`);
-  }
+			return await response.json();
+		} catch (error) {
+			console.error(`API request failed: ${endpoint}`, error);
+			throw error;
+		}
+	}
 
-  async createChat(request: CreateChatRequest): Promise<ChatDto> {
-    return this.request<ChatDto>('/api/chat', {
-      method: 'POST',
-      body: JSON.stringify(request),
-    });
-  }
+	// Chat endpoints
+	async getChatHistory(
+		userId: string,
+		page: number = 1,
+		pageSize: number = 20
+	): Promise<ChatHistoryResponse> {
+		return this.request<ChatHistoryResponse>(
+			`/api/chat/history?userId=${userId}&page=${page}&pageSize=${pageSize}`
+		);
+	}
 
-  async deleteChat(chatId: string): Promise<void> {
-    await this.request(`/api/chat/${chatId}`, {
-      method: 'DELETE',
-    });
-  }
+	async getChat(chatId: string): Promise<ChatDto> {
+		return this.request<ChatDto>(`/api/chat/${chatId}`);
+	}
 
-  async sendMessage(chatId: string, message: string): Promise<any> {
-    return this.request(`/api/chat/${chatId}/messages`, {
-      method: 'POST',
-      body: JSON.stringify({ message }),
-    });
-  }
+	async createChat(request: CreateChatRequest): Promise<ChatDto> {
+		return this.request<ChatDto>('/api/chat', {
+			method: 'POST',
+			body: JSON.stringify(request)
+		});
+	}
 
-  async streamChatCompletion(request: CreateChatRequest): Promise<Response> {
-    const url = `${this.baseUrl}/api/chat/stream-sse`;
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
-    }
-    
-    return response;
-  }
+	async deleteChat(chatId: string): Promise<void> {
+		await this.request(`/api/chat/${chatId}`, {
+			method: 'DELETE'
+		});
+	}
 
-  // Health check
-  async getHealth(): Promise<{ status: string; timestamp: string }> {
-    return this.request('/api/health');
-  }
+	async streamChatCompletion(request: CreateChatRequest): Promise<Response> {
+		const url = this.baseUrl ? `${this.baseUrl}/api/chat/stream-sse` : `/api/chat/stream-sse`;
+
+		const response = await fetch(url, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify(request)
+		});
+
+		if (!response.ok) {
+			const errorText = await response.text();
+			throw new Error(`HTTP ${response.status}: ${errorText}`);
+		}
+
+		return response;
+	}
+
+	// Health check
+	async getHealth(): Promise<{ status: string; timestamp: string }> {
+		return this.request('/api/health');
+	}
 }
 
 // Export singleton instance

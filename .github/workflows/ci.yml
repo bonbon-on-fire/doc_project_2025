@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  client:
+    name: Client Lint and Unit Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint and format check
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm run test:unit -- --run
+
+      # E2E optional: Playwright requires servers and browsers.
+      # Enable when CI environment is ready.
+      # - name: Install Playwright Browsers
+      #   run: npx playwright install --with-deps
+      # - name: E2E tests
+      #   run: npm run test:e2e -- --reporter=line
+
+  server:
+    name: Server Build and Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore
+        run: dotnet restore ./server
+
+      - name: Build (Release)
+        run: dotnet build ./server --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test ./server.Tests --configuration Release --no-build --verbosity normal
+

@@ -1,0 +1,12 @@
+{
+    "dotrush.roslyn.projectOrSolutionFiles": [
+        "b:\\sources\\DOC_Project_2025\\DOC_Project_2025.sln"
+    ],
+    "dotnet.defaultSolution": "DOC_Project_2025.sln",
+    "markdownlint.config": {
+        "MD001": false,
+        "MD009": false,
+        "MD031": false,
+        "MD032": false
+    }
+}

@@ -1,6 +1,3 @@
-using AIChat.Server.Data;
-using Microsoft.EntityFrameworkCore;
-
 namespace AIChat.Server.Services;
 
 public interface IMessageSequenceService
@@ -10,44 +7,9 @@ public interface IMessageSequenceService
 
 public class MessageSequenceService : IMessageSequenceService
 {
-    private readonly AIChatDbContext _dbContext;
-
-    public MessageSequenceService(AIChatDbContext dbContext)
+    public Task<int> GetNextSequenceNumberAsync(string chatId)
     {
-        _dbContext = dbContext;
-    }
-
-    public async Task<int> GetNextSequenceNumberAsync(string chatId)
-    {
-        // Use a transaction to ensure atomicity when calculating the next sequence number
-        using var transaction = await _dbContext.Database.BeginTransactionAsync();
-        
-        try
-        {
-            // Lock the chat record to prevent race conditions
-            var chat = await _dbContext.Chats
-                .Where(c => c.Id == chatId)
-                .FirstOrDefaultAsync();
-
-            if (chat == null)
-            {
-                throw new InvalidOperationException($"Chat with ID {chatId} not found");
-            }
-
-            // Get the highest sequence number for this chat
-            var maxSequenceNumber = await _dbContext.Messages
-                .Where(m => m.ChatId == chatId)
-                .MaxAsync(m => (int?)m.SequenceNumber) ?? -1;
-
-            var nextSequenceNumber = maxSequenceNumber + 1;
-
-            await transaction.CommitAsync();
-            return nextSequenceNumber;
-        }
-        catch
-        {
-            await transaction.RollbackAsync();
-            throw;
-        }
+        // Deprecated; ChatService now uses IChatStorage.AllocateSequenceAsync
+        throw new NotSupportedException("MessageSequenceService is no longer used.");
     }
 }

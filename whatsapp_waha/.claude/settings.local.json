@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:waha.devlike.pro)",
+      "Bash(git rm:*)",
+      "Bash(dotnet build:*)",
+      "Bash(mkdir:*)",
+      "mcp__sequential-thinking-tools__sequentialthinking",
+      "WebFetch(domain:www.nuget.org)",
+      "Bash(dotnet test:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(git add:*)",
+      "Bash(dotnet list:*)",
+      "Bash(dotnet run:*)",
+      "Bash(git submodule add:*)",
+      "Bash(dotnet remove:*)",
+      "Bash(dotnet add src/WhatsAppWaha.Core/WhatsAppWaha.Core.csproj reference submodules/waha-net/src/Client/Client.csproj)",
+      "Bash(dotnet:*)",
+      "Bash(echo $env:DOTNET_ENVIRONMENT)",
+      "Bash(set DOTNET_ENVIRONMENT=Development)",
+      "Bash(grep:*)",
+      "Bash(set DOTNET_ENVIRONMENT=Production)",
+      "Bash(set Waha__ApiKey=e38089ff-17f3-4428-a9f9-d524a63b8989-ab73929a-39aa-4801-be09-bf4b6d5ccdcf-8054317b-9688-414f-a0ab-685b432e7dd4)",
+      "Bash(set Waha:ApiKey=e38089ff-17f3-4428-a9f9-d524a63b8989-ab73929a-39aa-4801-be09-bf4b6d5ccdcf-8054317b-9688-414f-a0ab-685b432e7dd4)",
+      "Bash(git clean:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

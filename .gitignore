@@ -106,13 +106,11 @@ tmp/
 temp/
 
 # Editor directories and files
-.vscode/*
+# .vscode/*
 !.vscode/extensions.json
 .idea
 *.suo
 *.ntvs*
-*.njsproj
-*.sln
 *.sw?
 
 # OS generated files
@@ -184,3 +182,6 @@ server/aichat_dev.db-shm
 .fake
 launchsettings.json
 server/llm-cache/*.json
+
+# MCP configuration (contains sensitive data)
+.mcp.json

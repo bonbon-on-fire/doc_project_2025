@@ -1,0 +1,112 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build Server",
+			"command": "dotnet",
+			"type": "process",
+			"args": [
+				"build",
+				"${workspaceFolder}/server/AIChat.Server.csproj",
+				"/property:GenerateFullPaths=true",
+				"/consoleloggerparameters:NoSummary;ForceNoAlign"
+			],
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "Publish Server",
+			"command": "dotnet",
+			"type": "process",
+			"args": [
+				"publish",
+				"${workspaceFolder}/server/AIChat.Server.csproj",
+				"/property:GenerateFullPaths=true",
+				"/consoleloggerparameters:NoSummary;ForceNoAlign"
+			],
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "Watch Server",
+			"command": "dotnet",
+			"type": "process",
+			"args": [
+				"watch",
+				"run",
+				"--project",
+				"${workspaceFolder}/server/AIChat.Server.csproj"
+			],
+			"isBackground": true,
+			"problemMatcher": {
+				"base": "$msCompile",
+				"background": {
+					"activeOnStart": true,
+					"endsPattern": "Now listening on: (https?:\\/\\/\\S+)"
+				}
+			}
+		},
+		{
+			"label": "Install Client Dependencies",
+			"command": "npm",
+			"type": "shell",
+			"args": [
+				"install"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/client"
+			},
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "Build Client",
+			"command": "npm",
+			"type": "shell",
+			"args": [
+				"run",
+				"build"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/client"
+			},
+			"group": "build",
+			"problemMatcher": [],
+			"dependsOn": "Install Client Dependencies"
+		},
+		{
+			"label": "Dev Client",
+			"command": "npm",
+			"type": "shell",
+			"args": [
+				"run",
+				"dev"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/client"
+			},
+			"group": "build",
+			"problemMatcher": [],
+			"isBackground": true
+		},
+		{
+			"label": "Build Server (one-off)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"server/AIChat.Server.csproj",
+				"/property:GenerateFullPaths=true",
+				"/consoleloggerparameters:NoSummary;ForceNoAlign"
+			]
+		},
+		{
+			"label": "Build Client",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"build"
+			],
+			"group": "build"
+		}
+	]
+}

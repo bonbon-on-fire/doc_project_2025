@@ -4,11 +4,7 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-	plugins: [
-		tailwindcss(),
-		sveltekit(),
-		devtoolsJson()
-	],
+	plugins: [tailwindcss(), sveltekit(), devtoolsJson()],
 	test: {
 		expect: { requireAssertions: true },
 		projects: [
@@ -37,5 +33,14 @@ export default defineConfig({
 				}
 			}
 		]
+	},
+	server: {
+		proxy: {
+			'/api': {
+				// Keep in sync with server dev port; default docs use 5099
+				target: 'http://localhost:5099',
+				changeOrigin: true
+			}
+		}
 	}
 });

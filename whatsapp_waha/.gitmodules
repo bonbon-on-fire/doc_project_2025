@@ -1,0 +1,3 @@
+[submodule "submodules/waha-net"]
+	path = submodules/waha-net
+	url = https://github.com/bonbon-on-fire/waha-net.git

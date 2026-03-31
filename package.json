@@ -1,0 +1,40 @@
+{
+  "name": "doc_project_2025",
+  "version": "1.0.0",
+  "description": "A modern AI chat application built with SvelteKit frontend and ASP.NET 9.0 backend.",
+  "main": "debug_message.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bonbon-on-fire/DOC_Project_2025.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/bonbon-on-fire/DOC_Project_2025/issues"
+  },
+  "homepage": "https://github.com/bonbon-on-fire/DOC_Project_2025#readme",
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.5",
+    "prettier": "^3.6.2",
+    "prettier-plugin-svelte": "^3.4.0",
+    "prettier-plugin-tailwindcss": "^0.6.14"
+  },
+  "lint-staged": {
+    "client/**/*.{js,ts,svelte,json,css,html}": [
+      "prettier --write"
+    ],
+    "server/**/*.cs": [
+      "dotnet format server/AIChat.Server.csproj --include"
+    ]
+  }
+}

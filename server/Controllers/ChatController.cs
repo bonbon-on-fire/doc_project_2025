@@ -1,15 +1,10 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using AIChat.Server.Data;
-using AIChat.Server.Models;
-using AchieveAi.LmDotnetTools.LmCore.Agents;
-using AchieveAi.LmDotnetTools.LmCore.Messages;
-using System.Runtime.CompilerServices;
-using System.Text;
-using Lib.AspNetCore.ServerSentEvents;
+using AchieveAi.LmDotnetTools.Misc.Utils;
+using AIChat.Server.Extensions;
 using AIChat.Server.Services;
+using AIChat.Server.Storage;
+using Lib.AspNetCore.ServerSentEvents;
+using Microsoft.AspNetCore.Mvc;
 using ChatDto = AIChat.Server.Services.ChatDto;
-using MessageDto = AIChat.Server.Services.MessageDto;
 
 namespace AIChat.Server.Controllers;
 
@@ -20,15 +15,21 @@ public class ChatController : ControllerBase
     private readonly IChatService _chatService;
     private readonly ILogger<ChatController> _logger;
     private readonly IServerSentEventsService _serverSentEventsService;
+    private readonly ITaskStorage _taskStorage;
+    private readonly IChatStorage _chatStorage;
 
     public ChatController(
         IChatService chatService,
-        ILogger<ChatController> logger, 
-        IServerSentEventsService serverSentEventsService)
+        ILogger<ChatController> logger,
+        IServerSentEventsService serverSentEventsService,
+        ITaskStorage taskStorage,
+        IChatStorage chatStorage)
     {
         _chatService = chatService;
         _logger = logger;
         _serverSentEventsService = serverSentEventsService;
+        _taskStorage = taskStorage;
+        _chatStorage = chatStorage;
     }
 
     // GET: api/chat/history?userId={userId}&page={page}&pageSize={pageSize}
@@ -39,7 +40,7 @@ public class ChatController : ControllerBase
         [FromQuery] int pageSize = 20)
     {
         var result = await _chatService.GetChatHistoryAsync(userId, page, pageSize);
-        
+
         if (!result.Success)
         {
             _logger.LogError("Error retrieving chat history for user {UserId}: {Error}", userId, result.Error);
@@ -62,14 +63,14 @@ public class ChatController : ControllerBase
     public async Task<ActionResult<ChatDto>> GetChat(string id)
     {
         var result = await _chatService.GetChatAsync(id);
-        
+
         if (!result.Success)
         {
             if (result.Error == "Chat not found")
             {
                 return NotFound(new { Error = "Chat not found" });
             }
-            
+
             _logger.LogError("Error retrieving chat {ChatId}: {Error}", id, result.Error);
             return StatusCode(500, new { Error = result.Error ?? "Failed to retrieve chat" });
         }
@@ -87,9 +88,9 @@ public class ChatController : ControllerBase
             Message = request.Message,
             SystemPrompt = request.SystemPrompt
         };
-        
+
         var result = await _chatService.CreateChatAsync(createRequest);
-        
+
         if (!result.Success)
         {
             _logger.LogError("Error creating chat: {Error}", result.Error);
@@ -99,50 +100,12 @@ public class ChatController : ControllerBase
         return CreatedAtAction(nameof(GetChat), new { id = result.Chat!.Id }, result.Chat);
     }
 
-    // POST: api/chat/{chatId}/messages
-    [HttpPost("{chatId}/messages")]
-    public async Task<ActionResult<MessageDto>> SendMessage(
-        string chatId,
-        [FromBody] SendMessageRequest request)
-    {
-        // This endpoint provides an HTTP alternative to SignalR for sending messages
-        // Implementation mirrors ChatHub.SendMessage but returns HTTP responses
-        // For real-time updates, clients should use SignalR
-        
-        // TODO: Get userId from authentication context
-        var userId = "user123"; // Placeholder
-        
-        var sendRequest = new Services.SendMessageRequest
-        {
-            ChatId = chatId,
-            UserId = userId,
-            Message = request.Message
-        };
-        
-        var result = await _chatService.SendMessageAsync(sendRequest);
-        
-        if (!result.Success)
-        {
-            _logger.LogError("Error sending message to chat {ChatId}: {Error}", chatId, result.Error);
-            return StatusCode(500, new { Error = result.Error ?? "Failed to send message" });
-        }
-
-        return Ok(result.UserMessage);
-    }
-
-    private async Task WriteSseEvent(object data)
-    {
-        var json = System.Text.Json.JsonSerializer.Serialize(data);
-        await Response.WriteAsync($"data: {json}\n\n");
-        await Response.Body.FlushAsync();
-    }
-
     // DELETE: api/chat/{id}
     [HttpDelete("{id}")]
     public async Task<ActionResult> DeleteChat(string id)
     {
         var success = await _chatService.DeleteChatAsync(id);
-        
+
         if (!success)
         {
             return NotFound(new { Error = "Chat not found" });
@@ -151,15 +114,43 @@ public class ChatController : ControllerBase
         return NoContent();
     }
 
-    private static string GenerateChatTitle(string firstMessage)
+    // GET: api/chat/{chatId}/tasks
+    [HttpGet("{chatId}/tasks")]
+    public async Task<ActionResult<GetTasksResponse>> GetTasks(string chatId)
     {
-        // Generate a simple title from the first message
-        var title = firstMessage.Length > 50 
-            ? firstMessage[..47] + "..."
-            : firstMessage;
+        // Verify chat exists and user has access
+        var chatResult = await _chatStorage.GetChatByIdAsync(chatId);
+        if (!chatResult.Success)
+        {
+            return NotFound(new { Error = "Chat not found" });
+        }
+
+        // TODO: Add proper user authorization check here
+        // For now, we'll skip authorization in development
+
+        var taskState = await _taskStorage.GetTasksAsync(chatId);
         
-        return title;
+        if (taskState == null)
+        {
+            // Return empty task list if no tasks exist
+            return Ok(new GetTasksResponse
+            {
+                ChatId = chatId,
+                Tasks = new List<TaskManager.TaskItem>(),
+                Version = 0
+            });
+        }
+
+        return Ok(new GetTasksResponse
+        {
+            ChatId = taskState.ChatId,
+            Tasks = taskState.TaskManager.GetTasks(),
+            Version = taskState.Version
+        });
     }
+
+    // Note: Task updates are handled server-side only through LLM tool calls
+    // The client has read-only access to task state via the GET endpoint above
 
     // POST: api/chat/stream-sse
     [HttpPost("stream-sse")]
@@ -171,6 +162,25 @@ public class ChatController : ControllerBase
         Response.Headers.Append("Content-Type", "text/event-stream");
         Response.Headers.Append("Cache-Control", "no-cache");
         Response.Headers.Append("Connection", "keep-alive");
+
+        string? currentChatId = null;
+        string? currentAssistantMessageId = null;
+        int currentAssistantSequenceNumber = 0;
+
+        // Generic side-channel forwarder
+        async Task ForwardSideChannel(StreamChunkEvent ev)
+        {
+            var envelope = ev.ToSSEEnvelope();
+            var sid = $"{ev.ChatId}:{ev.MessageId}:{ev.SequenceNumber}:{ev.ChunkSequenceId}";
+            await SendSseEvent("messageupdate", envelope, sid);
+        }
+
+        async Task ForwardMessage(MessageEvent ev)
+        {
+            var envelope = ev.ToSSEEnvelope();
+            var sid = $"{ev.ChatId}:{ev.MessageId}:{ev.SequenceNumber}";
+            await SendSseEvent("message", envelope, sid);
+        }
 
         try
         {
@@ -185,62 +195,77 @@ public class ChatController : ControllerBase
 
             // Get initialization metadata from service
             var initResult = await _chatService.PrepareUnifiedStreamChatAsync(streamRequest);
+            currentChatId = initResult.ChatId;
 
-            // Send fully decorated initial event
-            var initEvent = new 
-            { 
-                type = "init",
-                chatId = initResult.ChatId,
-                userMessageId = initResult.UserMessageId,
-                messageId = initResult.AssistantMessageId,  // For backward compatibility
-                assistantMessageId = initResult.AssistantMessageId,
-                userTimestamp = initResult.UserTimestamp,
-                assistantTimestamp = initResult.AssistantTimestamp,
-                userSequenceNumber = initResult.UserSequenceNumber,
-                assistantSequenceNumber = initResult.AssistantSequenceNumber
-            };
-            await SendSseEvent("init", initEvent);
+            // Subscribe to side-channel after IDs are known
+            _chatService.MessageReceived += ForwardMessage;
+            _chatService.StreamChunkReceived += ForwardSideChannel;
 
-            // Stream the assistant response using unified service method
-            await foreach (var chunk in _chatService.StreamUnifiedChatCompletionAsync(streamRequest, cancellationToken))
-            {
-                var chunkEvent = new { type = "chunk", delta = chunk, done = false };
-                await SendSseEvent("chunk", chunkEvent);
-            }
+            // Send INIT event (envelope optional kind: 'meta')
+            var initEnvelope = SSEEventExtensions.CreateInitEnvelope(
+                initResult.ChatId,
+                initResult.UserMessageId,
+                initResult.UserTimestamp,
+                initResult.UserSequenceNumber);
 
-            // Get final content of assistant message for complete event
-            var finalContent = await _chatService.GetMessageContentAsync(initResult.AssistantMessageId);
-            
+            var initId = $"{initResult.ChatId}<|>{initResult.UserMessageId}";
+            await SendSseEvent("init", initEnvelope, initId);
+
+            // Stream the assistant response using the assistant message created during initialization
+            await _chatService.StreamAssistantResponseAsync(
+                initResult.ChatId,
+                cancellationToken);
+
             // Send completion event with final content
-            var completeEvent = new { type = "complete", done = true, content = finalContent };
-            await SendSseEvent("complete", completeEvent);
+            var completeEnvelope = SSEEventExtensions.CreateStreamCompleteEnvelope(initResult.ChatId);
+            await SendSseEvent("complete", completeEnvelope, initId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error streaming chat completion");
-            var errorEvent = new { type = "error", message = ex.Message };
-            await SendSseEvent("error", errorEvent);
+            // Avoid passing exception object to logger in watch/Test to prevent formatter crashes
+            _logger.LogError("Error streaming chat completion: {Type}: {Message}", ex.GetType().Name, ex.Message);
+            var errorEnvelope = SSEEventExtensions.CreateErrorEnvelope(
+                currentChatId ?? "unknown",
+                currentAssistantMessageId,
+                currentAssistantSequenceNumber,
+                ex.Message);
+            await SendSseEvent(
+                "message",
+                errorEnvelope,
+                currentChatId != null && currentAssistantMessageId != null
+                    ? $"{currentChatId}<|>{currentAssistantMessageId}"
+                    : null);
+        }
+        finally
+        {
+            _chatService.MessageReceived -= ForwardMessage;
+            _chatService.StreamChunkReceived -= ForwardSideChannel;
         }
     }
 
-    private async Task SendSseEvent(string eventType, object data)
+    private async Task SendSseEvent(string eventType, object data, string? id = null)
     {
-        // For now, we'll send to all connected clients
-        // In a real implementation, you'd want to send to specific clients
+        // Always stream to the current HTTP response (client fetch())
+        var json = System.Text.Json.JsonSerializer.Serialize(data, Services.MessageSerializationOptions.Default);
+        if (!string.IsNullOrEmpty(id))
+        {
+            await Response.WriteAsync($"id: {id}\n");
+        }
+        await Response.WriteAsync($"event: {eventType}\n");
+        await Response.WriteAsync($"data: {json}\n\n");
+        await Response.Body.FlushAsync();
+
+        // Additionally, broadcast via IServerSentEventsService if any listeners are connected
         var clients = _serverSentEventsService.GetClients();
         if (clients.Any())
         {
             var client = clients.First();
-            var json = System.Text.Json.JsonSerializer.Serialize(data);
-            await client.SendEventAsync(new ServerSentEvent { Type = eventType, Data = new List<string> { json } });
-        }
-        else
-        {
-            // Fallback to manual SSE if no clients connected
-            var json = System.Text.Json.JsonSerializer.Serialize(data);
-            await Response.WriteAsync($"event: {eventType}\n");
-            await Response.WriteAsync($"data: {json}\n\n");
-            await Response.Body.FlushAsync();
+            var sse = new ServerSentEvent { Type = eventType, Data = new List<string> { json } };
+            if (!string.IsNullOrEmpty(id))
+            {
+                sse.Id = id;
+            }
+            await client.SendEventAsync(sse);
         }
     }
 }
@@ -259,4 +284,21 @@ public class ChatHistoryResponse
     public int TotalCount { get; set; }
     public int Page { get; set; }
     public int PageSize { get; set; }
+}
+
+// Task-related DTOs
+public class GetTasksResponse
+{
+    public required string ChatId { get; set; }
+    public required IList<TaskManager.TaskItem> Tasks { get; set; } = new List<TaskManager.TaskItem>();
+    public required int Version { get; set; }
+}
+
+// Note: UpdateTasksRequest and UpdateTasksResponse removed - tasks are only updated server-side via LLM tool calls
+
+public class TaskErrorInfo
+{
+    public required string Code { get; set; }
+    public required string Message { get; set; }
+    public int? CurrentVersion { get; set; }
 }
