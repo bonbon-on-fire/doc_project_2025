@@ -1,4 +1,4 @@
-# Doctor On Call — WhatsApp Medical Assistant 2025
+# DOC Project 2026
 
 ## Project Overview
 
@@ -229,10 +229,9 @@ The agentic core and channel are working end-to-end, with the grounding layer an
 
 ## TL;DR
 
-A **WhatsApp-based medical assistant** that walks underserved rural users through a guided, simulated doctor visit over a familiar low-bandwidth interface. A conversational LLM handles structured triage while a paired **RAG + Deep Research** agent grounds every clinical statement in vetted sources to cut hallucinations — all on top of a real-time, tool-calling ASP.NET agentic core with a SvelteKit observability console.
+A WhatsApp medical assistant that guides underserved rural users through a simulated doctor visit. A conversational LLM runs structured triage while a paired RAG + Deep Research agent grounds every clinical claim in vetted sources to cut hallucinations—backed by a real-time, tool-calling ASP.NET agentic core and a SvelteKit observability console.
 
 ---
 
-**Project Duration:** Dec 2025 – Present
-**Role:** Full Stack AI Engineer (Remote)
+**Project Duration:** Winter 2025 – Spring 2026  
 **Technologies:** C# / ASP.NET 9.0, SvelteKit 5 + TypeScript, SignalR & SSE, SQLite, LmDotnetTools + MCP, RAG / Deep Research, WhatsApp Cloud API
