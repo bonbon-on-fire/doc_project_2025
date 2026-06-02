@@ -233,5 +233,5 @@ A WhatsApp medical assistant that guides underserved rural users through a simul
 
 ---
 
-**Project Duration:** Winter 2025 – Spring 2026  
+**Project Duration:** Winter 2025
 **Technologies:** C# / ASP.NET 9.0, SvelteKit 5 + TypeScript, SignalR & SSE, SQLite, LmDotnetTools + MCP, RAG / Deep Research, WhatsApp Cloud API
