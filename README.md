@@ -1,60 +1,5 @@
 # Doctor On Call — WhatsApp Medical Assistant 2025
 
-## Quick Start
-
-### Prerequisites
-- **.NET SDK**: Version 9.0 or higher (backend + WhatsApp services)
-- **Node.js**: 18+ and npm (SvelteKit frontend)
-- **SQLite**: Bundled — no separate install needed
-- **WhatsApp Cloud API access**: A Meta for Developers app with a WhatsApp Business phone number, a permanent access token, and a webhook verify token
-- **LLM provider key**: An OpenAI-compatible API key (OpenAI, Azure OpenAI, or OpenRouter)
-- **Windows / macOS / Linux**: Cross-platform; commands below use PowerShell where path-specific
-
-### 1. Clone the Repository
-```powershell
-git clone https://github.com/bonbon-on-fire/DOC_Project_2025.git
-cd DOC_Project_2025
-git submodule update --init --recursive   # pulls LmDotnetTools + waha-net
-```
-
-### 2. Configure Environment
-The backend reads the LLM provider from environment variables and the WhatsApp/medical settings from `appsettings`:
-```powershell
-$env:LLM_API_KEY      = "your-llm-provider-key"
-$env:LLM_BASE_API_URL = "https://openrouter.ai/api/v1"   # optional; defaults to OpenAI
-```
-Copy and fill the server settings:
-```powershell
-cp server/appsettings.Development.json server/appsettings.Development.local.json
-```
-Configure the WhatsApp Cloud API credentials (phone number ID, access token, verify token) and the medical research agent settings under their respective sections.
-
-### 3. Run the Backend (chat + agentic core)
-```powershell
-cd server
-dotnet restore
-dotnet watch run        # serves REST + SignalR (/api/chat-hub) + SSE (/api/chat-sse)
-```
-
-### 4. Run the Frontend (clinician/console UI)
-```powershell
-cd client
-npm install
-npm run dev             # Vite dev server on http://localhost:5173
-```
-
-### 5. Run the WhatsApp Bridge
-```powershell
-cd whatsapp_waha/src/WhatsAppWaha.MessageReceiver
-dotnet run              # receives inbound messages and forwards them to the agentic core
-```
-
-### 6. Run the Tests
-```powershell
-cd server && dotnet test          # backend + agentic loop tests
-cd client && npm run test         # unit (Vitest) + E2E (Playwright)
-```
-
 ## Project Overview
 
 ### What I Built
@@ -290,4 +235,4 @@ A **WhatsApp-based medical assistant** that walks underserved rural users throug
 
 **Project Duration:** Dec 2025 – Present
 **Role:** Full Stack AI Engineer (Remote)
-**Technologies:** C#, ASP.NET 9.0, SignalR, Server-Sent Events, SQLite, LmDotnetTools, Model Context Protocol (MCP), RAG, Deep Research, OpenAI / Azure / OpenRouter LLMs, WhatsApp Cloud API, SvelteKit 5, Svelte, TypeScript, Tailwind CSS 4, Vite, Vitest, Playwright, xUnit, Git
+**Technologies:** C# / ASP.NET 9.0, SvelteKit 5 + TypeScript, SignalR & SSE, SQLite, LmDotnetTools + MCP, RAG / Deep Research, WhatsApp Cloud API
