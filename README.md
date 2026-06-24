@@ -1,4 +1,4 @@
-# DOC Project 2025
+# DOC Project
 
 ## Project Overview
 
